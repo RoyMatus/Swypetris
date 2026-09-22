@@ -1,0 +1,27 @@
+# Local state, credentials and build products
+.gradle/
+.kotlin/
+.idea/
+**/build/
+local.properties
+*.iml
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.clixml
+keystore.properties
+signing.properties
+dist/
+**/__pycache__/
+*.pyc
+tools/music/bin/
+tools/music/*.wav
+tools/music/*.ogg
+tools/music/output/
+tools/music/generated/
+tools/music/previews/
+*.hprof

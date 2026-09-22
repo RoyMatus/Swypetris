@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: одинаковый состав облачной копии и переноса между устройствами. -->
+<data-extraction-rules>
+    <cloud-backup><include domain="sharedpref" path="swypetris.xml" /></cloud-backup>
+    <device-transfer><include domain="sharedpref" path="swypetris.xml" /></device-transfer>
+</data-extraction-rules>
