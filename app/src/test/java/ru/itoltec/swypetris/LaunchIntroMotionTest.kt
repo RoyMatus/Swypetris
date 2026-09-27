@@ -30,5 +30,9 @@ class LaunchIntroMotionTest {
         assertEquals(HapticPulse(600, 255), HapticPulse.Clear)
         assertEquals(HapticPulse(100, 220), HapticPulse.Preview)
         assertEquals(600L, HapticPulse.Clear.durationFor(false))
+        assertEquals(HapticPulse(70, 64, 18), HapticPulse.Drop.softened())
+        assertEquals(HapticPulse(600, 128, 300), HapticPulse.Clear.softened())
+        assertEquals(HapticPulse(100, 110, 50), HapticPulse.Preview.softened())
+        assertEquals(HapticPulse(220, 128, 110), HapticPulse(220, 255).softened())
     }
 }

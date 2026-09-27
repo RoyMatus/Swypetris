@@ -55,15 +55,16 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
         val motor = vibrator ?: return
         if (pulse.duration <= 0) return
         if (!vibration || !motor.hasVibrator()) return
+        val softened = pulse.softened()
         if (Build.VERSION.SDK_INT >= 26) {
             val amplitudeControl = motor.hasAmplitudeControl()
-            val amplitude = if (amplitudeControl) pulse.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
-            val effect = VibrationEffect.createOneShot(pulse.durationFor(amplitudeControl), amplitude)
+            val amplitude = if (amplitudeControl) softened.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
+            val effect = VibrationEffect.createOneShot(softened.durationFor(amplitudeControl), amplitude)
             if (Build.VERSION.SDK_INT >= 33) motor.vibrate(effect,
                 VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_MEDIA).build())
             else motor.vibrate(effect, vibrationAttributes)
         } else {
-            motor.vibrate(pulse.durationFor(false), vibrationAttributes)
+            motor.vibrate(softened.durationFor(false), vibrationAttributes)
         }
     }
 
