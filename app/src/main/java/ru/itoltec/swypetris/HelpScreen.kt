@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 
 /** Essential controls fit a quick read; larger fonts can still scroll vertically. */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun HelpScreen(model: GameViewModel) {
     val controls = listOf(
         "← →" to "Двигайте фигуру",
@@ -41,7 +42,12 @@ fun HelpScreen(model: GameViewModel) {
         item { HelpSection("Повторные жесты", "Для повторного поворота слегка опустите палец и снова проведите вверх либо начните новое касание. После броска новой фигуре нужен новый жест вниз. Палец можно не отрывать; удержание не ускоряет падение.") }
         item { HelpSection("Цель игры", "Заполняйте горизонтальные строки без пробелов: они исчезают и дают очки. Каждая пройденная вниз клетка тоже приносит очко. Партия заканчивается, если новой фигуре негде появиться.") }
         item {
-            HelpSection("Фрукты", "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт коллекции. Отдельных бонусов у видов фруктов нет. Восемь фруктов открывают следующий круг: поле очищается, а счёт и скорость сохраняются.")
+            HelpSection("Фрукты", "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт коллекции. Отдельных бонусов у видов фруктов нет. Восемь фруктов открывают следующий круг: поле очищается, а счёт и скорость сохраняются.") {
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Fruit.entries.forEach { fruit -> FruitIcon(fruit, Modifier.size(32.dp)) }
+                }
+            }
         }
         item { HelpSection("Ещё важно", "С ростом счёта фигуры падают быстрее. Назад ставит игру на паузу и открывает меню; «Продолжить» возвращает сохранённую партию.") }
         item { HelpSection("Настройки и рекорды", "Подсказки, звук, музыку и вибрацию можно настроить отдельно. Результаты завершённых партий сохраняются, а новый рекорд можно подписать именем.") }
@@ -49,13 +55,14 @@ fun HelpScreen(model: GameViewModel) {
 }
 
 @Composable
-private fun HelpSection(title: String, body: String) {
+private fun HelpSection(title: String, body: String, content: @Composable () -> Unit = {}) {
     Surface(Modifier.widthIn(max = 640.dp).fillMaxWidth(), shape = RoundedCornerShape(16.dp),
         color = LocalGamePalette.current.accent.copy(alpha = .08f),
         border = BorderStroke(1.dp, LocalGamePalette.current.accent.copy(alpha = .4f))) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge)
             Text(body, style = MaterialTheme.typography.bodyMedium)
+            content()
         }
     }
 }
