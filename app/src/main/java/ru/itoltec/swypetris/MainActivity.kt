@@ -138,6 +138,7 @@ fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
             if (model.screen == GameScreen.MENU) MainMenu(model, onExit)
             else if (model.screen == GameScreen.CONTACTS) ContactsScreen(model)
             else if (model.screen == GameScreen.PRIVACY) PrivacyScreen(model)
+            else if (model.screen == GameScreen.LEGAL) LegalScreen()
             else if (model.screen == GameScreen.HELP) HelpScreen(model)
             else if (model.screen == GameScreen.SETTINGS) SettingsScreen(model)
             else if (model.screen == GameScreen.VICTORY) VictoryScreen(model)

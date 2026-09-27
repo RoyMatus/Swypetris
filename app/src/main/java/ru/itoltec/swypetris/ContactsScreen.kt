@@ -77,6 +77,14 @@ fun ContactsScreen(model: GameViewModel) {
                 }
             }
             item {
+                Text("О приложении", style = MaterialTheme.typography.titleLarge)
+                Text("Swypetris · © 2026 RoyMatus", style = MaterialTheme.typography.bodyMedium)
+            }
+            item {
+                AppActionButton("Лицензии и права", ActionStyle.SECONDARY,
+                    Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("legal"), model::legal)
+            }
+            item {
                 AppActionButton("Конфиденциальность", ActionStyle.SECONDARY,
                     Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("privacy"), model::privacy)
             }
