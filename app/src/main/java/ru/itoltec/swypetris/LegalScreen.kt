@@ -13,7 +13,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 
+/** One credited resource and the bundled license asset, if a full license is provided. */
 private data class LegalItem(val title: String, val credit: String, val source: String, val licenseAsset: String?)
+/** Group of legal notices displayed with a shared heading and introduction. */
 private data class LegalSection(val title: String, val introduction: String, val items: List<LegalItem>)
 
 /** Notices are kept in one asset so adding a credited resource needs no screen changes. */

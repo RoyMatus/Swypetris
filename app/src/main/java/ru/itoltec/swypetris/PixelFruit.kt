@@ -10,14 +10,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import kotlin.math.round
 
-/** Пиксельный спрайт 16 × 16: контур, три тона мякоти, светлый блик и зелёная листва. */
+/** A 16 × 16 pixel sprite with an outline, three body tones, a highlight, and green foliage. */
 private data class FruitSprite(val rows: List<String>, val shadow: Color, val body: Color, val light: Color)
 
-/** Читает компактную карту квадратных пикселей; точки оставляют прозрачный фон. */
+/** Parses a compact square-pixel map; dots leave transparent background. */
 private fun sprite(shadow: Long, body: Long, light: Long, pixels: String) =
     FruitSprite(pixels.trimIndent().lines(), Color(shadow), Color(body), Color(light))
 
-/** Собственные спрайты наград: свет падает сверху слева, тёмный низ создаёт объём. */
+/** Custom award sprites use upper-left lighting and a darker lower edge for depth. */
 private val fruitSprites = mapOf(
     Fruit.CHERRY to sprite(0xFF931E50, 0xFFE53D66, 0xFFFF7890, """
         ................
@@ -165,7 +165,7 @@ private val fruitSprites = mapOf(
     """)
 )
 
-/** Рисует чёткие квадратные пиксели с бликами и тенями одинаково в панели, справке и результатах. */
+/** Draws crisp square fruit pixels consistently in HUD, help, and results. */
 @Composable
 fun FruitIcon(fruit: Fruit, modifier: Modifier = Modifier) {
     val sprite = fruitSprites.getValue(fruit)

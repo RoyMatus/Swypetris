@@ -17,7 +17,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
-/** Единый логотип; ограничение размера оставляет место кнопкам даже на невысоком экране. */
+/** Renders the shared logo at a size that leaves room for buttons on short screens. */
 @Composable
 internal fun GameTitle(imageModifier: Modifier = Modifier) {
     val logoWidth = minOf(360f, LocalConfiguration.current.screenHeightDp * .45f).dp
@@ -30,7 +30,7 @@ internal fun GameTitle(imageModifier: Modifier = Modifier) {
     }
 }
 
-/** Одинаковая геометрия и фильтрация PNG в меню и в последнем кадре заставки. */
+/** Uses the same PNG geometry and filtering in the menu and the intro's final frame. */
 internal fun DrawScope.drawBrandLogo(logo: ImageBitmap, bounds: Rect) {
     val scale = minOf(bounds.width / logo.width, bounds.height / logo.height)
     val origin = bounds.center - Offset(logo.width * scale / 2, logo.height * scale / 2)

@@ -44,7 +44,7 @@ private val Lavender: Color @Composable get() = LocalGamePalette.current.seconda
 private val Gold: Color @Composable get() = LocalGamePalette.current.gold
 private val Muted: Color @Composable get() = LocalGamePalette.current.muted
 
-/** Итоги и история в стиле меню: карточки укладываются в ширину, прокрутка только вертикальная. */
+/** Results and history use menu-style cards that fit the width and scroll only vertically. */
 @Composable
 fun ResultsScreen(model: GameViewModel) {
     val latest = model.latestResult
@@ -93,7 +93,7 @@ fun ResultsScreen(model: GameViewModel) {
     }
 }
 
-/** Отдельное поздравление с рекордом: имя вводится до перехода к итогам партии. */
+/** Separate record celebration that asks for a name before showing game results. */
 @Composable
 @OptIn(ExperimentalComposeUiApi::class)
 fun RecordScreen(model: GameViewModel) {
@@ -158,7 +158,7 @@ fun RecordScreen(model: GameViewModel) {
     }
 }
 
-/** Полупрозрачная панель повторяет цветные контуры квадратных кнопок стартового экрана. */
+/** Translucent panel matching the colorful outlines of menu buttons. */
 @Composable
 private fun AccentPanel(accent: Color, content: @Composable ColumnScope.() -> Unit) {
     Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
@@ -168,7 +168,7 @@ private fun AccentPanel(accent: Color, content: @Composable ColumnScope.() -> Un
     }
 }
 
-/** Подписанный показатель переносит длинное значение внутри своей половины строки. */
+/** Labeled metric that wraps a long value within its half of the row. */
 @Composable
 private fun Metric(label: String, value: String, modifier: Modifier) {
     Column(modifier.padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -177,7 +177,7 @@ private fun Metric(label: String, value: String, modifier: Modifier) {
     }
 }
 
-/** Карточка истории переносит все показатели и призы в пределах экрана. */
+/** History card wraps its metrics and awards within the available width. */
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun ResultCard(result: GameResult) {
@@ -198,7 +198,7 @@ private fun ResultCard(result: GameResult) {
     }
 }
 
-/** Короткая анимация цветных блоков: плавно исчезает и не мешает вводу имени. */
+/** A brief colored-block celebration fades without blocking name entry. */
 @Composable
 private fun CelebrationBlocks(key: String?) {
     val progress = remember(key) { Animatable(0f) }
@@ -215,13 +215,13 @@ private fun CelebrationBlocks(key: String?) {
         }
     }
 }
-/** Форматирует длительность без зависимости от часового пояса. */
+/** Formats elapsed duration independently of the time zone. */
 internal fun formatDuration(millis: Long): String {
     val seconds = millis.coerceAtLeast(0) / 1000
     return "%d:%02d".format(seconds / 60, seconds % 60)
 }
 
-/** Показывает коллекцию текущего круга без множителей, сохраняя смысл прежних результатов. */
+/** Shows the current round's fruit collection without multipliers, preserving legacy results. */
 @Composable
 private fun FruitCollection(result: GameResult) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

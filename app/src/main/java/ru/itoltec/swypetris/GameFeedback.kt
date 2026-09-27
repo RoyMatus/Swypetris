@@ -1,40 +1,40 @@
 ﻿package ru.itoltec.swypetris
 
-/** Игровые события, для которых предусмотрены короткие звук и вибрация. */
+/** Game events that can trigger short sound and vibration effects. */
 enum class FeedbackEvent { DROP, CLEAR }
 
-/** Выбирает один эффект перехода; очистка имеет приоритет над броском. */
+/** Selects one transition effect; a line clear takes priority over a drop. */
 fun feedbackEvent(before: GameState, after: GameState, command: GameCommand): FeedbackEvent? = when {
     before.clearingRows.isEmpty() && after.clearingRows.isNotEmpty() -> FeedbackEvent.CLEAR
     before.clearingRows.isEmpty() && (command == GameCommand.HARD_DROP || before.accelerated) && after.generation != before.generation -> FeedbackEvent.DROP
     else -> null
 }
 
-/** Граница между правилами игры и устройством; заменяется записывающей реализацией в тестах. */
+/** Boundary between game rules and device effects; replaceable with a recorder in tests. */
 interface GameFeedback {
-    /** Воспроизводит разрешённые настройками части эффекта. */
+    /** Plays only the sound and vibration enabled by user settings. */
     fun play(event: FeedbackEvent, sound: Boolean, vibration: Boolean)
-    /** Возобновляет только вибрацию оставшейся части очистки, не повторяя звук. */
+    /** Resumes only the remaining clear vibration without replaying the sound. */
     fun resumeClear(remainingMillis: Long, vibration: Boolean) = Unit
-    /** Проверяет мотор одним импульсом при явном включении настройки. */
+    /** Tests the motor with one pulse when vibration is explicitly enabled. */
     fun previewVibration() = Unit
-    /** Останавливает только вибрацию, сохраняя разрешённый звук. */
+    /** Stops vibration without muting any permitted sound. */
     fun stopVibration() = Unit
-    /** Останавливает только звуковые эффекты. */
+    /** Stops sound effects without cancelling vibration. */
     fun stopSound() = Unit
-    /** Останавливает эффекты без последующего возобновления. */
+    /** Stops effects without scheduling a resume. */
     fun stop()
-    /** Освобождает ресурсы при уничтожении модели. */
+    /** Releases owned device resources when the model is destroyed. */
     fun release()
 }
 
-/** Тихая реализация для тестов правил и анимации. */
+/** No-op implementation for rule and animation tests. */
 object SilentFeedback : GameFeedback {
-    /** Не обращается к устройству. */
+    /** Does not access the device. */
     override fun play(event: FeedbackEvent, sound: Boolean, vibration: Boolean) = Unit
-    /** Не требует остановки. */
+    /** Owns no active effect to stop. */
     override fun stop() = Unit
-    /** Не владеет ресурсами. */
+    /** Owns no resources to release. */
     override fun release() = Unit
 }
 

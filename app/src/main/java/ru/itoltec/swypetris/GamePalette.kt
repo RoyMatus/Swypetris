@@ -15,14 +15,14 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
-/** Полная расцветка интерфейса и семи фигур; идентификатор сохраняется в настройках. */
+/** Complete UI and seven-piece palette; its stable ID is stored in settings. */
 data class GamePalette(val id: String, val title: String, val light: Boolean,
     val background: Color, val panel: Color, val text: Color, val muted: Color,
     val grid: Color, val pieces: List<Color>, val accent: Color, val secondary: Color, val gold: Color) {
-    /** Возвращает цвет фигуры в порядке I, O, T, S, Z, J, L. */
+    /** Returns a piece color in I, O, T, S, Z, J, L order. */
     fun piece(type: Tetromino): Color = pieces[type.ordinal]
 
-    /** Заполняет семантические цвета Material, включая диалоги и переключатели. */
+    /** Builds semantic Material colors for surfaces, dialogs, and switches. */
     fun scheme(): ColorScheme {
         val base = if (light) lightColorScheme() else darkColorScheme()
         return base.copy(primary = accent, onPrimary = background, primaryContainer = panel,
@@ -40,11 +40,11 @@ data class GamePalette(val id: String, val title: String, val light: Boolean,
     }
 }
 
-/** Десять постоянных палитр; оттенки светлых интерфейсов адаптированы для контраста. */
+/** Ten stable palettes, including light-theme shades adjusted for contrast. */
 object GamePalettes {
-    /** Преобразует RGB без зависимости от Android Color. */
+    /** Converts an RGB value to a Compose color without Android Color. */
     private fun c(value: Long) = Color(0xFF000000 or value)
-    /** Создаёт палитру из опубликованных базовых оттенков темы. */
+    /** Builds a palette from the published base shades of a theme. */
     private fun p(id: String, title: String, light: Boolean, bg: Long, panel: Long, text: Long,
         muted: Long, grid: Long, vararg pieces: Long): GamePalette {
         val colors = pieces.map(::c)
@@ -73,13 +73,13 @@ object GamePalettes {
         p("catppuccin", "Catppuccin Mocha", false, 0x1E1E2E, 0x313244, 0xCDD6F4, 0xBAC2DE, 0x45475A,
             0x89DCEB, 0xF9E2AF, 0xCBA6F7, 0xA6E3A1, 0xF38BA8, 0x89B4FA, 0xFAB387)
     )
-    /** Старые и неизвестные идентификаторы безопасно означают классическую тему. */
+    /** Maps unknown or legacy IDs to the classic palette. */
     fun find(id: String?): GamePalette = all.firstOrNull { it.id == id } ?: all.first()
 }
 
 val LocalGamePalette = staticCompositionLocalOf { GamePalettes.all.first() }
 
-/** Меню расцветок с общим образцом семи объёмных блоков. */
+/** Shows palette choices with a shared preview of seven beveled blocks. */
 @Composable
 internal fun PalettePicker(model: GameViewModel) {
     var expanded by remember { mutableStateOf(false) }
@@ -109,7 +109,7 @@ internal fun PalettePicker(model: GameViewModel) {
     }
 }
 
-/** Общая клетка с плоской серединой, узкими фасками и тонким контуром. */
+/** Draws a block with a flat center, narrow beveled edges, and a thin outline. */
 internal fun DrawScope.bevelBlock(at: Offset, size: Size, color: Color, alpha: Float = 1f, outline: Boolean = false) {
     if (outline) {
         drawRect(color.copy(alpha = alpha), at, size, style = Stroke(1.5.dp.toPx()))
@@ -118,7 +118,7 @@ internal fun DrawScope.bevelBlock(at: Offset, size: Size, color: Color, alpha: F
     val b = minOf(size.width, size.height) * .08f
     val x = at.x; val y = at.y; val w = size.width; val h = size.height
     drawRect(color.copy(alpha = alpha), at, size)
-    /** Рисует четырёхугольную фаску с общей прозрачностью клетки. */
+    /** Draws a quadrilateral bevel with the block's effective transparency. */
     fun face(shade: Color, a: Offset, b: Offset, c: Offset, d: Offset) {
         val points = listOf(a, b, c, d)
         val path = Path().apply { moveTo(points[0].x, points[0].y); points.drop(1).forEach { lineTo(it.x, it.y) }; close() }

@@ -33,7 +33,7 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
-/** Применяет палитру Material и типографику; игра явно выбирает постоянную тёмную тему. */
+/** Applies Material colors and typography from the palette; gameplay explicitly chooses a stable dark theme. */
 @Composable
 fun SwypetrisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

@@ -20,17 +20,17 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-/** Контакт разработчика с адресом для показа, копирования и открытия внешним приложением. */
+/** Developer contact with a display address, copyable text, and an external URI. */
 internal enum class DeveloperContact(val title: String, val address: String, val uri: String) {
     EMAIL("Email", "piligrim18@gmail.com", "mailto:piligrim18@gmail.com"),
     TELEGRAM("Telegram", "@RoyMatus", "https://t.me/RoyMatus"),
     WEBSITE("Сайт", "https://itoltec.ru/", "https://itoltec.ru/");
 
-    /** Создаёт почтовое или браузерное действие без отправки сообщения от имени пользователя. */
+    /** Builds an email or browser intent without sending any message on the user's behalf. */
     fun intent(): Intent = Intent(if (this == EMAIL) Intent.ACTION_SENDTO else Intent.ACTION_VIEW, Uri.parse(uri))
 }
 
-/** Открывает контакт; отсутствие подходящего приложения обрабатывается интерфейсом без аварии. */
+/** Opens a contact; the UI handles devices without a suitable external application. */
 internal fun openContact(context: Context, contact: DeveloperContact): Boolean = try {
     context.startActivity(contact.intent())
     true
@@ -40,7 +40,7 @@ internal fun openContact(context: Context, contact: DeveloperContact): Boolean =
     false
 }
 
-/** Контакты в цветных карточках; переход на страницу сохраняет текущую партию на паузе. */
+/** Shows developer contacts in colored cards while the current game remains paused. */
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 fun ContactsScreen(model: GameViewModel) {

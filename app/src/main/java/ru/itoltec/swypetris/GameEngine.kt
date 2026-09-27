@@ -4,10 +4,10 @@
 
 import kotlin.random.Random
 
-/** Координаты клетки: x растёт вправо, y вниз; начало поля находится слева сверху. */
+/** Board cell coordinates: x increases rightward and y downward from the upper-left corner. */
 data class Cell(val x: Int, val y: Int)
 
-/** Семь фигур с исходными клетками [shape] внутри квадрата вращения размером [box]. */
+/** The seven tetrominoes define [shape] inside a [box]-wide rotation square. */
 enum class Tetromino(val shape: List<Cell>, val box: Int = 3) {
     I(listOf(Cell(0, 1), Cell(1, 1), Cell(2, 1), Cell(3, 1)), 4),
     O(listOf(Cell(0, 0), Cell(1, 0), Cell(0, 1), Cell(1, 1)), 2),
@@ -18,9 +18,9 @@ enum class Tetromino(val shape: List<Cell>, val box: Int = 3) {
     L(listOf(Cell(2, 0), Cell(0, 1), Cell(1, 1), Cell(2, 1)))
 }
 
-/** Активная фигура: положение квадрата вращения и число поворотов по часовой от 0 до 3. */
+/** An active tetromino stores its rotation-square position and clockwise rotation count (0–3). */
 data class Piece(val type: Tetromino, val x: Int = (10 - type.box) / 2, val y: Int = 0, val rotation: Int = 0) {
-    /** Переводит исходную форму в координаты поля с учётом положения и вращения. */
+    /** Transforms the original shape into board coordinates using the piece position and rotation. */
     fun cells(): List<Cell> = type.shape.map { original ->
         var cell = original
         if (type != Tetromino.O) repeat(rotation) { cell = Cell(type.box - 1 - cell.y, cell.x) }
@@ -48,39 +48,41 @@ data class GameState(
     val victoryPending: Boolean = false,
     val difficulty: Difficulty = Difficulty.MEDIUM
 ) {
-    /** Число заработанных фруктов текущего круга, включая полный набор на поздравлении. */
+    /** Number of fruits earned in this round, including the complete set on the victory screen. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
-    /** Уровень определяется итоговым счётом по общим правилам. */
+    /** Derives the current level from the total score using the shared rules. */
     val level: Int get() = GameRules.level(score)
     /** Gravity uses the difficulty selected when this game began. */
     val gravityMillis: Long get() = GameRules.gravityMillis(level, difficulty)
 }
 
-/** Команды движка; PAUSE обрабатывается моделью экрана, а не меняет клетки поля. */
+/** Engine commands; PAUSE is handled by the screen model and does not change board cells. */
 enum class GameCommand { LEFT, RIGHT, CLOCKWISE, COUNTERCLOCKWISE, SOFT_DROP, HARD_DROP, TICK, PAUSE }
 
-/** Правила тетриса без зависимостей Android; [random] можно фиксировать для тестов. */
+/** Android-independent Tetris rules; inject [random] for reproducible pieces in tests. */
 class GameEngine(private val random: Random = Random.Default) {
     private val bag = ArrayDeque<Tetromino>()
+    /** Snapshots the unconsumed seven-bag order for a resumable session. */
     internal fun remainingBag(): List<Tetromino> = bag.toList()
+    /** Restores the unconsumed seven-bag order without drawing another piece. */
     internal fun restoreBag(remaining: List<Tetromino>) {
         require(remaining.size <= Tetromino.entries.size && remaining.distinct().size == remaining.size)
         bag.clear()
         bag.addAll(remaining)
     }
-    /** Берёт фигуру из перемешанного набора, пополняя его всеми семью типами. */
+    /** Draws from a shuffled bag and refills it with all seven types when empty. */
     private fun draw(): Tetromino {
         if (bag.isEmpty()) bag.addAll(Tetromino.entries.shuffled(random))
         return bag.removeFirst()
     }
 
-    /** Создаёт пустое поле, первую фигуру и предварительный просмотр следующей. */
+    /** Creates an empty board, its first piece, and the next-piece preview. */
     fun newGame(difficulty: Difficulty = Difficulty.MEDIUM): GameState {
         bag.clear()
         return GameState(active = Piece(draw()), next = draw(), difficulty = difficulty)
     }
 
-    /** Очищает поле после победы, сохраняя накопленные показатели и скорость. */
+    /** Clears the board after victory while keeping score and speed. */
     fun nextRound(state: GameState): GameState {
         if (!state.victoryPending) return state
         val fresh = newGame(state.difficulty)
@@ -89,24 +91,24 @@ class GameEngine(private val random: Random = Random.Default) {
             completedRounds = state.completedRounds + 1)
     }
 
-    /** Фиксирует победу после начисления очков; она имеет приоритет над блокировкой входа. */
+    /** Marks victory after scoring; victory takes precedence over spawn-blocked loss. */
     internal fun checkVictory(state: GameState): GameState =
         if (state.clearingRows.isEmpty() && state.roundFruits == 8)
             state.copy(victoryPending = true, gameOver = false) else state
 
-    /** Проверяет, что все клетки фигуры находятся в поле и не заняты другими блоками. */
+    /** Checks that every cell of [piece] is inside the board and unoccupied. */
     fun fits(state: GameState, piece: Piece): Boolean = piece.cells().all {
         it.x in 0..9 && it.y in 0..19 && state.board[it.y][it.x] == null
     }
 
-    /** Находит нижнее достижимое положение без изменения поля и начисления очков. */
+    /** Finds the lowest reachable position without changing the board or awarding points. */
     fun ghost(state: GameState): Piece {
         var piece = state.active
         while (fits(state, piece.copy(y = piece.y + 1))) piece = piece.copy(y = piece.y + 1)
         return piece
     }
 
-    /** Возвращает результат команды; запрещённое движение и команды после проигрыша игнорируются. */
+    /** Applies one command; invalid movement and commands after loss leave state unchanged. */
     fun apply(state: GameState, command: GameCommand): GameState {
         if (state.gameOver || state.victoryPending || state.clearingRows.isNotEmpty()) return state
         val piece = state.active
@@ -136,7 +138,7 @@ class GameEngine(private val random: Random = Random.Default) {
         })
     }
 
-    /** Фиксирует блоки; полные строки остаются на поле до завершения последовательного удаления. */
+    /** Locks piece cells; complete rows remain until their removal animation finishes. */
     private fun lock(state: GameState): GameState {
         val board = state.board.map { it.toMutableList() }
         state.active.cells().forEach { board[it.y][it.x] = state.active.type }
@@ -145,7 +147,7 @@ class GameEngine(private val random: Random = Random.Default) {
         return if (rows.isEmpty()) spawnNext(locked) else locked
     }
 
-    /** Удаляет отмеченные строки и начисляет очки ровно один раз после анимации. */
+    /** Removes marked rows and awards points exactly once after the animation. */
     fun finishClear(state: GameState): GameState {
         if (state.clearingRows.isEmpty()) return state
         val cleared = state.clearingRows.size
@@ -157,12 +159,10 @@ class GameEngine(private val random: Random = Random.Default) {
         )))
     }
 
-    /** Создаёт следующую фигуру только после фиксации без линий либо завершения очистки. */
+    /** Spawns the next piece after locking without a clear or once a clear finishes. */
     private fun spawnNext(state: GameState): GameState {
         val nextState = state.copy(active = Piece(state.next), next = draw(), generation = state.generation + 1, accelerated = false)
         return nextState.copy(gameOver = !fits(nextState, nextState.active))
     }
 }
-
-
 

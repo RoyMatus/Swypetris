@@ -27,6 +27,10 @@ internal class SessionStore(private val preferences: SharedPreferences) {
     private var cachedBoard: List<List<Tetromino?>>? = null
     private var encodedBoard = ""
 
+    /**
+     * Persists a changed [session] asynchronously. Reuses the encoded board while its immutable
+     * board instance is unchanged, so piece movement need not serialize all 200 cells again.
+     */
     fun write(session: GameSession) {
         if (session == lastWritten) return
         // GameState owns immutable boards; movement keeps the same board instance.
@@ -38,6 +42,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
         lastWritten = session
     }
 
+    /** Reads and validates the saved snapshot, or returns null after discarding invalid JSON. */
     fun read(): GameSession? {
         val json = preferences.getString(KEY, null) ?: return null
         return try { decode(json) }
@@ -45,6 +50,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
         catch (error: IllegalArgumentException) { invalid(error); null }
     }
 
+    /** Logs a corrupt snapshot and removes only the session key, retaining settings and records. */
     private fun invalid(error: Exception) {
         Log.w("Swypetris", "Invalid saved game; settings and records were retained", error)
         preferences.edit().remove(KEY).apply()
@@ -52,12 +58,15 @@ internal class SessionStore(private val preferences: SharedPreferences) {
 
     companion object {
         private const val KEY = "session_v1"
+        /** Serializes the 20-row board as piece names, using empty strings for vacant cells. */
         private fun encodeBoard(board: List<List<Tetromino?>>): String = JSONArray().apply {
             board.forEach { row -> put(JSONArray(row.map { it?.name ?: "" })) }
         }.toString()
 
+        /** Encodes a complete snapshot, including its current board, for storage or tests. */
         internal fun encode(session: GameSession): String = encode(session, encodeBoard(session.state.board))
 
+        /** Combines session metadata with a previously encoded board to avoid redundant work. */
         private fun encode(session: GameSession, board: String): String {
             val s = session.state
             return JSONObject().put("version", 1).put("id", session.id)
@@ -74,6 +83,11 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 .dropLast(1) + ",\"board\":" + board + "}"
         }
 
+        /**
+         * Reconstructs a version-one session and validates board dimensions, piece placement,
+         * clearing rows, bag contents, score, and clock bounds before gameplay can resume.
+         * Throws for malformed or inconsistent data; [read] removes such snapshots safely.
+         */
         internal fun decode(json: String): GameSession {
             val root = JSONObject(json)
             require(root.getInt("version") == 1)
