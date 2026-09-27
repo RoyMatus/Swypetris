@@ -5,6 +5,10 @@ internal data class HapticPulse(val duration: Long, val amplitude: Int, val fall
     /** Слабый бросок остаётся коротким и на устройствах с фиксированной силой мотора. */
     fun durationFor(amplitudeControl: Boolean): Long = if (amplitudeControl) duration else fallbackDuration
 
+    /** Keep event timing on amplitude-capable motors; shorten the fallback pulse otherwise. */
+    fun softened(): HapticPulse = copy(amplitude = ((amplitude + 1) / 2).coerceAtLeast(1),
+        fallbackDuration = (fallbackDuration / 2 + fallbackDuration % 2).coerceAtLeast(1))
+
     companion object {
         val Drop = HapticPulse(70L, 128, 35L)
         val Clear = HapticPulse(LineClearAnimation.TOTAL_MILLIS, 255)
