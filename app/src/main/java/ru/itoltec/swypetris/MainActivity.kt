@@ -1,5 +1,6 @@
 ﻿package ru.itoltec.swypetris
 
+import android.os.Build
 import android.os.Bundle
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -29,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.PlatformTextStyle
@@ -71,8 +73,20 @@ class MainActivity : ComponentActivity() {
             SwypetrisTheme(darkTheme = true, dynamicColor = false) {
                 DisposableEffect(gameModel.paletteId) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
-                    controller.isAppearanceLightStatusBars = GamePalettes.find(gameModel.paletteId).light
-                    controller.isAppearanceLightNavigationBars = GamePalettes.find(gameModel.paletteId).light
+                    val palette = GamePalettes.find(gameModel.paletteId)
+                    controller.isAppearanceLightStatusBars = palette.light
+                    controller.isAppearanceLightNavigationBars = palette.light
+                    @Suppress("DEPRECATION")
+                    window.statusBarColor = android.graphics.Color.TRANSPARENT
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        window.isNavigationBarContrastEnforced = false
+                        @Suppress("DEPRECATION")
+                        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    } else if (Build.VERSION.SDK_INT >= 26 || !palette.light) {
+                        // Older three-button navigation still needs a legible matching background.
+                        @Suppress("DEPRECATION")
+                        window.navigationBarColor = palette.background.toArgb()
+                    }
                     controller.show(WindowInsetsCompat.Type.systemBars())
                     onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
                 }
@@ -394,7 +408,4 @@ private fun DrawScope.block(cell: Cell, color: Color, origin: Offset, step: Size
     val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
     bevelBlock(topLeft, blockSize, color, alpha, outline)
 }
-
-
-
 
