@@ -42,6 +42,5 @@ fun HelpScreen(model: GameViewModel) {
         item { Text("Заполняйте строки без пробелов. Не перекрывайте появление новых фигур.") }
         item { Text("Каждые ${GameRules.FRUIT_STEP} очков — фрукт. Восемь фруктов — следующий круг.") }
         item { Text("Назад — пауза и меню. «Продолжить» вернёт сохранённую партию.") }
-        item { Button(onClick = model::menu, modifier = Modifier.testTag("helpBack")) { Text("В меню") } }
     }
 }
