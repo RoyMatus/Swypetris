@@ -474,11 +474,14 @@ class GameViewModel internal constructor(
 
     /** Обновляет имя рекордной партии; пустую строку заменяет нейтральной подписью. */
     fun saveRecordName(name: String) {
-        val clean = name.trim().take(40).ifEmpty { "Игрок" }
-        playerName = clean
-        preferences.edit().putString("player_name", clean).apply()
-        results = results.map { if (it.id == currentResultId) it.copy(name = clean) else it }
-        latestResult = latestResult?.copy(name = clean)
+        val entered = name.trim().take(40)
+        if (entered.isNotEmpty()) {
+            playerName = entered
+            preferences.edit().putString("player_name", entered).apply()
+        }
+        val resultName = entered.ifEmpty { "Игрок" }
+        results = results.map { if (it.id == currentResultId) it.copy(name = resultName) else it }
+        latestResult = latestResult?.copy(name = resultName)
         resultStore.write(results)
         requestRecordName = false
         music?.setPlaying(false)
@@ -501,6 +504,5 @@ class GameViewModel internal constructor(
         super.onCleared()
     }
 }
-
 
 

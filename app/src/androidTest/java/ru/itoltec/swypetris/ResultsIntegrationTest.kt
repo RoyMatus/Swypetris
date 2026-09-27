@@ -3,10 +3,14 @@
 import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.runtime.*
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.autofill.AutofillTree
+import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.platform.LocalAutofillTree
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -22,6 +26,43 @@ import org.junit.runner.RunWith
 class ResultsIntegrationTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
+
+    @OptIn(ExperimentalComposeUiApi::class)
+    @Test fun savedNamePrefillsNextRecordAndSkippingKeepsIt() {
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val preferences = GameStorage.preferences(application)
+        val board = List(20) { MutableList<Tetromino?>(10) { null } }.also { it[0][4] = Tetromino.Z }
+        fun recordState(score: Int) = GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
+            next = Tetromino.O, score = score)
+        var model by mutableStateOf(GameViewModel(application, recordState(10000), { 1000L }, false))
+        lateinit var autofillTree: AutofillTree
+        compose.setContent {
+            autofillTree = LocalAutofillTree.current
+            SwypetrisApp(model) {}
+        }
+        compose.runOnIdle { model.command(GameCommand.TICK) }
+        compose.runOnIdle {
+            val nameNode = autofillTree.children.values.single { AutofillType.PersonFullName in it.autofillTypes }
+            nameNode.onFill?.invoke("Мария")
+        }
+        compose.onNodeWithTag("recordName").assertTextContains("Мария")
+        compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("saveRecord"))
+        compose.onNodeWithTag("saveRecord").performClick()
+        compose.runOnIdle { assertEquals("Мария", preferences.getString("player_name", null)) }
+
+        compose.runOnIdle {
+            model = GameViewModel(application, recordState(20000), { 2000L }, false)
+            model.command(GameCommand.TICK)
+        }
+        compose.onNodeWithTag("recordName").assertTextContains("Мария")
+        compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("skipRecord"))
+        compose.onNodeWithTag("skipRecord").performClick()
+        compose.runOnIdle {
+            assertEquals("Мария", model.playerName)
+            assertEquals("Мария", preferences.getString("player_name", null))
+            assertEquals("Игрок", model.latestResult?.name)
+        }
+    }
 
     /** Результат сохраняется один раз, пауза исключена из времени, рекорд может получить имя. */
     @Test fun gameOverStoresOneResultAndRecordName() {
@@ -128,5 +169,3 @@ class ResultsIntegrationTest {
         }
     }
 }
-
-
