@@ -13,7 +13,10 @@ internal fun MusicPicker(model: GameViewModel) {
     var expanded by remember { mutableStateOf(false) }
     Text("Музыка", style = MaterialTheme.typography.titleLarge)
     Box {
-        OutlinedButton(onClick = { expanded = true }, Modifier.fillMaxWidth().testTag("musicPicker")) {
+        val accent = LocalGamePalette.current.piece(Tetromino.J)
+        OutlinedButton(onClick = { expanded = true }, Modifier.fillMaxWidth().testTag("musicPicker"),
+            colors = paletteButtonColors(accent, ActionStyle.SECONDARY),
+            border = paletteButtonBorder(accent, ActionStyle.SECONDARY)) {
             Text(model.musicSelection.title, Modifier.weight(1f))
             Text("▾")
         }

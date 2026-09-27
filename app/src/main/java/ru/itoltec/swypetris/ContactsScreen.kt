@@ -62,12 +62,13 @@ fun ContactsScreen(model: GameViewModel) {
                             Text(contact.title, color = accent, style = MaterialTheme.typography.titleLarge)
                             Text(contact.address, style = MaterialTheme.typography.bodyLarge)
                             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                AppActionButton("Открыть", ActionStyle.TEXT, Modifier.testTag("open${contact.name}")) {
+                                AppActionButton("Открыть", ActionStyle.TEXT, Modifier.testTag("open${contact.name}"), accent) {
                                     if (!openContact(context, contact)) scope.launch {
                                         messages.showSnackbar("Нет приложения для открытия. Скопируйте адрес.")
                                     }
                                 }
-                                AppActionButton("Копировать", ActionStyle.TEXT, Modifier.testTag("copy${contact.name}")) {
+                                AppActionButton("Копировать", ActionStyle.TEXT, Modifier.testTag("copy${contact.name}"),
+                                    LocalGamePalette.current.piece(Tetromino.J)) {
                                     clipboard.setText(AnnotatedString(contact.address))
                                     scope.launch { messages.showSnackbar("Адрес скопирован") }
                                 }
@@ -82,11 +83,13 @@ fun ContactsScreen(model: GameViewModel) {
             }
             item {
                 AppActionButton("Лицензии и права", ActionStyle.SECONDARY,
-                    Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("legal"), model::legal)
+                    Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("legal"),
+                    LocalGamePalette.current.piece(Tetromino.J), model::legal)
             }
             item {
                 AppActionButton("Конфиденциальность", ActionStyle.SECONDARY,
-                    Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("privacy"), model::privacy)
+                    Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("privacy"),
+                    LocalGamePalette.current.piece(Tetromino.T), model::privacy)
             }
         }
         SnackbarHost(messages, Modifier.align(Alignment.BottomCenter))
