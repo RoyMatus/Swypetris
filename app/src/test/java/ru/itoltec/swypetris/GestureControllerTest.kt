@@ -162,6 +162,32 @@ class GestureControllerTest {
         assertEquals(1, commands.size)
     }
 
+    @Test fun dropDoesNotCarryIntoNewPiecesWhileFingerKeepsMovingDown() {
+        lateinit var controller: GestureController
+        controller = GestureController(GestureConfig()) {
+            commands += it
+            if (it == GameCommand.HARD_DROP) controller.onPieceChanged()
+        }
+        controller.down(100f, 100f, 0)
+        controller.move(100f, 148f, 50)
+        controller.move(100f, 196f, 100)
+        controller.move(100f, 300f, 150)
+        controller.move(100f, 300f, 200)
+        assertEquals(listOf(GameCommand.HARD_DROP), commands)
+        controller.move(100f, 284f, 250)
+        controller.move(100f, 332f, 300)
+        assertEquals(listOf(GameCommand.HARD_DROP, GameCommand.HARD_DROP), commands)
+    }
+
+    @Test fun horizontalAndRotationRemainAvailableAfterDrop() {
+        gestures.down(100f, 100f, 0)
+        gestures.move(100f, 148f, 50)
+        gestures.onPieceChanged()
+        gestures.move(112f, 148f, 100)
+        gestures.move(112f, 124f, 150)
+        assertEquals(listOf(GameCommand.HARD_DROP, GameCommand.RIGHT, GameCommand.CLOCKWISE), commands)
+    }
+
     @Test fun slowDeliberateDownAlsoWorks() {
         gestures.down(0f, 0f, 0)
         repeat(8) { gestures.move(0f, (it + 1) * 6f, (it + 1) * 200L) }

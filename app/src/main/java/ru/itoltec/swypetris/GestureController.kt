@@ -34,12 +34,15 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
     private var rotationX = 0f
     private var rotationY = 0f
     private var rotationTop = 0f
+    private var dropArmed = true
+    private var dropBottom = 0f
 
     fun cancel() {
         down = false
         tapEligible = false
         horizontalDirection = 0
         rotationArmed = true
+        dropArmed = true
         epoch++
     }
 
@@ -76,6 +79,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         rotationX = x
         rotationY = y
         rotationTop = y
+        if (dropArmed) dropBottom = y
     }
 
     fun move(x: Float, y: Float, time: Long) {
@@ -92,6 +96,18 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         this.y = y
         if (hypot(x - touchX, y - touchY) > config.tapSlop || time - downTime > config.tapMillis) tapEligible = false
         if (!enabled) { rebase(); return }
+        if (!dropArmed) {
+            if (y > dropBottom) dropBottom = y
+            if (dropBottom - y >= maxOf(config.rotationRearmDistance, config.tapSlop)) {
+                dropArmed = true
+                rebase()
+            } else if (eventDy > 0 && eventDy >= abs(eventDx) * config.directionRatio) {
+                // Motion continuing after a drop belongs to the previous piece.
+                anchorX = x
+                anchorY = y
+                horizontalDirection = 0
+            }
+        }
         if (!rotationArmed) {
             if (y < rotationTop) {
                 rotationTop = y
@@ -118,7 +134,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         val horizontalThreshold = if (horizontalDirection == 0)
             maxOf(config.horizontalStartDistance, config.tapSlop) else config.horizontalStepDistance
         val action = when {
-            dy >= maxOf(config.dropDistance, config.tapSlop * 4) && dy >= abs(dx) * config.dropRatio -> GameCommand.HARD_DROP
+            dropArmed && dy >= maxOf(config.dropDistance, config.tapSlop * 4) && dy >= abs(dx) * config.dropRatio -> GameCommand.HARD_DROP
             rotationArmed && rotationDy >= maxOf(config.rotationDistance, config.tapSlop * 2) &&
                 rotationDy >= abs(x - rotationX) * config.directionRatio -> GameCommand.CLOCKWISE
             abs(dx) >= horizontalThreshold && abs(dx) >= abs(dy) * config.directionRatio ->
@@ -139,6 +155,10 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
             rotationY = y
         } else rebase()
         if (action == GameCommand.CLOCKWISE) rotationArmed = false
+        if (action == GameCommand.HARD_DROP) {
+            dropArmed = false
+            dropBottom = y
+        } else if (horizontal || action == GameCommand.CLOCKWISE) dropArmed = true
         val before = epoch
         repeat(steps) {
             emit(action)

@@ -24,6 +24,7 @@ fun HelpScreen(model: GameViewModel) {
         contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         item { Text("Как играть", style = MaterialTheme.typography.headlineLarge) }
+        item { Text("Управление", style = MaterialTheme.typography.titleLarge) }
         controls.forEach { (symbol, label) ->
             item {
                 Surface(Modifier.widthIn(max = 640.dp).fillMaxWidth(), shape = RoundedCornerShape(16.dp),
@@ -37,10 +38,24 @@ fun HelpScreen(model: GameViewModel) {
                 }
             }
         }
-        item { Text("Для повторного поворота слегка опустите палец и снова проведите вверх либо начните новое касание.") }
-        item { Text("Палец можно не отрывать между фигурами. Удержание не ускоряет падение.") }
-        item { Text("Заполняйте строки без пробелов. Не перекрывайте появление новых фигур.") }
-        item { Text("Каждые ${GameRules.FRUIT_STEP} очков — фрукт. Восемь фруктов — следующий круг.") }
-        item { Text("Назад — пауза и меню. «Продолжить» вернёт сохранённую партию.") }
+        item { HelpSection("Повторные жесты", "Для повторного поворота слегка опустите палец и снова проведите вверх либо начните новое касание. После броска новой фигуре нужен новый жест вниз. Палец можно не отрывать; удержание не ускоряет падение.") }
+        item { HelpSection("Цель игры", "Заполняйте горизонтальные строки без пробелов: они исчезают и дают очки. Каждая пройденная вниз клетка тоже приносит очко. Партия заканчивается, если новой фигуре негде появиться.") }
+        item {
+            HelpSection("Фрукты", "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт коллекции. Отдельных бонусов у видов фруктов нет. Восемь фруктов открывают следующий круг: поле очищается, а счёт и скорость сохраняются.")
+        }
+        item { HelpSection("Ещё важно", "С ростом счёта фигуры падают быстрее. Назад ставит игру на паузу и открывает меню; «Продолжить» возвращает сохранённую партию.") }
+        item { HelpSection("Настройки и рекорды", "Подсказки, звук, музыку и вибрацию можно настроить отдельно. Результаты завершённых партий сохраняются, а новый рекорд можно подписать именем.") }
+    }
+}
+
+@Composable
+private fun HelpSection(title: String, body: String) {
+    Surface(Modifier.widthIn(max = 640.dp).fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+        color = LocalGamePalette.current.accent.copy(alpha = .08f),
+        border = BorderStroke(1.dp, LocalGamePalette.current.accent.copy(alpha = .4f))) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(body, style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
