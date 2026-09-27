@@ -87,9 +87,10 @@ class BrandNavigationTest {
         }
         compose.runOnIdle { model.help() }
         for (control in listOf("Двигайте фигуру", "Свайп вверх — один поворот", "Длинный жест вниз — бросок", "Короткий тап — клетка вниз",
-            "Для повторного поворота слегка опустите палец и снова проведите вверх либо начните новое касание.")) {
-            compose.onNodeWithTag("helpPage").performScrollToNode(hasText(control))
-            compose.onNodeWithText(control).assertIsDisplayed()
+            "Для повторного поворота слегка опустите палец", "После броска новой фигуре нужен новый жест вниз",
+            "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт коллекции") ) {
+            compose.onNodeWithTag("helpPage").performScrollToNode(hasText(control, substring = true))
+            compose.onNodeWithText(control, substring = true).assertIsDisplayed()
         }
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("helpPage").performScrollToIndex(0)
