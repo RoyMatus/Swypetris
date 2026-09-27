@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -23,6 +24,13 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.autofill.AutofillNode
+import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.platform.LocalAutofill
+import androidx.compose.ui.platform.LocalAutofillTree
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -87,8 +95,18 @@ fun ResultsScreen(model: GameViewModel) {
 
 /** Отдельное поздравление с рекордом: имя вводится до перехода к итогам партии. */
 @Composable
+@OptIn(ExperimentalComposeUiApi::class)
 fun RecordScreen(model: GameViewModel) {
     var name by rememberSaveable(model.currentResultId) { mutableStateOf(model.playerName) }
+    val autofill = LocalAutofill.current
+    val autofillTree = LocalAutofillTree.current
+    val nameAutofill = remember(model.currentResultId) {
+        AutofillNode(autofillTypes = listOf(AutofillType.PersonFullName), onFill = { name = it.take(40) })
+    }
+    DisposableEffect(autofillTree, nameAutofill) {
+        autofillTree += nameAutofill
+        onDispose { autofillTree.children.remove(nameAutofill.id) }
+    }
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val result = model.results.firstOrNull { it.id == model.currentResultId }
@@ -117,7 +135,12 @@ fun RecordScreen(model: GameViewModel) {
                 OutlinedTextField(value = name, onValueChange = { name = it.take(40) },
                     label = { Text("Имя игрока") }, supportingText = { Text("Можно оставить пустым") },
                     singleLine = true, shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().testTag("recordName"))
+                    modifier = Modifier.fillMaxWidth().onGloballyPositioned {
+                        nameAutofill.boundingBox = it.boundsInWindow()
+                    }.onFocusChanged {
+                        if (it.isFocused) autofill?.requestAutofillForNode(nameAutofill)
+                        else autofill?.cancelAutofillForNode(nameAutofill)
+                    }.testTag("recordName"))
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
