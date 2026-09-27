@@ -22,16 +22,17 @@ class LaunchIntroMotionTest {
         assertTrue((0..100).map { LaunchIntroMotion.cubeProgress(1500, it) }.distinct().size > 30)
     }
 
-    /** Только бросок ослаблен; очистка и подтверждение настройки сохраняют прежние параметры. */
-    @Test fun dropIsHalfStrengthWithShortFallback() {
+    /** Clear strength is halved again; drop and settings preview retain their existing pulses. */
+    @Test fun lineClearIsHalfStrengthWithShortFallback() {
         assertEquals(128, HapticPulse.Drop.amplitude)
         assertEquals(70L, HapticPulse.Drop.durationFor(true))
         assertEquals(35L, HapticPulse.Drop.durationFor(false))
-        assertEquals(HapticPulse(600, 255), HapticPulse.Clear)
+        assertEquals(HapticPulse(600, 127, 300), HapticPulse.Clear)
         assertEquals(HapticPulse(100, 220), HapticPulse.Preview)
-        assertEquals(600L, HapticPulse.Clear.durationFor(false))
+        assertEquals(300L, HapticPulse.Clear.durationFor(false))
         assertEquals(HapticPulse(70, 64, 18), HapticPulse.Drop.softened())
-        assertEquals(HapticPulse(600, 128, 300), HapticPulse.Clear.softened())
+        assertEquals(HapticPulse(600, 64, 150), HapticPulse.Clear.softened())
+        assertEquals(HapticPulse(220, 64, 55), HapticPulse.clear(220).softened())
         assertEquals(HapticPulse(100, 110, 50), HapticPulse.Preview.softened())
         assertEquals(HapticPulse(220, 128, 110), HapticPulse(220, 255).softened())
     }

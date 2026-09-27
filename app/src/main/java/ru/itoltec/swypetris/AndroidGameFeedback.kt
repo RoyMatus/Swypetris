@@ -43,7 +43,7 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
 
     /** Продолжает вибрацию ровно до конца оставшейся анимации. */
     override fun resumeClear(remainingMillis: Long, vibration: Boolean) {
-        vibrate(HapticPulse(remainingMillis, 255), vibration)
+        vibrate(HapticPulse.clear(remainingMillis), vibration)
     }
 
     /** Даёт отчётливое подтверждение включения вибрации без звука. */
@@ -91,4 +91,3 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
         loaded.clear()
     }
 }
-
