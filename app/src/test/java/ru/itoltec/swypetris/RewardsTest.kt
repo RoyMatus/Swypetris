@@ -25,23 +25,22 @@ class RewardsTest {
         assertEquals(1500, engine.finishClear(state).score)
     }
 
-    /** Ширина клетки управляет расстоянием, постоянное движение откладывает автоповтор. */
+    /** Cell width controls movement, and holding never creates repeated actions. */
     @Test fun movementUsesCellWidthAndDoesNotRunAhead() {
         for (width in listOf(300f, 600f, 1200f)) {
             val commands = mutableListOf<GameCommand>()
             val step = width / 12f
             val controller = GestureController(GestureConfig(horizontalStepDistance = step)) { commands += it }
             controller.down(0f, 0f, 0)
-            controller.move(8f, 0f, 1)
+            controller.move(12f, 0f, 1)
             repeat(10) { index ->
-                controller.move(8f + step * (index + 1) / 10f, 0f, 101L + index * 100)
-                controller.advance(101L + index * 100)
+                controller.move(12f + step * (index + 1) / 10f, 0f, 101L + index * 100)
             }
             assertEquals(2, commands.size)
-            controller.advance(1300)
+            controller.move(12f + step, 0f, 1300)
             assertEquals(2, commands.size)
-            controller.advance(1301)
-            assertEquals(3, commands.size)
+            controller.up(12f + step, 0f, 1301)
+            assertEquals(2, commands.size)
         }
     }
 }

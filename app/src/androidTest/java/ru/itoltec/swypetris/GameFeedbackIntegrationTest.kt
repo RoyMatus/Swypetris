@@ -22,30 +22,29 @@ class GameFeedbackIntegrationTest {
         now = 1500
         model.advanceFrame(now)
         model.pointerMove(140f, 100f, 1520)
-        model.pointerMove(141f, 150f, 1570)
+        model.pointerMove(141f, 170f, 1570)
         val dropped = model.game!!
         assertEquals(1, dropped.generation)
         assertEquals(18, dropped.score)
         assertEquals(listOf(Triple(FeedbackEvent.DROP, true, true)), recorder.calls)
-        model.pointerMove(200f, 200f, 1580)
-        model.pointerUp(200f, 200f, 1590)
+        model.pointerMove(141f, 170f, 1580)
+        model.pointerUp(141f, 170f, 1590)
         assertEquals(dropped, model.game)
         assertFalse(model.game!!.accelerated)
         assertTrue(model.results.isEmpty())
     }
 
-    /** Удержание и отпускание оставляют признак ускорения до последнего шага гравитации. */
-    @Test fun releaseThenGravityStillPlaysDrop() {
+    /** One downward tap keeps its landing feedback until the next gravity step. */
+    @Test fun tapThenGravityStillPlaysDrop() {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val recorder = Recorder()
         var now = 1000L
         val model = GameViewModel(application,
             GameState(active = Piece(Tetromino.O, y = 17), next = Tetromino.T), { now }, false, recorder)
         model.pointerDown(50f, 50f, now)
-        now += 600
-        model.advanceFrame(now)
-        assertTrue(model.game!!.accelerated)
+        now += 100
         model.pointerUp(50f, 50f, now)
+        assertTrue(model.game!!.accelerated)
         assertTrue(recorder.calls.isEmpty())
         now += 800
         model.advanceFrame(now)

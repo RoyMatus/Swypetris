@@ -70,9 +70,9 @@ class GameUiTest {
         }
         try {
             compose.onNodeWithTag("settings").performClick()
-            compose.onNodeWithTag("sound").performClick()
-            compose.onNodeWithTag("vibration").performClick()
-            compose.onNodeWithTag("hints").performClick()
+            compose.onNodeWithTag("sound").performScrollTo().performClick()
+            compose.onNodeWithTag("vibration").performScrollTo().performClick()
+            compose.onNodeWithTag("hints").performScrollTo().performClick()
             compose.runOnIdle {
                 val store = ViewModelStore()
                 try {
@@ -84,7 +84,7 @@ class GameUiTest {
                     assertEquals(GameScreen.SETTINGS, model().screen)
                 } finally { store.clear() }
             }
-            compose.onNodeWithText("Назад").performClick()
+            compose.onNodeWithText("Назад").performScrollTo().performClick()
             compose.onNodeWithContentDescription("SWYPETRIS").assertIsDisplayed()
             compose.onNodeWithTag("sound").assertDoesNotExist()
         } finally {
@@ -96,18 +96,19 @@ class GameUiTest {
         }
     }
 
-    /** Два тапа вращают дважды; системный Back открывает меню и сохраняет партию. */
-    @Test fun twoTapsRotateAndBackPreservesGame() {
+    /** Two taps step down without rotating; Back opens the ordinary menu. */
+    @Test fun twoTapsStepDownAndBackPreservesGame() {
         compose.onNodeWithTag("newGame").performClick()
         var rotation = -1
-        var square = false
+        var y = 0
         compose.runOnIdle {
             rotation = model().game!!.active.rotation
-            square = model().game!!.active.type == Tetromino.O
+            y = model().game!!.active.y
         }
         compose.onNodeWithTag("gameArea").performTouchInput { doubleClick(center) }
         compose.runOnIdle {
-            assertEquals(if (square) rotation else (rotation + 2) % 4, model().game!!.active.rotation)
+            assertEquals(rotation, model().game!!.active.rotation)
+            assertTrue(model().game!!.active.y >= y + 2)
             assertEquals(GameScreen.PLAYING, model().screen)
         }
         Espresso.pressBack()
@@ -126,8 +127,11 @@ class GameUiTest {
     @Test fun dropRestartAndMenuNavigation() {
         compose.onNodeWithTag("newGame").performClick()
         compose.onNodeWithTag("score").assertTextEquals("1 | 0")
+        val density = compose.activity.resources.displayMetrics.density
+        val slop = android.view.ViewConfiguration.get(compose.activity).scaledTouchSlop / density
+        val distance = (maxOf(GestureConfig().dropDistance, slop * 4) + 4) * density
         compose.onNodeWithTag("gameArea").performTouchInput {
-            swipe(center, center + Offset(0f, 150f), 100)
+            swipe(center, center + Offset(0f, distance), 100)
         }
         var score = 0
         compose.runOnIdle {
@@ -145,7 +149,7 @@ class GameUiTest {
             assertEquals(0, model().game!!.generation)
             model().pause()
         }
-        compose.onNodeWithText("Главное меню").performClick()
+        compose.onNodeWithTag("mainMenu").assertIsDisplayed()
         compose.onNodeWithContentDescription("SWYPETRIS").assertIsDisplayed()
         compose.onNodeWithText("Продолжить").performClick()
         compose.onNodeWithTag("board").assertIsDisplayed()
@@ -161,7 +165,8 @@ class GameUiTest {
             previous = model().game
         }
         compose.activityRule.scenario.recreate()
-        compose.onNodeWithText("Пауза").assertIsDisplayed()
+        compose.onNodeWithTag("mainMenu").assertIsDisplayed()
+        compose.onNodeWithTag("resumeGame").assertIsDisplayed()
         compose.runOnIdle { assertEquals(previous, model().game) }
     }
 

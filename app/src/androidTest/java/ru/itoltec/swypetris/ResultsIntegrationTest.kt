@@ -98,7 +98,8 @@ class ResultsIntegrationTest {
                 repeat(30) { model.command(GameCommand.HARD_DROP) }
                 assertEquals(GameScreen.GAME_OVER, model.screen)
                 assertFalse(model.requestRecordName)
-                assertEquals(2, model.results.size)
+                assertEquals(1, model.results.size)
+                assertNotNull(model.latestResult)
             }
             compose.onNodeWithTag("recordPage").assertDoesNotExist()
             compose.onNodeWithTag("resultsPage").assertIsDisplayed()

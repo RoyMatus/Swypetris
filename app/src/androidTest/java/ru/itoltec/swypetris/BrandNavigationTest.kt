@@ -86,13 +86,13 @@ class BrandNavigationTest {
             }
         }
         compose.runOnIdle { model.help() }
-        for (fruit in Fruit.entries) {
-            compose.onNodeWithTag("helpPage").performScrollToNode(hasContentDescription(fruit.title))
-            compose.onNodeWithContentDescription(fruit.title).performScrollTo().assertIsDisplayed()
+        for (control in listOf("Двигайте фигуру", "Поверните фигуру", "Длинный жест вниз — бросок", "Короткий тап — клетка вниз")) {
+            compose.onNodeWithTag("helpPage").performScrollToNode(hasText(control))
+            compose.onNodeWithText(control).assertIsDisplayed()
         }
         compose.runOnIdle { fontScale = 1f }
-        compose.onNodeWithTag("helpPage").performScrollToNode(hasTestTag("fruitGuide"))
-        screenshot("fruit-guide.png")
+        compose.onNodeWithTag("helpPage").performScrollToIndex(0)
+        screenshot("help-controls.png")
         compose.runOnIdle { fontScale = 2f; model.contacts() }
         for (contact in DeveloperContact.entries) {
             compose.onNodeWithTag("contactsPage").performScrollToNode(hasText(contact.address))

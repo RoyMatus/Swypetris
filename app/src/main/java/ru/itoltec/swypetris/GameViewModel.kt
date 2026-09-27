@@ -11,8 +11,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Экраны приложения; PAUSED сохраняет поле и останавливает игровые часы. */
-enum class GameScreen { MENU, SETTINGS, HELP, CONTACTS, PRIVACY, PLAYING, PAUSED, GAME_OVER, RESULTS, RECORD, VICTORY }
+/** A paused game is owned by the model while the ordinary menu is displayed. */
+enum class GameScreen { MENU, SETTINGS, HELP, CONTACTS, PRIVACY, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY }
 
 /**
  * Владелец партии: соединяет движок, жесты, анимацию и рекорд; переживает пересоздание Activity.
@@ -32,12 +32,21 @@ class GameViewModel internal constructor(
     constructor(application: Application) : this(application, null, SystemClock::uptimeMillis, true)
     private val preferences = GameStorage.preferences(application).also(GameStorage::migrate)
     private val resultStore = ResultStore(preferences)
+    private val sessionStore = SessionStore(GameStorage.sessionPreferences(application))
+    private val restored = if (initialState == null) sessionStore.read() else null
+    private var sessionId = restored?.id ?: java.util.UUID.randomUUID().toString()
+    private var finishedAt = restored?.finishedAt ?: 0L
+    var difficulty by mutableStateOf(Difficulty.restore(preferences.getString("difficulty", null)))
+        private set
     private val music = musicPlayback ?: if (autoTick) GameMusic(application) else null
     val legacyRecord = GameStorage.legacyRecord(preferences)
     var results by mutableStateOf(resultStore.read())
         private set
     var currentResultId by mutableStateOf<String?>(null)
         private set
+    var latestResult by mutableStateOf<GameResult?>(null)
+        private set
+    val recordResults: List<GameResult> get() = recordHistory(results)
     var requestRecordName by mutableStateOf(false)
         private set
     var playerName by mutableStateOf(preferences.getString("player_name", "") ?: "")
@@ -47,12 +56,14 @@ class GameViewModel internal constructor(
         private set
     val musicEnabled: Boolean get() = musicSelection != MusicSelection.Off
     private var foreground = true
+    private var windowFocused = true
+    private val activeForeground: Boolean get() = foreground && windowFocused
     var launchIntroMillis by mutableStateOf(if (showLaunchIntro) 0L else LaunchIntroMotion.DURATION)
         private set
     val launchIntroPending by derivedStateOf { launchIntroMillis < LaunchIntroMotion.DURATION }
     val launchLogoAssembled by derivedStateOf { launchIntroMillis >= 2650L }
-    private var recordAtStart = preferences.getInt("record_v4", 0)
-    private var playedMillis = 0L
+    private var recordAtStart = restored?.recordAtStart ?: bestFor(initialState?.difficulty ?: difficulty)
+    private var playedMillis = restored?.playedMillis ?: 0L
     private var lastPlayFrame = clock()
     private var gestureConfig = GestureConfig()
     private var boardWidthDp = 0f
@@ -68,21 +79,29 @@ class GameViewModel internal constructor(
     var victoryAnimationMillis by mutableStateOf(0L)
         private set
     val engine = GameEngine()
-    var game by mutableStateOf<GameState?>(initialState)
+    var game by mutableStateOf<GameState?>(initialState ?: restored?.state)
         private set
     var screen by mutableStateOf(if (initialState == null) GameScreen.MENU else GameScreen.PLAYING)
         private set
-    var record by mutableStateOf(preferences.getInt("record_v4", 0))
+    var record by mutableStateOf(bestFor(game?.difficulty ?: difficulty))
         private set
     private var gestures = GestureController(GestureConfig(), ::command)
     private var lastGravity = clock()
+    private var gravityRemaining = restored?.gravityRemaining ?: (game?.gravityMillis ?: Difficulty.INITIAL_MILLIS)
 
     /** Прошедшее игровое время удаления; не увеличивается в меню и на паузе. */
-    var clearElapsedMillis by mutableStateOf(0L)
+    var clearElapsedMillis by mutableStateOf(restored?.clearMillis ?: 0L)
         private set
     private var lastAnimationFrame = clock()
 
     init {
+        restored?.let { engine.restoreBag(it.bag) }
+        gestures.setEnabled(game?.clearingRows?.isEmpty() != false)
+        if (restored?.state?.gameOver == true) {
+            saveResult(restored.state, clock())
+            screen = GameScreen.MENU
+            requestRecordName = false
+        }
         music?.select(musicSelection)
         if (autoTick) viewModelScope.launch {
             while (true) {
@@ -94,7 +113,7 @@ class GameViewModel internal constructor(
 
     /** Продвигает игровые часы; во время удаления работают только её 600 мс, без гравитации. */
     internal fun advanceFrame(now: Long) {
-        if (screen != GameScreen.PLAYING) return
+        if (screen != GameScreen.PLAYING || !activeForeground) return
         val current = game ?: return
         playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
         lastPlayFrame = now
@@ -106,9 +125,6 @@ class GameViewModel internal constructor(
             }
             return
         }
-        val wasSoft = gestures.softDropping
-        gestures.advance(now)
-        if (gestures.softDropping || wasSoft) lastGravity = now
         if (screen == GameScreen.PLAYING && game?.clearingRows?.isEmpty() == true && now - lastGravity >= current.gravityMillis) {
             lastGravity = now
             command(GameCommand.TICK)
@@ -119,6 +135,27 @@ class GameViewModel internal constructor(
         gestures.cancel()
         gestureConfig = if (boardWidthDp > 0) config.copy(horizontalStepDistance = boardWidthDp / 12f) else config
         gestures = GestureController(gestureConfig, ::command)
+        gestures.setEnabled(game?.clearingRows?.isEmpty() != false)
+    }
+
+    private fun bestFor(mode: Difficulty): Int = results.filter { it.difficulty == mode && it.rulesVersion == GameRules.VERSION }
+        .maxOfOrNull { it.score } ?: 0
+
+    fun chooseDifficulty(value: Difficulty) {
+        difficulty = value
+        preferences.edit().putString("difficulty", value.id).apply()
+        if (game == null || game?.gameOver == true) record = bestFor(value)
+    }
+
+    fun recordFor(mode: Difficulty): Int = bestFor(mode)
+
+    private fun saveSession(now: Long = clock()) {
+        val state = game ?: return
+        val remaining = if (screen == GameScreen.PLAYING && state.clearingRows.isEmpty())
+            (state.gravityMillis - (now - lastGravity).coerceAtLeast(0)).coerceIn(0, state.gravityMillis)
+        else gravityRemaining
+        sessionStore.write(GameSession(sessionId, state, engine.remainingBag(), playedMillis,
+            clearElapsedMillis, remaining, recordAtStart, finishedAt))
     }
 
     /** Сохраняет совместную настройку тени падения и предварительного просмотра. */
@@ -157,7 +194,7 @@ class GameViewModel internal constructor(
 
     /** Хранит прогресс заставки между пересозданиями Activity; фон не расходует её время. */
     fun advanceLaunchIntro(delta: Long) {
-        if (foreground && launchIntroPending)
+        if (activeForeground && launchIntroPending)
             launchIntroMillis = (launchIntroMillis + delta.coerceIn(0L, LaunchIntroMotion.DURATION))
                 .coerceAtMost(LaunchIntroMotion.DURATION)
     }
@@ -167,24 +204,28 @@ class GameViewModel internal constructor(
 
     /** Начинает следующий круг той же партии только после явного подтверждения победы. */
     fun nextRound() {
+        if (!activeForeground) return
         val state = game ?: return
         if (screen != GameScreen.VICTORY || !state.victoryPending) return
         game = engine.nextRound(state)
         gestures.cancel()
+        gestures.setEnabled(true)
         feedback.stop()
         clearElapsedMillis = 0L
         lastGravity = clock()
+        gravityRemaining = game!!.gravityMillis
         lastPlayFrame = lastGravity
         lastAnimationFrame = lastGravity
         screen = GameScreen.PLAYING
         music?.setPlaying(musicEnabled)
+        saveSession()
     }
 
     /** Открывает настройки, сохраняя партию и прогресс очистки на паузе. */
     fun settings() {
         menu()
         screen = GameScreen.SETTINGS
-        music?.setPlaying(musicEnabled && foreground)
+        music?.setPlaying(musicEnabled && activeForeground)
     }
 
     /** Открывает справку, сохраняя партию и останавливая игровые часы. */
@@ -207,23 +248,32 @@ class GameViewModel internal constructor(
 
     /** Начинает новую партию, сбрасывая поле, очки и незавершённые жесты. */
     fun newGame() {
+        if (!activeForeground) return
+        sessionId = java.util.UUID.randomUUID().toString()
+        finishedAt = 0L
+        record = bestFor(difficulty)
         recordAtStart = record
         playedMillis = 0L
         lastPlayFrame = clock()
         currentResultId = null
+        latestResult = null
         requestRecordName = false
         feedback.stop()
         gestures.cancel()
-        game = engine.newGame()
+        game = engine.newGame(difficulty)
+        gestures.setEnabled(true)
         clearElapsedMillis = 0L
         lastGravity = clock()
+        gravityRemaining = game!!.gravityMillis
         lastAnimationFrame = clock()
         screen = GameScreen.PLAYING
         music?.setPlaying(musicEnabled)
+        saveSession()
     }
 
-    /** Продолжает партию с полным интервалом до следующего падения. */
+    /** Continues the saved interval; time spent in the background never counts. */
     fun resume() {
+        if (!activeForeground || screen == GameScreen.PLAYING) return
         if (game == null || game?.gameOver == true) return
         if (game?.victoryPending == true) {
             screen = GameScreen.VICTORY
@@ -231,20 +281,33 @@ class GameViewModel internal constructor(
         }
         if (game?.clearingRows?.isNotEmpty() == true) feedback.resumeClear(LineClearAnimation.TOTAL_MILLIS - clearElapsedMillis, vibrationEnabled)
         gestures.cancel()
-        lastGravity = clock()
+        gestures.setEnabled(game?.clearingRows?.isEmpty() == true)
+        lastGravity = clock() - (game!!.gravityMillis - gravityRemaining.coerceAtMost(game!!.gravityMillis))
         lastAnimationFrame = clock()
         screen = GameScreen.PLAYING
         lastPlayFrame = clock()
         music?.setPlaying(musicEnabled)
     }
 
-    /** Останавливает игру и отменяет повторы, в том числе при уходе в фон. */
+    /** Freeze clocks without issuing a final gravity tick or completing a clear. */
     fun pause() {
-        advanceFrame(clock())
+        val now = clock()
+        if (screen == GameScreen.PLAYING) {
+            playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
+            lastPlayFrame = now
+            if (game?.clearingRows?.isNotEmpty() == true) {
+                clearElapsedMillis = (clearElapsedMillis + (now - lastAnimationFrame).coerceAtLeast(0))
+                    .coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
+            } else {
+                val interval = game?.gravityMillis ?: Difficulty.INITIAL_MILLIS
+                gravityRemaining = (interval - (now - lastGravity).coerceAtLeast(0)).coerceIn(0, interval)
+            }
+            screen = GameScreen.MENU
+        } else if (screen == GameScreen.VICTORY) screen = GameScreen.MENU
         music?.setPlaying(false)
         feedback.stop()
         gestures.cancel()
-        if (screen == GameScreen.PLAYING) screen = GameScreen.PAUSED
+        saveSession(now)
     }
 
     /** Фон останавливает и игру, и прослушивание в настройках. */
@@ -256,47 +319,51 @@ class GameViewModel internal constructor(
     /** Возвращение в настройки продолжает прослушивание; игровая пауза остаётся явной. */
     fun onForeground() {
         foreground = true
-        if (screen == GameScreen.SETTINGS) music?.setPlaying(musicEnabled)
+        if (screen == GameScreen.SETTINGS) music?.setPlaying(musicEnabled && activeForeground)
+    }
+
+    fun onWindowFocusChanged(focused: Boolean) {
+        windowFocused = focused
+        if (!focused) pause()
+        else if (screen == GameScreen.SETTINGS) music?.setPlaying(musicEnabled && activeForeground)
     }
 
     /** Открывает главное меню, сохраняя текущую партию в памяти. */
     fun menu() {
-        advanceFrame(clock())
-        music?.setPlaying(false)
-        feedback.stop()
-        gestures.cancel()
+        pause()
         screen = GameScreen.MENU
     }
 
-    /** Выполняет команду во время игры и отменяет старое касание при смене фигуры. */
+    /** Applies commands only while both lifecycle and window focus permit active play. */
     fun command(command: GameCommand) {
-        if (screen != GameScreen.PLAYING) return
+        if (screen != GameScreen.PLAYING || !activeForeground) return
         if (command == GameCommand.PAUSE) {
             pause()
             return
         }
         val previous = game ?: return
+        val now = clock()
+        playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
+        lastPlayFrame = now
         val updated = engine.apply(previous, command)
-        acceptState(previous, updated, clock())
+        acceptState(previous, updated, now)
         if (screen == GameScreen.PLAYING)
             feedbackEvent(previous, updated, command)?.let { feedback.play(it, soundEnabled, vibrationEnabled) }
     }
 
-    /** Публикует результат движка, сохраняет рекорд и отменяет жест в начале очистки. */
+    /** Publishes and checkpoints state; a spawn rebases the pointer instead of canceling it. */
     private fun acceptState(previous: GameState, updated: GameState, now: Long) {
         game = updated
         if (previous.clearingRows.isEmpty() && updated.clearingRows.isNotEmpty()) {
-            gestures.cancel()
+            gestures.setEnabled(false)
             clearElapsedMillis = 0L
             lastAnimationFrame = now
         }
-        if (updated.score > record) {
-            record = updated.score
-            preferences.edit().putInt("record_v4", record).apply()
-        }
         if (updated.generation != previous.generation) {
-            gestures.cancel()
+            gestures.onPieceChanged()
+            gestures.setEnabled(updated.clearingRows.isEmpty())
             lastGravity = now
+            gravityRemaining = updated.gravityMillis
             clearElapsedMillis = 0L
         }
         if (updated.victoryPending && !previous.victoryPending) {
@@ -309,30 +376,32 @@ class GameViewModel internal constructor(
             victoryAnimationMillis = 0L
             if (musicEnabled) music?.setMode(MusicMode.RECORD)
         } else if (updated.gameOver) {
+            finishedAt = System.currentTimeMillis()
+            // Journal before the history write, so a process death cannot lose or duplicate a record.
+            saveSession(now)
             music?.setPlaying(false)
             saveResult(updated, now)
             gestures.cancel()
             screen = if (requestRecordName) GameScreen.RECORD else GameScreen.GAME_OVER
             if (requestRecordName && musicEnabled) music?.setMode(MusicMode.RECORD)
         }
+        if (updated != previous) saveSession(now)
     }
 
     /** Передаёт начало касания: координаты в dp, время в uptimeMillis. */
     fun pointerDown(x: Float, y: Float, time: Long) {
-        if (screen == GameScreen.PLAYING && game?.clearingRows?.isEmpty() == true) gestures.down(x, y, time)
+        if (screen == GameScreen.PLAYING && activeForeground) gestures.down(x, y, time)
     }
 
     /** Передаёт очередную позицию единственного пальца распознавателю. */
     fun pointerMove(x: Float, y: Float, time: Long) {
-        if (screen == GameScreen.PLAYING) gestures.move(x, y, time)
+        if (screen == GameScreen.PLAYING && activeForeground) gestures.move(x, y, time)
     }
 
-    /** Завершает касание и после ускоренного спуска заново отсчитывает гравитацию. */
+    /** A short tap makes one downward step without resetting normal gravity. */
     fun pointerUp(x: Float, y: Float, time: Long) {
-        if (screen != GameScreen.PLAYING) return
-        val wasSoft = gestures.softDropping
+        if (screen != GameScreen.PLAYING || !activeForeground) return
         gestures.up(x, y, time)
-        if (wasSoft) lastGravity = time
     }
 
     /** Отменяет касание при нескольких пальцах или уничтожении обработчика Compose. */
@@ -341,7 +410,7 @@ class GameViewModel internal constructor(
     /** Пересчитывает шаг свайпа при изменении ширины поля; координаты остаются в dp. */
     fun setBoardWidth(widthDp: Float) {
         boardWidthDp = widthDp
-        val step = widthDp / 10f / 1.2f
+        val step = widthDp / 12f
         if (step > 0 && step != gestureConfig.horizontalStepDistance) {
             configureGestures(gestureConfig.copy(horizontalStepDistance = step))
         }
@@ -353,7 +422,7 @@ class GameViewModel internal constructor(
         musicSelection = selection
         preferences.edit().putString("music_selection", selection.id).apply()
         music?.select(selection)
-        music?.setPlaying(musicEnabled && foreground && screen in listOf(GameScreen.PLAYING, GameScreen.SETTINGS))
+        music?.setPlaying(musicEnabled && activeForeground && screen in listOf(GameScreen.PLAYING, GameScreen.SETTINGS))
     }
 
     /** Открывает сохранённую историю, оставляя текущую партию на паузе. */
@@ -365,14 +434,19 @@ class GameViewModel internal constructor(
     /** Записывает итог единожды; рекорд сравнивается с результатом до начала партии. */
     private fun saveResult(state: GameState, now: Long) {
         if (currentResultId != null) return
-        playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
+        if (screen == GameScreen.PLAYING) playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
         lastPlayFrame = now
-        val result = GameResult(java.util.UUID.randomUUID().toString(), System.currentTimeMillis(),
-            "Игрок", state.score, state.lines, state.level, playedMillis, completedRounds = state.completedRounds)
+        val result = results.firstOrNull { it.id == sessionId } ?: GameResult(sessionId, finishedAt,
+            "Игрок", state.score, state.lines, state.level, playedMillis, completedRounds = state.completedRounds,
+            difficulty = state.difficulty)
+        latestResult = result
         currentResultId = result.id
         requestRecordName = state.score > recordAtStart
-        results = listOf(result) + results
-        resultStore.write(results)
+        if (requestRecordName && results.none { it.id == result.id }) {
+            results = listOf(result) + results
+            resultStore.write(results)
+        }
+        record = bestFor(state.difficulty)
     }
 
     /** Обновляет имя рекордной партии; пустую строку заменяет нейтральной подписью. */
@@ -381,6 +455,7 @@ class GameViewModel internal constructor(
         playerName = clean
         preferences.edit().putString("player_name", clean).apply()
         results = results.map { if (it.id == currentResultId) it.copy(name = clean) else it }
+        latestResult = latestResult?.copy(name = clean)
         resultStore.write(results)
         requestRecordName = false
         music?.setPlaying(false)

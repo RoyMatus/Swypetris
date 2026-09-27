@@ -5,10 +5,10 @@ import org.junit.Test
 
 /** Проверяет общую арифметику и переходы движка на границах новых правил. */
 class GameRulesTest {
-    /** Граница последних 20% включительна, новый уровень сразу показывает полный счёт. */
+    /** The final 10% is inclusive, and a new level shows the full score again. */
     @Test fun thresholdsAndDisplay() {
-        val scores = listOf(799, 800, 999, 1000, 1999, 2000, 2249, 2250, 2100)
-        val displays = listOf("799", "−200", "−1", "1000", "1999", "−250", "−1", "2250", "−150")
+        val scores = listOf(799, 800, 899, 900, 999, 1000, 2000, 2124, 2125, 2249, 2250, 2100)
+        val displays = listOf("799", "800", "899", "−100", "−1", "1000", "2000", "2124", "−125", "−1", "2250", "2100")
         scores.zip(displays).forEach { (score, display) -> assertEquals(display, GameRules.displayScore(score)) }
         listOf(0L, 1000L, 2250L, 3750L, 5500L, 7500L, 9750L).forEachIndexed { index, score ->
             assertEquals(score, GameRules.threshold(index + 1))
