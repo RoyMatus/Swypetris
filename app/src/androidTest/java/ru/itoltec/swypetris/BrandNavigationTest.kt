@@ -63,6 +63,8 @@ class BrandNavigationTest {
             }
         }
         val viewport = compose.onNodeWithTag("viewport").fetchSemanticsNode().boundsInRoot
+        val logo = compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot
+        assertTrue(logo.top >= viewport.top)
         for (tag in listOf("newGame", "resumeGame", "settings", "help", "results", "contacts", "exitGame")) {
             val node = compose.onNodeWithTag(tag).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
             assertTrue(node.top >= viewport.top && node.bottom <= viewport.bottom)
