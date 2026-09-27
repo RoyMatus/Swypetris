@@ -84,7 +84,8 @@ class GameUiTest {
                     assertEquals(GameScreen.SETTINGS, model().screen)
                 } finally { store.clear() }
             }
-            compose.onNodeWithText("Назад").performScrollTo().performClick()
+            compose.onNodeWithText("Назад").assertDoesNotExist()
+            Espresso.pressBack()
             compose.onNodeWithContentDescription("SWYPETRIS").assertIsDisplayed()
             compose.onNodeWithTag("sound").assertDoesNotExist()
         } finally {
