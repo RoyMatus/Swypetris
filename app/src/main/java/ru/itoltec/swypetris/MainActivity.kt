@@ -295,7 +295,11 @@ private fun GameContent(model: GameViewModel, state: GameState) {
             model.cancelGesture()
         }
     }) {
-        Board(state, model.clearElapsedMillis, if (model.hintsEnabled && state.clearingRows.isEmpty()) model.engine.ghost(state) else null, showNext = model.hintsEnabled)
+        val hints = model.hintsEnabled
+        val landing = remember(state.board, state.active, state.clearingRows, hints) {
+            if (hints && state.clearingRows.isEmpty()) model.engine.ghost(state) else null
+        }
+        Board(state, landingHint = landing, showNext = hints, clearTime = { model.clearElapsedMillis })
         GameHud(state, showNext = model.hintsEnabled)
     }
     }
@@ -361,17 +365,20 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
 }
 /** Рисует поле, постоянное бледное превью и необязательную тень падения; удалённые клетки пропускает. */
 @Composable
-internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null, showNext: Boolean = true) {
+internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
+    showNext: Boolean = true, clearTime: () -> Long = { clearElapsedMillis }) {
     val palette = LocalGamePalette.current
+    val previewCells = remember(state.next) { Piece(state.next).cells() }
     Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." + if (showNext) " Следующая фигура ${state.next.name}" else "" }.testTag("board")) {
+        val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
         val cell = Size(size.width / 10, size.height / 20)
         val origin = Offset.Zero
         drawRect(palette.panel, origin, size)
         for (x in 0..10) drawLine(palette.grid, Offset(x * cell.width, 0f), Offset(x * cell.width, size.height))
         for (y in 0..20) drawLine(palette.grid, Offset(0f, y * cell.height), Offset(size.width, y * cell.height))
-        if (showNext) Piece(state.next).cells().forEach { block(it, palette.piece(state.next), origin, cell, alpha = 0.20f) }
+        if (showNext) previewCells.forEach { block(it, palette.piece(state.next), origin, cell, alpha = 0.20f) }
         state.board.forEachIndexed { y, row -> row.forEachIndexed { x, type ->
-            if (type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, clearElapsedMillis, state.completedClears))) block(Cell(x, y), palette.piece(type), origin, cell)
+            if (type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y), palette.piece(type), origin, cell)
         } }
         if (!state.gameOver && state.clearingRows.isEmpty()) {
             landingHint?.let { hint -> hint.cells().forEach { block(it, palette.piece(hint.type), origin, cell, alpha = 0.5f, outline = true) } }
@@ -387,7 +394,6 @@ private fun DrawScope.block(cell: Cell, color: Color, origin: Offset, step: Size
     val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
     bevelBlock(topLeft, blockSize, color, alpha, outline)
 }
-
 
 
 

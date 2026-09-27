@@ -91,15 +91,16 @@ internal fun VictoryScreen(model: GameViewModel) {
                 }
             }
         }
-        VictoryFireworks(if (animate) model.victoryAnimationMillis else 2400L)
+        VictoryFireworks { if (animate) model.victoryAnimationMillis else 2400L }
     }
 }
 
 /** Пиксельные искры салюта не перехватывают касания и исчезают через восемь секунд. */
 @Composable
-private fun VictoryFireworks(elapsed: Long) {
+private fun VictoryFireworks(time: () -> Long) {
     val colors = LocalGamePalette.current.pieces
     Canvas(Modifier.fillMaxSize().testTag("victoryFireworks")) {
+        val elapsed = time()
         if (elapsed >= 8000) return@Canvas
         repeat(9) { burst ->
             val age = (elapsed - burst * 650) / 1800f

@@ -36,12 +36,88 @@ class GestureControllerTest {
         assertTrue(commands.isEmpty())
     }
 
-    @Test fun upwardMovementRotatesAndCanRepeatWithoutRelease() {
+    @Test fun continuousUpwardMovementRotatesOnlyOnce() {
         gestures.down(100f, 100f, 0)
         gestures.move(101f, 75f, 50)
         gestures.move(100f, 50f, 100)
         gestures.up(100f, 50f, 120)
+        assertEquals(listOf(GameCommand.CLOCKWISE), commands)
+    }
+
+    @Test fun reversalRearmsFromItsBottomWithoutReleasing() {
+        gestures.down(100f, 200f, 0)
+        gestures.move(100f, 176f, 20)
+        gestures.move(100f, 100f, 40)
+        gestures.move(100f, 112f, 60)
+        gestures.move(100f, 120f, 80)
+        gestures.move(100f, 97f, 100)
+        assertEquals(1, commands.size)
+        gestures.move(100f, 96f, 120)
         assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.CLOCKWISE), commands)
+    }
+
+    @Test fun jitterAndHorizontalMovementDoNotRearmRotation() {
+        gestures.down(100f, 200f, 0)
+        gestures.move(100f, 176f, 20)
+        repeat(5) {
+            gestures.move(100f, 180f, 40L + it * 20)
+            gestures.move(100f, 170f, 50L + it * 20)
+        }
+        gestures.move(112f, 170f, 160)
+        gestures.move(112f, 100f, 180)
+        assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.RIGHT), commands)
+    }
+
+    @Test fun pieceChangeAndClearDoNotRearmContinuousUpwardStroke() {
+        gestures.down(100f, 200f, 0)
+        gestures.move(100f, 176f, 20)
+        gestures.onPieceChanged()
+        gestures.move(100f, 140f, 40)
+        gestures.setEnabled(false)
+        gestures.move(100f, 100f, 60)
+        gestures.setEnabled(true)
+        gestures.move(100f, 70f, 80)
+        assertEquals(listOf(GameCommand.CLOCKWISE), commands)
+        gestures.move(100f, 82f, 100)
+        gestures.move(100f, 58f, 120)
+        assertEquals(2, commands.size)
+    }
+
+    @Test fun newTouchRearmsAndReleaseDoesNotAddATap() {
+        gestures.down(100f, 200f, 0)
+        gestures.up(100f, 150f, 100)
+        gestures.down(100f, 200f, 200)
+        gestures.up(100f, 150f, 300)
+        assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.CLOCKWISE), commands)
+    }
+
+    @Test fun largerSlopAlsoProtectsRotationRearming() {
+        val controller = GestureController(GestureConfig(tapSlop = 16f)) { commands += it }
+        controller.down(0f, 200f, 0)
+        controller.move(0f, 168f, 20)
+        controller.move(0f, 180f, 40)
+        controller.move(0f, 130f, 60)
+        assertEquals(1, commands.size)
+        controller.move(0f, 146f, 80)
+        controller.move(0f, 114f, 100)
+        assertEquals(2, commands.size)
+    }
+
+    @Test fun dropAfterLongUpwardStrokeUsesTheLatestPosition() {
+        gestures.down(100f, 300f, 0)
+        gestures.move(100f, 276f, 20)
+        gestures.move(100f, 100f, 40)
+        gestures.move(100f, 112f, 60)
+        gestures.move(100f, 148f, 80)
+        assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.HARD_DROP), commands)
+    }
+
+    @Test fun horizontalAfterLongUpwardStrokeKeepsItsNormalThreshold() {
+        gestures.down(100f, 300f, 0)
+        gestures.move(100f, 276f, 20)
+        gestures.move(100f, 100f, 40)
+        gestures.move(112f, 99f, 60)
+        assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.RIGHT), commands)
     }
 
     @Test fun diagonalDoesNotRotateOrDrop() {

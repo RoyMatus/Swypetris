@@ -7,9 +7,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /** A paused game is owned by the model while the ordinary menu is displayed. */
 enum class GameScreen { MENU, SETTINGS, HELP, CONTACTS, PRIVACY, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY }
@@ -26,7 +23,8 @@ class GameViewModel internal constructor(
     autoTick: Boolean,
     feedback: GameFeedback? = null,
     musicPlayback: MusicPlayback? = null,
-    showLaunchIntro: Boolean = autoTick && initialState == null
+    showLaunchIntro: Boolean = autoTick && initialState == null,
+    timer: GameTimer? = null
 ) : AndroidViewModel(application) {
     /** Стандартный конструктор Android использует монотонные часы и автоматический игровой цикл. */
     constructor(application: Application) : this(application, null, SystemClock::uptimeMillis, true)
@@ -93,6 +91,8 @@ class GameViewModel internal constructor(
     var clearElapsedMillis by mutableStateOf(restored?.clearMillis ?: 0L)
         private set
     private var lastAnimationFrame = clock()
+    private val timer = timer ?: if (autoTick) AndroidGameTimer() else null
+    private var scheduledAt: Long? = null
 
     init {
         restored?.let { engine.restoreBag(it.bag) }
@@ -103,11 +103,29 @@ class GameViewModel internal constructor(
             requestRecordName = false
         }
         music?.select(musicSelection)
-        if (autoTick) viewModelScope.launch {
-            while (true) {
-                delay(16)
-                advanceFrame(clock())
-            }
+        scheduleNextEvent()
+    }
+
+    /** Sleep until a visible clear step or gravity is due; paused games have no timer. */
+    private fun scheduleNextEvent() {
+        val timer = timer ?: return
+        val state = game
+        if (screen != GameScreen.PLAYING || !activeForeground || state == null) {
+            timer.cancel()
+            scheduledAt = null
+            return
+        }
+        val deadline = if (state.clearingRows.isNotEmpty()) {
+            val nextStep = ((clearElapsedMillis / LineClearAnimation.STEP_MILLIS + 1) *
+                LineClearAnimation.STEP_MILLIS).coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
+            lastAnimationFrame + nextStep - clearElapsedMillis
+        } else lastGravity + state.gravityMillis
+        if (scheduledAt == deadline) return
+        scheduledAt = deadline
+        timer.schedule((deadline - clock()).coerceAtLeast(0)) {
+            scheduledAt = null
+            advanceFrame(clock())
+            scheduleNextEvent()
         }
     }
 
@@ -219,6 +237,7 @@ class GameViewModel internal constructor(
         screen = GameScreen.PLAYING
         music?.setPlaying(musicEnabled)
         saveSession()
+        scheduleNextEvent()
     }
 
     /** Открывает настройки, сохраняя партию и прогресс очистки на паузе. */
@@ -269,6 +288,7 @@ class GameViewModel internal constructor(
         screen = GameScreen.PLAYING
         music?.setPlaying(musicEnabled)
         saveSession()
+        scheduleNextEvent()
     }
 
     /** Continues the saved interval; time spent in the background never counts. */
@@ -287,6 +307,7 @@ class GameViewModel internal constructor(
         screen = GameScreen.PLAYING
         lastPlayFrame = clock()
         music?.setPlaying(musicEnabled)
+        scheduleNextEvent()
     }
 
     /** Freeze clocks without issuing a final gravity tick or completing a clear. */
@@ -308,6 +329,7 @@ class GameViewModel internal constructor(
         feedback.stop()
         gestures.cancel()
         saveSession(now)
+        scheduleNextEvent()
     }
 
     /** Фон останавливает и игру, и прослушивание в настройках. */
@@ -385,7 +407,8 @@ class GameViewModel internal constructor(
             screen = if (requestRecordName) GameScreen.RECORD else GameScreen.GAME_OVER
             if (requestRecordName && musicEnabled) music?.setMode(MusicMode.RECORD)
         }
-        if (updated != previous) saveSession(now)
+        if (updated != previous && !updated.gameOver) saveSession(now)
+        scheduleNextEvent()
     }
 
     /** Передаёт начало касания: координаты в dp, время в uptimeMillis. */
@@ -471,12 +494,13 @@ class GameViewModel internal constructor(
 
     /** Закрывает аудиоресурсы при окончательном уничтожении модели Activity. */
     override fun onCleared() {
+        timer?.cancel()
+        scheduledAt = null
         feedback.release()
         music?.release()
         super.onCleared()
     }
 }
-
 
 
 

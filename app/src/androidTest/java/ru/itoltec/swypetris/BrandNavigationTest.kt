@@ -86,7 +86,8 @@ class BrandNavigationTest {
             }
         }
         compose.runOnIdle { model.help() }
-        for (control in listOf("Двигайте фигуру", "Поверните фигуру", "Длинный жест вниз — бросок", "Короткий тап — клетка вниз")) {
+        for (control in listOf("Двигайте фигуру", "Свайп вверх — один поворот", "Длинный жест вниз — бросок", "Короткий тап — клетка вниз",
+            "Для повторного поворота слегка опустите палец и снова проведите вверх либо начните новое касание.")) {
             compose.onNodeWithTag("helpPage").performScrollToNode(hasText(control))
             compose.onNodeWithText(control).assertIsDisplayed()
         }
