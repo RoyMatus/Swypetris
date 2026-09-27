@@ -57,10 +57,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import ru.itoltec.swypetris.ui.theme.SwypetrisTheme
 
-/** Текущий масштаб счёта для проверки одиночного импульса управляемыми часами Compose. */
+/** Current score scale exposed for testing a single pulse with a controlled Compose clock. */
 internal val ScorePulseScale = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("ScorePulseScale")
 
-/** Точка входа Android: подключает сохраняемую модель партии и Compose-интерфейс. */
+/** Android entry point that connects a retained game model to the Compose UI. */
 class MainActivity : ComponentActivity() {
     private val gameModel: GameViewModel by viewModels()
 
@@ -94,21 +94,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Forwards backgrounding to the model so gameplay clocks and effects stop. */
     override fun onPause() {
         gameModel.onBackground()
         super.onPause()
     }
 
+    /** Restores foreground status while leaving an explicitly paused game paused. */
     override fun onResume() {
         super.onResume()
         gameModel.onForeground()
     }
 
+    /** Reports focus changes so an obscured window cannot keep gameplay running. */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         gameModel.onWindowFocusChanged(hasFocus)
     }
 
+    /** Handles a new launch intent without replacing the retained game model. */
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -117,7 +121,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Соединяет жизненный цикл Android, системные настройки жестов и выбор экрана. */
+/** Connects Android lifecycle, system gesture settings, and screen selection. */
 @Composable
 fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
     val context = LocalContext.current
@@ -166,10 +170,10 @@ fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
     }
 }
 
-/** Действие компактного меню: подпись, цвет, идентификатор и обработчик нажатия. */
+/** Compact menu action with its label, accent color, test tag, and click handler. */
 private data class MenuAction(val label: String, val color: Color, val tag: String, val action: () -> Unit)
 
-/** Прямоугольные кнопки и логотип делят доступную высоту, меню не требует прокрутки. */
+/** Rectangular buttons and logo share available height without menu scrolling. */
 @Composable
 private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
     var menuOrigin by remember { mutableStateOf(Offset.Zero) }
@@ -220,7 +224,7 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
     }
 }
 
-/** Отдельный экран сохраняемых настроек; возврат не возобновляет партию автоматически. */
+/** Separate screen for persisted settings; returning does not automatically resume gameplay. */
 @Composable
 private fun SettingsScreen(model: GameViewModel) {
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp)) {
@@ -247,7 +251,7 @@ private fun SettingsScreen(model: GameViewModel) {
     }
 }
 
-/** Подписанный переключатель отдельной настройки, доступный для автоматической проверки. */
+/** Labeled toggle for one setting, with a stable UI-test tag. */
 @Composable
 private fun SettingToggle(label: String, tag: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -255,7 +259,7 @@ private fun SettingToggle(label: String, tag: String, checked: Boolean, onChange
         Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag(tag))
     }
 }
-/** Невысокая прямоугольная кнопка с подписью, адаптированной к увеличенному шрифту. */
+/** Compact rectangular button whose label adapts to increased font size. */
 @Composable
 internal fun MenuTile(label: String, accent: Color, tag: String, enabled: Boolean = true, onClick: () -> Unit) {
     OutlinedButton(
@@ -275,7 +279,7 @@ internal fun MenuTile(label: String, accent: Color, tag: String, enabled: Boolea
         }
     }
 }
-/** Поле заполняет экран; информационная панель поверх него не перехватывает касания. */
+/** The board fills the screen; its HUD overlay does not intercept touches. */
 @Composable
 private fun GameContent(model: GameViewModel, state: GameState) {
     val density = LocalDensity.current.density
@@ -318,7 +322,7 @@ private fun GameContent(model: GameViewModel, state: GameState) {
     }
 }
 
-/** Компактная панель уровня и очков; импульсы не перезапускаются при частом спуске. */
+/** Compact level and score HUD; frequent drops do not restart its score pulse. */
 @Composable
 internal fun GameHud(state: GameState, showNext: Boolean = true) {
     var scoreSize by remember { mutableStateOf(Size.Zero) }
@@ -376,7 +380,7 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
         }
     }
 }
-/** Рисует поле, постоянное бледное превью и необязательную тень падения; удалённые клетки пропускает. */
+/** Draws the board, faint next-piece preview, and optional landing ghost while omitting removed cells. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
     showNext: Boolean = true, clearTime: () -> Long = { clearElapsedMillis }) {
@@ -400,11 +404,10 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
     }
 }
 
-/** Рисует цветную клетку с зазором, используя независимую ширину и высоту. */
+/** Draws a colored cell with spacing using independent width and height. */
 private fun DrawScope.block(cell: Cell, color: Color, origin: Offset, step: Size, alpha: Float = 1f, outline: Boolean = false) {
     val gap = minOf(step.width, step.height) * 0.07f
     val topLeft = origin + Offset(cell.x * step.width + gap, cell.y * step.height + gap)
     val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
     bevelBlock(topLeft, blockSize, color, alpha, outline)
 }
-

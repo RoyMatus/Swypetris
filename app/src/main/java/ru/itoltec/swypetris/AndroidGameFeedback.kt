@@ -9,7 +9,7 @@ import android.os.Vibrator
 import android.os.VibrationAttributes
 import java.util.concurrent.ConcurrentHashMap
 
-/** Предзагружает мягкие WAV и воспроизводит короткие эффекты без изменения системной громкости. */
+/** Preloads soft WAV effects and plays them without changing system volume. */
 class AndroidGameFeedback(private val context: Context) : GameFeedback {
     private val audioAttributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
@@ -29,7 +29,7 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
         clear = pool.load(context, R.raw.clear_soft, 1)
     }
 
-    /** Пропускает незагруженные звуки; вибрацию запрашивает в разрешённой Android категории игры. */
+    /** Skips sounds not yet loaded and requests vibration with supported Android usage attributes. */
     @Suppress("DEPRECATION")
     override fun play(event: FeedbackEvent, sound: Boolean, vibration: Boolean) {
         stop()
@@ -41,15 +41,15 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
         vibrate(if (event == FeedbackEvent.DROP) HapticPulse.Drop else HapticPulse.Clear, vibration)
     }
 
-    /** Продолжает вибрацию ровно до конца оставшейся анимации. */
+    /** Resumes vibration only for the remaining line-clear animation. */
     override fun resumeClear(remainingMillis: Long, vibration: Boolean) {
         vibrate(HapticPulse.clear(remainingMillis), vibration)
     }
 
-    /** Даёт отчётливое подтверждение включения вибрации без звука. */
+    /** Previews vibration when its setting is enabled, without playing sound. */
     override fun previewVibration() = vibrate(HapticPulse.Preview, true)
 
-    /** Выбирает поддерживаемую устройством амплитуду и учитывает системные настройки. */
+    /** Chooses an amplitude supported by the device and respects system vibration settings. */
     @Suppress("DEPRECATION")
     private fun vibrate(pulse: HapticPulse, vibration: Boolean) {
         val motor = vibrator ?: return
@@ -68,22 +68,22 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
         }
     }
 
-    /** Останавливает уже запущенные звуки и импульсы; очередь воспроизведения отсутствует. */
+    /** Stops active sounds and vibrations; there is no playback queue. */
     override fun stop() {
         stopSound()
         stopVibration()
     }
 
-    /** Останавливает звуки, не прерывая вибрацию очистки. */
+    /** Stops sound effects while leaving a line-clear vibration running. */
     override fun stopSound() {
         streams.forEach(pool::stop)
         streams.clear()
     }
 
-    /** Отменяет только текущий импульс мотора. */
+    /** Cancels only the current motor pulse. */
     override fun stopVibration() { vibrator?.cancel() }
 
-    /** Освобождает SoundPool и слушатель загрузки после завершения работы модели. */
+    /** Releases SoundPool and its load listener when the model is destroyed. */
     override fun release() {
         stop()
         pool.setOnLoadCompleteListener(null)

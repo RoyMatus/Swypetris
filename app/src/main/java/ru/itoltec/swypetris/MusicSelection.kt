@@ -1,6 +1,6 @@
 ﻿package ru.itoltec.swypetris
 
-/** Постоянные идентификаторы и названия восьми полных композиций. */
+/** Stable IDs and names for the eight full tracks. */
 enum class Song(val id: String, val title: String, val resource: Int) {
     KOROBEINIKI("korobeiniki", "Коробейники", R.raw.korobeiniki), KALINKA("kalinka", "Калинка", R.raw.kalinka),
     KAMARINSKAYA("kamarinskaya", "Камаринская", R.raw.kamarinskaya), BARYNYA("barynya", "Барыня", R.raw.barynya),
@@ -8,15 +8,18 @@ enum class Song(val id: String, val title: String, val resource: Int) {
     TREPAK("trepak", "Трепак", R.raw.trepak), SUGAR_PLUM("sugar_plum", "Танец Феи Драже", R.raw.sugar_plum)
 }
 
-/** Сохраняемый выбор музыки, независимый от временной паузы проигрывателя. */
+/** Persisted music selection, independent of a temporary player pause. */
 sealed class MusicSelection(val id: String, val title: String) {
+    /** Disables music playback without affecting game sound effects. */
     data object Off : MusicSelection("off", "Выключена")
+    /** Plays all bundled tracks in rounds with randomized order. */
     data object ShuffleAll : MusicSelection("shuffle", "Все песни — случайный порядок")
+    /** Plays one selected [song] instead of the full shuffled playlist. */
     data class Track(val song: Song) : MusicSelection(song.id, song.title)
 
     companion object {
         val all: List<MusicSelection> get() = listOf(Off, ShuffleAll) + Song.entries.map(::Track)
-        /** Читает новую настройку; при её отсутствии сохраняет смысл прежней галки. */
+        /** Restores the new setting or preserves the meaning of the old on/off flag. */
         fun restore(id: String?, legacyEnabled: Boolean): MusicSelection =
             all.firstOrNull { it.id == id } ?: if (legacyEnabled) ShuffleAll else Off
     }

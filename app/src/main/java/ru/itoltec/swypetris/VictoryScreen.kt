@@ -30,7 +30,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Полный набор без числовых множителей: силуэты ещё не полученных наград приглушены. */
+/** Complete fruit set without numeric multipliers; unearned silhouettes are dimmed. */
 @Composable
 internal fun RoundFruitCollection(count: Int, iconSize: Dp = 28.dp) {
     Row(Modifier.testTag("fruitCollection"), horizontalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -42,7 +42,7 @@ internal fun RoundFruitCollection(count: Int, iconSize: Dp = 28.dp) {
     }
 }
 
-/** Поздравление останавливает партию до явного начала следующего круга. */
+/** Victory pauses the game until the player explicitly starts the next round. */
 @Composable
 internal fun VictoryScreen(model: GameViewModel) {
     val state = model.game ?: return
@@ -94,7 +94,7 @@ internal fun VictoryScreen(model: GameViewModel) {
     }
 }
 
-/** Пиксельные искры салюта не перехватывают касания и исчезают через восемь секунд. */
+/** Pixel fireworks do not intercept touches and disappear after eight seconds. */
 @Composable
 private fun VictoryFireworks(time: () -> Long) {
     val colors = LocalGamePalette.current.pieces

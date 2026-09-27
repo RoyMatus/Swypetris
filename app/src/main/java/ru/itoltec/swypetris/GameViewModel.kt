@@ -26,7 +26,7 @@ class GameViewModel internal constructor(
     showLaunchIntro: Boolean = autoTick && initialState == null,
     timer: GameTimer? = null
 ) : AndroidViewModel(application) {
-    /** Стандартный конструктор Android использует монотонные часы и автоматический игровой цикл. */
+    /** The standard Android constructor uses a monotonic clock and an automatic game loop. */
     constructor(application: Application) : this(application, null, SystemClock::uptimeMillis, true)
     private val preferences = GameStorage.preferences(application).also(GameStorage::migrate)
     private val resultStore = ResultStore(preferences)
@@ -87,7 +87,7 @@ class GameViewModel internal constructor(
     private var lastGravity = clock()
     private var gravityRemaining = restored?.gravityRemaining ?: (game?.gravityMillis ?: Difficulty.INITIAL_MILLIS)
 
-    /** Прошедшее игровое время удаления; не увеличивается в меню и на паузе. */
+    /** Elapsed line-clear time increases only during active play, not in the menu or on pause. */
     var clearElapsedMillis by mutableStateOf(restored?.clearMillis ?: 0L)
         private set
     private var lastAnimationFrame = clock()
@@ -129,7 +129,7 @@ class GameViewModel internal constructor(
         }
     }
 
-    /** Продвигает игровые часы; во время удаления работают только её 600 мс, без гравитации. */
+    /** Advances game time; during a clear, only its 600 ms animation progresses, without gravity. */
     internal fun advanceFrame(now: Long) {
         if (screen != GameScreen.PLAYING || !activeForeground) return
         val current = game ?: return
@@ -148,7 +148,7 @@ class GameViewModel internal constructor(
             command(GameCommand.TICK)
         }
     }
-    /** Применяет системные интервалы и допустимое смещение тапа, полученные от Android. */
+    /** Applies Android's system gesture timings and tap-movement allowance. */
     fun configureGestures(config: GestureConfig) {
         gestures.cancel()
         gestureConfig = if (boardWidthDp > 0) config.copy(horizontalStepDistance = boardWidthDp / 12f) else config
@@ -156,17 +156,21 @@ class GameViewModel internal constructor(
         gestures.setEnabled(game?.clearingRows?.isEmpty() != false)
     }
 
+    /** Highest saved score for [mode] under the current rules version. */
     private fun bestFor(mode: Difficulty): Int = results.filter { it.difficulty == mode && it.rulesVersion == GameRules.VERSION }
         .maxOfOrNull { it.score } ?: 0
 
+    /** Persists [value] for future games and refreshes the displayed record when no game is active. */
     fun chooseDifficulty(value: Difficulty) {
         difficulty = value
         preferences.edit().putString("difficulty", value.id).apply()
         if (game == null || game?.gameOver == true) record = bestFor(value)
     }
 
+    /** Returns the current-rules record for the requested [mode]. */
     fun recordFor(mode: Difficulty): Int = bestFor(mode)
 
+    /** Saves the board, bag, timers, and record baseline for game restoration after lifecycle changes. */
     private fun saveSession(now: Long = clock()) {
         val state = game ?: return
         val remaining = if (screen == GameScreen.PLAYING && state.clearingRows.isEmpty())
@@ -176,20 +180,20 @@ class GameViewModel internal constructor(
             clearElapsedMillis, remaining, recordAtStart, finishedAt))
     }
 
-    /** Сохраняет совместную настройку тени падения и предварительного просмотра. */
+    /** Persists the joint setting for the landing ghost and next-piece preview. */
     fun setHints(enabled: Boolean) {
         hintsEnabled = enabled
         preferences.edit().putBoolean("hints", enabled).apply()
     }
 
-    /** Сохраняет звук; отключение немедленно останавливает текущие эффекты. */
+    /** Persists sound preference and immediately stops active effects when disabled. */
     fun setSound(enabled: Boolean) {
         soundEnabled = enabled
         preferences.edit().putBoolean("sound", enabled).apply()
         if (!enabled) feedback.stopSound()
     }
 
-    /** Сохраняет разрешение вибрации независимо от звука. */
+    /** Persists vibration permission independently of sound. */
     fun setVibration(enabled: Boolean) {
         val wasEnabled = vibrationEnabled
         vibrationEnabled = enabled
@@ -198,29 +202,29 @@ class GameViewModel internal constructor(
         else if (!wasEnabled) feedback.previewVibration()
     }
 
-    /** Применяет известную расцветку без изменения партии. */
+    /** Applies a known palette without altering the game. */
     fun setPalette(id: String) {
         paletteId = GamePalettes.find(id).id
         preferences.edit().putString("palette", paletteId).apply()
     }
 
-    /** Запоминает прошедшее время салюта, чтобы пересоздание экрана не повторяло его. */
+    /** Stores fireworks elapsed time so Activity recreation does not replay them. */
     fun advanceVictoryAnimation(delta: Long) {
         if (screen == GameScreen.VICTORY)
             victoryAnimationMillis = (victoryAnimationMillis + delta.coerceAtLeast(0)).coerceAtMost(8000L)
     }
 
-    /** Хранит прогресс заставки между пересозданиями Activity; фон не расходует её время. */
+    /** Retains intro progress across Activity recreation; background time does not advance it. */
     fun advanceLaunchIntro(delta: Long) {
         if (activeForeground && launchIntroPending)
             launchIntroMillis = (launchIntroMillis + delta.coerceIn(0L, LaunchIntroMotion.DURATION))
                 .coerceAtMost(LaunchIntroMotion.DURATION)
     }
 
-    /** Пропускает заставку без звука, вибрации и запуска действия меню. */
+    /** Skips the intro without sound, vibration, or activating a menu action. */
     fun finishLaunchIntro() { launchIntroMillis = LaunchIntroMotion.DURATION }
 
-    /** Начинает следующий круг той же партии только после явного подтверждения победы. */
+    /** Starts the next round of the same game only after explicit victory confirmation. */
     fun nextRound() {
         if (!activeForeground) return
         val state = game ?: return
@@ -240,38 +244,38 @@ class GameViewModel internal constructor(
         scheduleNextEvent()
     }
 
-    /** Открывает настройки, сохраняя партию и прогресс очистки на паузе. */
+    /** Opens settings while preserving and pausing the game and clear progress. */
     fun settings() {
         menu()
         screen = GameScreen.SETTINGS
         music?.setPlaying(musicEnabled && activeForeground)
     }
 
-    /** Открывает справку, сохраняя партию и останавливая игровые часы. */
+    /** Opens help while preserving the game and stopping its clock. */
     fun help() {
         menu()
         screen = GameScreen.HELP
     }
 
-    /** Открывает контакты, сохраняя партию на паузе без автоматического возобновления. */
+    /** Opens contacts while keeping the game paused until explicit resume. */
     fun contacts() {
         menu()
         screen = GameScreen.CONTACTS
     }
 
-    /** Открывает локальную политику без возобновления партии или музыки. */
+    /** Opens the local privacy policy without resuming game or music. */
     fun privacy() {
         menu()
         screen = GameScreen.PRIVACY
     }
 
-    /** Открывает сведения о правах, сохраняя текущую партию на паузе. */
+    /** Opens license information while keeping the current game paused. */
     fun legal() {
         menu()
         screen = GameScreen.LEGAL
     }
 
-    /** Начинает новую партию, сбрасывая поле, очки и незавершённые жесты. */
+    /** Starts a new game, resetting board, score, and unfinished gestures. */
     fun newGame() {
         if (!activeForeground) return
         sessionId = java.util.UUID.randomUUID().toString()
@@ -338,25 +342,26 @@ class GameViewModel internal constructor(
         scheduleNextEvent()
     }
 
-    /** Фон останавливает и игру, и прослушивание в настройках. */
+    /** Backgrounding stops both gameplay and settings music preview. */
     fun onBackground() {
         foreground = false
         pause()
     }
 
-    /** Возвращение в настройки продолжает прослушивание; игровая пауза остаётся явной. */
+    /** Returning to settings resumes music preview; gameplay remains explicitly paused. */
     fun onForeground() {
         foreground = true
         if (screen == GameScreen.SETTINGS) music?.setPlaying(musicEnabled && activeForeground)
     }
 
+    /** Pauses gameplay on focus loss and resumes settings preview only when focus returns. */
     fun onWindowFocusChanged(focused: Boolean) {
         windowFocused = focused
         if (!focused) pause()
         else if (screen == GameScreen.SETTINGS) music?.setPlaying(musicEnabled && activeForeground)
     }
 
-    /** Открывает главное меню, сохраняя текущую партию в памяти. */
+    /** Opens the main menu while retaining the current game in memory. */
     fun menu() {
         pause()
         screen = GameScreen.MENU
@@ -417,12 +422,12 @@ class GameViewModel internal constructor(
         scheduleNextEvent()
     }
 
-    /** Передаёт начало касания: координаты в dp, время в uptimeMillis. */
+    /** Forwards touch start in dp with time measured in uptime milliseconds. */
     fun pointerDown(x: Float, y: Float, time: Long) {
         if (screen == GameScreen.PLAYING && activeForeground) gestures.down(x, y, time)
     }
 
-    /** Передаёт очередную позицию единственного пальца распознавателю. */
+    /** Forwards a single pointer's next position to the gesture recognizer. */
     fun pointerMove(x: Float, y: Float, time: Long) {
         if (screen == GameScreen.PLAYING && activeForeground) gestures.move(x, y, time)
     }
@@ -433,10 +438,10 @@ class GameViewModel internal constructor(
         gestures.up(x, y, time)
     }
 
-    /** Отменяет касание при нескольких пальцах или уничтожении обработчика Compose. */
+    /** Cancels touch after a multi-touch event or disposal of the Compose handler. */
     fun cancelGesture() = gestures.cancel()
 
-    /** Пересчитывает шаг свайпа при изменении ширины поля; координаты остаются в dp. */
+    /** Recalculates swipe step when board width changes; coordinates remain in dp. */
     fun setBoardWidth(widthDp: Float) {
         boardWidthDp = widthDp
         val step = widthDp / 12f
@@ -445,7 +450,7 @@ class GameViewModel internal constructor(
         }
     }
 
-    /** Сохраняет режим и немедленно запускает выбранную музыку в игре или настройках. */
+    /** Persists the music selection and starts it immediately in game or settings. */
     fun chooseMusic(selection: MusicSelection) {
         if (selection == musicSelection) return
         musicSelection = selection
@@ -454,13 +459,13 @@ class GameViewModel internal constructor(
         music?.setPlaying(musicEnabled && activeForeground && screen in listOf(GameScreen.PLAYING, GameScreen.SETTINGS))
     }
 
-    /** Открывает сохранённую историю, оставляя текущую партию на паузе. */
+    /** Opens saved results while keeping the current game paused. */
     fun showResults() {
         menu()
         screen = GameScreen.RESULTS
     }
 
-    /** Записывает итог единожды; рекорд сравнивается с результатом до начала партии. */
+    /** Records a result once; compares a new record against scores from before the game began. */
     private fun saveResult(state: GameState, now: Long) {
         if (currentResultId != null) return
         if (screen == GameScreen.PLAYING) playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
@@ -478,7 +483,7 @@ class GameViewModel internal constructor(
         record = bestFor(state.difficulty)
     }
 
-    /** Обновляет имя рекордной партии; пустую строку заменяет нейтральной подписью. */
+    /** Updates a record holder's name, replacing blank input with a neutral label. */
     fun saveRecordName(name: String) {
         val entered = name.trim().take(40)
         if (entered.isNotEmpty()) {
@@ -494,14 +499,14 @@ class GameViewModel internal constructor(
         screen = GameScreen.GAME_OVER
     }
 
-    /** Пропускает заставку; с рекорда открывает итоги без имени, с остальных страниц — меню. */
+    /** Skips intro; skips record-name entry to results; leaves other pages for the menu. */
     fun back() {
         if (launchIntroPending) { finishLaunchIntro(); return }
         if (screen == GameScreen.PRIVACY || screen == GameScreen.LEGAL) { contacts(); return }
         if (screen == GameScreen.RECORD) saveRecordName("") else menu()
     }
 
-    /** Закрывает аудиоресурсы при окончательном уничтожении модели Activity. */
+    /** Closes audio resources when the Activity's model is finally destroyed. */
     override fun onCleared() {
         timer?.cancel()
         scheduledAt = null
@@ -510,5 +515,3 @@ class GameViewModel internal constructor(
         super.onCleared()
     }
 }
-
-

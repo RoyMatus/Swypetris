@@ -4,20 +4,20 @@ import android.content.SharedPreferences
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Фруктовые награды: первые два приза следуют Brick Game, остальные — последовательность Swypetris. */
+/** Fruit awards cycle through the collection; the first two follow Brick Game, the rest Swypetris. */
 enum class Fruit(val title: String) {
     CHERRY("Вишня"), BANANA("Банан"), GRAPES("Виноград"), STRAWBERRY("Клубника"),
     APPLE("Яблоко"), PEAR("Груша"), PINEAPPLE("Ананас"), WATERMELON("Арбуз")
 }
 
-/** Количество призов растёт каждые 10 000 очков, включая пересечение нескольких порогов. */
+/** Counts awards earned at each fruit threshold, including multiple thresholds crossed at once. */
 fun fruitCount(score: Int): Int = score.coerceAtLeast(0) / GameRules.FRUIT_STEP
 
-/** Возвращает количество конкретного фрукта в циклической коллекции партии. */
+/** Returns how many times a particular [fruit] has been earned in this game. */
 fun fruitQuantity(score: Int, fruit: Fruit): Int =
     (fruitCount(score) / Fruit.entries.size) + if (fruit.ordinal < fruitCount(score) % Fruit.entries.size) 1 else 0
 
-/** Итог партии с версией правил; время содержит только активную игру, прежние версии не конкурируют с новой. */
+/** Final game result with a rules version; active play time excludes pauses, and old rules do not compete with new ones. */
 data class GameResult(
     val id: String,
     val dateMillis: Long,
@@ -31,9 +31,9 @@ data class GameResult(
     val difficulty: Difficulty? = null
 )
 
-/** Локальная история без ограничения числа партий; идентификатор защищает от повторной записи. */
+/** Unbounded local result history; stable IDs prevent duplicate writes. */
 class ResultStore(private val preferences: SharedPreferences) {
-    /** Читает сохранённую историю; повреждённые элементы пропускаются по одному. */
+    /** Reads saved results, skipping malformed entries individually. */
     fun read(): List<GameResult> = runCatching {
         val array = JSONArray(preferences.getString("results_v2", "[]"))
         (0 until array.length()).mapNotNull { index -> runCatching {
@@ -44,7 +44,7 @@ class ResultStore(private val preferences: SharedPreferences) {
         }.getOrNull() }
     }.getOrDefault(emptyList())
 
-    /** Сохраняет снимок истории; используется также после изменения имени рекордсмена. */
+    /** Writes the current history snapshot, including edits to a record holder's name. */
     fun write(results: List<GameResult>) {
         val array = JSONArray()
         results.distinctBy { it.id }.forEach { result ->
@@ -70,4 +70,3 @@ fun recordHistory(results: List<GameResult>): List<GameResult> {
     }
     return results.filter { it.id in ids }.distinctBy { it.id }
 }
-

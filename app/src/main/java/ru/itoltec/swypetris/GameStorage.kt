@@ -3,18 +3,19 @@
 import android.app.Application
 import android.content.SharedPreferences
 
-/** Выбирает хранилище; инструментальные проверки внедряют отдельные настройки до запуска Activity. */
+/** Selects preference stores; instrumentation tests inject isolated settings before Activity launch. */
 object GameStorage {
     internal var testPreferences: SharedPreferences? = null
 
-    /** Возвращает пользовательские настройки либо явно внедрённое тестовое хранилище. */
+    /** Returns user preferences or the explicitly injected test store. */
     fun preferences(application: Application): SharedPreferences =
         testPreferences ?: application.getSharedPreferences("swypetris", 0)
 
+    /** Returns the separate session store or the isolated test store when one is injected. */
     internal fun sessionPreferences(application: Application): SharedPreferences =
         testPreferences ?: application.getSharedPreferences("swypetris_session", 0)
 
-    /** Инициализирует рекорд новой версии один раз, сохраняя все прежние ключи и историю. */
+    /** Initializes the current-version record once while retaining legacy keys and history. */
     fun migrate(preferences: SharedPreferences) {
         if (preferences.getBoolean("rules_4_migrated", false)) return
         val editor = preferences.edit()
@@ -22,7 +23,7 @@ object GameStorage {
         check(editor.putBoolean("rules_4_migrated", true).commit()) { "Не удалось сохранить миграцию правил" }
     }
 
-    /** Возвращает лучший прежний результат, не смешивая его с текущими правилами. */
+    /** Returns the best score from stored record keys and results saved under older rule versions. */
     fun legacyRecord(preferences: SharedPreferences): Int = maxOf(
         preferences.getInt("record", 0), preferences.getInt("legacy_record", 0),
         preferences.getInt("record_v2", 0),

@@ -1,6 +1,22 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.dokka")
+    id("org.jetbrains.dokka-javadoc")
+}
+
+dokka {
+    dokkaPublications.html {
+        moduleName.set("Swypetris")
+    }
+    dokkaSourceSets.configureEach {
+        documentedVisibilities.set(setOf(
+            org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier.Public,
+            org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier.Protected,
+            org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier.Internal,
+            org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier.Private
+        ))
+    }
 }
 
 android {

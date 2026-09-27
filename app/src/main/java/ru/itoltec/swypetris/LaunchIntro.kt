@@ -23,10 +23,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 
-/** Позволяет проверять системное отключение анимации без изменения настроек устройства. */
+/** Allows tests to simulate the system's disabled-animation setting without changing device settings. */
 internal val LocalLaunchIntroAnimations = staticCompositionLocalOf<Boolean?> { null }
 
-/** Запускает кадры только на видимом экране; сама модель переживает пересоздание Activity. */
+/** Runs frames only while the intro is visible; the model survives Activity recreation. */
 @Composable
 internal fun LaunchIntroClock(model: GameViewModel) {
     val context = LocalContext.current
@@ -51,7 +51,7 @@ internal fun LaunchIntroClock(model: GameViewModel) {
     }
 }
 
-/** Рисует части исходного PNG поверх всего экрана: начало траекторий находится за его краями. */
+/** Draws pieces of the original PNG over the screen, starting their paths beyond its edges. */
 @Composable
 internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier: Modifier = Modifier) {
     val logo = ImageBitmap.imageResource(R.drawable.swypetris_logo)
@@ -63,7 +63,7 @@ internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier
         if (logoBounds.isEmpty) return@Canvas
         val scale = minOf(logoBounds.width / logo.width, logoBounds.height / logo.height)
         val origin = logoBounds.center - Offset(logo.width * scale / 2, logo.height * scale / 2)
-        // Собранный логотип уже рисует GameTitle: при появлении кнопок слой не меняется.
+        // Once assembled, GameTitle draws the logo; the layer does not change as buttons appear.
         if (elapsed >= 2650L) return@Canvas
         LogoPieces.parts.forEachIndexed { index, piece ->
             val target = origin + Offset(piece.x * scale, piece.y * scale)

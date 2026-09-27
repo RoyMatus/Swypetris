@@ -1,8 +1,8 @@
 ﻿package ru.itoltec.swypetris
 
-/** Параметры импульса и короткий вариант для мотора без управления амплитудой. */
+/** Pulse parameters with a shorter duration for motors that cannot control amplitude. */
 internal data class HapticPulse(val duration: Long, val amplitude: Int, val fallbackDuration: Long = duration) {
-    /** Слабый бросок остаётся коротким и на устройствах с фиксированной силой мотора. */
+    /** A weak drop stays short on motors with fixed vibration strength. */
     fun durationFor(amplitudeControl: Boolean): Long = if (amplitudeControl) duration else fallbackDuration
 
     /** Keep event timing on amplitude-capable motors; shorten the fallback pulse otherwise. */
@@ -14,6 +14,7 @@ internal data class HapticPulse(val duration: Long, val amplitude: Int, val fall
         val Clear = clear(LineClearAnimation.TOTAL_MILLIS)
         val Preview = HapticPulse(100L, 220)
 
+        /** Keeps a clear synchronized on amplitude-capable motors and shortens fixed-strength fallback. */
         fun clear(remainingMillis: Long) = HapticPulse(remainingMillis, 127, (remainingMillis + 1) / 2)
     }
 }

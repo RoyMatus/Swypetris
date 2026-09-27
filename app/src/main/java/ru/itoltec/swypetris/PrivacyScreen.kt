@@ -9,7 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
-/** Показывает политику без сети; тот же исходный текст используется для публичной HTML-страницы. */
+/** Shows the offline privacy policy; the same source text feeds the public HTML page. */
 @Composable
 internal fun PrivacyScreen(model: GameViewModel) {
     val context = LocalContext.current

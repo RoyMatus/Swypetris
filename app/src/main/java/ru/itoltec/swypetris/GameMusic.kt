@@ -14,22 +14,22 @@ import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 
-/** Режим сопровождения: тишина, последовательный плейлист или однократные фанфары. */
+/** Audio mode: silence, the game playlist, or a one-shot record fanfare. */
 enum class MusicMode { SILENT, GAME, RECORD }
 
-/** Управление музыкой отдельно от устройства для проверки переходов без динамика. */
+/** Music control separated from Android playback so mode transitions can be tested without a speaker. */
 interface MusicPlayback {
-    /** Меняет сохраняемый выбор; повтор того же значения не сбрасывает запись. */
+    /** Changes the persisted selection; repeating it does not restart playback. */
     fun select(selection: MusicSelection) = Unit
-    /** Приостанавливает или продолжает плейлист текущего сеанса. */
+    /** Pauses or resumes the playlist for the current session. */
     fun setPlaying(enabled: Boolean)
-    /** Выбирает плейлист, однократные фанфары или тишину. */
+    /** Chooses the playlist, one-shot fanfare, or silence. */
     fun setMode(next: MusicMode)
-    /** Освобождает проигрыватели и подписки. */
+    /** Releases players and listeners. */
     fun release()
 }
 
-/** Восемь полных тем с паузами, сохранением позиции и корректным аудиофокусом. */
+/** Plays eight full tracks with gaps, saved position, and audio-focus handling. */
 class GameMusic(private val context: Context) : MusicPlayback {
     private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val handler = Handler(Looper.getMainLooper())
@@ -52,11 +52,11 @@ class GameMusic(private val context: Context) : MusicPlayback {
     private val focusRequest = if (Build.VERSION.SDK_INT >= 26) AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
         .setAudioAttributes(attributes).setOnAudioFocusChangeListener(listener, handler).build() else null
     private val timer = object : Runnable {
-        /** Проверяет окончание паузы, пока приложение действительно может воспроизводить музыку. */
+        /** Checks for the end of a gap only while playback is allowed. */
         override fun run() { synchronizePlayback() }
     }
     private val noisyReceiver = object : BroadcastReceiver() {
-        /** После отключения наушников звук не переносится на динамик автоматически. */
+        /** Prevents sound from moving to the speaker automatically after headphones disconnect. */
         override fun onReceive(context: Context?, intent: Intent?) {
             blockedByHeadphones = true
             synchronizePlayback()
@@ -68,10 +68,10 @@ class GameMusic(private val context: Context) : MusicPlayback {
             IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
-    /** Возобновляет прежнюю композицию или остаток межтрековой паузы. */
+    /** Resumes the previous track or the remainder of an inter-track gap. */
     override fun setPlaying(enabled: Boolean) = setMode(if (enabled && selection != MusicSelection.Off) MusicMode.GAME else MusicMode.SILENT)
 
-    /** Смена выбора освобождает старую запись и начинает выбранный режим сначала. */
+    /** Releases the old player and starts the newly selected mode from the beginning. */
     override fun select(selection: MusicSelection) {
         if (released || this.selection == selection) return
         this.selection = selection
@@ -83,7 +83,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
         else synchronizePlayback()
     }
 
-    /** Однократный вход в режим фанфар не сбрасывает позицию игрового плейлиста. */
+    /** Entering record-fanfare mode once does not reset the game's playlist position. */
     @Suppress("DEPRECATION")
     override fun setMode(next: MusicMode) {
         if (released || next == mode) return
@@ -110,7 +110,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
         synchronizePlayback()
     }
 
-    /** Согласует таймер, фокус и оба проигрывателя; одновременно звучит максимум один. */
+    /** Coordinates the timer, audio focus, and players so at most one plays at a time. */
     private fun synchronizePlayback() {
         if (released) return
         handler.removeCallbacks(timer)
@@ -146,14 +146,14 @@ class GameMusic(private val context: Context) : MusicPlayback {
         gamePlayer?.start()
     }
 
-    /** Загружает собственную запись с умеренной громкостью без внутреннего зацикливания. */
+    /** Loads a bundled recording at moderate volume without internal looping. */
     private fun createPlayer(resource: Int): MediaPlayer? =
         MediaPlayer.create(context, resource, attributes, 0)?.apply {
             isLooping = false
             setVolume(.4f, .4f)
         }
 
-    /** Останавливает таймер и освобождает оба проигрывателя при завершении сеанса. */
+    /** Stops the timer and releases both players at the end of the session. */
     override fun release() {
         if (released) return
         setMode(MusicMode.SILENT)

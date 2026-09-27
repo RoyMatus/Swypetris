@@ -2,7 +2,7 @@
 
 import kotlin.random.Random
 
-/** Часы межтрековой паузы без Android: учитывают только разрешённое воспроизведение. */
+/** Android-independent clock for track gaps that advances only while playback is allowed. */
 internal class PlaylistClock(private val count: Int, private val random: Random = Random.Default,
     private val clock: () -> Long) {
     private var queue = newRound()
@@ -19,7 +19,7 @@ internal class PlaylistClock(private val count: Int, private val random: Random 
 
     init { require(count > 0) }
 
-    /** Начинает выбранную песню либо новую случайную очередь с нулевой позиции. */
+    /** Starts a selected track or a fresh shuffled queue from the beginning. */
     fun select(track: Int?) {
         require(track == null || track in 0 until count)
         single = track
@@ -31,21 +31,21 @@ internal class PlaylistClock(private val count: Int, private val random: Random 
         lastTime = clock()
     }
 
-    /** Завершение композиции начинает единственную паузу 1,5 секунды. */
+    /** Completing a track starts exactly one 1.5-second gap. */
     fun completed() {
         if (remainingGap != null) return
         remainingGap = 1500L
         lastTime = clock()
     }
 
-    /** Замораживает или продолжает остаток паузы, не расходуя время в фоне. */
+    /** Freezes or resumes the remaining gap without spending time in the background. */
     fun setActive(value: Boolean) {
         advance()
         active = value
         lastTime = clock()
     }
 
-    /** Продвигает часы и возвращает true ровно при переходе к следующей композиции. */
+    /** Advances the clock and returns true exactly when the next track should start. */
     fun advance(): Boolean {
         val now = clock()
         val gap = remainingGap
@@ -68,7 +68,7 @@ internal class PlaylistClock(private val count: Int, private val random: Random 
         return false
     }
 
-    /** Каждый круг открывают «Коробейники»; остальные песни идут без повторов в случайном порядке. */
+    /** Each round begins with Korobeiniki; other tracks play once in random order. */
     private fun newRound(): List<Int> {
         require(count > 0)
         return listOf(0) + (1 until count).shuffled(random)

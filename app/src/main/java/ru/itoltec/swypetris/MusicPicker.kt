@@ -7,7 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
-/** Выбор музыки одновременно служит прослушиванием без отдельной кнопки запуска. */
+/** Music choices also serve as a preview, without a separate play button. */
 @Composable
 internal fun MusicPicker(model: GameViewModel) {
     var expanded by remember { mutableStateOf(false) }

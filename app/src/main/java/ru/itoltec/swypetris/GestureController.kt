@@ -37,6 +37,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
     private var dropArmed = true
     private var dropBottom = 0f
 
+    /** Discards the current touch and re-arms gestures without emitting a command. */
     fun cancel() {
         down = false
         tapEligible = false
@@ -46,6 +47,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         epoch++
     }
 
+    /** Begins a pointer gesture at dp coordinates [x], [y] and uptime [time]. */
     fun down(x: Float, y: Float, time: Long) {
         cancel()
         down = true
@@ -72,6 +74,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         onPieceChanged()
     }
 
+    /** Resets displacement anchors to the current pointer after a piece or gesture transition. */
     private fun rebase() {
         anchorX = x
         anchorY = y
@@ -82,6 +85,11 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         if (dropArmed) dropBottom = y
     }
 
+    /**
+     * Interprets pointer movement as horizontal steps, an upward rotation, or a downward hard drop.
+     * Reversals and piece changes reset anchors so previous motion cannot trigger the next piece.
+     * Holding still never repeats a command.
+     */
     fun move(x: Float, y: Float, time: Long) {
         if (!down) return
         val eventDx = x - this.x
@@ -166,6 +174,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         }
     }
 
+    /** Finishes the gesture and emits one soft drop only for a short, unmoved tap. */
     fun up(x: Float, y: Float, time: Long) {
         if (!down) return
         move(x, y, time)

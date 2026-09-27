@@ -54,6 +54,7 @@ fun HelpScreen(model: GameViewModel) {
     }
 }
 
+/** A reusable help card with explanatory text and optional content such as the fruit gallery. */
 @Composable
 private fun HelpSection(title: String, body: String, content: @Composable () -> Unit = {}) {
     Surface(Modifier.widthIn(max = 640.dp).fillMaxWidth(), shape = RoundedCornerShape(16.dp),
