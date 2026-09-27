@@ -229,7 +229,6 @@ private fun SettingsScreen(model: GameViewModel) {
         Spacer(Modifier.height(24.dp))
         PalettePicker(model)
         Spacer(Modifier.height(24.dp))
-        Button(onClick = model::menu) { Text("Назад") }
     }
 }
 
@@ -394,7 +393,6 @@ private fun DrawScope.block(cell: Cell, color: Color, origin: Offset, step: Size
     val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
     bevelBlock(topLeft, blockSize, color, alpha, outline)
 }
-
 
 
 

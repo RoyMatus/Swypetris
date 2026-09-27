@@ -51,8 +51,9 @@ After changes:
 
 ### Android test devices
 
-- Run instrumentation tests first on an isolated emulator, then on the connected Pixel 7.
-- The user authorizes uninstalling the old Swypetris application, including its local data, from the Pixel 7 for these tests. Do not uninstall unrelated applications.
+- Run instrumentation tests on an isolated emulator first. Use the connected Pixel 7 only when device-specific behavior makes a real-device check necessary.
+- If the Pixel 7 is unavailable, locked, or its display turns off during a required check, tell the user so they can unlock it. Continue independent work while waiting.
+- The user authorizes uninstalling the old Swypetris application, including its local data, from the Pixel 7 for necessary tests. Do not uninstall unrelated applications.
 - Always select the target device explicitly by its adb serial; never run against an unspecified connected device.
 - Leave the tested application installed on the Pixel 7 when verification is complete.
 

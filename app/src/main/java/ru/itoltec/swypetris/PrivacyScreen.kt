@@ -23,6 +23,5 @@ internal fun PrivacyScreen(model: GameViewModel) {
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             paragraphs.forEach { paragraph -> item { Text(paragraph) } }
         }
-        Button(model::contacts, Modifier.testTag("privacyBack")) { Text("Назад к контактам") }
     }
 }

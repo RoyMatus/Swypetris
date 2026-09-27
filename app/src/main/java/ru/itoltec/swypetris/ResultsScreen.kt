@@ -121,10 +121,12 @@ fun RecordScreen(model: GameViewModel) {
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.weight(1f)) { MenuTile("Сохранить", Ice, "saveRecord") {
+                    Box(Modifier.weight(1f)) { AppActionButton("Сохранить", ActionStyle.PRIMARY,
+                        Modifier.fillMaxWidth().testTag("saveRecord")) {
                         focus.clearFocus(); keyboard?.hide(); model.saveRecordName(name)
                     } }
-                    Box(Modifier.weight(1f)) { MenuTile("Пропустить", Lavender, "skipRecord") {
+                    Box(Modifier.weight(1f)) { AppActionButton("Пропустить", ActionStyle.SECONDARY,
+                        Modifier.fillMaxWidth().testTag("skipRecord")) {
                         focus.clearFocus(); keyboard?.hide(); model.saveRecordName("")
                     } }
                 }

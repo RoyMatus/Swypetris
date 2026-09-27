@@ -85,10 +85,8 @@ internal fun VictoryScreen(model: GameViewModel) {
                     Modifier.widthIn(max = 560.dp), color = palette.muted, textAlign = TextAlign.Center)
             }
             item {
-                Column(Modifier.widthIn(max = 440.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(model::nextRound, Modifier.fillMaxWidth().testTag("nextRound")) { Text("Следующий круг") }
-                    OutlinedButton(model::menu, Modifier.fillMaxWidth().testTag("victoryMenu")) { Text("В меню") }
-                }
+                AppActionButton("Следующий круг", ActionStyle.PRIMARY,
+                    Modifier.widthIn(max = 440.dp).fillMaxWidth().testTag("nextRound"), model::nextRound)
             }
         }
         VictoryFireworks { if (animate) model.victoryAnimationMillis else 2400L }

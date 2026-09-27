@@ -62,22 +62,24 @@ fun ContactsScreen(model: GameViewModel) {
                             Text(contact.title, color = accent, style = MaterialTheme.typography.titleLarge)
                             Text(contact.address, style = MaterialTheme.typography.bodyLarge)
                             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = {
+                                AppActionButton("Открыть", ActionStyle.TEXT, Modifier.testTag("open${contact.name}")) {
                                     if (!openContact(context, contact)) scope.launch {
                                         messages.showSnackbar("Нет приложения для открытия. Скопируйте адрес.")
                                     }
-                                }, modifier = Modifier.testTag("open${contact.name}")) { Text("Открыть") }
-                                TextButton(onClick = {
+                                }
+                                AppActionButton("Копировать", ActionStyle.TEXT, Modifier.testTag("copy${contact.name}")) {
                                     clipboard.setText(AnnotatedString(contact.address))
                                     scope.launch { messages.showSnackbar("Адрес скопирован") }
-                                }, modifier = Modifier.testTag("copy${contact.name}")) { Text("Копировать") }
+                                }
                             }
                         }
                     }
                 }
             }
-            item { OutlinedButton(onClick = model::privacy, modifier = Modifier.testTag("privacy")) { Text("Конфиденциальность") } }
-            item { Button(onClick = model::menu, modifier = Modifier.testTag("contactsBack")) { Text("В меню") } }
+            item {
+                AppActionButton("Конфиденциальность", ActionStyle.SECONDARY,
+                    Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("privacy"), model::privacy)
+            }
         }
         SnackbarHost(messages, Modifier.align(Alignment.BottomCenter))
     }

@@ -34,8 +34,10 @@ class PublicationTest {
         compose.onNodeWithTag("privacyPage").performScrollToNode(hasText("Системная", substring=true).or(hasText("Android может", substring=true)))
         Espresso.pressBack()
         compose.onNodeWithTag("contactsPage").assertIsDisplayed()
+        compose.onNodeWithTag("contactsBack").assertDoesNotExist()
         compose.runOnIdle { model.privacy() }
-        compose.onNodeWithTag("privacyBack").performClick()
+        compose.onNodeWithTag("privacyBack").assertDoesNotExist()
+        Espresso.pressBack()
         compose.runOnIdle { assertEquals(game, model.game); assertEquals(GameScreen.CONTACTS,model.screen); assertTrue(model.results.isEmpty()) }
     }
 

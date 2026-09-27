@@ -54,8 +54,8 @@ class GameUiTest {
             assertEquals(GameScreen.HELP, model().screen)
             assertEquals(saved, model().game)
         }
-        compose.onNodeWithTag("helpPage").performScrollToNode(hasTestTag("helpBack"))
-        compose.onNodeWithTag("helpBack").performClick()
+        compose.onNodeWithTag("helpBack").assertDoesNotExist()
+        Espresso.pressBack()
         compose.runOnIdle { assertEquals(GameScreen.MENU, model().screen) }
     }
     /** Настройки доступны из меню; независимые переключатели сохраняются и не возобновляют игру. */
@@ -84,7 +84,8 @@ class GameUiTest {
                     assertEquals(GameScreen.SETTINGS, model().screen)
                 } finally { store.clear() }
             }
-            compose.onNodeWithText("Назад").performScrollTo().performClick()
+            compose.onNodeWithText("Назад").assertDoesNotExist()
+            Espresso.pressBack()
             compose.onNodeWithContentDescription("SWYPETRIS").assertIsDisplayed()
             compose.onNodeWithTag("sound").assertDoesNotExist()
         } finally {
