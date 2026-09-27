@@ -12,7 +12,8 @@ data class GestureConfig(
     val tapSlop: Float = 8f,
     val tapMillis: Long = 250,
     val directionRatio: Float = 1.5f,
-    val dropRatio: Float = 2f
+    val dropRatio: Float = 2f,
+    val rotationRearmDistance: Float = 12f
 )
 
 /** One pointer can control several pieces. Only displacement, never holding time, acts. */
@@ -29,11 +30,16 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
     private var tapEligible = false
     private var horizontalDirection = 0
     private var epoch = 0
+    private var rotationArmed = true
+    private var rotationX = 0f
+    private var rotationY = 0f
+    private var rotationTop = 0f
 
     fun cancel() {
         down = false
         tapEligible = false
         horizontalDirection = 0
+        rotationArmed = true
         epoch++
     }
 
@@ -67,6 +73,9 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         anchorX = x
         anchorY = y
         horizontalDirection = 0
+        rotationX = x
+        rotationY = y
+        rotationTop = y
     }
 
     fun move(x: Float, y: Float, time: Long) {
@@ -83,13 +92,35 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         this.y = y
         if (hypot(x - touchX, y - touchY) > config.tapSlop || time - downTime > config.tapMillis) tapEligible = false
         if (!enabled) { rebase(); return }
+        if (!rotationArmed) {
+            if (y < rotationTop) {
+                rotationTop = y
+                // Suppressed upward motion must not accumulate a debt for a subsequent drop.
+                if (-eventDy >= abs(eventDx) * config.directionRatio) {
+                    anchorX = x
+                    anchorY = y
+                    horizontalDirection = 0
+                }
+            }
+            if (y - rotationTop >= maxOf(config.rotationRearmDistance, config.tapSlop)) {
+                rotationArmed = true
+                rotationX = x
+                rotationY = y
+            }
+        } else if (y > rotationY) {
+            // The next upward stroke starts at the bottom of the reversal.
+            rotationX = x
+            rotationY = y
+        }
         val dx = x - anchorX
         val dy = y - anchorY
+        val rotationDy = rotationY - y
         val horizontalThreshold = if (horizontalDirection == 0)
             maxOf(config.horizontalStartDistance, config.tapSlop) else config.horizontalStepDistance
         val action = when {
             dy >= maxOf(config.dropDistance, config.tapSlop * 4) && dy >= abs(dx) * config.dropRatio -> GameCommand.HARD_DROP
-            -dy >= maxOf(config.rotationDistance, config.tapSlop * 2) && -dy >= abs(dx) * config.directionRatio -> GameCommand.CLOCKWISE
+            rotationArmed && rotationDy >= maxOf(config.rotationDistance, config.tapSlop * 2) &&
+                rotationDy >= abs(x - rotationX) * config.directionRatio -> GameCommand.CLOCKWISE
             abs(dx) >= horizontalThreshold && abs(dx) >= abs(dy) * config.directionRatio ->
                 if (dx < 0) GameCommand.LEFT else GameCommand.RIGHT
             else -> return
@@ -104,7 +135,10 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
             anchorX += sign * (horizontalThreshold + (steps - 1) * config.horizontalStepDistance)
             anchorY = y // Horizontal drift cannot accumulate into a destructive gesture.
             horizontalDirection = sign
+            rotationX = x
+            rotationY = y
         } else rebase()
+        if (action == GameCommand.CLOCKWISE) rotationArmed = false
         val before = epoch
         repeat(steps) {
             emit(action)

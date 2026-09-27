@@ -23,8 +23,19 @@ internal data class GameSession(
  * A terminal snapshot journals the result; its stable ID makes recovery idempotent.
  */
 internal class SessionStore(private val preferences: SharedPreferences) {
+    private var lastWritten: GameSession? = null
+    private var cachedBoard: List<List<Tetromino?>>? = null
+    private var encodedBoard = ""
+
     fun write(session: GameSession) {
-        preferences.edit().putString(KEY, encode(session)).apply()
+        if (session == lastWritten) return
+        // GameState owns immutable boards; movement keeps the same board instance.
+        if (cachedBoard !== session.state.board) {
+            encodedBoard = encodeBoard(session.state.board)
+            cachedBoard = session.state.board
+        }
+        preferences.edit().putString(KEY, encode(session, encodedBoard)).apply()
+        lastWritten = session
     }
 
     fun read(): GameSession? {
@@ -41,12 +52,16 @@ internal class SessionStore(private val preferences: SharedPreferences) {
 
     companion object {
         private const val KEY = "session_v1"
-        internal fun encode(session: GameSession): String {
+        private fun encodeBoard(board: List<List<Tetromino?>>): String = JSONArray().apply {
+            board.forEach { row -> put(JSONArray(row.map { it?.name ?: "" })) }
+        }.toString()
+
+        internal fun encode(session: GameSession): String = encode(session, encodeBoard(session.state.board))
+
+        private fun encode(session: GameSession, board: String): String {
             val s = session.state
-            val board = JSONArray()
-            s.board.forEach { row -> board.put(JSONArray(row.map { it?.name ?: "" })) }
             return JSONObject().put("version", 1).put("id", session.id)
-                .put("board", board).put("active", JSONObject().put("type", s.active.type.name)
+                .put("active", JSONObject().put("type", s.active.type.name)
                     .put("x", s.active.x).put("y", s.active.y).put("rotation", s.active.rotation))
                 .put("next", s.next.name).put("bag", JSONArray(session.bag.map { it.name }))
                 .put("score", s.score).put("lines", s.lines).put("generation", s.generation)
@@ -56,6 +71,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 .put("difficulty", s.difficulty.id).put("playedMillis", session.playedMillis)
                 .put("clearMillis", session.clearMillis).put("gravityRemaining", session.gravityRemaining)
                 .put("recordAtStart", session.recordAtStart).put("finishedAt", session.finishedAt).toString()
+                .dropLast(1) + ",\"board\":" + board + "}"
         }
 
         internal fun decode(json: String): GameSession {

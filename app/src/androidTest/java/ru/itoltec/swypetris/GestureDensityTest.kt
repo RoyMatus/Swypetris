@@ -62,6 +62,18 @@ class GestureDensityTest {
             compose.runOnIdle { assertEquals(1, model.game!!.active.y); assertEquals(0, model.game!!.active.rotation) }
             compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center - Offset(0f, rotateDistance * scale), 100) }
             compose.runOnIdle { assertEquals(1, model.game!!.active.rotation) }
+            compose.onNodeWithTag("gameArea").performTouchInput {
+                down(center)
+                moveBy(Offset(0f, -rotateDistance * scale))
+                moveBy(Offset(0f, -rotateDistance * scale))
+            }
+            compose.runOnIdle { assertEquals(2, model.game!!.active.rotation) }
+            compose.onNodeWithTag("gameArea").performTouchInput {
+                moveBy(Offset(0f, (maxOf(12f, slop) + 2) * scale))
+                moveBy(Offset(0f, -rotateDistance * scale))
+                up()
+            }
+            compose.runOnIdle { assertEquals(3, model.game!!.active.rotation) }
             compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center + Offset(48 * scale, 48 * scale), 100) }
             compose.runOnIdle { assertEquals(0, model.game!!.generation) }
             compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center + Offset(0f, dropDistance * scale), 100) }
