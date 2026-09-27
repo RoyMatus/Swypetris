@@ -11,7 +11,9 @@ internal data class HapticPulse(val duration: Long, val amplitude: Int, val fall
 
     companion object {
         val Drop = HapticPulse(70L, 128, 35L)
-        val Clear = HapticPulse(LineClearAnimation.TOTAL_MILLIS, 255)
+        val Clear = clear(LineClearAnimation.TOTAL_MILLIS)
         val Preview = HapticPulse(100L, 220)
+
+        fun clear(remainingMillis: Long) = HapticPulse(remainingMillis, 127, (remainingMillis + 1) / 2)
     }
 }
