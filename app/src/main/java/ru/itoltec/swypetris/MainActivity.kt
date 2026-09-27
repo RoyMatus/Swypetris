@@ -194,7 +194,7 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
         Column(Modifier.widthIn(max = 480.dp).fillMaxWidth().testTag("mainMenu"),
             verticalArrangement = Arrangement.spacedBy(gap)) {
             Box(Modifier.fillMaxWidth().height(logoHeight), contentAlignment = Alignment.Center) {
-                GameTitle(Modifier.onGloballyPositioned {
+                GameTitle(Modifier.offset(y = (-16).dp).onGloballyPositioned {
                     logoBounds = Rect(it.positionInRoot() - menuOrigin, Size(it.size.width.toFloat(), it.size.height.toFloat()))
                 }.graphicsLayer { alpha = if (model.launchLogoAssembled) 1f else 0f }
                     .then(if (intro) Modifier.clearAndSetSemantics {} else Modifier))
