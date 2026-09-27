@@ -9,7 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 
 /** A paused game is owned by the model while the ordinary menu is displayed. */
-enum class GameScreen { MENU, SETTINGS, HELP, CONTACTS, PRIVACY, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY }
+enum class GameScreen { MENU, SETTINGS, HELP, CONTACTS, PRIVACY, LEGAL, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY }
 
 /**
  * Владелец партии: соединяет движок, жесты, анимацию и рекорд; переживает пересоздание Activity.
@@ -265,6 +265,12 @@ class GameViewModel internal constructor(
         screen = GameScreen.PRIVACY
     }
 
+    /** Открывает сведения о правах, сохраняя текущую партию на паузе. */
+    fun legal() {
+        menu()
+        screen = GameScreen.LEGAL
+    }
+
     /** Начинает новую партию, сбрасывая поле, очки и незавершённые жесты. */
     fun newGame() {
         if (!activeForeground) return
@@ -491,7 +497,7 @@ class GameViewModel internal constructor(
     /** Пропускает заставку; с рекорда открывает итоги без имени, с остальных страниц — меню. */
     fun back() {
         if (launchIntroPending) { finishLaunchIntro(); return }
-        if (screen == GameScreen.PRIVACY) { contacts(); return }
+        if (screen == GameScreen.PRIVACY || screen == GameScreen.LEGAL) { contacts(); return }
         if (screen == GameScreen.RECORD) saveRecordName("") else menu()
     }
 
