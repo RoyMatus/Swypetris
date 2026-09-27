@@ -145,11 +145,11 @@ fun RecordScreen(model: GameViewModel) {
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.weight(1f)) { AppActionButton("Сохранить", ActionStyle.PRIMARY,
-                        Modifier.fillMaxWidth().testTag("saveRecord")) {
+                        Modifier.fillMaxWidth().testTag("saveRecord"), LocalGamePalette.current.piece(Tetromino.S)) {
                         focus.clearFocus(); keyboard?.hide(); model.saveRecordName(name)
                     } }
                     Box(Modifier.weight(1f)) { AppActionButton("Пропустить", ActionStyle.SECONDARY,
-                        Modifier.fillMaxWidth().testTag("skipRecord")) {
+                        Modifier.fillMaxWidth().testTag("skipRecord"), LocalGamePalette.current.piece(Tetromino.Z)) {
                         focus.clearFocus(); keyboard?.hide(); model.saveRecordName("")
                     } }
                 }

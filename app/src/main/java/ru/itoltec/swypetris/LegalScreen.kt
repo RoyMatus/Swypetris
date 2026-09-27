@@ -55,7 +55,8 @@ internal fun LegalScreen() {
                         Text(notice.title, style = MaterialTheme.typography.titleMedium)
                         Text(notice.credit, style = MaterialTheme.typography.bodyMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AppActionButton("Источник", ActionStyle.TEXT) {
+                            AppActionButton("Источник", ActionStyle.TEXT,
+                                accent = LocalGamePalette.current.piece(Tetromino.J)) {
                                 try {
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(notice.source)))
                                 } catch (_: ActivityNotFoundException) {
@@ -65,7 +66,8 @@ internal fun LegalScreen() {
                                 }
                             }
                             notice.licenseAsset?.let { asset ->
-                                AppActionButton("Лицензия", ActionStyle.TEXT, Modifier.testTag("license-$asset")) {
+                                AppActionButton("Лицензия", ActionStyle.TEXT, Modifier.testTag("license-$asset"),
+                                    LocalGamePalette.current.piece(Tetromino.T)) {
                                     licenseText = notice.title to context.assets.open("licenses/$asset")
                                         .bufferedReader().use { it.readText() }
                                 }
@@ -79,9 +81,9 @@ internal fun LegalScreen() {
     licenseText?.let { (title, body) ->
         AlertDialog(onDismissRequest = { licenseText = null }, title = { Text(title) },
             text = { LazyColumn { item { Text(body) } } },
-            confirmButton = { TextButton(onClick = { licenseText = null }) { Text("Закрыть") } })
+            confirmButton = { AppActionButton("Закрыть", ActionStyle.TEXT) { licenseText = null } })
     }
     if (linkUnavailable) AlertDialog(onDismissRequest = { linkUnavailable = false },
         text = { Text("Нет приложения для открытия ссылки.") },
-        confirmButton = { TextButton(onClick = { linkUnavailable = false }) { Text("Закрыть") } })
+        confirmButton = { AppActionButton("Закрыть", ActionStyle.TEXT) { linkUnavailable = false } })
 }

@@ -86,7 +86,8 @@ internal fun VictoryScreen(model: GameViewModel) {
             }
             item {
                 AppActionButton("Следующий круг", ActionStyle.PRIMARY,
-                    Modifier.widthIn(max = 440.dp).fillMaxWidth().testTag("nextRound"), model::nextRound)
+                    Modifier.widthIn(max = 440.dp).fillMaxWidth().testTag("nextRound"),
+                    palette.piece(Tetromino.S), model::nextRound)
             }
         }
         VictoryFireworks { if (animate) model.victoryAnimationMillis else 2400L }

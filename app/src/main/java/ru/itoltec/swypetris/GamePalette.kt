@@ -86,7 +86,10 @@ internal fun PalettePicker(model: GameViewModel) {
     val palette = LocalGamePalette.current
     Text("Расцветка", style = MaterialTheme.typography.titleLarge)
     Box {
-        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().testTag("palettePicker")) {
+        val accent = palette.piece(Tetromino.T)
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().testTag("palettePicker"),
+            colors = paletteButtonColors(accent, ActionStyle.SECONDARY),
+            border = paletteButtonBorder(accent, ActionStyle.SECONDARY)) {
             Text(palette.title, Modifier.weight(1f))
             Text("▾")
         }

@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -176,14 +175,15 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
     var menuOrigin by remember { mutableStateOf(Offset.Zero) }
     var logoBounds by remember { mutableStateOf(Rect.Zero) }
     val intro = model.launchIntroPending
+    val palette = LocalGamePalette.current
     val actions = buildList {
-        add(MenuAction("Новая игра", LocalGamePalette.current.accent, "newGame", model::newGame))
-        if (model.game?.gameOver == false) add(MenuAction("Продолжить", LocalGamePalette.current.accent, "resumeGame", model::resume))
-        add(MenuAction("Настройки", LocalGamePalette.current.secondary, "settings", model::settings))
-        add(MenuAction("Как играть", LocalGamePalette.current.accent, "help", model::help))
-        add(MenuAction("Результаты", LocalGamePalette.current.gold, "results", model::showResults))
-        add(MenuAction("Контакты", LocalGamePalette.current.accent, "contacts", model::contacts))
-        add(MenuAction("Выход", LocalGamePalette.current.secondary, "exitGame", onExit))
+        add(MenuAction("Новая игра", palette.piece(Tetromino.I), "newGame", model::newGame))
+        if (model.game?.gameOver == false) add(MenuAction("Продолжить", palette.piece(Tetromino.S), "resumeGame", model::resume))
+        add(MenuAction("Настройки", palette.piece(Tetromino.T), "settings", model::settings))
+        add(MenuAction("Как играть", palette.piece(Tetromino.J), "help", model::help))
+        add(MenuAction("Результаты", palette.piece(Tetromino.O), "results", model::showResults))
+        add(MenuAction("Контакты", palette.piece(Tetromino.L), "contacts", model::contacts))
+        add(MenuAction("Выход", palette.piece(Tetromino.Z), "exitGame", onExit))
     }
     Box(Modifier.fillMaxSize().onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp), contentAlignment = Alignment.Center) {
@@ -258,14 +258,13 @@ private fun SettingToggle(label: String, tag: String, checked: Boolean, onChange
 /** Невысокая прямоугольная кнопка с подписью, адаптированной к увеличенному шрифту. */
 @Composable
 internal fun MenuTile(label: String, accent: Color, tag: String, enabled: Boolean = true, onClick: () -> Unit) {
-    Button(
+    OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier.fillMaxWidth().height(64.dp).testTag(tag),
         shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = accent.copy(alpha = 0.13f), contentColor = accent,
-            disabledContainerColor = accent.copy(alpha = 0.13f), disabledContentColor = accent),
-        border = BorderStroke(2.dp, accent.copy(alpha = 0.75f)),
+        colors = paletteButtonColors(accent, ActionStyle.SECONDARY),
+        border = paletteButtonBorder(accent, ActionStyle.SECONDARY),
         contentPadding = PaddingValues(8.dp)
     ) {
         BoxWithConstraints(contentAlignment = Alignment.Center) {
