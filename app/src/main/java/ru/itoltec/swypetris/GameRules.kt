@@ -1,7 +1,5 @@
 ﻿package ru.itoltec.swypetris
 
-import kotlin.math.pow
-
 /** Общие правила версии 4 для движка, панели и справки; пороги считаются без переполнения Int. */
 object GameRules {
     const val VERSION = 4
@@ -35,10 +33,10 @@ object GameRules {
         return ((score.coerceAtLeast(0).toLong() - start).toDouble() / (nextThreshold(score) - start)).toFloat()
     }
 
-    /** Проверяет последние 20% интервала целочисленно, без ошибки округления. */
+    /** Проверяет последние 10% интервала целочисленно, без ошибки округления. */
     fun nearingLevel(score: Int): Boolean {
         val start = threshold(level(score))
-        return (score.toLong() - start) * 5 >= (nextThreshold(score) - start) * 4
+        return (score.toLong() - start) * 10 >= (nextThreshold(score) - start) * 9
     }
 
     /** Форматирует очки или отрицательный остаток до уровня. */
@@ -50,6 +48,5 @@ object GameRules {
     /** Награда за одновременное удаление строк без множителя уровня. */
     fun lineScore(count: Int): Int = listOf(0, 100, 300, 700, 1500)[count]
 
-    /** Интервал обычного падения с нижним пределом 100 мс. */
-    fun gravityMillis(level: Int): Long = (800 * 0.85.pow(level - 1)).toLong().coerceAtLeast(100)
+    fun gravityMillis(level: Int, difficulty: Difficulty = Difficulty.MEDIUM): Long = difficulty.gravityMillis(level)
 }

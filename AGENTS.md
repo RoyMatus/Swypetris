@@ -49,6 +49,13 @@ After changes:
 3. Fix regressions caused by the change.
 4. Never claim a check was run if it was not.
 
+### Android test devices
+
+- Run instrumentation tests first on an isolated emulator, then on the connected Pixel 7.
+- The user authorizes uninstalling the old Swypetris application, including its local data, from the Pixel 7 for these tests. Do not uninstall unrelated applications.
+- Always select the target device explicitly by its adb serial; never run against an unspecified connected device.
+- Leave the tested application installed on the Pixel 7 when verification is complete.
+
 ## Final response
 
 Briefly report:

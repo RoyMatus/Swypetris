@@ -55,7 +55,7 @@ class PublicationTest {
         compose.onNodeWithTag("board").assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "02-game-classic.png")
         compose.runOnIdle { model.settings() }
-        compose.onNodeWithTag("musicPicker").assertIsDisplayed()
+        compose.onNodeWithTag("musicPicker").performScrollTo().assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "03-settings.png")
         compose.runOnIdle { model.setPalette("github_light"); model.resume() }
         compose.onNodeWithTag("board").assertIsDisplayed()

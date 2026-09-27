@@ -39,14 +39,15 @@ private val Muted: Color @Composable get() = LocalGamePalette.current.muted
 /** Итоги и история в стиле меню: карточки укладываются в ширину, прокрутка только вертикальная. */
 @Composable
 fun ResultsScreen(model: GameViewModel) {
-    val latest = model.results.firstOrNull { it.id == model.currentResultId }
+    val latest = model.latestResult
+    val records = model.recordResults
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize().testTag("resultsPage"),
             contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
             item { GameTitle() }
             item {
-                Text(if (model.screen == GameScreen.GAME_OVER) "Игра окончена" else "Ваши результаты",
+                Text(if (model.screen == GameScreen.GAME_OVER) "Игра окончена" else "Ваши рекорды",
                     style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center)
             }
@@ -70,16 +71,16 @@ fun ResultsScreen(model: GameViewModel) {
             }
             item {
                 Column(Modifier.fillMaxWidth()) {
-                    Text("История партий", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("Лучший результат: ${model.record}", color = Ice)
+                    Text("История рекордов", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Difficulty.entries.forEach { mode -> Text("${mode.title}: ${model.recordFor(mode)}", color = Ice) }
                     if (model.legacyRecord > 0) Text("Прежние правила: ${model.legacyRecord}", color = Muted,
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
-            if (model.results.isEmpty()) item {
-                AccentPanel(Lavender) { Text("Сыграйте первую партию — её результат появится здесь.", color = Muted) }
+            if (records.isEmpty()) item {
+                AccentPanel(Lavender) { Text("Здесь появятся ваши новые рекорды.", color = Muted) }
             }
-            items(model.results, key = { it.id }) { result -> ResultCard(result) }
+            items(records, key = { it.id }) { result -> ResultCard(result) }
         }
     }
 }
@@ -167,7 +168,7 @@ private fun ResultCard(result: GameResult) {
             Text("Уровень: ${result.level}", color = Muted)
             Text(formatDuration(result.durationMillis), color = Muted)
         }
-        Text(if (result.rulesVersion < GameRules.VERSION) "Прежние правила" else "Правила ${result.rulesVersion}", color = Muted)
+        Text(result.difficulty?.let { "${it.title} · Правила ${result.rulesVersion}" } ?: "Прежние правила", color = Muted)
         Box(Modifier.fillMaxWidth()) { FruitCollection(result) }
     }
 }

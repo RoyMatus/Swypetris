@@ -89,8 +89,8 @@ class MusicSettingsFruitTest {
         }
     }
 
-    /** Только заработанные награды расположены сверху вниз, исчезая при новом круге. */
-    @Test fun earnedFruitsHaveNoPlaceholdersAndUseRightEdge() {
+    /** Earned fruits wrap in rows, to the right of the spawn/preview area. */
+    @Test fun earnedFruitsHaveNoPlaceholdersAndAvoidPreview() {
         var count by mutableIntStateOf(0)
         compose.setContent {
             Box(Modifier.size(320.dp,480.dp)) {
@@ -101,23 +101,21 @@ class MusicSettingsFruitTest {
         for (n in listOf(0,1,7,8,0)) {
             compose.runOnIdle { count=n }
             if (n==0) compose.onNodeWithTag("earnedFruits").assertDoesNotExist()
-            var previousBottom=-1f
-            var right=-1f
+            val root=compose.onRoot().fetchSemanticsNode().boundsInRoot
+            var previous: androidx.compose.ui.geometry.Rect? = null
             Fruit.entries.forEachIndexed { index,fruit ->
                 val node=compose.onNodeWithTag("earnedFruit_${fruit.name}")
                 if (index<n) {
                     node.assertIsDisplayed()
                     val bounds=node.fetchSemanticsNode().boundsInRoot
-                    assertTrue(bounds.top>previousBottom)
-                    if (right>=0) assertEquals(right,bounds.right,.5f)
-                    right=bounds.right; previousBottom=bounds.bottom
+                    assertTrue(bounds.left > root.left + root.width * .7f)
+                    assertTrue(bounds.right <= root.right)
+                    previous?.let { assertTrue(bounds.top >= it.bottom || bounds.left >= it.right) }
+                    previous = bounds
                 } else node.assertDoesNotExist()
             }
             if (n>0) {
-                val root=compose.onRoot().fetchSemanticsNode().boundsInRoot
-                val density=ApplicationProvider.getApplicationContext<Application>().resources.displayMetrics.density
-                assertEquals(2*density,root.right-right,1f)
-                screenshot("fruits-column-$n.png")
+                screenshot("fruits-row-$n.png")
             }
         }
     }

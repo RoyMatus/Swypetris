@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import android.view.ViewConfiguration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -64,25 +63,44 @@ internal val ScorePulseScale = androidx.compose.ui.semantics.SemanticsPropertyKe
 class MainActivity : ComponentActivity() {
     private val gameModel: GameViewModel by viewModels()
 
-    /** Создаёт полноэкранное поле и скрывает системные панели только на игровом экране. */
+    /** Draw backgrounds edge-to-edge, keeping system bars visible on every screen. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SwypetrisTheme(darkTheme = true, dynamicColor = false) {
-                val immersive = gameModel.screen in listOf(GameScreen.PLAYING, GameScreen.PAUSED)
-                DisposableEffect(immersive, gameModel.paletteId) {
+                DisposableEffect(gameModel.paletteId) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
                     controller.isAppearanceLightStatusBars = GamePalettes.find(gameModel.paletteId).light
                     controller.isAppearanceLightNavigationBars = GamePalettes.find(gameModel.paletteId).light
-                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                    if (immersive) controller.hide(WindowInsetsCompat.Type.systemBars())
-                    else controller.show(WindowInsetsCompat.Type.systemBars())
+                    controller.show(WindowInsetsCompat.Type.systemBars())
                     onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
                 }
-                SwypetrisApp(gameModel, onExit = ::finishAndRemoveTask)
+                SwypetrisApp(gameModel, onExit = { gameModel.pause(); finishAndRemoveTask() })
             }
         }
+    }
+
+    override fun onPause() {
+        gameModel.onBackground()
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        gameModel.onForeground()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        gameModel.onWindowFocusChanged(hasFocus)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // Reusing the task must never start or resume a game implicitly.
+        gameModel.pause()
     }
 }
 
@@ -95,8 +113,7 @@ fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
     DisposableEffect(model, density, owner) {
         val configuration = ViewConfiguration.get(context)
         model.configureGestures(GestureConfig(
-            tapSlop = configuration.scaledTouchSlop / density,
-            longPressMillis = ViewConfiguration.getLongPressTimeout().toLong()
+            tapSlop = configuration.scaledTouchSlop / density
         ))
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) model.onBackground()
@@ -194,6 +211,16 @@ private fun SettingsScreen(model: GameViewModel) {
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp)) {
         Text("Настройки", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
+        Text("Сложность", style = MaterialTheme.typography.titleLarge)
+        Difficulty.entries.forEach { difficulty ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = model.difficulty == difficulty,
+                    onClick = { model.chooseDifficulty(difficulty) }, modifier = Modifier.testTag("difficulty_${difficulty.id}"))
+                Text(difficulty.title)
+            }
+        }
+        Text("Применяется к новой партии", color = LocalGamePalette.current.muted)
+        Spacer(Modifier.height(16.dp))
         SettingToggle("Подсказки", "hints", model.hintsEnabled, model::setHints)
         Text("Тень падения и следующая фигура", color = LocalGamePalette.current.muted)
         SettingToggle("Звук", "sound", model.soundEnabled, model::setSound)
@@ -240,6 +267,7 @@ internal fun MenuTile(label: String, accent: Color, tag: String, enabled: Boolea
 private fun GameContent(model: GameViewModel, state: GameState) {
     val density = LocalDensity.current.density
     val playing = model.screen == GameScreen.PLAYING
+    Box(Modifier.fillMaxSize().safeDrawingPadding()) {
     Box(Modifier.fillMaxSize().onSizeChanged { model.setBoardWidth(it.width / density) }.testTag("gameArea").pointerInput(model, playing, density) {
         if (!playing) return@pointerInput
         try {
@@ -268,17 +296,15 @@ private fun GameContent(model: GameViewModel, state: GameState) {
         }
     }) {
         Board(state, model.clearElapsedMillis, if (model.hintsEnabled && state.clearingRows.isEmpty()) model.engine.ghost(state) else null, showNext = model.hintsEnabled)
-        GameHud(state)
-        when (model.screen) {
-            GameScreen.PAUSED -> GameDialog("Пауза", "Партия ждёт продолжения", model, true)
-            else -> Unit
-        }
+        GameHud(state, showNext = model.hintsEnabled)
+    }
     }
 }
 
 /** Компактная панель уровня и очков; импульсы не перезапускаются при частом спуске. */
 @Composable
-internal fun GameHud(state: GameState) {
+internal fun GameHud(state: GameState, showNext: Boolean = true) {
+    var scoreSize by remember { mutableStateOf(Size.Zero) }
     val displayed = GameRules.displayScore(state.score)
     val currentDisplayed by rememberUpdatedState(displayed)
     val nearing by rememberUpdatedState(GameRules.nearingLevel(state.score))
@@ -300,7 +326,7 @@ internal fun GameHud(state: GameState) {
             }
         }
     }
-    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 3.dp),
@@ -310,40 +336,29 @@ internal fun GameHud(state: GameState) {
                 append(" | $displayed")
             }, color = color, maxLines = 1,
                 style = TextStyle(fontSize = textSize, platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                modifier = Modifier.weight(1f).graphicsLayer {
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                modifier = Modifier.onSizeChanged { scoreSize = Size(it.width.toFloat(), it.height.toFloat()) }.graphicsLayer {
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
                     scaleX = scale.value; scaleY = scale.value
                 }
                     .semantics { this[ScorePulseScale] = scale.value }
                     .testTag("score"))
         }
         if (state.roundFruits > 0) {
-            Column(Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 2.dp).testTag("earnedFruits"),
-                verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Fruit.entries.take(state.roundFruits).forEach { fruit ->
-                    FruitIcon(fruit, Modifier.size(20.dp).testTag("earnedFruit_${fruit.name}"))
+            val layout = fruitPlacement(maxWidth.value, maxHeight.value, state.roundFruits, state.next, showNext,
+                with(density) { scoreSize.width.toDp().value }, with(density) { scoreSize.height.toDp().value })
+            Column(Modifier.offset(layout.left.dp, layout.top.dp).testTag("earnedFruits"),
+                verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
+                Fruit.entries.take(state.roundFruits).chunked(layout.columns).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
+                        row.forEach { fruit ->
+                            FruitIcon(fruit, Modifier.size(FRUIT_SIZE.dp).testTag("earnedFruit_${fruit.name}"))
+                        }
+                    }
                 }
             }
         }
     }
 }
-/** Модальное меню блокирует поле и предлагает продолжить, начать заново или выйти. */
-@Composable
-private fun GameDialog(title: String, message: String, model: GameViewModel, canResume: Boolean) {
-    AlertDialog(
-        onDismissRequest = model::menu,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            Column(horizontalAlignment = Alignment.End) {
-                if (canResume) TextButton(onClick = model::resume) { Text("Продолжить") }
-                TextButton(onClick = model::newGame) { Text("Новая игра") }
-                TextButton(onClick = model::menu) { Text("Главное меню") }
-            }
-        }
-    )
-}
-
 /** Рисует поле, постоянное бледное превью и необязательную тень падения; удалённые клетки пропускает. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null, showNext: Boolean = true) {

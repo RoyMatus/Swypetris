@@ -55,7 +55,7 @@ class HelpHudTest {
 
     /** Частые изменения не продлевают импульс, а переход уровня сразу меняет итоговую надпись. */
     @Test fun hudBoundariesAndSinglePulse() {
-        var score by mutableIntStateOf(799)
+        var score by mutableIntStateOf(899)
         compose.mainClock.autoAdvance = false
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
@@ -67,10 +67,10 @@ class HelpHudTest {
             }
         }
         compose.mainClock.advanceTimeBy(32)
-        compose.onNodeWithTag("score").assertTextEquals("1 | 799")
-        compose.runOnIdle { score = 800 }
+        compose.onNodeWithTag("score").assertTextEquals("1 | 899")
+        compose.runOnIdle { score = 900 }
         compose.mainClock.advanceTimeBy(64)
-        compose.onNodeWithTag("score").assertTextEquals("1 | −200")
+        compose.onNodeWithTag("score").assertTextEquals("1 | −100")
         val scale = compose.onNodeWithTag("score").fetchSemanticsNode().config[ScorePulseScale]
         assertTrue(scale > 1f && scale <= 1.08f)
         repeat(3) {
@@ -80,7 +80,7 @@ class HelpHudTest {
         compose.mainClock.advanceTimeBy(80)
         assertEquals(1f, compose.onNodeWithTag("score").fetchSemanticsNode().config[ScorePulseScale], 0.001f)
         for ((value, text) in listOf(999 to "1 | −1", 1000 to "2 | 1000", 1999 to "2 | 1999",
-            2000 to "2 | −250", 2249 to "2 | −1", 2250 to "3 | 2250", 18000 to "10 | 18000")) {
+            2000 to "2 | 2000", 2124 to "2 | 2124", 2125 to "2 | −125", 2249 to "2 | −1", 2250 to "3 | 2250", 18000 to "10 | 18000")) {
             compose.runOnIdle { score = value }
             compose.mainClock.advanceTimeBy(272)
             compose.onNodeWithTag("score").assertTextEquals(text)

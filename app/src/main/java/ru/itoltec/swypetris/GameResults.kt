@@ -27,7 +27,8 @@ data class GameResult(
     val level: Int,
     val durationMillis: Long,
     val rulesVersion: Int = GameRules.VERSION,
-    val completedRounds: Int = 0
+    val completedRounds: Int = 0,
+    val difficulty: Difficulty? = null
 )
 
 /** Локальная история без ограничения числа партий; идентификатор защищает от повторной записи. */
@@ -38,7 +39,8 @@ class ResultStore(private val preferences: SharedPreferences) {
         (0 until array.length()).mapNotNull { index -> runCatching {
             val row = array.getJSONObject(index)
             GameResult(row.getString("id"), row.getLong("date"), row.getString("name"),
-                row.getInt("score"), row.getInt("lines"), row.getInt("level"), row.getLong("duration"), row.optInt("rulesVersion", 2), row.optInt("completedRounds", 0))
+                row.getInt("score"), row.getInt("lines"), row.getInt("level"), row.getLong("duration"), row.optInt("rulesVersion", 2), row.optInt("completedRounds", 0),
+                Difficulty.find(row.optString("difficulty")))
         }.getOrNull() }
     }.getOrDefault(emptyList())
 
@@ -49,9 +51,23 @@ class ResultStore(private val preferences: SharedPreferences) {
             array.put(JSONObject().put("id", result.id).put("date", result.dateMillis)
                 .put("name", result.name).put("score", result.score).put("lines", result.lines)
                 .put("level", result.level).put("duration", result.durationMillis).put("rulesVersion", result.rulesVersion)
-                .put("completedRounds", result.completedRounds))
+                .put("completedRounds", result.completedRounds).put("difficulty", result.difficulty?.id))
         }
         preferences.edit().putString("results_v2", array.toString()).apply()
     }
+}
+
+/** Old storage stays intact; only chronological personal bests are displayed. */
+fun recordHistory(results: List<GameResult>): List<GameResult> {
+    val best = mutableMapOf<Pair<Int, Difficulty?>, Int>()
+    val ids = mutableSetOf<String>()
+    results.asReversed().sortedBy { it.dateMillis }.forEach { result ->
+        val key = result.rulesVersion to result.difficulty
+        if (result.score > (best[key] ?: 0)) {
+            best[key] = result.score
+            ids += result.id
+        }
+    }
+    return results.filter { it.id in ids }.distinctBy { it.id }
 }
 

@@ -95,22 +95,33 @@ class LaunchIntroTest {
         advanceTo(model, 1450)
         screenshot("intro-1450-light.png")
         advanceTo(model, 2650)
-        val assembled = screenshot("intro-2650-light.png")
+        screenshot("intro-2650-light.png")
+        val assembled = compose.onNodeWithTag("gameLogo").captureToImage().asAndroidBitmap()
+        val assembledBounds = compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot
+        save(assembled, "intro-logo-assembled.png")
         compose.runOnIdle { model.finishLaunchIntro() }
         compose.mainClock.advanceTimeByFrame()
-        val menu = screenshot("intro-menu-light.png")
-        val bounds = compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot
+        screenshot("intro-menu-light.png")
+        val menu = compose.onNodeWithTag("gameLogo").captureToImage().asAndroidBitmap()
+        assertEquals(assembledBounds, compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot)
+        save(menu, "intro-logo-menu.png")
+        assertEquals(assembled.width, menu.width)
+        assertEquals(assembled.height, menu.height)
         var changed = 0
         var pixels = 0
-        for (y in bounds.top.toInt() until bounds.bottom.toInt()) {
-            for (x in bounds.left.toInt() until bounds.right.toInt()) {
+        for (y in 0 until menu.height) {
+            for (x in 0 until menu.width) {
                 val a = assembled.getPixel(x, y)
                 val b = menu.getPixel(x, y)
                 // PixelCopy и аппаратные слои могут округлять цвет по-разному, сохраняя геометрию.
                 val difference = maxOf(kotlin.math.abs(android.graphics.Color.red(a) - android.graphics.Color.red(b)),
                     kotlin.math.abs(android.graphics.Color.green(a) - android.graphics.Color.green(b)),
                     kotlin.math.abs(android.graphics.Color.blue(a) - android.graphics.Color.blue(b)))
-                if (difference > 8) changed++
+                // The PNG has transparent padding where the menu buttons may appear.
+                // Compare the visible logo, not the newly revealed background beneath it.
+                val visibleLogo = minOf(android.graphics.Color.red(a), android.graphics.Color.green(a),
+                    android.graphics.Color.blue(a)) < 247
+                if (visibleLogo && difference > 8) changed++
                 pixels++
             }
         }

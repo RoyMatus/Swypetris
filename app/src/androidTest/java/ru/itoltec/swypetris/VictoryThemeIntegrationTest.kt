@@ -67,7 +67,7 @@ class VictoryThemeIntegrationTest {
             assertEquals(GameScreen.PLAYING, model.screen)
             assertEquals(80000, model.game!!.score)
             assertEquals(100, model.game!!.lines)
-            assertEquals(100L, model.game!!.gravityMillis)
+            assertEquals(120L, model.game!!.gravityMillis)
             assertEquals(1, model.game!!.completedRounds)
             assertEquals(0, model.game!!.roundFruits)
             assertTrue(model.game!!.board.flatten().all { it == null })

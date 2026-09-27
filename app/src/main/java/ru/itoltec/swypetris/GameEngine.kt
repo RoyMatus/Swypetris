@@ -45,14 +45,15 @@ data class GameState(
     val completedClears: Int = 0,
     val accelerated: Boolean = false,
     val completedRounds: Int = 0,
-    val victoryPending: Boolean = false
+    val victoryPending: Boolean = false,
+    val difficulty: Difficulty = Difficulty.MEDIUM
 ) {
     /** Число заработанных фруктов текущего круга, включая полный набор на поздравлении. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
     /** Уровень определяется итоговым счётом по общим правилам. */
     val level: Int get() = GameRules.level(score)
-    /** Интервал обычного спуска: от 800 мс на первом уровне до минимальных 100 мс. */
-    val gravityMillis: Long get() = GameRules.gravityMillis(level)
+    /** Gravity uses the difficulty selected when this game began. */
+    val gravityMillis: Long get() = GameRules.gravityMillis(level, difficulty)
 }
 
 /** Команды движка; PAUSE обрабатывается моделью экрана, а не меняет клетки поля. */
@@ -61,6 +62,12 @@ enum class GameCommand { LEFT, RIGHT, CLOCKWISE, COUNTERCLOCKWISE, SOFT_DROP, HA
 /** Правила тетриса без зависимостей Android; [random] можно фиксировать для тестов. */
 class GameEngine(private val random: Random = Random.Default) {
     private val bag = ArrayDeque<Tetromino>()
+    internal fun remainingBag(): List<Tetromino> = bag.toList()
+    internal fun restoreBag(remaining: List<Tetromino>) {
+        require(remaining.size <= Tetromino.entries.size && remaining.distinct().size == remaining.size)
+        bag.clear()
+        bag.addAll(remaining)
+    }
     /** Берёт фигуру из перемешанного набора, пополняя его всеми семью типами. */
     private fun draw(): Tetromino {
         if (bag.isEmpty()) bag.addAll(Tetromino.entries.shuffled(random))
@@ -68,15 +75,15 @@ class GameEngine(private val random: Random = Random.Default) {
     }
 
     /** Создаёт пустое поле, первую фигуру и предварительный просмотр следующей. */
-    fun newGame(): GameState {
+    fun newGame(difficulty: Difficulty = Difficulty.MEDIUM): GameState {
         bag.clear()
-        return GameState(active = Piece(draw()), next = draw())
+        return GameState(active = Piece(draw()), next = draw(), difficulty = difficulty)
     }
 
     /** Очищает поле после победы, сохраняя накопленные показатели и скорость. */
     fun nextRound(state: GameState): GameState {
         if (!state.victoryPending) return state
-        val fresh = newGame()
+        val fresh = newGame(state.difficulty)
         return fresh.copy(score = state.score, lines = state.lines,
             generation = state.generation + 1, completedClears = state.completedClears,
             completedRounds = state.completedRounds + 1)

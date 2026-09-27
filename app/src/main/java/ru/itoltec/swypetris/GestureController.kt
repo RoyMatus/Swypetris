@@ -1,217 +1,122 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import kotlin.math.abs
-import kotlin.math.atan2
 import kotlin.math.hypot
 
-/** Пороги распознавания: расстояния в dp, интервалы в миллисекундах монотонных часов. */
+/** Distances are dp; Android's touch slop is supplied by the view. */
 data class GestureConfig(
-    val swipeDistance: Float = 24f,
-    val horizontalStartDistance: Float = 8f,
+    val horizontalStartDistance: Float = 12f,
     val horizontalStepDistance: Float = 32f,
-    val reversalDistance: Float = 6f,
+    val rotationDistance: Float = 24f,
+    val dropDistance: Float = 48f,
     val tapSlop: Float = 8f,
-    val longPressMillis: Long = 500,
-    val holdMillis: Long = 250,
-    val horizontalHoldMillis: Long = 300,
-    val repeatMillis: Long = 100,
-    val softDropMillis: Long = 100,
-    val flickDistance: Float = 32f,
-    val flickVelocity: Float = 600f,
-    val flickWindowMillis: Long = 120
+    val tapMillis: Long = 250,
+    val directionRatio: Float = 1.5f,
+    val dropRatio: Float = 2f
 )
 
-/** Преобразует касания в команды; [emit] может синхронно отменить жест при смене фигуры. */
+/** One pointer can control several pieces. Only displacement, never holding time, acts. */
 class GestureController(private val config: GestureConfig, private val emit: (GameCommand) -> Unit) {
     private var down = false
-    private var startX = 0f
-    private var startY = 0f
+    private var enabled = true
+    private var x = 0f
+    private var y = 0f
+    private var anchorX = 0f
+    private var anchorY = 0f
+    private var touchX = 0f
+    private var touchY = 0f
     private var downTime = 0L
-    private var moved = false
-    private var direction: GameCommand? = null
-    private var recognized = false
-    private var extremeX = 0f
-    private var stepAnchorX = 0f
-    private var lastX = 0f
-    private var recognizedAt = 0L
-    private var repeatAt = 0L
-    private var dropAt = 0L
-    private var pointerX = 0f
-    private var pointerY = 0f
-    private val recentMotion = ArrayDeque<MotionPoint>()
+    private var tapEligible = false
+    private var horizontalDirection = 0
+    private var epoch = 0
 
-    /** Точка короткой истории движения для распознавания рывка независимо от длительности удержания. */
-    private data class MotionPoint(val x: Float, val y: Float, val time: Long)
-    var softDropping = false
-        private set
-
-    /** Сбрасывает касание и удержание без отправки игровых команд. */
     fun cancel() {
         down = false
-        direction = null
-        recognized = false
-        softDropping = false
-        recentMotion.clear()
+        tapEligible = false
+        horizontalDirection = 0
+        epoch++
     }
 
-    /** Начинает касание; само нажатие не вращает фигуру, поскольку может оказаться свайпом. */
     fun down(x: Float, y: Float, time: Long) {
         cancel()
         down = true
-        startX = x
-        startY = y
-        lastX = x
-        stepAnchorX = x
+        this.x = x
+        this.y = y
+        touchX = x
+        touchY = y
         downTime = time
-        moved = false
-        trackMotion(x, y, time)
+        tapEligible = enabled
+        rebase()
     }
 
-    /** Распознаёт свайп и резкий бросок вниз из удержания или бокового движения без отрыва пальца. */
+    /** Rebase at the current pointer, without synthesizing a touch or an action. */
+    fun onPieceChanged() {
+        tapEligible = false
+        rebase()
+        epoch++
+    }
+
+    /** During line clearing, track the pointer but discard accumulated motion. */
+    fun setEnabled(value: Boolean) {
+        if (enabled == value) return
+        enabled = value
+        onPieceChanged()
+    }
+
+    private fun rebase() {
+        anchorX = x
+        anchorY = y
+        horizontalDirection = 0
+    }
+
     fun move(x: Float, y: Float, time: Long) {
         if (!down) return
-        val canFlick = recognized && (direction == GameCommand.LEFT || direction == GameCommand.RIGHT || softDropping)
-        val flick = canFlick && recentMotion.any { point ->
-            val elapsed = time - point.time
-            val distance = y - point.y
-            elapsed in 1..config.flickWindowMillis && distance >= config.flickDistance &&
-                distance > abs(x - point.x) * 1.3f && distance * 1000 / elapsed >= config.flickVelocity
+        val eventDx = x - this.x
+        val eventDy = y - this.y
+        // A reversal starts at the extreme point, not at the beginning of the touch.
+        if (horizontalDirection != 0 && eventDx * horizontalDirection < 0 && abs(eventDx) > abs(eventDy)) {
+            anchorX = this.x
+            anchorY = this.y
+            horizontalDirection = 0
         }
-        trackMotion(x, y, time)
-        if (flick) {
-            cancel() // Бросок завершает касание, его остаток не управляет следующей фигурой.
-            emit(GameCommand.HARD_DROP)
-            return
+        this.x = x
+        this.y = y
+        if (hypot(x - touchX, y - touchY) > config.tapSlop || time - downTime > config.tapMillis) tapEligible = false
+        if (!enabled) { rebase(); return }
+        val dx = x - anchorX
+        val dy = y - anchorY
+        val horizontalThreshold = if (horizontalDirection == 0)
+            maxOf(config.horizontalStartDistance, config.tapSlop) else config.horizontalStepDistance
+        val action = when {
+            dy >= maxOf(config.dropDistance, config.tapSlop * 4) && dy >= abs(dx) * config.dropRatio -> GameCommand.HARD_DROP
+            -dy >= maxOf(config.rotationDistance, config.tapSlop * 2) && -dy >= abs(dx) * config.directionRatio -> GameCommand.CLOCKWISE
+            abs(dx) >= horizontalThreshold && abs(dx) >= abs(dy) * config.directionRatio ->
+                if (dx < 0) GameCommand.LEFT else GameCommand.RIGHT
+            else -> return
         }
-        val dx = x - startX
-        val dy = y - startY
-        if (hypot(dx, dy) > config.tapSlop) moved = true
-        if (recognized) {
-            updateHorizontalDirection(x, time)
-            return
-        }
-        val angle = Math.toDegrees(atan2(abs(dx).toDouble(), (-dy).toDouble()))
-        val diagonal = dy < 0 && angle in 22.5..67.5
-        val horizontal = !diagonal && abs(dx) > abs(dy)
-        if (hypot(dx, dy) < if (horizontal) config.horizontalStartDistance else config.swipeDistance) return
-        recognized = true
-        direction = when {
-            dy < 0 && angle in 22.5..67.5 -> if (dx < 0) GameCommand.COUNTERCLOCKWISE else GameCommand.CLOCKWISE
-            abs(dx) > abs(dy) -> if (dx < 0) GameCommand.LEFT else GameCommand.RIGHT
-            dy > 0 -> GameCommand.SOFT_DROP
-            else -> GameCommand.CLOCKWISE // Свайп вверх действует как одиночный тап.
-        }
-        extremeX = x
-        stepAnchorX = x
-        lastX = x
-        recognizedAt = time
-        repeatAt = time + if (horizontal) config.horizontalHoldMillis else config.holdMillis
-        if (direction in listOf(GameCommand.LEFT, GameCommand.RIGHT, GameCommand.CLOCKWISE, GameCommand.COUNTERCLOCKWISE)) emit(direction!!)
-    }
-
-    /** Хранит только короткое окно движения; неподвижное удержание не снижает скорость нового рывка. */
-    private fun trackMotion(x: Float, y: Float, time: Long) {
-        pointerX = x
-        pointerY = y
-        while (recentMotion.isNotEmpty() && time - recentMotion.first().time > config.flickWindowMillis) {
-            recentMotion.removeFirst()
-        }
-        if (recentMotion.lastOrNull()?.time != time) recentMotion.addLast(MotionPoint(x, y, time))
-    }
-
-    /**
-     * Отсчитывает разворот от крайней достигнутой позиции, а не от начала касания.
-     * Шаг зависит от ширины клетки; мягкий спуск имеет собственный независимый таймер.
-     */
-    private fun updateHorizontalDirection(x: Float, time: Long) {
-        if (direction == GameCommand.SOFT_DROP && softDropping &&
-            abs(x - stepAnchorX) >= config.horizontalStartDistance) {
-            direction = if (x < stepAnchorX) GameCommand.LEFT else GameCommand.RIGHT
-            extremeX = x
-            stepAnchorX = x
-            lastX = x
-            repeatAt = time + config.horizontalHoldMillis
-            emit(direction!!)
-            return
-        }
-        if (direction != GameCommand.LEFT && direction != GameCommand.RIGHT) return
-        if (x != lastX) repeatAt = time + config.horizontalHoldMillis
-        lastX = x
-        val reversed = when (direction) {
-            GameCommand.LEFT -> {
-                extremeX = minOf(extremeX, x)
-                if (x - extremeX >= config.reversalDistance) GameCommand.RIGHT else null
-            }
-            GameCommand.RIGHT -> {
-                extremeX = maxOf(extremeX, x)
-                if (extremeX - x >= config.reversalDistance) GameCommand.LEFT else null
-            }
-            else -> null
-        }
-        if (reversed != null) {
-            direction = reversed
-            extremeX = x
-            stepAnchorX = x
-            repeatAt = time + config.horizontalHoldMillis
-            emit(reversed)
-            return
-        }
-        val action = direction
-        if (action != GameCommand.LEFT && action != GameCommand.RIGHT) return
-        val sign = if (action == GameCommand.LEFT) -1 else 1
-        val steps = (((x - stepAnchorX) * sign) / config.horizontalStepDistance).toInt().coerceIn(0, 10)
-        if (steps == 0) return
-        stepAnchorX += steps * config.horizontalStepDistance * sign
-        // Большой скачок у стены не накапливает невыполненные команды.
-        if (steps == 10) stepAnchorX = x
-        repeatAt = time + config.horizontalHoldMillis
+        tapEligible = false
+        val horizontal = action == GameCommand.LEFT || action == GameCommand.RIGHT
+        val sign = if (dx < 0) -1 else 1
+        val steps = if (horizontal) {
+            1 + ((abs(dx) - horizontalThreshold) / config.horizontalStepDistance).toInt().coerceIn(0, 9)
+        } else 1
+        if (horizontal) {
+            anchorX += sign * (horizontalThreshold + (steps - 1) * config.horizontalStepDistance)
+            anchorY = y // Horizontal drift cannot accumulate into a destructive gesture.
+            horizontalDirection = sign
+        } else rebase()
+        val before = epoch
         repeat(steps) {
-            if (!down) return
             emit(action)
+            if (!down || !enabled || epoch != before) return
         }
     }
 
-    /** Обрабатывает удержание даже при неподвижном пальце; пропущенные кадры не создают рывок. */
-    fun advance(time: Long) {
-        if (!down) return
-        trackMotion(pointerX, pointerY, time)
-        if (!recognized && !moved && time - downTime >= config.longPressMillis) {
-            recognized = true
-            direction = GameCommand.SOFT_DROP
-            recognizedAt = time
-            repeatAt = time
-        }
-        if (!softDropping && direction == GameCommand.SOFT_DROP && time >= repeatAt) {
-            softDropping = true
-            dropAt = time
-        }
-        if (softDropping && time >= dropAt) {
-            dropAt = time + config.softDropMillis
-            emit(GameCommand.SOFT_DROP)
-        }
-        if (!down) return // Фиксация фигуры во время спуска отменяет также боковой шаг.
-        val action = direction
-        if (action in listOf(GameCommand.LEFT, GameCommand.RIGHT) && time >= repeatAt) {
-            repeatAt = time + config.repeatMillis
-            emit(action!!)
-        }
-    }
-
-    /** Завершает жест: тап сразу вращает, короткий свайп вниз бросает, удержание отключает ускорение. */
     fun up(x: Float, y: Float, time: Long) {
-        move(x, y, time)
-        advance(time)
         if (!down) return
-        down = false
-        val action = direction
-        direction = null
-        val wasSoftDropping = softDropping
-        softDropping = false
-        if (action == GameCommand.SOFT_DROP && !wasSoftDropping && time - recognizedAt < config.holdMillis) {
-            emit(GameCommand.HARD_DROP)
-        } else if (!recognized && !moved && time - downTime < config.longPressMillis) {
-            emit(GameCommand.CLOCKWISE)
-        }
+        move(x, y, time)
+        val tap = enabled && tapEligible && time - downTime in 0..config.tapMillis
+        cancel()
+        if (tap) emit(GameCommand.SOFT_DROP)
     }
 }
-

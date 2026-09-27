@@ -33,6 +33,7 @@ class LaunchIntroRecreationTest {
         compose.mainClock.advanceTimeBy(10000)
         assertEquals(before, original.launchIntroMillis)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitUntil(5000) { compose.activity.hasWindowFocus() }
         compose.mainClock.advanceTimeBy(4000)
         compose.onNodeWithTag("newGame").assertIsDisplayed()
         assertFalse(original.launchIntroPending)

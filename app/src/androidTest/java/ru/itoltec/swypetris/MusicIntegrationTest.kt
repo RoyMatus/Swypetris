@@ -28,7 +28,7 @@ class MusicIntegrationTest {
         val application = ApplicationProvider.getApplicationContext<Application>()
         for (musicEnabled in listOf(false, true)) for (soundEnabled in listOf(false, true)) {
             val preferences = GameStorage.preferences(application)
-            preferences.edit().putInt("record_v4", 0).putBoolean("music", musicEnabled)
+            preferences.edit().clear().putInt("record_v4", 0).putBoolean("music", musicEnabled)
                 .putBoolean("sound", soundEnabled).commit()
             val board = List(20) { MutableList<Tetromino?>(10) { null } }
             board[0][4] = Tetromino.Z
