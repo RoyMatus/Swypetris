@@ -2,12 +2,14 @@ package ru.itoltec.swypetris
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ImageBitmap
@@ -22,9 +24,16 @@ import androidx.compose.ui.res.imageResource
 internal fun ThemeBackdrop(palette: GamePalette) {
     if (!palette.light) {
         val artwork = ImageBitmap.imageResource(R.drawable.red_square_synthwave)
-        Image(artwork, contentDescription = null, modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            colorFilter = if (palette.id == "synthwave_84") null else artworkColorFilter(palette))
+        Box(Modifier.fillMaxSize()) {
+            Image(artwork, contentDescription = null, modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                colorFilter = if (palette.id == "synthwave_84") null else artworkColorFilter(palette))
+            Canvas(Modifier.fillMaxSize()) {
+                drawRect(Brush.verticalGradient(0f to Color.Transparent, .42f to Color.Transparent,
+                    .6f to palette.background.copy(alpha = .3f),
+                    1f to palette.background.copy(alpha = .65f), endY = size.height))
+            }
+        }
         return
     }
     Canvas(Modifier.fillMaxSize()) {

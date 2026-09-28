@@ -23,6 +23,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.MailOutline
+import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.PlatformTextStyle
@@ -43,6 +51,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -174,52 +183,74 @@ fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
 }
 
 /** Compact menu action with its label, accent color, test tag, and click handler. */
-private data class MenuAction(val label: String, val color: Color, val tag: String, val action: () -> Unit)
+private data class MenuAction(val label: String, val color: Color, val tag: String,
+    val icon: ImageVector, val action: () -> Unit)
 
-/** Rectangular buttons and logo share available height without menu scrolling. */
+/** Primary gameplay actions sit above compact navigation; the logo keeps the final intro position. */
 @Composable
 private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
     var menuOrigin by remember { mutableStateOf(Offset.Zero) }
     var logoBounds by remember { mutableStateOf(Rect.Zero) }
     val intro = model.launchIntroPending
     val palette = LocalGamePalette.current
-    val actions = buildList {
-        add(MenuAction("Новая игра", palette.piece(Tetromino.I), "newGame", model::newGame))
-        if (model.game?.gameOver == false) add(MenuAction("Продолжить", palette.piece(Tetromino.S), "resumeGame", model::resume))
-        add(MenuAction("Настройки", palette.piece(Tetromino.T), "settings", model::settings))
-        add(MenuAction("Как играть", palette.piece(Tetromino.J), "help", model::help))
-        add(MenuAction("Результаты", palette.piece(Tetromino.O), "results", model::showResults))
-        add(MenuAction("Контакты", palette.piece(Tetromino.L), "contacts", model::contacts))
-        add(MenuAction("Выход", palette.piece(Tetromino.Z), "exitGame", onExit))
+    val primary = buildList {
+        if (model.game?.gameOver == false) add(MenuAction("Продолжить", palette.piece(Tetromino.S),
+            "resumeGame", Icons.Outlined.PlayArrow, model::resume))
+        add(MenuAction("Новая игра", palette.piece(Tetromino.I), "newGame",
+            Icons.Outlined.PlayArrow, model::newGame))
     }
+    val secondary = listOf(
+        MenuAction("Настройки", palette.piece(Tetromino.T), "settings", Icons.Outlined.Settings, model::settings),
+        MenuAction("Как играть", palette.piece(Tetromino.J), "help", Icons.Outlined.MenuBook, model::help),
+        MenuAction("Результаты", palette.piece(Tetromino.O), "results", Icons.Outlined.EmojiEvents, model::showResults),
+        MenuAction("Контакты", palette.piece(Tetromino.L), "contacts", Icons.Outlined.MailOutline, model::contacts)
+    )
     Box(Modifier.fillMaxSize().onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp), contentAlignment = Alignment.Center) {
-        val rows = actions.chunked(2)
-        val gap = 8.dp
-        val tileHeight = minOf(64.dp, (maxHeight * .55f - gap * (rows.size - 1)) / rows.size)
-        val logoHeight = minOf(220.dp, maxHeight - tileHeight * rows.size - gap * rows.size)
+        val gap = (maxHeight * .01f).coerceIn(3.dp, 8.dp)
+        val primaryHeight = (maxHeight * .11f).coerceIn(48.dp, 64.dp)
+        val secondaryHeight = (maxHeight * .10f).coerceIn(48.dp, 56.dp)
+        val exitHeight = 48.dp
+        val controlsHeight = primaryHeight * primary.size + secondaryHeight * 2 + exitHeight + gap * (primary.size + 3)
+        val logoHeight = minOf(220.dp, maxHeight - controlsHeight).coerceAtLeast(0.dp)
+        val reveal = Modifier.graphicsLayer {
+            val buttonsAlpha = LaunchIntroMotion.buttonsAlpha(model.launchIntroMillis)
+            alpha = buttonsAlpha
+            translationY = 12.dp.toPx() * (1f - buttonsAlpha)
+        }.then(if (intro) Modifier.clearAndSetSemantics {} else Modifier)
         Column(Modifier.widthIn(max = 480.dp).fillMaxWidth().testTag("mainMenu"),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(gap)) {
             Box(Modifier.fillMaxWidth().height(logoHeight), contentAlignment = Alignment.Center) {
                 GameTitle(Modifier.offset(y = (-16).dp).onGloballyPositioned {
                     logoBounds = Rect(it.positionInRoot() - menuOrigin, Size(it.size.width.toFloat(), it.size.height.toFloat()))
                 }.graphicsLayer { alpha = if (model.launchLogoAssembled) 1f else 0f }
-                    .then(if (intro) Modifier.clearAndSetSemantics {} else Modifier), wordmarkOnly = !palette.light)
+                    .then(if (intro) Modifier.clearAndSetSemantics {} else Modifier),
+                    wordmarkOnly = !palette.light, heightLimit = logoHeight)
             }
-            rows.forEach { row ->
-                Row(Modifier.fillMaxWidth().height(tileHeight).graphicsLayer {
-                    val buttonsAlpha = LaunchIntroMotion.buttonsAlpha(model.launchIntroMillis)
-                    alpha = buttonsAlpha
-                    translationY = 12.dp.toPx() * (1f - buttonsAlpha)
-                }.then(if (intro) Modifier.clearAndSetSemantics {} else Modifier),
+            primary.forEach { item ->
+                Box(Modifier.fillMaxWidth(.88f).then(reveal)) {
+                    MenuTile(item.label, item.color, item.tag, item.icon, ActionStyle.PRIMARY, primaryHeight,
+                        enabled = !intro, onClick = item.action)
+                }
+            }
+            secondary.chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth().height(secondaryHeight).then(reveal),
                     horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEach { item ->
                         Box(Modifier.weight(1f)) {
-                            MenuTile(item.label, item.color, item.tag, enabled = !intro, onClick = item.action)
+                            MenuTile(item.label, item.color, item.tag, item.icon, ActionStyle.SECONDARY, secondaryHeight,
+                                enabled = !intro, onClick = item.action)
                         }
                     }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
+            }
+            TextButton(onClick = onExit, enabled = !intro,
+                modifier = Modifier.heightIn(min = exitHeight).testTag("exitGame").then(reveal),
+                colors = ButtonDefaults.textButtonColors(contentColor = palette.piece(Tetromino.Z))) {
+                Icon(Icons.Outlined.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Выход", fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -264,21 +295,31 @@ private fun SettingToggle(label: String, tag: String, checked: Boolean, onChange
 }
 /** Compact rectangular button whose label adapts to increased font size. */
 @Composable
-internal fun MenuTile(label: String, accent: Color, tag: String, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun MenuTile(label: String, accent: Color, tag: String,
+    icon: ImageVector,
+    style: ActionStyle = ActionStyle.SECONDARY, height: Dp = 64.dp,
+    enabled: Boolean = true, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth().height(64.dp).testTag(tag),
+        modifier = Modifier.fillMaxWidth().height(height).testTag(tag),
         shape = RoundedCornerShape(12.dp),
-        colors = paletteButtonColors(accent, ActionStyle.SECONDARY),
-        border = paletteButtonBorder(accent, ActionStyle.SECONDARY),
+        colors = paletteButtonColors(accent, style),
+        border = paletteButtonBorder(accent, style),
         contentPadding = PaddingValues(8.dp)
     ) {
         BoxWithConstraints(contentAlignment = Alignment.Center) {
             val scale = LocalDensity.current.fontScale
-            val font = minOf(20f, maxWidth.value / (label.length * 0.62f) / scale,
+            val showIcon = scale < 1.5f || style == ActionStyle.PRIMARY
+            val iconSpace = if (showIcon) 32.dp else 0.dp
+            val font = minOf(20f, (maxWidth - iconSpace).value / (label.length * 0.78f) / scale,
                 maxHeight.value / 1.4f / scale).coerceAtLeast(10f)
-            Text(label, fontSize = font.sp, maxLines = 1, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (showIcon) Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                Text(label, fontSize = font.sp, maxLines = 1, fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center)
+            }
         }
     }
 }

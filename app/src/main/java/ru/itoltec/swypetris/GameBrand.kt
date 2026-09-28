@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.contentDescription
@@ -25,8 +26,10 @@ import androidx.compose.ui.unit.dp
 
 /** Renders the shared logo at a size that leaves room for buttons on short screens. */
 @Composable
-internal fun GameTitle(imageModifier: Modifier = Modifier, wordmarkOnly: Boolean = false) {
-    val logoWidth = minOf(360f, LocalConfiguration.current.screenHeightDp * .45f).dp
+internal fun GameTitle(imageModifier: Modifier = Modifier, wordmarkOnly: Boolean = false,
+    heightLimit: Dp? = null) {
+    val logoWidth = minOf(360f, LocalConfiguration.current.screenHeightDp * .45f,
+        heightLimit?.value?.times(1.5f) ?: Float.MAX_VALUE).dp
     val logo = ImageBitmap.imageResource(R.drawable.swypetris_logo)
     val palette = LocalGamePalette.current
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
