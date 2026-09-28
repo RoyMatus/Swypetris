@@ -448,22 +448,22 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         }
         for (x in 0..10) drawLine(palette.grid, Offset(x * cell.width, 0f), Offset(x * cell.width, size.height))
         for (y in 0..20) drawLine(palette.grid, Offset(0f, y * cell.height), Offset(size.width, y * cell.height))
-        if (showNext) previewCells.forEach { block(it, palette.piece(state.next), palette.finish, origin, cell, alpha = 0.20f) }
+        if (showNext) previewCells.forEach { block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell, alpha = 0.20f) }
         state.board.forEachIndexed { y, row -> row.forEachIndexed { x, type ->
-            if (type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y), palette.piece(type), palette.finish, origin, cell)
+            if (type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y), palette.piece(type), palette.finish, palette.texture, origin, cell)
         } }
         if (!state.gameOver && state.clearingRows.isEmpty()) {
-            landingHint?.let { hint -> hint.cells().forEach { block(it, palette.piece(hint.type), palette.finish, origin, cell, alpha = palette.ghostAlpha, outline = true) } }
-            state.active.cells().forEach { block(it, palette.piece(state.active.type), palette.finish, origin, cell) }
+            landingHint?.let { hint -> hint.cells().forEach { block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell, alpha = palette.ghostAlpha, outline = true) } }
+            state.active.cells().forEach { block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell) }
         }
     }
 }
 
 /** Draws a colored cell with spacing using independent width and height. */
-private fun DrawScope.block(cell: Cell, color: Color, finish: BlockFinish, origin: Offset, step: Size,
+private fun DrawScope.block(cell: Cell, color: Color, finish: BlockFinish, texture: BlockTexture, origin: Offset, step: Size,
     alpha: Float = 1f, outline: Boolean = false) {
     val gap = minOf(step.width, step.height) * 0.07f
     val topLeft = origin + Offset(cell.x * step.width + gap, cell.y * step.height + gap)
     val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
-    bevelBlock(topLeft, blockSize, color, finish, alpha, outline)
+    bevelBlock(topLeft, blockSize, color, finish, texture, alpha, outline)
 }
