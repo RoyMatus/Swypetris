@@ -1,0 +1,96 @@
+function New-GitHubClient {
+    param([Parameter(Mandatory)][string]$Repository)
+
+    if ($Repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
+        throw 'Repository must have the form owner/name.'
+    }
+    $token = if ($env:GH_TOKEN) { $env:GH_TOKEN } elseif ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } else {
+        $credential = "protocol=https`nhost=github.com`n`n" | & git credential fill
+        if ($LASTEXITCODE -ne 0) { throw 'Git Credential Manager did not return a GitHub credential.' }
+        ($credential | Where-Object { $_ -like 'password=*' } | Select-Object -First 1) -replace '^password=', ''
+    }
+    if (!$token) { throw 'Set GH_TOKEN/GITHUB_TOKEN or sign in through Git Credential Manager.' }
+    [pscustomobject]@{
+        Repository = $Repository
+        Headers = @{
+            Authorization = "Bearer $token"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+        }
+    }
+}
+
+function Invoke-GitHubRest {
+    param(
+        [Parameter(Mandatory)]$Client,
+        [Parameter(Mandatory)][ValidateSet('Get', 'Post', 'Patch', 'Put', 'Delete')][string]$Method,
+        [Parameter(Mandatory)][string]$Path,
+        [hashtable]$Body
+    )
+
+    $uri = "https://api.github.com/repos/$($Client.Repository)/$Path"
+    if ($Method -eq 'Get') { return Invoke-RestMethod -Uri $uri -Method Get -Headers $Client.Headers }
+    if ($PSBoundParameters.ContainsKey('Body')) {
+        $json = $Body | ConvertTo-Json -Depth 12 -Compress
+        return Invoke-RestMethod -Uri $uri -Method $Method -Headers $Client.Headers -ContentType 'application/json' -Body $json
+    }
+    return Invoke-RestMethod -Uri $uri -Method $Method -Headers $Client.Headers
+}
+
+function Invoke-GitHubRestPaged {
+    param(
+        [Parameter(Mandatory)]$Client,
+        [Parameter(Mandatory)][string]$Path
+    )
+
+    $separator = if ($Path.Contains('?')) { '&' } else { '?' }
+    $page = 1
+    do {
+        $response = @(Invoke-GitHubRest -Client $Client -Method Get -Path "${Path}${separator}per_page=100&page=$page")
+        $items = @(foreach ($entry in $response) { foreach ($item in @($entry)) { $item } })
+        foreach ($item in $items) { Write-Output $item }
+        $page++
+    } while ($items.Count -eq 100)
+}
+
+function Invoke-GitHubGraphQL {
+    param(
+        [Parameter(Mandatory)]$Client,
+        [Parameter(Mandatory)][string]$Query,
+        [Parameter(Mandatory)][hashtable]$Variables
+    )
+
+    $body = @{ query = $Query; variables = $Variables } | ConvertTo-Json -Depth 12 -Compress
+    $result = Invoke-RestMethod -Uri 'https://api.github.com/graphql' -Method Post -Headers $Client.Headers -ContentType 'application/json' -Body $body
+    if ($result.errors) {
+        $messages = @($result.errors | ForEach-Object { $_.message })
+        if (@($result.errors | Where-Object { $_.type -eq 'INSUFFICIENT_SCOPES' }).Count -gt 0) {
+            throw 'GitHub GraphQL access is unavailable (INSUFFICIENT_SCOPES). Check the token permissions.'
+        }
+        throw ($messages -join '; ')
+    }
+    return $result.data
+}
+
+function Assert-GitHubPullRequestReady {
+    param(
+        [Parameter(Mandatory)]$PullRequest,
+        [Parameter(Mandatory)][array]$Checks
+    )
+
+    $number = $PullRequest.number
+    if ($PullRequest.state -ne 'open' -or $PullRequest.draft -or $PullRequest.merged) {
+        throw "PR #$number must be open, ready for review, and unmerged."
+    }
+    if ($PullRequest.mergeable -ne $true -or $PullRequest.mergeable_state -ne 'clean') {
+        throw "PR #$number is not ready to merge (state: $($PullRequest.mergeable_state))."
+    }
+    if ($Checks.Count -eq 0) { throw "PR #$number has no check runs; refusing to merge without CI evidence." }
+    $badChecks = @($Checks | Where-Object { $_.status -ne 'completed' -or $_.conclusion -notin @('success', 'neutral', 'skipped') })
+    if ($badChecks.Count -gt 0) {
+        $summary = @($badChecks | ForEach-Object { "$($_.name): $($_.status)/$($_.conclusion)" }) -join '; '
+        throw "PR #$number has incomplete or failed checks: $summary"
+    }
+}
+
+Export-ModuleMember -Function New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Assert-GitHubPullRequestReady
