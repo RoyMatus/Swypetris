@@ -37,7 +37,8 @@ class GameViewModel internal constructor(
     var difficulty by mutableStateOf(Difficulty.restore(preferences.getString("difficulty", null)))
         private set
     private val music = musicPlayback ?: if (autoTick) GameMusic(application) else null
-    val legacyRecord = GameStorage.legacyRecord(preferences)
+    var legacyRecord by mutableStateOf(GameStorage.legacyRecord(preferences))
+        private set
     var results by mutableStateOf(resultStore.read())
         private set
     var currentResultId by mutableStateOf<String?>(null)
@@ -169,6 +170,19 @@ class GameViewModel internal constructor(
 
     /** Returns the current-rules record for the requested [mode]. */
     fun recordFor(mode: Difficulty): Int = bestFor(mode)
+
+    /** Clears saved results without changing settings or the current game's state. */
+    fun resetStatistics() {
+        GameStorage.clearStatistics(preferences)
+        results = emptyList()
+        legacyRecord = 0
+        record = 0
+        recordAtStart = 0
+        latestResult = null
+        currentResultId = null
+        requestRecordName = false
+        saveSession()
+    }
 
     /** Saves the board, bag, timers, and record baseline for game restoration after lifecycle changes. */
     private fun saveSession(now: Long = clock()) {

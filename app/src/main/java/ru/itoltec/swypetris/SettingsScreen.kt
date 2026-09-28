@@ -12,8 +12,13 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +36,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun SettingsScreen(model: GameViewModel) {
     val palette = LocalGamePalette.current
+    var confirmReset by remember { mutableStateOf(false) }
     val gameplay = palette.piece(Tetromino.I)
     val assistance = palette.piece(Tetromino.T)
     val audio = palette.piece(Tetromino.I)
@@ -59,9 +65,32 @@ internal fun SettingsScreen(model: GameViewModel) {
             SettingsPanel("ВНЕШНИЙ ВИД", "Цветовая тема и оформление", Icons.Outlined.Palette, appearance) {
                 PalettePicker(model)
             }
+            SettingsPanel("ДАННЫЕ", "История игр и рекорды", Icons.Outlined.DeleteOutline,
+                MaterialTheme.colorScheme.error) {
+                OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()
+                    .testTag("resetStatistics")) {
+                    Text("Сбросить статистику", color = MaterialTheme.colorScheme.error)
+                }
+            }
             Spacer(Modifier.height(12.dp))
         }
     }
+    if (confirmReset) AlertDialog(
+        onDismissRequest = { confirmReset = false },
+        title = { Text("Сбросить статистику?") },
+        text = { Text("Будут удалены вся история результатов и рекорды, включая старые. Настройки и текущая партия сохранятся.") },
+        confirmButton = {
+            TextButton(onClick = { model.resetStatistics(); confirmReset = false },
+                modifier = Modifier.testTag("confirmResetStatistics")) {
+                Text("Сбросить статистику", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { confirmReset = false }, modifier = Modifier.testTag("cancelResetStatistics")) {
+                Text("Отмена")
+            }
+        }
+    )
 }
 
 @Composable
