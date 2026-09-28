@@ -4,10 +4,9 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +16,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
@@ -48,19 +49,20 @@ fun ContactsScreen(model: GameViewModel) {
     val clipboard = LocalClipboardManager.current
     val messages = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    Box(Modifier.fillMaxSize().safeDrawingPadding()) {
-        LazyColumn(Modifier.fillMaxSize().testTag("contactsPage"), contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            item { GameTitle() }
-            item { Text("Контакты", style = MaterialTheme.typography.headlineLarge) }
+    val palette = LocalGamePalette.current
+    Box(Modifier.fillMaxSize().background(palette.background), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize().navigationBarsPadding().testTag("contactsPage"),
+            contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { ScreenArtHeader("Контакты", "Связаться с разработчиком") }
             DeveloperContact.entries.forEachIndexed { index, contact ->
                 item {
-                    val accent = listOf(LocalGamePalette.current.accent, LocalGamePalette.current.secondary, LocalGamePalette.current.gold)[index]
-                    Surface(Modifier.widthIn(max = 600.dp).fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-                        color = accent.copy(alpha = .08f), border = BorderStroke(1.dp, accent.copy(alpha = .4f))) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(contact.title, color = accent, style = MaterialTheme.typography.titleLarge)
-                            Text(contact.address, style = MaterialTheme.typography.bodyLarge)
+                    val accent = listOf(palette.accent, palette.secondary, palette.gold)[index]
+                    ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(contact.title.uppercase(), color = accent, fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                            SettingsDivider(accent)
+                            Text(contact.address, color = palette.text, style = MaterialTheme.typography.bodyLarge)
                             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 AppActionButton("Открыть", ActionStyle.TEXT, Modifier.testTag("open${contact.name}"), accent) {
                                     if (!openContact(context, contact)) scope.launch {
@@ -78,20 +80,22 @@ fun ContactsScreen(model: GameViewModel) {
                 }
             }
             item {
-                Text("О приложении", style = MaterialTheme.typography.titleLarge)
-                Text("Swypetris · © 2026 RoyMatus", style = MaterialTheme.typography.bodyMedium)
-            }
-            item {
-                AppActionButton("Лицензии и права", ActionStyle.SECONDARY,
-                    Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("legal"),
-                    LocalGamePalette.current.piece(Tetromino.J), model::legal)
-            }
-            item {
-                AppActionButton("Конфиденциальность", ActionStyle.SECONDARY,
-                    Modifier.widthIn(max = 600.dp).fillMaxWidth().testTag("privacy"),
-                    LocalGamePalette.current.piece(Tetromino.T), model::privacy)
+                val accent = palette.piece(Tetromino.T)
+                ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("О ПРИЛОЖЕНИИ", color = accent, fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        SettingsDivider(accent)
+                        Text("Swypetris · © 2026 RoyMatus", color = palette.text,
+                            style = MaterialTheme.typography.bodyMedium)
+                        AppActionButton("Лицензии и права", ActionStyle.SECONDARY,
+                            Modifier.fillMaxWidth().testTag("legal"), palette.piece(Tetromino.J), model::legal)
+                        AppActionButton("Конфиденциальность", ActionStyle.SECONDARY,
+                            Modifier.fillMaxWidth().testTag("privacy"), accent, model::privacy)
+                    }
+                }
             }
         }
-        SnackbarHost(messages, Modifier.align(Alignment.BottomCenter))
+        SnackbarHost(messages, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
     }
 }
