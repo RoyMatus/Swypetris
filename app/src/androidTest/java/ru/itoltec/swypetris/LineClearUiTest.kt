@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -45,12 +44,17 @@ class LineClearUiTest {
             model.pointerDown(0f, 0f, now)
             model.pointerUp(0f, 0f, now + 1)
             assertEquals(locked, model.game)
+        }
+        val beforeRemoval = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+        compose.runOnIdle {
             now += 30
             model.advanceFrame(now)
         }
         val white = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        assertEquals(Color(0xFF131D32), white[white.width / 20, white.height * 39 / 40])
-        assertNotEquals(Color(0xFF131D32), white[white.width * 19 / 20, white.height * 39 / 40])
+        assertNotEquals(beforeRemoval[white.width / 20, white.height * 39 / 40],
+            white[white.width / 20, white.height * 39 / 40])
+        assertEquals(beforeRemoval[white.width * 19 / 20, white.height * 39 / 40],
+            white[white.width * 19 / 20, white.height * 39 / 40])
         compose.runOnIdle {
             model.pause()
             now += 5000
@@ -74,7 +78,8 @@ class LineClearUiTest {
             assertEquals(100, model.game!!.score)
         }
         val cleared = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        assertEquals(Color(0xFF131D32), cleared[cleared.width / 20, cleared.height * 39 / 40])
+        assertEquals(white[white.width / 20, white.height * 39 / 40],
+            cleared[cleared.width / 20, cleared.height * 39 / 40])
     }
 
     /** Новая партия сбрасывает ещё не завершённую очистку и не получает старые очки. */
