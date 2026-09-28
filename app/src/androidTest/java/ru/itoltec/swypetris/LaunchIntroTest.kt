@@ -169,6 +169,14 @@ class LaunchIntroTest {
             assertTrue(pixels.count { android.graphics.Color.alpha(it) == 0 } > pixels.size * .65)
         }
         val icon = app.getDrawable(R.drawable.ic_launcher)!!
+        val roundIcon = app.getDrawable(R.drawable.ic_launcher_round)!!
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            assertTrue(icon is android.graphics.drawable.AdaptiveIconDrawable)
+            assertTrue(roundIcon is android.graphics.drawable.AdaptiveIconDrawable)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            assertNotNull((icon as android.graphics.drawable.AdaptiveIconDrawable).monochrome)
+        }
         val bitmap = Bitmap.createBitmap(768, 256, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(bitmap)
         canvas.drawColor(android.graphics.Color.WHITE)
@@ -190,6 +198,24 @@ class LaunchIntroTest {
             canvas.restore()
         }
         save(bitmap, "intro-icon-masks.png")
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            val monochrome = (icon as android.graphics.drawable.AdaptiveIconDrawable).monochrome!!.mutate()
+            val themed = Bitmap.createBitmap(512, 256, Bitmap.Config.ARGB_8888)
+            val themedCanvas = android.graphics.Canvas(themed)
+            val backgrounds = intArrayOf(0xFFE9ECF6.toInt(), 0xFF27304A.toInt())
+            val tints = intArrayOf(0xFF26314A.toInt(), 0xFFD5E2FF.toInt())
+            repeat(2) { index ->
+                themedCanvas.save()
+                themedCanvas.translate(index * 256f, 0f)
+                themedCanvas.drawRect(0f, 0f, 256f, 256f,
+                    android.graphics.Paint().apply { color = backgrounds[index] })
+                monochrome.setTint(tints[index])
+                monochrome.setBounds(0, 0, 256, 256)
+                monochrome.draw(themedCanvas)
+                themedCanvas.restore()
+            }
+            save(themed, "intro-icon-themed.png")
+        }
     }
 
     /** Перемещает часы к нужному кадру, сохраняя отключённую автоматическую прокрутку времени. */

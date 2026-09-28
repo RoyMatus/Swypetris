@@ -12,16 +12,22 @@
 
 ## Tool economy
 
+- Prefer APIs, purpose-built tools, scripts, CLI commands, and shell commands when they can complete the task. Use browser or desktop UI control only when these lighter options cannot provide the required result.
 - For GitHub issue triage, collect compact status, labels, dependencies, and comment summaries first. Read full bodies only for candidates that need them; do not dump raw connector responses.
 - Limit searches and build output to the evidence needed for the decision. Preserve complete failure logs in ignored build output, and report the relevant error plus its log path.
 - When a browser tab or URL is known, target it directly instead of listing every open tab. Repeat checks only when a change or unresolved risk requires them.
 
 ## GitHub issue workflow
 
+- Make issue, pull request, and GitHub Project updates through APIs or API-backed tools, not browser UI automation.
+- Use `tools/Update-Issue.ps1` for issue metadata, relationships, comments, linked branches, and the project's Status, Work Type, and Priority; preview changes with `-WhatIf`. Project field updates require a GitHub token with project read/write access.
 - When asked to work through issues, review the candidate open issues, their comments, attachments, and dependencies first. Consult closed issues only when relevant to those candidates. Choose an order that minimizes conflicts and rework; do not assume issue-number order is best.
 - Explain the planned order and post a concrete plan in chat before starting each issue.
 - Implement issues sequentially, one at a time. Use a separate branch and pull request for each issue, verify it, merge it into `main`, and close the issue before starting the next one.
-- Keep the GitHub Project status current as work progresses, and record the plan, verification, and pull request in issue comments.
+- Move each issue through the available GitHub Project Status states as work progresses. Keep Status aligned with the actual branch, pull request, and merge state.
+- Review and fill every issue metadata field: project Work Type and Priority, labels, assignee, milestone, relationships, and linked branch or pull request. Use actual scope, urgency, release plans, and dependencies; record a field as not applicable when no truthful value exists rather than inventing one. Create a separate branch for each issue and link it to the issue.
+- When closing an issue, include the pull request URL in the closing issue comment.
+- Record the plan, verification, and pull request in issue comments. Add other comments only for important findings or decisions that affect the issue; avoid routine progress commentary.
 - Leave issues marked On Hold out of the implementation queue until the user explicitly resumes them.
 
 ## Android / Code
