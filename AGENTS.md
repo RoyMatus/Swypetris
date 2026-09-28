@@ -9,6 +9,14 @@
 - Fix root causes; do not hide errors with arbitrary retries, delays, or broad exception handling.
 - Do not invent product or game-design decisions. Ask when ambiguity materially affects behavior.
 
+## GitHub issue workflow
+
+- When asked to work through issues, review the candidate open issues, their comments, attachments, and dependencies first. Consult closed issues only when relevant to those candidates. Choose an order that minimizes conflicts and rework; do not assume issue-number order is best.
+- Explain the planned order and post a concrete plan in chat before starting each issue.
+- Implement issues sequentially, one at a time. Use a separate branch and pull request for each issue, verify it, merge it into `main`, and close the issue before starting the next one.
+- Keep the GitHub Project status current as work progresses, and record the plan, verification, and pull request in issue comments.
+- Leave issues marked On Hold out of the implementation queue until the user explicitly resumes them.
+
 ## Android / Code
 
 - Follow the project's existing language, architecture, and configuration.
