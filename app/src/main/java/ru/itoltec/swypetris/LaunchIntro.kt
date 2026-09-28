@@ -51,13 +51,12 @@ internal fun LaunchIntroClock(model: GameViewModel) {
     }
 }
 
-/** Draws pieces of the original PNG over the screen, starting their paths beyond its edges. */
+/** Forms the original block-letter wordmark over the approaching cathedral. */
 @Composable
 internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier: Modifier = Modifier) {
     val logo = ImageBitmap.imageResource(R.drawable.swypetris_logo)
-    val palette = LocalGamePalette.current
-    val wordmarkOnly = !palette.light
-    val filter = brandColorFilter(palette, if (wordmarkOnly) 1f else .5f)
+    val wordmarkOnly = true
+    val filter = null
     Canvas(modifier.testTag("launchIntro").semantics {
         contentDescription = "Заставка SWYPETRIS. Коснитесь, чтобы пропустить"
         onClick("Пропустить заставку") { model.finishLaunchIntro(); true }
@@ -68,8 +67,27 @@ internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier
         val origin = logoBounds.center - Offset(logo.width * scale / 2, logo.height * scale / 2)
         // Once assembled, GameTitle draws the logo; the layer does not change as buttons appear.
         if (elapsed >= 2650L) return@Canvas
+        if (wordmarkOnly) {
+            val revealWidth = (logo.width * LaunchIntroMotion.wordmarkReveal(elapsed)).toInt()
+            if (revealWidth == 0) return@Canvas
+            val top = (logo.height * .69f).toInt()
+            val bandHeight = (logo.height - top) / 8
+            repeat(8) { band ->
+                val sourceY = top + band * bandHeight
+                val height = if (band == 7) logo.height - sourceY else bandHeight
+                val sourceX = if (band % 2 == 0) 0 else logo.width - revealWidth
+                withTransform({
+                    translate(origin.x + sourceX * scale, origin.y + sourceY * scale)
+                    scale(scale, scale, Offset.Zero)
+                }) {
+                    drawImage(logo, srcOffset = IntOffset(sourceX, sourceY),
+                        srcSize = IntSize(revealWidth, height), dstOffset = IntOffset.Zero,
+                        dstSize = IntSize(revealWidth, height), colorFilter = filter)
+                }
+            }
+            return@Canvas
+        }
         LogoPieces.parts.forEachIndexed { index, piece ->
-            if (wordmarkOnly && piece.y < logo.height * .69f) return@forEachIndexed
             val target = origin + Offset(piece.x * scale, piece.y * scale)
             val position: Offset
             val pivot: Offset

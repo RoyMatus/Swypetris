@@ -6,6 +6,12 @@ import kotlin.math.sin
 internal object LaunchIntroMotion {
     const val DURATION = 3000L
 
+    /** The shared Red Square artwork approaches its final menu framing before controls appear. */
+    fun approachProgress(elapsed: Long): Float = easeOut(progress(elapsed, 0L, 2000L))
+
+    /** The dark-theme wordmark resolves as alternating scanline bands after the approach. */
+    fun wordmarkReveal(elapsed: Long): Float = easeOut(progress(elapsed, 1550L, 1000L))
+
     /** Stripes arrive in sequence from opposite sides and finish assembly after 1100 ms. */
     fun stripeProgress(elapsed: Long, index: Int, count: Int): Float {
         val delay = if (count <= 1) 0L else 350L * index / (count - 1)

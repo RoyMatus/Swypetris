@@ -22,6 +22,14 @@ class LaunchIntroMotionTest {
         assertTrue((0..100).map { LaunchIntroMotion.cubeProgress(1500, it) }.distinct().size > 30)
     }
 
+    @Test fun approachAndWordmarkMeetTheFinalMenuFrame() {
+        assertEquals(0f, LaunchIntroMotion.approachProgress(0))
+        assertTrue(LaunchIntroMotion.approachProgress(1000) in 0f..1f)
+        assertEquals(1f, LaunchIntroMotion.approachProgress(2000))
+        assertEquals(0f, LaunchIntroMotion.wordmarkReveal(1549))
+        assertEquals(1f, LaunchIntroMotion.wordmarkReveal(2550))
+    }
+
     /** Clear strength is halved again; drop and settings preview retain their existing pulses. */
     @Test fun lineClearIsHalfStrengthWithShortFallback() {
         assertEquals(128, HapticPulse.Drop.amplitude)
