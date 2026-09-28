@@ -8,6 +8,13 @@
 - Do not perform unrelated refactoring, cleanup, or dependency/version upgrades.
 - Fix root causes; do not hide errors with arbitrary retries, delays, or broad exception handling.
 - Do not invent product or game-design decisions. Ask when ambiguity materially affects behavior.
+- If a user's premise conflicts with verified evidence, explain the conflict and recommend the correction. Do not agree merely to be agreeable; separate observed facts from inferences and uncertainty.
+
+## Tool economy
+
+- For GitHub issue triage, collect compact status, labels, dependencies, and comment summaries first. Read full bodies only for candidates that need them; do not dump raw connector responses.
+- Limit searches and build output to the evidence needed for the decision. Preserve complete failure logs in ignored build output, and report the relevant error plus its log path.
+- When a browser tab or URL is known, target it directly instead of listing every open tab. Repeat checks only when a change or unresolved risk requires them.
 
 ## GitHub issue workflow
 

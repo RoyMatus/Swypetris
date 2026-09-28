@@ -1,6 +1,6 @@
 # Continuous integration
 
-The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 9.3.1, Java 11 source/target compatibility, JUnit 4 and Kotest JVM tests through JUnit Platform/Vintage. Android/Compose tests are under `app/src/androidTest`. The full test inventory and audit are in [TESTING.md](TESTING.md).
+The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 9.3.1, Java 11 source/target compatibility, JUnit 4 and Kotest JVM tests through JUnit Platform/Vintage. Android/Compose tests are under `app/src/androidTest`. The full test inventory and audit are in [TESTING.md](../TESTING.md).
 
 ## Checks
 
@@ -12,7 +12,7 @@ The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 
 
 Test, lint, and coverage reports are attached to CI runs. Signed release artifacts are attached to release verification runs. A successful workflow verifies a candidate; it does not publish a release or replace a manual device/store review.
 
-On Linux/macOS, run the PR checks locally with `bash ./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:jacocoDebugUnitTestReport`. Run all JVM variants with `bash ./gradlew :app:test`. Run instrumentation on a selected emulator with `ANDROID_SERIAL=<serial> bash ./gradlew :app:connectedDebugAndroidTest`. Use JDK 21 for the Sonar scanner. On Windows, use `gradlew.bat` and set `$env:ANDROID_SERIAL` first for instrumentation.
+On Linux/macOS, run the PR checks locally with `bash ./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:jacocoDebugUnitTestReport`. Run all JVM variants with `bash ./gradlew :app:test`. Run instrumentation on a selected emulator with `ANDROID_SERIAL=<serial> bash ./gradlew :app:connectedDebugAndroidTest`. Use JDK 21 for the Sonar scanner. On Windows, `tools/Verify-Tests.ps1` runs and summarizes the fast checks or instrumentation on an explicitly selected emulator; see [TESTING.md](../TESTING.md).
 
 JaCoCo XML is at `app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml`. It measures production Kotlin classes compiled for the debug variant, excluding generated `R`, `BuildConfig`, and `Manifest` classes. It includes only JVM-test execution; Android instrumentation/Compose UI coverage is not merged. Do not interpret its overall percentage as complete application coverage.
 
