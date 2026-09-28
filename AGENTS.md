@@ -20,6 +20,7 @@
 ## GitHub issue workflow
 
 - Make issue, pull request, and GitHub Project updates through APIs or API-backed tools, not browser UI automation.
+- Use English for all GitHub-facing content, including issue and pull request titles, descriptions, comments, labels, milestones, project fields, commit messages, branch names, and release notes.
 - Use `tools/Update-Issue.ps1` for issue metadata, relationships, comments, linked branches, and the project's Status, Work Type, and Priority; preview changes with `-WhatIf`. Project field updates require a GitHub token with project read/write access.
 - When asked to work through issues, review the candidate open issues, their comments, attachments, and dependencies first. Consult closed issues only when relevant to those candidates. Choose an order that minimizes conflicts and rework; do not assume issue-number order is best.
 - Explain the planned order and post a concrete plan in chat before starting each issue.
