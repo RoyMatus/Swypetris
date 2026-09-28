@@ -1,0 +1,97 @@
+name: Release verification
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  instrumented-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android instrumentation and launch smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          emulator-port: 5554
+          script: |
+            ANDROID_SERIAL=emulator-5554 bash ./gradlew :app:connectedDebugAndroidTest --console=plain
+            adb -s emulator-5554 shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1
+      - name: Save instrumentation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          if-no-files-found: warn
+
+  signed-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Restore application and upload signing keys from GitHub Secrets
+        env:
+          APP_KEYSTORE_BASE64: ${{ secrets.SWYPETRIS_APP_KEYSTORE_BASE64 }}
+          APP_STORE_PASSWORD: ${{ secrets.SWYPETRIS_APP_STORE_PASSWORD }}
+          APP_KEY_ALIAS: ${{ secrets.SWYPETRIS_APP_KEY_ALIAS }}
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets.SWYPETRIS_UPLOAD_KEYSTORE_BASE64 }}
+          UPLOAD_STORE_PASSWORD: ${{ secrets.SWYPETRIS_UPLOAD_STORE_PASSWORD }}
+          UPLOAD_KEY_ALIAS: ${{ secrets.SWYPETRIS_UPLOAD_KEY_ALIAS }}
+        run: |
+          if [ -z "$APP_KEYSTORE_BASE64" ] || [ -z "$APP_STORE_PASSWORD" ] || [ -z "$APP_KEY_ALIAS" ] ||
+             [ -z "$UPLOAD_KEYSTORE_BASE64" ] || [ -z "$UPLOAD_STORE_PASSWORD" ] || [ -z "$UPLOAD_KEY_ALIAS" ]; then
+            echo 'Release signing secrets are missing. See publishing/CI.md.' >&2
+            exit 1
+          fi
+          printf '%s' "$APP_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/swypetris-app.p12"
+          printf '%s' "$UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/swypetris-upload.p12"
+      - name: Build signed APK with application key
+        env:
+          SWYPETRIS_STORE_FILE: ${{ runner.temp }}/swypetris-app.p12
+          SWYPETRIS_STORE_PASSWORD: ${{ secrets.SWYPETRIS_APP_STORE_PASSWORD }}
+          SWYPETRIS_KEY_ALIAS: ${{ secrets.SWYPETRIS_APP_KEY_ALIAS }}
+        run: bash ./gradlew :app:assembleRelease :app:lintRelease --console=plain
+      - name: Build signed AAB with upload key
+        env:
+          SWYPETRIS_STORE_FILE: ${{ runner.temp }}/swypetris-upload.p12
+          SWYPETRIS_STORE_PASSWORD: ${{ secrets.SWYPETRIS_UPLOAD_STORE_PASSWORD }}
+          SWYPETRIS_KEY_ALIAS: ${{ secrets.SWYPETRIS_UPLOAD_KEY_ALIAS }}
+        run: bash ./gradlew :app:bundleRelease --console=plain --rerun-tasks
+      - name: Verify release artifacts
+        run: |
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -n "$apksigner"
+          "$apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
+          unzip -t app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify -strict app/build/outputs/bundle/release/app-release.aab
+          sha256sum app/build/outputs/apk/release/app-release.apk app/build/outputs/bundle/release/app-release.aab
+      - name: Save verified release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-release
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
