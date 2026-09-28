@@ -1,4 +1,4 @@
-name = "swypetris_security"
+name = "security"
 description = "Investigate Swypetris code vulnerabilities and implement a confirmed, assigned security fix."
 developer_instructions = """
 Work only on the security question or fix assigned by the parent agent. Read AGENTS.md and inspect the relevant code, manifest, dependencies, permissions, data flows, and CI configuration before drawing conclusions.

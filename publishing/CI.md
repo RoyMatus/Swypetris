@@ -6,11 +6,14 @@ The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 
 
 | Event | Checks |
 | --- | --- |
-| Pull request to `main` | Debug APK build, `lintDebug`, `testDebugUnitTest`, JaCoCo XML/HTML report; SonarQube Cloud analysis after setup |
-| Push to `main` | Debug APK build, `lintDebug`, all variant JVM tests via `:app:test`, JaCoCo report; Sonar main analysis after setup |
+| Pull request to `main` with changes beyond Markdown and agent TOML | Debug APK build, `lintDebug`, `testDebugUnitTest`, JaCoCo XML/HTML report; SonarQube Cloud analysis after setup |
+| Push to `main` with changes beyond Markdown and agent TOML | Debug APK build, `lintDebug`, all variant JVM tests via `:app:test`, JaCoCo report; Sonar main analysis after setup |
+| Pull request or `main` push changing only Markdown and agent TOML | SonarQube Cloud analysis; Android build, lint, tests, coverage, and report upload skipped |
 | `v*` tag or manual release verification | Full Android instrumentation suite on an API 35 emulator, launcher smoke check, signed release APK and AAB builds, `lintRelease`, APK/AAB signature and archive checks |
 
 Test, lint, and coverage reports are attached to CI runs. Signed release artifacts are attached to release verification runs. A successful workflow verifies a candidate; it does not publish a release or replace a manual device/store review.
+
+For changes limited to Markdown and `.codex/agents/*.toml`, Android build, lint, JVM tests, coverage, and report upload are skipped. SonarQube Cloud still runs because its Quality Gate is required for merging. Other changes, including Gradle, manifest, and workflow edits, run the normal PR checks. A newer push to the same PR cancels its older in-progress Android CI run; pushes to `main` are not cancelled.
 
 On Linux/macOS, run the PR checks locally with `bash ./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:jacocoDebugUnitTestReport`. Run all JVM variants with `bash ./gradlew :app:test`. Run instrumentation on a selected emulator with `ANDROID_SERIAL=<serial> bash ./gradlew :app:connectedDebugAndroidTest`. Use JDK 21 for the Sonar scanner. On Windows, `tools/Verify-Tests.ps1` runs and summarizes the fast checks or instrumentation on an explicitly selected emulator; see [TESTING.md](../TESTING.md).
 

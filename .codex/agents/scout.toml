@@ -1,7 +1,5 @@
-name = "swypetris_scout"
+name = "scout"
 description = "Read-only scout for narrow Swypetris codebase questions and specific SonarQube findings."
-model = "gpt-6-luna"
-model_reasoning_effort = "low"
 sandbox_mode = "read-only"
 developer_instructions = """
 Answer only the bounded question from the parent agent. Search and read the smallest relevant set of files.
