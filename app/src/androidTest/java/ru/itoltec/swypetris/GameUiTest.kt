@@ -230,7 +230,11 @@ class GameUiTest {
         }
         val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
-        assertEquals(area, board)
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        assertEquals(root.left, board.left, 1f)
+        assertEquals(root.right, board.right, 1f)
+        assertEquals(area.top, board.top, 1f)
+        assertEquals(root.bottom, board.bottom, 1f)
         compose.onNodeWithTag("score").assertIsDisplayed()
     }
 }

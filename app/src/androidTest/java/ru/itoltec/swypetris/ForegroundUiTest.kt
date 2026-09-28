@@ -73,7 +73,9 @@ class ForegroundUiTest {
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
         val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
         val density = compose.activity.resources.displayMetrics.density
-        assertEquals(area.left + 4 * density, score.left, 1f)
+        val safeLeft = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+            .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).left
+        assertEquals(safeLeft + 4 * density, score.left, 1f)
         assertEquals(area.top + 3 * density, score.top, 1f)
         val statusTop = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
             .getInsets(WindowInsetsCompat.Type.statusBars()).top

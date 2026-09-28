@@ -46,6 +46,7 @@ jobs:
         env:
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_REGION: ${{ vars.SONAR_REGION }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if [ -z "$SONAR_TOKEN" ]; then

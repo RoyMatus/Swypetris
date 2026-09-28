@@ -85,7 +85,15 @@ jobs:
           test -n "$apksigner"
           "$apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
           unzip -t app/build/outputs/bundle/release/app-release.aab
-          jarsigner -verify -strict app/build/outputs/bundle/release/app-release.aab
+          # Android upload keys are self-signed, so jarsigner -strict rejects a valid AAB.
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab > "$RUNNER_TEMP/aab-verification.txt"
+          grep -q '^jar verified\.$' "$RUNNER_TEMP/aab-verification.txt"
+          expected_app=$(openssl x509 -in publishing/certificates/swypetris-app.pem -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          expected_upload=$(openssl x509 -in publishing/certificates/swypetris-upload.pem -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          actual_app=$("$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          actual_upload=$(keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab | sed -n 's/^[[:space:]]*SHA256: //p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          test -n "$actual_app" && test "$actual_app" = "$expected_app"
+          test -n "$actual_upload" && test "$actual_upload" = "$expected_upload"
           sha256sum app/build/outputs/apk/release/app-release.apk app/build/outputs/bundle/release/app-release.aab
       - name: Save verified release artifacts
         uses: actions/upload-artifact@v4
