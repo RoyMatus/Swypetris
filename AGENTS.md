@@ -14,7 +14,6 @@
 ## Tool economy
 
 - Prefer APIs, purpose-built tools, scripts, CLI commands, and shell commands when they can complete the task. Use browser or desktop UI control only when these lighter options cannot provide the required result.
-- For GitHub issue triage, collect compact status, labels, dependencies, and comment summaries first. Read full bodies only for candidates that need them; do not dump raw connector responses.
 - Limit searches and build output to the evidence needed for the decision. Preserve complete failure logs in ignored build output, and report the relevant error plus its log path.
 - When a browser tab or URL is known, target it directly instead of listing every open tab. Repeat checks only when a change or unresolved risk requires them.
 
@@ -33,14 +32,11 @@
 - Use `tools/Update-Issue.ps1` for issue metadata, relationships, comments, linked branches, and the project's Status, Work Type, and Priority; preview changes with `-WhatIf`. Project field updates require a GitHub token with project read/write access.
 - For a specific issue, use `tools/Update-Issue.ps1 -Inspect -IncludeContent` to read its metadata, body, and comments together; request `-ListOptions` only when choosing labels or milestones. Prefer the project scripts to an unverified `gh` installation.
 - After `ProjectAccessError`, report the missing scope once and skip further Project reads until the credentials change.
-- When asked to work through issues, review the candidate open issues, their comments, attachments, and dependencies first. Consult closed issues only when relevant to those candidates. Choose an order that minimizes conflicts and rework; do not assume issue-number order is best.
-- Explain the planned order and post a concrete plan in chat before starting each issue.
+- Use `swypetris_feature_manager` to prepare feature-issue scope, dependencies, order, and metadata. Explain the planned order and post a concrete plan in chat before starting each issue.
 - Implement issues sequentially, one at a time. Use a separate branch and pull request for each issue, verify it, merge it into `main`, and close the issue before starting the next one.
-- Move each issue through the available GitHub Project Status states as work progresses. Keep Status aligned with the actual branch, pull request, and merge state.
-- Review and fill every issue metadata field: project Work Type and Priority, labels, assignee, milestone, relationships, and linked branch or pull request. Use actual scope, urgency, release plans, and dependencies; record a field as not applicable when no truthful value exists rather than inventing one. Create a separate branch for each issue and link it to the issue.
+- Keep GitHub Project Status aligned with the actual branch, pull request, and merge state. Create a separate linked branch for each issue.
 - When closing an issue, include the pull request URL in the closing issue comment.
-- Record the plan, verification, and pull request in issue comments. Add other comments only for important findings or decisions that affect the issue; avoid routine progress commentary.
-- Leave issues marked On Hold out of the implementation queue until the user explicitly resumes them.
+- Record the plan, verification, and pull request in issue comments.
 
 ## Android / Code
 
@@ -83,19 +79,15 @@ After changes:
 3. Fix regressions caused by the change.
 4. Never claim a check was run if it was not.
 
-- Match verification to the changed behavior. For resource-only or documentation changes, build the affected variant and perform a focused visual or manual check when applicable; do not run the full Fast or Android suites by default.
-- Use targeted tests for changed logic or UI behavior. Run the full suites only when the change spans multiple systems, a release or CI gate requires them, or a specific regression risk remains after focused checks.
-- If an emulator or test runner fails for an environmental reason, diagnose it once and continue with the narrowest meaningful check instead of rerunning unrelated tests.
+- Match verification to changed behavior; use `swypetris_tester` for test planning or execution when the task warrants delegation. Do not run the full suites by default for small changes.
 
 - On Windows, use `tools/Verify-Tests.ps1` for its standard test suites; pass `-JavaHome` when needed and an explicit `-Serial` for the Android suite. Use direct Gradle or adb commands for narrower checks.
 
 ### Android test devices
 
 - Run instrumentation tests on an isolated emulator first. Use the connected Pixel 7 only when device-specific behavior makes a real-device check necessary.
-- If the Pixel 7 is unavailable, locked, or its display turns off during a required check, tell the user so they can unlock it. Continue independent work while waiting.
 - The user authorizes uninstalling the old Swypetris application, including its local data, from the Pixel 7 for necessary tests. Do not uninstall unrelated applications.
 - Always select the target device explicitly by its adb serial; never run against an unspecified connected device.
-- Before asking the user to inspect or scan an emulator screen, confirm that its window is visible (not started with `-no-window`) and the relevant app screen is open.
 - Leave the tested application installed on the Pixel 7 when verification is complete.
 
 ## Final response
