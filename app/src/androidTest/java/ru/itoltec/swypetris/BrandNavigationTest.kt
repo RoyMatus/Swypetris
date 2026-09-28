@@ -115,6 +115,8 @@ class BrandNavigationTest {
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("contactsPage").performScrollToIndex(0)
         screenshot("contacts-brand.png")
+        compose.runOnIdle { model.setPalette("github_light") }
+        screenshot("contacts-light.png")
         Espresso.pressBack()
         compose.runOnIdle { assertEquals(GameScreen.MENU, model.screen) }
     }
