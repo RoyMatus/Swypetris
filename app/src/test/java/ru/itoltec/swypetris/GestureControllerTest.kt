@@ -112,6 +112,16 @@ class GestureControllerTest {
         assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.HARD_DROP), commands)
     }
 
+    @Test fun dropAfterDiagonalUpwardContinuationUsesTheLatestPosition() {
+        gestures.down(100f, 200f, 0)
+        gestures.move(100f, 176f, 20) // Rotate once.
+        gestures.move(140f, 126f, 40) // Continue upward with moderate horizontal drift.
+        gestures.move(140f, 142f, 60) // Reversal alone is not a drop.
+        assertEquals(listOf(GameCommand.CLOCKWISE), commands)
+        gestures.move(140f, 174f, 80) // 48 dp down from the latest high point.
+        assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.HARD_DROP), commands)
+    }
+
     @Test fun horizontalAfterLongUpwardStrokeKeepsItsNormalThreshold() {
         gestures.down(100f, 300f, 0)
         gestures.move(100f, 276f, 20)

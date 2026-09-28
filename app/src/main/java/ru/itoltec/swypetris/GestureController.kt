@@ -120,7 +120,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
             if (y < rotationTop) {
                 rotationTop = y
                 // Suppressed upward motion must not accumulate a debt for a subsequent drop.
-                if (-eventDy >= abs(eventDx) * config.directionRatio) {
+                if (-eventDy >= abs(eventDx)) {
                     anchorX = x
                     anchorY = y
                     horizontalDirection = 0
