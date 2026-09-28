@@ -9,9 +9,10 @@ class GameLayoutTest {
         for (width in listOf(240f, 320f, 411f, 600f, 1000f))
             for (height in listOf(320f, 600f, 900f))
                 for (next in Tetromino.entries)
-                    for (count in 1..8) {
-                        val placement = fruitPlacement(width, height, count, next, true, width * .6f, 40f)
-                        assertEquals(width - FRUIT_SIZE - FRUIT_GAP, placement.left, .001f)
+                    for (count in 1..8)
+                    for (rightInset in listOf(0f, 24f)) {
+                        val placement = fruitPlacement(width, height, count, next, true, width * .6f, 40f, rightInset)
+                        assertEquals(width - rightInset - FRUIT_SIZE - FRUIT_GAP, placement.left, .001f)
                         repeat(count) { index ->
                             val x = placement.left
                             val y = placement.top + index * (FRUIT_SIZE + FRUIT_GAP)

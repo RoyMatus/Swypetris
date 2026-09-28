@@ -383,6 +383,9 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
+        val layoutDirection = LocalLayoutDirection.current
+        val rightGestureInset = (WindowInsets.safeContent.getRight(density, layoutDirection) -
+            WindowInsets.safeDrawing.getRight(density, layoutDirection)).coerceAtLeast(0)
         val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -400,7 +403,8 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
         }
         if (state.roundFruits > 0) {
             val layout = fruitPlacement(maxWidth.value, maxHeight.value, state.roundFruits, state.next, showNext,
-                with(density) { scoreSize.width.toDp().value }, with(density) { scoreSize.height.toDp().value })
+                with(density) { scoreSize.width.toDp().value }, with(density) { scoreSize.height.toDp().value },
+                with(density) { rightGestureInset.toDp().value })
             Column(Modifier.offset(layout.left.dp, layout.top.dp).testTag("earnedFruits"),
                 verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
                 Fruit.entries.take(state.roundFruits).forEach { fruit ->
