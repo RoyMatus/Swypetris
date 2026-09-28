@@ -20,8 +20,8 @@
 ## Delegation
 
 - For simple, self-contained tasks worth delegating, explicitly choose `gpt-6-luna` with low reasoning effort. Use a stronger model only when the assigned task needs deeper reasoning. Keep the scope and requested output short; do not pin models in the project agent files so the parent can choose per task.
-- For a bounded, independent codebase search or analysis that would otherwise consume substantial main-agent context, use the project-scoped `swypetris_scout` agent in `.codex/agents/swypetris-scout.toml` when available. Pass only the task context it needs. The main agent verifies findings before acting.
-- Use `swypetris_security` for bounded vulnerability investigation or an assigned security fix, `swypetris_code_quality` for a concrete quality defect, `swypetris_tester` for focused test design or execution, `swypetris_devops` for CI/CD and release automation, and `swypetris_feature_manager` for feature-issue triage and specification.
+- For a bounded, independent codebase search or analysis that would otherwise consume substantial main-agent context, use the project-scoped `scout` agent in `.codex/agents/scout.toml` when available. Pass only the task context it needs. The main agent verifies findings before acting.
+- Use `security` for bounded vulnerability investigation or an assigned security fix, `code_quality` for a concrete quality defect, `tester` for focused test design or execution, `devops` for CI/CD and release automation, and `feature_manager` for feature-issue triage and specification. Consult `game_designer` on new gameplay or player-experience features before turning them into issues; the user makes product decisions.
 - Do not delegate trivial searches or sequential edits. Give any editing agent explicit file ownership; keep final integration and verification with the main agent and avoid simultaneous edits to shared files.
 - Treat SonarQube Cloud findings as inputs to the same scout when their scope is narrow. Do not spawn a standing Sonar-specific agent or claim an analysis ran without its report.
 
@@ -32,7 +32,7 @@
 - Use `tools/Update-Issue.ps1` for issue metadata, relationships, comments, linked branches, and the project's Status, Work Type, and Priority; preview changes with `-WhatIf`. Project field updates require a GitHub token with project read/write access.
 - For a specific issue, use `tools/Update-Issue.ps1 -Inspect -IncludeContent` to read its metadata, body, and comments together; request `-ListOptions` only when choosing labels or milestones. Prefer the project scripts to an unverified `gh` installation.
 - After `ProjectAccessError`, report the missing scope once and skip further Project reads until the credentials change.
-- Use `swypetris_feature_manager` to prepare feature-issue scope, dependencies, order, and metadata. Explain the planned order and post a concrete plan in chat before starting each issue.
+- Use `feature_manager` to prepare feature-issue scope, dependencies, order, and metadata. Explain the planned order and post a concrete plan in chat before starting each issue.
 - Implement issues sequentially, one at a time. Use a separate branch and pull request for each issue, verify it, merge it into `main`, and close the issue before starting the next one.
 - Keep GitHub Project Status aligned with the actual branch, pull request, and merge state. Create a separate linked branch for each issue.
 - When closing an issue, include the pull request URL in the closing issue comment.
@@ -79,7 +79,7 @@ After changes:
 3. Fix regressions caused by the change.
 4. Never claim a check was run if it was not.
 
-- Match verification to changed behavior; use `swypetris_tester` for test planning or execution when the task warrants delegation. Do not run the full suites by default for small changes.
+- Match verification to changed behavior; use `tester` for test planning or execution when the task warrants delegation. Do not run the full suites by default for small changes.
 
 - On Windows, use `tools/Verify-Tests.ps1` for its standard test suites; pass `-JavaHome` when needed and an explicit `-Serial` for the Android suite. Use direct Gradle or adb commands for narrower checks.
 
