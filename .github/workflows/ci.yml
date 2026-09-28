@@ -38,7 +38,7 @@ jobs:
             app/build/reports/lint-results-*
             app/build/reports/jacoco/
           if-no-files-found: warn
-      - name: SonarQube Cloud analysis (configuration pending in #63)
+      - name: 'SonarQube Cloud analysis (configuration pending in #63)'
         if: >-
           vars.SONAR_ORGANIZATION != '' &&
           vars.SONAR_PROJECT_KEY != '' &&
