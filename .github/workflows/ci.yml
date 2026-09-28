@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Build, lint, and fast JVM tests (PR)
         if: github.event_name == 'pull_request'
@@ -38,7 +38,7 @@ jobs:
             app/build/reports/lint-results-*
             app/build/reports/jacoco/
           if-no-files-found: warn
-      - name: 'SonarQube Cloud analysis (configuration pending in #63)'
+      - name: SonarQube Cloud analysis
         if: >-
           vars.SONAR_ORGANIZATION != '' &&
           vars.SONAR_PROJECT_KEY != '' &&
