@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import kotlin.math.round
@@ -169,19 +170,20 @@ private val fruitSprites = mapOf(
 @Composable
 fun FruitIcon(fruit: Fruit, modifier: Modifier = Modifier) {
     val sprite = fruitSprites.getValue(fruit)
+    val palette = LocalGamePalette.current
     Canvas(modifier.semantics { contentDescription = fruit.title }) {
         val cell = minOf(size.width, size.height) / 16f
         val origin = Offset((size.width - cell * 16) / 2, (size.height - cell * 16) / 2)
         sprite.rows.forEachIndexed { y, row ->
             row.forEachIndexed { x, pixel ->
                 val color = when (pixel) {
-                    'o' -> Color(0xFF29223F)
-                    's' -> sprite.shadow
+                    'o' -> palette.fruitOutline
+                    's' -> lerp(sprite.shadow, palette.secondary, .10f)
                     'm' -> sprite.body
-                    'l' -> sprite.light
+                    'l' -> lerp(sprite.light, palette.accent, .08f)
                     'h' -> Color(0xFFFFF4CF)
-                    'g' -> Color(0xFF31845C)
-                    'G' -> Color(0xFF8BE07C)
+                    'g' -> lerp(Color(0xFF31845C), palette.fruitLeaf, .3f)
+                    'G' -> lerp(Color(0xFF8BE07C), palette.fruitLeaf, .3f)
                     't' -> Color(0xFF98603E)
                     'x' -> if (fruit == Fruit.WATERMELON) Color(0xFF582A42) else Color(0xFFFFE39C)
                     else -> Color.Transparent
