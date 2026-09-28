@@ -31,4 +31,12 @@ object GameStorage {
         preferences.getInt("record_v4", 0),
         ResultStore(preferences).read().filter { it.rulesVersion < GameRules.VERSION }.maxOfOrNull { it.score } ?: 0
     )
+
+    /** Removes result history and every legacy record key in one preferences transaction. */
+    fun clearStatistics(preferences: SharedPreferences) {
+        val editor = preferences.edit().remove("results_v2")
+        listOf("record", "legacy_record", "record_v2", "record_v3", "record_v4")
+            .forEach(editor::remove)
+        check(editor.commit()) { "Не удалось удалить статистику" }
+    }
 }
