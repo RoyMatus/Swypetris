@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -297,7 +298,10 @@ internal fun MenuTile(label: String, accent: Color, tag: String,
 /** The board fills the screen; its HUD overlay does not intercept touches. */
 @Composable
 private fun GameContent(model: GameViewModel, state: GameState) {
-    val density = LocalDensity.current.density
+    val localDensity = LocalDensity.current
+    val density = localDensity.density
+    val layoutDirection = LocalLayoutDirection.current
+    val gestureLeft = WindowInsets.safeContent.getLeft(localDensity, layoutDirection).toFloat()
     val playing = model.screen == GameScreen.PLAYING
     val palette = LocalGamePalette.current
     Box(Modifier.fillMaxSize()) {
@@ -315,14 +319,18 @@ private fun GameContent(model: GameViewModel, state: GameState) {
         Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
             Board(state, landingHint = landing, showNext = hints, clearTime = { model.clearElapsedMillis })
         }
-        Box(Modifier.fillMaxSize().safeDrawingPadding().onSizeChanged { model.setBoardWidth(it.width / density) }
-            .testTag("gameArea").pointerInput(model, playing, density) {
+        Box(Modifier.fillMaxSize().onSizeChanged { model.setBoardWidth(it.width / density) }) {
+        // Leave the system's side-gesture zones free; movement begins inside the safe area.
+        Box(Modifier.fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical))
+            .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
+            .testTag("gameArea").pointerInput(model, playing, density, gestureLeft) {
         if (!playing) return@pointerInput
         try {
             awaitEachGesture {
                 val first = awaitFirstDown(requireUnconsumed = false)
                 val id = first.id
-                model.pointerDown(first.position.x / density, first.position.y / density, first.uptimeMillis)
+                model.pointerDown((first.position.x + gestureLeft) / density, first.position.y / density, first.uptimeMillis)
                 first.consume()
                 var canceled = false
                 do {
@@ -333,8 +341,8 @@ private fun GameContent(model: GameViewModel, state: GameState) {
                     }
                     val change = event.changes.firstOrNull { it.id == id }
                     if (!canceled && change != null) {
-                        if (change.pressed) model.pointerMove(change.position.x / density, change.position.y / density, change.uptimeMillis)
-                        else model.pointerUp(change.position.x / density, change.position.y / density, change.uptimeMillis)
+                        if (change.pressed) model.pointerMove((change.position.x + gestureLeft) / density, change.position.y / density, change.uptimeMillis)
+                        else model.pointerUp((change.position.x + gestureLeft) / density, change.position.y / density, change.uptimeMillis)
                     }
                     event.changes.forEach { it.consume() }
                 } while (event.changes.any { it.pressed })
@@ -342,8 +350,8 @@ private fun GameContent(model: GameViewModel, state: GameState) {
         } finally {
             model.cancelGesture()
         }
-        }) {
-            GameHud(state, showNext = hints)
+        }) {}
+        Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, showNext = hints) }
         }
     }
 }
