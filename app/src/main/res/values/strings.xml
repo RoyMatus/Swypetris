@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Swypetris</string>
+    <string name="app_download_url">https://www.rustore.ru/catalog/app/ru.itoltec.swypetris</string>
 </resources>
