@@ -11,7 +11,7 @@ sonar {
     properties {
         property("sonar.projectKey", providers.environmentVariable("SONAR_PROJECT_KEY").orNull ?: "")
         property("sonar.organization", providers.environmentVariable("SONAR_ORGANIZATION").orNull ?: "")
-        property("sonar.exclusions", "**/build/**,**/generated/**")
+        property("sonar.exclusions", "**/build/**,**/generated/**,**/*.png,**/*.ogg,**/*.wav")
     }
 }
 
