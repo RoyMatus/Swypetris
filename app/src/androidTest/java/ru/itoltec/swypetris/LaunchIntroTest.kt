@@ -135,6 +135,28 @@ class LaunchIntroTest {
         screenshot("intro-menu-dark.png")
     }
 
+    @Test fun darkApproachEndsOnTheSameMenuComposition() {
+        val model = model()
+        model.setPalette("synthwave_84")
+        compose.mainClock.autoAdvance = false
+        compose.setContent { SwypetrisApp(model) {} }
+        compose.mainClock.advanceTimeByFrame()
+        screenshot("approach-0000.png")
+        advanceTo(model, 1000)
+        screenshot("approach-1000.png")
+        advanceTo(model, 2000)
+        screenshot("approach-2000.png")
+        advanceTo(model, 2650)
+        val finalFrame = screenshot("approach-2650.png")
+        compose.runOnIdle { model.finishLaunchIntro() }
+        compose.mainClock.advanceTimeByFrame()
+        val menuFrame = screenshot("approach-menu.png")
+        assertEquals(finalFrame.width, menuFrame.width)
+        assertEquals(finalFrame.height, menuFrame.height)
+        compose.onNodeWithTag("gameLogo").assertIsDisplayed()
+        compose.onNodeWithTag("newGame").assertIsDisplayed()
+    }
+
     /** Оба изображения имеют настоящую прозрачность, включая пространство между полосами. */
     @Test fun transparentAssetsAndAdaptiveIconMasks() {
         val app = ApplicationProvider.getApplicationContext<Application>()

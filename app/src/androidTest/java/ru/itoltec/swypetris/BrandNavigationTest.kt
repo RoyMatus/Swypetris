@@ -47,10 +47,10 @@ class BrandNavigationTest {
         val newGame = compose.onNodeWithTag("newGame").fetchSemanticsNode().boundsInRoot
         val settings = compose.onNodeWithTag("settings").fetchSemanticsNode().boundsInRoot
         val exit = compose.onNodeWithTag("exitGame").fetchSemanticsNode().boundsInRoot
-        assertTrue(resume.top < newGame.top)
-        assertTrue(resume.width > settings.width)
-        assertTrue(newGame.width > settings.width)
-        assertTrue(exit.width < settings.width)
+        assertEquals(resume.top, newGame.top)
+        assertTrue(newGame.left < resume.left)
+        assertTrue(kotlin.math.abs(resume.width - newGame.width) <= 1f)
+        assertTrue(exit.width <= settings.width * 1.2f)
         compose.runOnIdle { model.showResults() }
         compose.onNodeWithTag("newGame").assertDoesNotExist()
         compose.onNodeWithTag("toMenu").assertDoesNotExist()

@@ -28,8 +28,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun GameTitle(imageModifier: Modifier = Modifier, wordmarkOnly: Boolean = false,
     heightLimit: Dp? = null) {
-    val logoWidth = minOf(360f, LocalConfiguration.current.screenHeightDp * .45f,
-        heightLimit?.value?.times(1.5f) ?: Float.MAX_VALUE).dp
+    val logoWidth = if (heightLimit == null)
+        minOf(360f, LocalConfiguration.current.screenHeightDp * .45f).dp
+    else minOf(420f, heightLimit.value * 1.5f).dp
     val logo = ImageBitmap.imageResource(R.drawable.swypetris_logo)
     val palette = LocalGamePalette.current
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -50,7 +51,7 @@ internal fun DrawScope.drawBrandLogo(logo: ImageBitmap, bounds: Rect, palette: G
             val top = (logo.height * .69f).toInt()
             drawImage(logo, srcOffset = IntOffset(0, top),
                 srcSize = IntSize(logo.width, logo.height - top), dstOffset = IntOffset(0, top),
-                dstSize = IntSize(logo.width, logo.height - top), colorFilter = brandColorFilter(palette, 1f))
+                dstSize = IntSize(logo.width, logo.height - top))
         } else drawImage(logo, colorFilter = brandColorFilter(palette))
     }
 }
