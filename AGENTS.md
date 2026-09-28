@@ -24,6 +24,7 @@
 - Reuse existing APIs and dependencies before adding new ones.
 - Do not edit generated files.
 - Avoid hardcoded device-specific dimensions and arbitrary positioning.
+- Keep the game's composition, visual hierarchy, and controls consistent across device sizes, aspect ratios, resolutions, orientations, and font scales. Derive layout sizes and positions from available space; use `dp`/`sp` for accessibility minimums and sensible bounds, never fixed pixels tied to one device.
 - Keep gameplay logic separate from UI where the existing architecture allows it.
 
 ## Scope and safety
