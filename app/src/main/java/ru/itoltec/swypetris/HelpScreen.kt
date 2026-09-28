@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /** Essential controls fit a quick read; larger fonts can still scroll vertically. */
@@ -16,24 +17,32 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalLayoutApi::class)
 fun HelpScreen(model: GameViewModel) {
     val controls = listOf(
-        "← →" to "Двигайте фигуру",
-        "↑" to "Свайп вверх — один поворот",
-        "↓" to "Длинный жест вниз — бросок",
-        "●" to "Короткий тап — клетка вниз"
+        Triple("← →", "Двигайте фигуру", Tetromino.I),
+        Triple("↑", "Свайп вверх — один поворот", Tetromino.T),
+        Triple("↓", "Длинный жест вниз — бросок", Tetromino.J),
+        Triple("●", "Короткий тап — клетка вниз", Tetromino.S)
     )
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("helpPage"),
         contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         item { Text("Как играть", style = MaterialTheme.typography.headlineLarge) }
         item { Text("Управление", style = MaterialTheme.typography.titleLarge) }
-        controls.forEach { (symbol, label) ->
+        controls.forEach { (symbol, label, piece) ->
             item {
+                val accent = LocalGamePalette.current.piece(piece)
+                val indicatorColors = paletteButtonColors(accent, ActionStyle.SECONDARY)
                 Surface(Modifier.widthIn(max = 640.dp).fillMaxWidth(), shape = RoundedCornerShape(16.dp),
                     color = LocalGamePalette.current.accent.copy(alpha = .08f),
                     border = BorderStroke(1.dp, LocalGamePalette.current.accent.copy(alpha = .4f))) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(symbol, color = LocalGamePalette.current.accent, style = MaterialTheme.typography.headlineMedium)
+                        Surface(Modifier.size(56.dp), shape = RoundedCornerShape(12.dp),
+                            color = indicatorColors.containerColor, contentColor = indicatorColors.contentColor,
+                            border = paletteButtonBorder(accent, ActionStyle.SECONDARY)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(symbol, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                        }
                         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     }
                 }
