@@ -103,6 +103,9 @@ class ResultsIntegrationTest {
             compose.onNodeWithTag("resultsPage").assertDoesNotExist()
             compose.onNodeWithTag("board").assertDoesNotExist()
             saveScreenshot("record.png")
+            compose.runOnIdle { model.setPalette("github_light") }
+            saveScreenshot("record-light.png")
+            compose.runOnIdle { model.setPalette("classic") }
             compose.onNodeWithTag("recordName").performTextReplacement("  Алексей  ")
             compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("saveRecord"))
             compose.onNodeWithText("Сохранить").performClick()
@@ -133,6 +136,9 @@ class ResultsIntegrationTest {
                 assertTrue(bounds.left >= root.left && bounds.right <= root.right)
                 saveScreenshot("results-$label.png")
             }
+            compose.runOnIdle { testDensity = null; model.setPalette("github_light") }
+            compose.onNodeWithTag("resultsPage").performScrollToIndex(0)
+            saveScreenshot("results-light.png")
             compose.runOnIdle {
                 testDensity = null
                 model.newGame()

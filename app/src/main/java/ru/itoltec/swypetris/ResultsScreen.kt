@@ -3,7 +3,7 @@
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,22 +49,19 @@ private val Muted: Color @Composable get() = LocalGamePalette.current.muted
 fun ResultsScreen(model: GameViewModel) {
     val latest = model.latestResult
     val records = model.recordResults
-    Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
+    val palette = LocalGamePalette.current
+    Box(Modifier.fillMaxSize().background(palette.background), contentAlignment = Alignment.TopCenter) {
         LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize().testTag("resultsPage"),
-            contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            item { GameTitle() }
-            item {
-                Text(if (model.screen == GameScreen.GAME_OVER) "Игра окончена" else "Ваши рекорды",
-                    style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center)
-            }
+            contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { ScreenArtHeader(if (model.screen == GameScreen.GAME_OVER) "Игра окончена" else "Результаты",
+                if (model.screen == GameScreen.GAME_OVER) "Итоги партии" else "История рекордов") }
             if (model.screen == GameScreen.GAME_OVER && latest != null) item {
-                AccentPanel(Ice) {
+                AccentPanel(Ice, Modifier.padding(horizontal = 12.dp)) {
                     Text("РЕЗУЛЬТАТ ПАРТИИ", color = Ice, style = MaterialTheme.typography.labelLarge)
-                    Text("${latest.score}", fontSize = 52.sp, fontWeight = FontWeight.Black, color = LocalGamePalette.current.text)
-                    Text("очков", color = Muted)
-                    Spacer(Modifier.height(16.dp))
+                    Text("${latest.score}", Modifier.fillMaxWidth(), fontSize = 46.sp,
+                        fontWeight = FontWeight.Black, color = palette.text, textAlign = TextAlign.Center)
+                    Text("очков", Modifier.fillMaxWidth(), color = Muted, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Metric("Строки", "${latest.lines}", Modifier.weight(1f))
                         Metric("Уровень", "${latest.level}", Modifier.weight(1f))
@@ -73,20 +70,28 @@ fun ResultsScreen(model: GameViewModel) {
                         Metric("Время", formatDuration(latest.durationMillis), Modifier.weight(1f))
                         Metric("Рекорд", "${model.record}", Modifier.weight(1f))
                     }
-                    Spacer(Modifier.height(12.dp))
-                    FruitCollection(latest)
+                    Spacer(Modifier.height(8.dp))
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { FruitCollection(latest) }
                 }
             }
             item {
-                Column(Modifier.fillMaxWidth()) {
-                    Text("История рекордов", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Difficulty.entries.forEach { mode -> Text("${mode.title}: ${model.recordFor(mode)}", color = Ice) }
+                AccentPanel(Lavender, Modifier.padding(horizontal = 12.dp)) {
+                    Text("ИСТОРИЯ РЕКОРДОВ", color = Lavender, style = MaterialTheme.typography.labelLarge)
+                    SettingsDivider(Lavender)
+                    Difficulty.entries.forEach { mode ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(mode.title, color = palette.text)
+                            Text("${model.recordFor(mode)}", color = Ice, fontWeight = FontWeight.Bold)
+                        }
+                    }
                     if (model.legacyRecord > 0) Text("Прежние правила: ${model.legacyRecord}", color = Muted,
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
             if (records.isEmpty()) item {
-                AccentPanel(Lavender) { Text("Здесь появятся ваши новые рекорды.", color = Muted) }
+                AccentPanel(Lavender, Modifier.padding(horizontal = 12.dp)) {
+                    Text("Здесь появятся ваши новые рекорды.", color = Muted)
+                }
             }
             items(records, key = { it.id }) { result -> ResultCard(result) }
         }
@@ -110,61 +115,65 @@ fun RecordScreen(model: GameViewModel) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val result = model.results.firstOrNull { it.id == model.currentResultId }
-    Box(Modifier.fillMaxSize().safeDrawingPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
+    Box(Modifier.fillMaxSize().background(LocalGamePalette.current.background).imePadding(),
+        contentAlignment = Alignment.TopCenter) {
         CelebrationBlocks(model.currentResultId)
         LazyColumn(Modifier.widthIn(max = 600.dp).fillMaxSize().testTag("recordPage"),
-            contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            item { GameTitle() }
+            contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { ScreenArtHeader("Новый рекорд", "Поздравляем с результатом!") }
             item {
-                Text("Поздравляем!", style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Black, textAlign = TextAlign.Center, color = Gold)
-                Text("Вы установили новый рекорд", color = Muted, textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth())
-            }
-            item {
-                AccentPanel(Gold) {
+                AccentPanel(Gold, Modifier.padding(horizontal = 12.dp)) {
                     Text("НОВЫЙ РЕКОРД", color = Gold, style = MaterialTheme.typography.labelLarge)
-                    Text("${result?.score ?: model.record}", fontSize = 56.sp, fontWeight = FontWeight.Black)
-                    Text("очков", color = Muted)
+                    Text("${result?.score ?: model.record}", Modifier.fillMaxWidth(), fontSize = 48.sp,
+                        fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+                    Text("очков", Modifier.fillMaxWidth(), color = Muted, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(12.dp))
-                    result?.let { FruitCollection(it) }
+                    result?.let { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { FruitCollection(it) } }
                 }
             }
             item {
-                OutlinedTextField(value = name, onValueChange = { name = it.take(40) },
-                    label = { Text("Имя игрока") }, supportingText = { Text("Можно оставить пустым") },
-                    singleLine = true, shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().onGloballyPositioned {
-                        nameAutofill.boundingBox = it.boundsInWindow()
-                    }.onFocusChanged {
-                        if (it.isFocused) autofill?.requestAutofillForNode(nameAutofill)
-                        else autofill?.cancelAutofillForNode(nameAutofill)
-                    }.testTag("recordName"))
-            }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.weight(1f)) { AppActionButton("Сохранить", ActionStyle.PRIMARY,
-                        Modifier.fillMaxWidth().testTag("saveRecord"), LocalGamePalette.current.piece(Tetromino.S)) {
-                        focus.clearFocus(); keyboard?.hide(); model.saveRecordName(name)
-                    } }
-                    Box(Modifier.weight(1f)) { AppActionButton("Пропустить", ActionStyle.SECONDARY,
-                        Modifier.fillMaxWidth().testTag("skipRecord"), LocalGamePalette.current.piece(Tetromino.Z)) {
-                        focus.clearFocus(); keyboard?.hide(); model.saveRecordName("")
-                    } }
+                AccentPanel(Ice, Modifier.padding(horizontal = 12.dp)) {
+                    Text("ИМЯ ИГРОКА", color = Ice, style = MaterialTheme.typography.labelLarge)
+                    OutlinedTextField(value = name, onValueChange = { name = it.take(40) },
+                        label = { Text("Имя игрока") }, supportingText = { Text("Можно оставить пустым") },
+                        singleLine = true, shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().onGloballyPositioned {
+                            nameAutofill.boundingBox = it.boundsInWindow()
+                        }.onFocusChanged {
+                            if (it.isFocused) autofill?.requestAutofillForNode(nameAutofill)
+                            else autofill?.cancelAutofillForNode(nameAutofill)
+                        }.testTag("recordName"))
+                    val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.4f
+                    if (stacked) {
+                        AppActionButton("Сохранить", ActionStyle.PRIMARY,
+                            Modifier.fillMaxWidth().testTag("saveRecord"), LocalGamePalette.current.piece(Tetromino.S)) {
+                            focus.clearFocus(); keyboard?.hide(); model.saveRecordName(name)
+                        }
+                        AppActionButton("Пропустить", ActionStyle.SECONDARY,
+                            Modifier.fillMaxWidth().testTag("skipRecord"), LocalGamePalette.current.piece(Tetromino.Z)) {
+                            focus.clearFocus(); keyboard?.hide(); model.saveRecordName("")
+                        }
+                    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(Modifier.weight(1f)) { AppActionButton("Сохранить", ActionStyle.PRIMARY,
+                            Modifier.fillMaxWidth().testTag("saveRecord"), LocalGamePalette.current.piece(Tetromino.S)) {
+                            focus.clearFocus(); keyboard?.hide(); model.saveRecordName(name)
+                        } }
+                        Box(Modifier.weight(1f)) { AppActionButton("Пропустить", ActionStyle.SECONDARY,
+                            Modifier.fillMaxWidth().testTag("skipRecord"), LocalGamePalette.current.piece(Tetromino.Z)) {
+                            focus.clearFocus(); keyboard?.hide(); model.saveRecordName("")
+                        } }
+                    }
                 }
             }
         }
     }
 }
 
-/** Translucent panel matching the colorful outlines of menu buttons. */
+/** A Results card sharing the Settings border and gradient. */
 @Composable
-private fun AccentPanel(accent: Color, content: @Composable ColumnScope.() -> Unit) {
-    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
-        color = accent.copy(alpha = .08f), contentColor = LocalGamePalette.current.text,
-        border = BorderStroke(1.dp, accent.copy(alpha = .4f))) {
-        Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, content = content)
+private fun AccentPanel(accent: Color, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    ThemedCard(accent, modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
     }
 }
 
@@ -181,7 +190,7 @@ private fun Metric(label: String, value: String, modifier: Modifier) {
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun ResultCard(result: GameResult) {
-    AccentPanel(Lavender) {
+    AccentPanel(Lavender, Modifier.padding(horizontal = 12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(result.name, Modifier.weight(1f), fontWeight = FontWeight.Bold)
             Text("${result.score}", Modifier.weight(1f), color = Ice, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
