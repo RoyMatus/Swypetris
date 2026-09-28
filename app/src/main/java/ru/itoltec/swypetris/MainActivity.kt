@@ -403,12 +403,8 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
                 with(density) { scoreSize.width.toDp().value }, with(density) { scoreSize.height.toDp().value })
             Column(Modifier.offset(layout.left.dp, layout.top.dp).testTag("earnedFruits"),
                 verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
-                Fruit.entries.take(state.roundFruits).chunked(layout.columns).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
-                        row.forEach { fruit ->
-                            FruitIcon(fruit, Modifier.size(FRUIT_SIZE.dp).testTag("earnedFruit_${fruit.name}"))
-                        }
-                    }
+                Fruit.entries.take(state.roundFruits).forEach { fruit ->
+                    FruitIcon(fruit, Modifier.size(FRUIT_SIZE.dp).testTag("earnedFruit_${fruit.name}"))
                 }
             }
         }

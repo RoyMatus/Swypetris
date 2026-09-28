@@ -11,9 +11,10 @@ class GameLayoutTest {
                 for (next in Tetromino.entries)
                     for (count in 1..8) {
                         val placement = fruitPlacement(width, height, count, next, true, width * .6f, 40f)
+                        assertEquals(width - FRUIT_SIZE - FRUIT_GAP, placement.left, .001f)
                         repeat(count) { index ->
-                            val x = placement.left + index % placement.columns * (FRUIT_SIZE + FRUIT_GAP)
-                            val y = placement.top + index / placement.columns * (FRUIT_SIZE + FRUIT_GAP)
+                            val x = placement.left
+                            val y = placement.top + index * (FRUIT_SIZE + FRUIT_GAP)
                             val fruit = Rect(x, y, x + FRUIT_SIZE, y + FRUIT_SIZE)
                             assertTrue(fruit.left >= 0 && fruit.right <= width && fruit.bottom <= height)
                             assertFalse(fruit.overlaps(Rect(4f, 3f, width * .6f + 4, 43f)))
