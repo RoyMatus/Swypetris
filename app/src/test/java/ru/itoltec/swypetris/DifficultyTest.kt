@@ -28,6 +28,16 @@ class DifficultyTest {
         }
     }
 
+    @Test fun mediumReservesPressureForLaterLevels() {
+        val medium = Difficulty.MEDIUM
+        assertEquals(416L, medium.gravityMillis(10))
+        assertEquals(378L, medium.gravityMillis(13))
+        assertEquals(302L, medium.gravityMillis(16))
+        assertEquals(190L, medium.gravityMillis(20))
+        assertEquals(120L, medium.gravityMillis(23))
+        assertTrue(medium.gravityMillis(13) > 312L) // Previous curve at the playtested level.
+    }
+
     @Test fun difficultySurvivesCopiesSpawnsAndRounds() {
         val engine = GameEngine(kotlin.random.Random(3))
         val state = engine.newGame(Difficulty.HARD)
