@@ -43,6 +43,14 @@ class BrandNavigationTest {
         screenshot("menu-brand.png")
         compose.runOnIdle { model.newGame(); model.menu() }
         compose.onNodeWithTag("resumeGame").assertIsDisplayed()
+        val resume = compose.onNodeWithTag("resumeGame").fetchSemanticsNode().boundsInRoot
+        val newGame = compose.onNodeWithTag("newGame").fetchSemanticsNode().boundsInRoot
+        val settings = compose.onNodeWithTag("settings").fetchSemanticsNode().boundsInRoot
+        val exit = compose.onNodeWithTag("exitGame").fetchSemanticsNode().boundsInRoot
+        assertTrue(resume.top < newGame.top)
+        assertTrue(resume.width > settings.width)
+        assertTrue(newGame.width > settings.width)
+        assertTrue(exit.width < settings.width)
         compose.runOnIdle { model.showResults() }
         compose.onNodeWithTag("newGame").assertDoesNotExist()
         compose.onNodeWithTag("toMenu").assertDoesNotExist()
@@ -54,7 +62,7 @@ class BrandNavigationTest {
     /** Все семь кнопок целиком видны без прокрутки на экране 320 × 480 dp при двойном шрифте. */
     @Test fun compactMenuFitsSmallScreenWithLargeFont() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
-        model.newGame(); model.menu()
+        model.newGame(); model.menu(); model.finishLaunchIntro()
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 SwypetrisTheme(darkTheme = true, dynamicColor = false) {
@@ -65,6 +73,7 @@ class BrandNavigationTest {
         val viewport = compose.onNodeWithTag("viewport").fetchSemanticsNode().boundsInRoot
         val logo = compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot
         assertTrue(logo.top >= viewport.top)
+        assertTrue("Logo too small on compact screen: $logo", logo.width >= viewport.width * .4f)
         for (tag in listOf("newGame", "resumeGame", "settings", "help", "results", "contacts", "exitGame")) {
             val node = compose.onNodeWithTag(tag).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
             assertTrue(node.top >= viewport.top && node.bottom <= viewport.bottom)
