@@ -3,7 +3,8 @@
 Палитры адаптированы к фигурам и интерфейсу Swypetris; это не полные реализации тем редакторов.
 Фон, основные оттенки и акценты взяты из опубликованных палитр. Отсутствующие синие оттенки
 Monokai/Dracula добавлены для различимости семи фигур; приглушённый текст и светлые акценты
-адаптированы для читаемости. Логотип и фруктовые спрайты сохраняют свои цвета.
+адаптированы для читаемости. Логотип подстраивается под палитру; фруктовые спрайты
+сохраняют узнаваемые основные цвета, а их обводка и листья слегка подкрашиваются.
 
 - Классическая: I cyan, O yellow, T purple, S green, Z red, J blue, L orange.
   https://cdn.steamstatic.com/steam/apps/1259790/manuals/tenpex_WM_210216_Steam_en.pdf
@@ -12,7 +13,8 @@ Monokai/Dracula добавлены для различимости семи фи
 - VS Code Dark+: https://github.com/microsoft/vscode/tree/main/extensions/theme-defaults — MIT, Microsoft.
 - Dracula: https://github.com/dracula/dracula-theme — MIT, Dracula Theme.
 - Nord: https://github.com/nordtheme/nord — MIT, Arctic Ice Studio / Sven Greb.
-- Solarized Light: https://github.com/altercation/solarized — MIT, Ethan Schoonover.
+- Solarized Light/Dark: https://github.com/altercation/solarized — MIT, Ethan Schoonover.
+- SynthWave '84: https://github.com/robb0wen/synthwave-vscode — MIT, Robb Owen.
 - GitHub Light: https://github.com/primer/github-vscode-theme — MIT, GitHub.
 - Tokyo Night: https://github.com/folke/tokyonight.nvim — Apache-2.0, folke.
 - Catppuccin Mocha: https://github.com/catppuccin/catppuccin — MIT, Catppuccin.

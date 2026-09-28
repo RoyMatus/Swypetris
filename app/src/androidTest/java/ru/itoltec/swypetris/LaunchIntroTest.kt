@@ -117,10 +117,11 @@ class LaunchIntroTest {
                 val difference = maxOf(kotlin.math.abs(android.graphics.Color.red(a) - android.graphics.Color.red(b)),
                     kotlin.math.abs(android.graphics.Color.green(a) - android.graphics.Color.green(b)),
                     kotlin.math.abs(android.graphics.Color.blue(a) - android.graphics.Color.blue(b)))
-                // The PNG has transparent padding where the menu buttons may appear.
-                // Compare the visible logo, not the newly revealed background beneath it.
-                val visibleLogo = minOf(android.graphics.Color.red(a), android.graphics.Color.green(a),
-                    android.graphics.Color.blue(a)) < 247
+                // The lower part of this capture includes the first menu row after the intro.
+                // Compare the actual logo region, excluding those newly revealed buttons.
+                val visibleLogo = y < menu.height * .88f &&
+                    minOf(android.graphics.Color.red(a), android.graphics.Color.green(a),
+                        android.graphics.Color.blue(a)) < 247
                 if (visibleLogo && difference > 8) changed++
                 pixels++
             }

@@ -55,6 +55,9 @@ internal fun LaunchIntroClock(model: GameViewModel) {
 @Composable
 internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier: Modifier = Modifier) {
     val logo = ImageBitmap.imageResource(R.drawable.swypetris_logo)
+    val palette = LocalGamePalette.current
+    val wordmarkOnly = !palette.light
+    val filter = brandColorFilter(palette, if (wordmarkOnly) 1f else .5f)
     Canvas(modifier.testTag("launchIntro").semantics {
         contentDescription = "Заставка SWYPETRIS. Коснитесь, чтобы пропустить"
         onClick("Пропустить заставку") { model.finishLaunchIntro(); true }
@@ -66,6 +69,7 @@ internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier
         // Once assembled, GameTitle draws the logo; the layer does not change as buttons appear.
         if (elapsed >= 2650L) return@Canvas
         LogoPieces.parts.forEachIndexed { index, piece ->
+            if (wordmarkOnly && piece.y < logo.height * .69f) return@forEachIndexed
             val target = origin + Offset(piece.x * scale, piece.y * scale)
             val position: Offset
             val pivot: Offset
@@ -95,7 +99,8 @@ internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier
                 withTransform({ translate(position.x, position.y); scale(scale, scale, Offset.Zero) }) {
                     drawImage(logo, srcOffset = IntOffset(piece.x, piece.y),
                         srcSize = IntSize(piece.width, piece.height),
-                        dstOffset = IntOffset.Zero, dstSize = IntSize(piece.width, piece.height))
+                        dstOffset = IntOffset.Zero, dstSize = IntSize(piece.width, piece.height),
+                        colorFilter = filter)
                 }
             }
         }

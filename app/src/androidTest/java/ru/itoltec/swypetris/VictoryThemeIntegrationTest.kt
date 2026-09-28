@@ -82,12 +82,12 @@ class VictoryThemeIntegrationTest {
         }
     }
 
-    /** Все десять тем сохраняются; скрытое превью не раскрывается экранному диктору. */
+    /** Все темы сохраняются; скрытое превью не раскрывается экранному диктору. */
     @Test fun palettesAndHintsPreserveBoard() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = GameViewModel(app, GameState(active = Piece(Tetromino.O), next = Tetromino.T), { 1000L }, false)
         compose.setContent { SwypetrisApp(model) {} }
-        assertEquals(10, GamePalettes.all.size)
+        assertEquals(12, GamePalettes.all.size)
         assertEquals(2, GamePalettes.all.count { it.light })
         for (palette in GamePalettes.all) {
             compose.runOnIdle { model.setPalette(palette.id); model.setHints(true) }
@@ -111,6 +111,10 @@ class VictoryThemeIntegrationTest {
         screenshot("settings-github-light.png")
         compose.runOnIdle { model.menu() }
         screenshot("menu-github-light.png")
+        compose.runOnIdle { model.setPalette("solarized_dark") }
+        screenshot("menu-solarized-dark.png")
+        compose.runOnIdle { model.setPalette("synthwave_84") }
+        screenshot("menu-synthwave-84.png")
     }
 
     /** Поздравление и кнопки доступны при ширине 320 dp и двойном шрифте. */

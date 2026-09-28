@@ -30,6 +30,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -151,6 +153,7 @@ fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
     MaterialTheme(colorScheme = palette.scheme(), typography = MaterialTheme.typography) {
     Surface(color = palette.background, contentColor = palette.text, modifier = Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize()) {
+            if (model.screen == GameScreen.MENU) ThemeBackdrop(palette)
             key(model.screen) {
             if (model.screen == GameScreen.MENU) MainMenu(model, onExit)
             else if (model.screen == GameScreen.CONTACTS) ContactsScreen(model)
@@ -201,7 +204,7 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
                 GameTitle(Modifier.offset(y = (-16).dp).onGloballyPositioned {
                     logoBounds = Rect(it.positionInRoot() - menuOrigin, Size(it.size.width.toFloat(), it.size.height.toFloat()))
                 }.graphicsLayer { alpha = if (model.launchLogoAssembled) 1f else 0f }
-                    .then(if (intro) Modifier.clearAndSetSemantics {} else Modifier))
+                    .then(if (intro) Modifier.clearAndSetSemantics {} else Modifier), wordmarkOnly = !palette.light)
             }
             rows.forEach { row ->
                 Row(Modifier.fillMaxWidth().height(tileHeight).graphicsLayer {
@@ -390,24 +393,30 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
         val cell = Size(size.width / 10, size.height / 20)
         val origin = Offset.Zero
-        drawRect(palette.panel, origin, size)
+        drawRect(brush = Brush.verticalGradient(listOf(palette.glass,
+            lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
+        if (palette.finish == BlockFinish.RETRO || palette.finish == BlockFinish.NEON) {
+            for (y in 1 until 20) drawLine(palette.accent.copy(alpha = if (palette.light) .035f else .05f),
+                Offset(0f, (y - .5f) * cell.height), Offset(size.width, (y - .5f) * cell.height))
+        }
         for (x in 0..10) drawLine(palette.grid, Offset(x * cell.width, 0f), Offset(x * cell.width, size.height))
         for (y in 0..20) drawLine(palette.grid, Offset(0f, y * cell.height), Offset(size.width, y * cell.height))
-        if (showNext) previewCells.forEach { block(it, palette.piece(state.next), origin, cell, alpha = 0.20f) }
+        if (showNext) previewCells.forEach { block(it, palette.piece(state.next), palette.finish, origin, cell, alpha = 0.20f) }
         state.board.forEachIndexed { y, row -> row.forEachIndexed { x, type ->
-            if (type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y), palette.piece(type), origin, cell)
+            if (type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y), palette.piece(type), palette.finish, origin, cell)
         } }
         if (!state.gameOver && state.clearingRows.isEmpty()) {
-            landingHint?.let { hint -> hint.cells().forEach { block(it, palette.piece(hint.type), origin, cell, alpha = 0.5f, outline = true) } }
-            state.active.cells().forEach { block(it, palette.piece(state.active.type), origin, cell) }
+            landingHint?.let { hint -> hint.cells().forEach { block(it, palette.piece(hint.type), palette.finish, origin, cell, alpha = palette.ghostAlpha, outline = true) } }
+            state.active.cells().forEach { block(it, palette.piece(state.active.type), palette.finish, origin, cell) }
         }
     }
 }
 
 /** Draws a colored cell with spacing using independent width and height. */
-private fun DrawScope.block(cell: Cell, color: Color, origin: Offset, step: Size, alpha: Float = 1f, outline: Boolean = false) {
+private fun DrawScope.block(cell: Cell, color: Color, finish: BlockFinish, origin: Offset, step: Size,
+    alpha: Float = 1f, outline: Boolean = false) {
     val gap = minOf(step.width, step.height) * 0.07f
     val topLeft = origin + Offset(cell.x * step.width + gap, cell.y * step.height + gap)
     val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
-    bevelBlock(topLeft, blockSize, color, alpha, outline)
+    bevelBlock(topLeft, blockSize, color, finish, alpha, outline)
 }
