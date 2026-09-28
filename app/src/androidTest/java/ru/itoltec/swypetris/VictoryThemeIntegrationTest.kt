@@ -7,9 +7,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -161,6 +163,36 @@ class VictoryThemeIntegrationTest {
             SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
         compose.onNodeWithTag("paletteGrid").assertExists()
         screenshot("settings-large-font.png")
+    }
+
+    /** Названия тем полностью видны и отделены от превью на узком экране при обычном и двойном шрифте. */
+    @Test fun paletteNamesFitWithoutOverlappingPreviews() {
+        val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
+        model.settings()
+        var fontScale by mutableFloatStateOf(1f)
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
+                Box(Modifier.width(320.dp).fillMaxHeight()) { SwypetrisApp(model) {} }
+            }
+        }
+        for (scale in listOf(1f, 2f)) {
+            compose.runOnIdle { fontScale = scale }
+            GamePalettes.all.forEach { item ->
+                val card = compose.onNodeWithTag("palette_${item.id}_preview")
+                card.performScrollTo().assertIsDisplayed()
+                val art = compose.onNodeWithTag("palette_${item.id}_art", useUnmergedTree = true)
+                    .fetchSemanticsNode().boundsInRoot
+                val label = compose.onNodeWithTag("palette_${item.id}_label", useUnmergedTree = true)
+                val labelNode = label.assertTextEquals(item.title).fetchSemanticsNode()
+                val labelBounds = labelNode.boundsInRoot
+                assertTrue("${item.title}: label overlaps preview at $scale", labelBounds.top >= art.bottom)
+                assertTrue("${item.title}: label exceeds card at $scale",
+                    labelBounds.bottom <= card.fetchSemanticsNode().boundsInRoot.bottom)
+                val layout = mutableListOf<TextLayoutResult>()
+                assertTrue(labelNode.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layout) == true)
+                assertFalse("${item.title}: text is clipped at $scale", layout.single().hasVisualOverflow)
+            }
+        }
     }
 
     /** Сохраняет снимок интерфейса только в файлы тестового эмулятора. */

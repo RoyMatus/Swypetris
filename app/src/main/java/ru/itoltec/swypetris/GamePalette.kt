@@ -115,11 +115,14 @@ internal fun PalettePicker(model: GameViewModel) {
     SettingsLabel("Расцветка", "Выбери стиль игры")
     Spacer(Modifier.height(8.dp))
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("paletteGrid")) {
+        val fontScale = LocalDensity.current.fontScale
         val columns = when {
-            LocalDensity.current.fontScale >= 1.4f -> 2
-            maxWidth >= 480.dp -> 4
-            maxWidth >= 260.dp -> 3
-            else -> 2
+            fontScale >= 1.4f && maxWidth < 480.dp -> 1
+            fontScale >= 1.4f -> 2
+            maxWidth >= 600.dp -> 4
+            maxWidth >= 480.dp -> 3
+            maxWidth >= 260.dp -> 2
+            else -> 1
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             GamePalettes.all.chunked(columns).forEach { row ->
@@ -127,16 +130,15 @@ internal fun PalettePicker(model: GameViewModel) {
                     row.forEach { item ->
                         val selected = palette.id == item.id
                         val shape = RoundedCornerShape(9.dp)
-                        Column(Modifier.weight(1f).heightIn(min = 78.dp)
+                        Column(Modifier.weight(1f).heightIn(min = 96.dp)
                             .background(item.background, shape)
                             .border(if (selected) 3.dp else 1.dp, if (selected) accent else palette.grid, shape)
                             .clickable { model.setPalette(item.id) }
                             .semantics { this.selected = selected }
                             .testTag("palette_${item.id}_preview").padding(5.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(
-                                if (LocalDensity.current.fontScale >= 1.4f) 8.dp else 3.dp)) {
-                            Canvas(Modifier.fillMaxWidth().height(34.dp)) {
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Canvas(Modifier.fillMaxWidth().height(34.dp).testTag("palette_${item.id}_art")) {
                                 val side = minOf(size.width / 4.6f, size.height / 2.4f)
                                 val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
                                 positions.forEachIndexed { index, (column, row) ->
@@ -144,12 +146,12 @@ internal fun PalettePicker(model: GameViewModel) {
                                         Size(side * .89f, side * .89f), item.pieces[index], item.finish, item.texture)
                                 }
                             }
-                            Text(item.title, Modifier.fillMaxWidth(), color = item.text,
-                                fontSize = if (LocalDensity.current.fontScale >= 1.4f) 8.sp else 10.sp,
-                                lineHeight = if (LocalDensity.current.fontScale >= 1.4f) 10.sp else 12.sp,
+                            Text(item.title, Modifier.fillMaxWidth().testTag("palette_${item.id}_label"),
+                                color = item.text, fontSize = 14.sp, lineHeight = 18.sp,
                                 fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold
                                     else androidx.compose.ui.text.font.FontWeight.Normal,
-                                textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                textAlign = TextAlign.Center, minLines = 2, maxLines = 2,
+                                overflow = TextOverflow.Ellipsis)
                         }
                     }
                     repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
