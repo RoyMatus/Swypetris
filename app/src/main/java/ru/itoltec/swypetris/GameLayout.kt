@@ -20,16 +20,12 @@ internal fun pieceBounds(piece: Piece, width: Float, height: Float): Rect {
         (cells.maxOf { it.x } + 1) * width / 10, (cells.maxOf { it.y } + 1) * height / 20)
 }
 
-/**
- * Layout of the fruit collection overlay in board-local pixels.
- * [left] and [top] locate its first icon; [columns] controls wrapping into further rows.
- */
-internal data class FruitPlacement(val left: Float, val top: Float, val columns: Int)
+/** Top-right position of the vertical fruit collection in board-local coordinates. */
+internal data class FruitPlacement(val left: Float, val top: Float)
 
 /**
- * Places collected fruits without covering the score, any possible spawn shape, or the next-piece
- * preview. Fits as many columns as the free space permits; extremely narrow boards place a single
- * column below those obstacles. All coordinates use the board's own pixel dimensions.
+ * Anchors collected fruits to the top-right. On narrow boards, moves the whole column below
+ * any score, spawn shape, or next-piece preview that occupies the same horizontal space.
  *
  * @param width Width of the board drawing area in pixels.
  * @param height Height of the board drawing area in pixels.
@@ -40,17 +36,15 @@ internal data class FruitPlacement(val left: Float, val top: Float, val columns:
  */
 internal fun fruitPlacement(width: Float, height: Float, count: Int, next: Tetromino,
     showNext: Boolean, scoreWidth: Float, scoreHeight: Float): FruitPlacement {
-    val spawn = Tetromino.entries.map { pieceBounds(Piece(it), width, height) }
-    val nextBounds = if (showNext) pieceBounds(Piece(next), width, height) else Rect.Zero
-    val protectedRight = maxOf(spawn.maxOf { it.right }, nextBounds.right)
-    val minimumLeft = protectedRight + PREVIEW_GAP
-    val available = width - minimumLeft - FRUIT_GAP
-    val columns = ((available + FRUIT_GAP) / (FRUIT_SIZE + FRUIT_GAP)).toInt().coerceIn(1, count.coerceAtLeast(1))
-    val rowWidth = columns * (FRUIT_SIZE + FRUIT_GAP) - FRUIT_GAP
-    val left = maxOf((width - rowWidth) / 2, minimumLeft)
-    val scoreBottom = if (left < scoreWidth + 4 + PREVIEW_GAP) scoreHeight + 3 + PREVIEW_GAP else FRUIT_GAP
-    if (available >= FRUIT_SIZE) return FruitPlacement(left, scoreBottom, columns)
-    // Extremely narrow windows use the space below both obstacles.
-    return FruitPlacement((width - FRUIT_SIZE).coerceAtLeast(0f) / 2,
-        maxOf(scoreHeight + 3, spawn.maxOf { it.bottom }, nextBounds.bottom) + PREVIEW_GAP, 1)
+    val left = (width - FRUIT_SIZE - FRUIT_GAP).coerceAtLeast(0f)
+    val right = left + FRUIT_SIZE
+    val score = Rect(4f, 3f, scoreWidth + 4f, scoreHeight + 3f)
+    val obstacles = Tetromino.entries.map { pieceBounds(Piece(it), width, height) } +
+        (if (showNext) listOf(pieceBounds(Piece(next), width, height)) else emptyList()) + score
+    val obstacleBottom = obstacles.filter { left < it.right && right > it.left }
+        .maxOfOrNull { it.bottom } ?: 0f
+    val columnHeight = count * FRUIT_SIZE + (count - 1).coerceAtLeast(0) * FRUIT_GAP
+    val top = (if (obstacleBottom > 0f) obstacleBottom + PREVIEW_GAP else FRUIT_GAP)
+        .coerceAtMost((height - columnHeight).coerceAtLeast(FRUIT_GAP))
+    return FruitPlacement(left, top)
 }
