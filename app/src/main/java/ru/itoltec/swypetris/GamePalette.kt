@@ -1,14 +1,10 @@
 ﻿package ru.itoltec.swypetris
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +20,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -108,66 +107,53 @@ object GamePalettes {
 
 val LocalGamePalette = staticCompositionLocalOf { GamePalettes.all.first() }
 
-/** Selector and live theme thumbnails form one Appearance control. */
+/** Every supported palette is directly selectable from one non-scrolling grid. */
 @Composable
 internal fun PalettePicker(model: GameViewModel) {
-    var expanded by remember { mutableStateOf(false) }
     val palette = LocalGamePalette.current
     val accent = palette.piece(Tetromino.T)
-    @Composable fun selector() {
-        Box {
-            OutlinedButton(onClick = { expanded = true },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("palettePicker"),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = palette.background.copy(alpha = .65f), contentColor = palette.text),
-                border = BorderStroke(1.dp, accent)) {
-                Text(palette.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("▾")
-            }
-            DropdownMenu(expanded, onDismissRequest = { expanded = false },
-                modifier = Modifier.heightIn(max = 360.dp)) {
-                GamePalettes.all.forEach { item ->
-                    DropdownMenuItem(text = { Text(item.title) }, modifier = Modifier.testTag("palette_${item.id}"),
-                        onClick = { model.setPalette(item.id); expanded = false })
-                }
-            }
+    SettingsLabel("Расцветка", "Выбери стиль игры")
+    Spacer(Modifier.height(8.dp))
+    BoxWithConstraints(Modifier.fillMaxWidth().testTag("paletteGrid")) {
+        val columns = when {
+            LocalDensity.current.fontScale >= 1.4f -> 2
+            maxWidth >= 480.dp -> 4
+            maxWidth >= 260.dp -> 3
+            else -> 2
         }
-    }
-    if (LocalDensity.current.fontScale >= 1.4f) {
-        SettingsLabel("Расцветка", "Выбери стиль игры")
-        Spacer(Modifier.height(6.dp))
-        selector()
-    } else {
-        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)) { SettingsLabel("Расцветка", "Выбери стиль игры") }
-            Box(Modifier.width(158.dp)) { selector() }
-        }
-    }
-    val previewState = rememberLazyListState()
-    LaunchedEffect(palette.id) {
-        previewState.scrollToItem(GamePalettes.all.indexOfFirst { it.id == palette.id }.coerceAtLeast(0))
-    }
-    LazyRow(Modifier.fillMaxWidth().testTag("palettePreview"), state = previewState,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        items(GamePalettes.all, key = { it.id }) { item ->
-            val selected = palette.id == item.id
-            Column(Modifier.width(68.dp).heightIn(min = 64.dp)
-                .border(2.dp, if (selected) accent else palette.grid, RoundedCornerShape(9.dp))
-                .background(palette.background.copy(alpha = .65f), RoundedCornerShape(9.dp))
-                .clickable { model.setPalette(item.id) }
-                .testTag("palette_${item.id}_preview").padding(4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                Canvas(Modifier.fillMaxWidth().height(34.dp)) {
-                    val side = minOf(size.width / 4.6f, size.height / 2.4f)
-                    val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
-                    positions.forEachIndexed { index, (column, row) ->
-                        bevelBlock(Offset(column * side + side * .15f, row * side + side * .05f),
-                            Size(side * .89f, side * .89f), item.pieces[index], item.finish, item.texture)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            GamePalettes.all.chunked(columns).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { item ->
+                        val selected = palette.id == item.id
+                        val shape = RoundedCornerShape(9.dp)
+                        Column(Modifier.weight(1f).heightIn(min = 78.dp)
+                            .background(item.background, shape)
+                            .border(if (selected) 3.dp else 1.dp, if (selected) accent else palette.grid, shape)
+                            .clickable { model.setPalette(item.id) }
+                            .semantics { this.selected = selected }
+                            .testTag("palette_${item.id}_preview").padding(5.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(
+                                if (LocalDensity.current.fontScale >= 1.4f) 8.dp else 3.dp)) {
+                            Canvas(Modifier.fillMaxWidth().height(34.dp)) {
+                                val side = minOf(size.width / 4.6f, size.height / 2.4f)
+                                val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
+                                positions.forEachIndexed { index, (column, row) ->
+                                    bevelBlock(Offset(column * side + side * .15f, row * side + side * .05f),
+                                        Size(side * .89f, side * .89f), item.pieces[index], item.finish, item.texture)
+                                }
+                            }
+                            Text(item.title, Modifier.fillMaxWidth(), color = item.text,
+                                fontSize = if (LocalDensity.current.fontScale >= 1.4f) 8.sp else 10.sp,
+                                lineHeight = if (LocalDensity.current.fontScale >= 1.4f) 10.sp else 12.sp,
+                                fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold
+                                    else androidx.compose.ui.text.font.FontWeight.Normal,
+                                textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                     }
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
-                Text(item.title, color = palette.text, fontSize = 9.sp, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
             }
         }
     }
