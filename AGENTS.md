@@ -18,6 +18,14 @@
 - Limit searches and build output to the evidence needed for the decision. Preserve complete failure logs in ignored build output, and report the relevant error plus its log path.
 - When a browser tab or URL is known, target it directly instead of listing every open tab. Repeat checks only when a change or unresolved risk requires them.
 
+## Delegation
+
+- For simple, self-contained tasks worth delegating, explicitly choose `gpt-6-luna` with low reasoning effort. Use a stronger model only when the assigned task needs deeper reasoning. Keep the scope and requested output short; do not pin models in the project agent files so the parent can choose per task.
+- For a bounded, independent codebase search or analysis that would otherwise consume substantial main-agent context, use the project-scoped `swypetris_scout` agent in `.codex/agents/swypetris-scout.toml` when available. Pass only the task context it needs. The main agent verifies findings before acting.
+- Use `swypetris_security` for bounded vulnerability investigation or an assigned security fix, `swypetris_code_quality` for a concrete quality defect, `swypetris_tester` for focused test design or execution, `swypetris_devops` for CI/CD and release automation, and `swypetris_feature_manager` for feature-issue triage and specification.
+- Do not delegate trivial searches or sequential edits. Give any editing agent explicit file ownership; keep final integration and verification with the main agent and avoid simultaneous edits to shared files.
+- Treat SonarQube Cloud findings as inputs to the same scout when their scope is narrow. Do not spawn a standing Sonar-specific agent or claim an analysis ran without its report.
+
 ## GitHub issue workflow
 
 - Make issue, pull request, and GitHub Project updates through APIs or API-backed tools, not browser UI automation.
