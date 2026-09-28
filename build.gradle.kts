@@ -11,7 +11,14 @@ sonar {
     properties {
         property("sonar.projectKey", providers.environmentVariable("SONAR_PROJECT_KEY").orNull ?: "")
         property("sonar.organization", providers.environmentVariable("SONAR_ORGANIZATION").orNull ?: "")
-        property("sonar.coverage.jacoco.xmlReportPaths", layout.projectDirectory.file("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml").asFile.absolutePath)
         property("sonar.exclusions", "**/build/**,**/generated/**")
+    }
+}
+
+project(":app") {
+    sonar {
+        properties {
+            property("sonar.coverage.jacoco.xmlReportPaths", layout.buildDirectory.file("reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml").get().asFile.absolutePath)
+        }
     }
 }
