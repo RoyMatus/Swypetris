@@ -11,7 +11,7 @@ sonar {
     properties {
         property("sonar.projectKey", providers.environmentVariable("SONAR_PROJECT_KEY").orNull ?: "")
         property("sonar.organization", providers.environmentVariable("SONAR_ORGANIZATION").orNull ?: "")
-        property("sonar.coverage.jacoco.xmlReportPaths", "app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml")
+        property("sonar.coverage.jacoco.xmlReportPaths", layout.projectDirectory.file("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml").asFile.absolutePath)
         property("sonar.exclusions", "**/build/**,**/generated/**")
     }
 }
