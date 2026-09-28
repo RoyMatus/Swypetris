@@ -70,7 +70,7 @@ class MusicSettingsFruitTest {
         screenshot("music-settings-off.png")
     }
 
-    /** Длинные названия в обоих выпадающих списках доступны при 320 dp и двойном шрифте. */
+    /** Музыка и сетка тем доступны при 320 dp и двойном шрифте. */
     @Test fun musicPickerLargeFontInLightAndDarkThemes() {
         val model=GameViewModel(ApplicationProvider.getApplicationContext(),null,{1000L},false)
         model.settings(); model.setPalette("github_light")
@@ -85,7 +85,7 @@ class MusicSettingsFruitTest {
             compose.onNodeWithTag("music_sugar_plum").performScrollTo().performClick()
             compose.onNodeWithTag("musicPicker").assertIsDisplayed()
             screenshot("music-large-$theme.png")
-            compose.onNodeWithTag("palettePicker").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("paletteGrid").performScrollTo().assertIsDisplayed()
         }
     }
 

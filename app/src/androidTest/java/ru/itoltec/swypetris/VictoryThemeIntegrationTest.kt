@@ -105,8 +105,7 @@ class VictoryThemeIntegrationTest {
                 listOf("Игровое поле, очки 0, линии 0.")))
         }
         compose.runOnIdle { model.setPalette("unknown"); assertEquals("classic", model.paletteId); model.settings() }
-        compose.onNodeWithTag("palettePicker").performScrollTo().performClick()
-        compose.onNodeWithTag("palette_github_light").performScrollTo().performClick()
+        compose.onNodeWithTag("palette_github_light_preview").performScrollTo().performClick()
         compose.runOnIdle { assertEquals("github_light", model.paletteId) }
         screenshot("settings-github-light.png")
         compose.runOnIdle { model.menu() }
@@ -138,7 +137,7 @@ class VictoryThemeIntegrationTest {
         screenshot("victory-light-buttons.png")
     }
 
-    /** Выпадающий список доступен и сохраняет выбор при ширине 320 dp и двойном шрифте. */
+    /** Все темы доступны без горизонтальной прокрутки при ширине 320 dp и двойном шрифте. */
     @Test fun palettePickerAtLargeFont() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
         model.setPalette("solarized_light")
@@ -148,10 +147,19 @@ class VictoryThemeIntegrationTest {
                 Box(Modifier.width(320.dp).fillMaxHeight()) { SwypetrisApp(model) {} }
             }
         }
-        compose.onNodeWithTag("palettePicker").performScrollTo().performClick()
-        compose.onNodeWithTag("palette_catppuccin").performScrollTo().performClick()
+        GamePalettes.all.forEach { item -> compose.onNodeWithTag("palette_${item.id}_preview").assertExists() }
+        compose.onNodeWithTag("palettePicker").assertDoesNotExist()
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
+        compose.onNodeWithTag("palette_synthwave_84_preview").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("palette_catppuccin_preview").performScrollTo().performClick()
         compose.runOnIdle { assertEquals("catppuccin", model.paletteId) }
-        compose.onNodeWithTag("palettePicker").assertIsDisplayed()
+        compose.runOnIdle {
+            val restored = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
+            assertEquals("catppuccin", restored.paletteId)
+        }
+        compose.onNodeWithTag("palette_catppuccin_preview").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
+        compose.onNodeWithTag("paletteGrid").assertExists()
         screenshot("settings-large-font.png")
     }
 
