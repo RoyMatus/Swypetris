@@ -1,6 +1,6 @@
 # Continuous integration
 
-The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 9.3.1, Java 11 source/target compatibility, and JUnit 4 JVM tests. Android/Compose tests are under `app/src/androidTest`.
+The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 9.3.1, Java 11 source/target compatibility, JUnit 4 and Kotest JVM tests through JUnit Platform/Vintage. Android/Compose tests are under `app/src/androidTest`. The full test inventory and audit are in [TESTING.md](TESTING.md).
 
 ## Checks
 

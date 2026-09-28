@@ -61,6 +61,19 @@ class GameEngineTest {
         ghost.cells().forEach { assertEquals(Tetromino.O, result.board[it.y][it.x]) }
     }
 
+    /** Occupied cells stop the ghost without mutating the saved board or score. */
+    @Test fun ghostStopsAboveStackWithoutChangingGame() {
+        val start = state(Piece(Tetromino.O, x = 0))
+        val board = start.board.map { it.toMutableList() }
+        board[10][0] = Tetromino.I
+        val stacked = start.copy(board = board)
+
+        assertEquals(8, engine.ghost(stacked).y)
+        assertEquals(0, stacked.active.y)
+        assertEquals(0, stacked.score)
+        assertEquals(Tetromino.I, stacked.board[10][0])
+    }
+
     /** Достижение опоры не фиксирует фигуру до следующей неудачной попытки спуска. */
     @Test fun softDropAndGravityLockOnNextAttempt() {
         val start = state(Piece(Tetromino.O, y = 17))
@@ -126,5 +139,4 @@ class GameEngineTest {
         assertEquals(100L, state().copy(score = 1000000).gravityMillis)
     }
 }
-
 
