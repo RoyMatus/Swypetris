@@ -75,7 +75,9 @@ function Invoke-GitHubGraphQL {
 function Assert-GitHubPullRequestReady {
     param(
         [Parameter(Mandatory)]$PullRequest,
-        [Parameter(Mandatory)][array]$Checks
+        [array]$Checks = @(),
+        [array]$Statuses = @(),
+        [array]$RequiredChecks = @()
     )
 
     $number = $PullRequest.number
@@ -85,11 +87,30 @@ function Assert-GitHubPullRequestReady {
     if ($PullRequest.mergeable -ne $true -or $PullRequest.mergeable_state -ne 'clean') {
         throw "PR #$number is not ready to merge (state: $($PullRequest.mergeable_state))."
     }
-    if ($Checks.Count -eq 0) { throw "PR #$number has no check runs; refusing to merge without CI evidence." }
+    if ($Checks.Count -eq 0 -and $Statuses.Count -eq 0) {
+        throw "PR #$number has no check runs or commit statuses; refusing to merge without CI evidence."
+    }
     $badChecks = @($Checks | Where-Object { $_.status -ne 'completed' -or $_.conclusion -notin @('success', 'neutral', 'skipped') })
     if ($badChecks.Count -gt 0) {
         $summary = @($badChecks | ForEach-Object { "$($_.name): $($_.status)/$($_.conclusion)" }) -join '; '
         throw "PR #$number has incomplete or failed checks: $summary"
+    }
+    $badStatuses = @($Statuses | Where-Object { $_.state -ne 'success' })
+    if ($badStatuses.Count -gt 0) {
+        $summary = @($badStatuses | ForEach-Object { "$($_.context): $($_.state)" }) -join '; '
+        throw "PR #$number has pending or failed commit statuses: $summary"
+    }
+    foreach ($required in $RequiredChecks) {
+        $matchingChecks = @($Checks | Where-Object {
+            $_.name -eq $required.context -and
+            ($null -eq $required.app_id -or $required.app_id -eq -1 -or $_.app.id -eq $required.app_id)
+        })
+        $matchingStatuses = if ($null -eq $required.app_id -or $required.app_id -eq -1) {
+            @($Statuses | Where-Object { $_.context -eq $required.context })
+        } else { @() }
+        if ($matchingChecks.Count -eq 0 -and $matchingStatuses.Count -eq 0) {
+            throw "PR #$number is missing required check '$($required.context)' (app: $($required.app_id))."
+        }
     }
 }
 

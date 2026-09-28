@@ -1,5 +1,7 @@
 # Swypetris — Agent Instructions
 
+Project agents live in `.codex/agents/`, reusable workflows in `.agents/skills/`, and repository automation in `tools/`. These are separate Codex conventions; keep each file with its owner.
+
 ## General
 
 - Inspect the relevant existing code before editing.
@@ -19,11 +21,14 @@
 
 ## Delegation
 
+- Default to no subagents. Never spawn an agent solely because its role matches the topic or because parallel work is possible. Before each spawn, identify a concrete, bounded subtask that is necessary for the current request, the distinct output it must produce, and why the main agent should not do it directly. If any of these is missing, do not spawn. Use the fewest agents that can complete the task. A direct user request for a named agent authorizes that agent only, not additional agents.
+- Do not spawn agents for duplicate work, trivial searches, sequential edits, or a role checklist. Do not ask a subagent to spawn another agent unless that additional delegation independently meets this rule and the parent explicitly assigns it.
 - For simple, self-contained tasks worth delegating, explicitly choose `gpt-6-luna` with low reasoning effort. Use a stronger model only when the assigned task needs deeper reasoning. Keep the scope and requested output short; do not pin models in the project agent files so the parent can choose per task.
-- For a bounded, independent codebase search or analysis that would otherwise consume substantial main-agent context, use the project-scoped `scout` agent in `.codex/agents/scout.toml` when available. Pass only the task context it needs. The main agent verifies findings before acting.
-- Use `security` for bounded vulnerability investigation or an assigned security fix, `code_quality` for a concrete quality defect, `tester` for focused test design or execution, `devops` for CI/CD and release automation, and `feature_manager` for feature-issue triage and specification. Consult `game_designer` on new gameplay or player-experience features before turning them into issues; the user makes product decisions.
-- Do not delegate trivial searches or sequential edits. Give any editing agent explicit file ownership; keep final integration and verification with the main agent and avoid simultaneous edits to shared files.
-- Treat SonarQube Cloud findings as inputs to the same scout when their scope is narrow. Do not spawn a standing Sonar-specific agent or claim an analysis ran without its report.
+- If a bounded, independent codebase search or analysis meets this rule, select the project-scoped `scout` agent in `.codex/agents/scout.toml` when available. Pass only the task context it needs. The main agent verifies findings before acting.
+- When delegation is necessary, select the matching role: `security` for a bounded vulnerability investigation or assigned security fix, `code_quality` for a concrete quality defect, `tester` for focused test work, `devops` for CI/CD or release automation, and `feature_manager` for feature-issue triage. Consult `game_designer` only when a new gameplay or player-experience feature needs distinct design analysis; the user makes product decisions.
+- Select `developer` for a necessary, assigned Android application implementation subtask. Keep GitHub integration and final verification with the main agent.
+- Give any editing agent explicit file ownership; keep final integration and verification with the main agent and avoid simultaneous edits to shared files.
+- Treat a narrow SonarQube Cloud finding as input to one necessary scout assignment, not a reason to spawn a standing Sonar-specific agent. Do not claim an analysis ran without its report.
 
 ## GitHub issue workflow
 
@@ -32,7 +37,11 @@
 - Use `tools/Update-Issue.ps1` for issue metadata, relationships, comments, linked branches, and the project's Status, Work Type, and Priority; preview changes with `-WhatIf`. Project field updates require a GitHub token with project read/write access.
 - For a specific issue, use `tools/Update-Issue.ps1 -Inspect -IncludeContent` to read its metadata, body, and comments together; request `-ListOptions` only when choosing labels or milestones. Prefer the project scripts to an unverified `gh` installation.
 - After `ProjectAccessError`, report the missing scope once and skip further Project reads until the credentials change.
-- Use `feature_manager` to prepare feature-issue scope, dependencies, order, and metadata. Explain the planned order and post a concrete plan in chat before starting each issue.
+- Use `tools/Manage-PullRequest.ps1` to create a PR from a pushed branch, inspect its CI checks, and merge it after checks pass. Pass `-IssueNumber` only for issue-linked work; standalone maintenance PRs need no issue. Run creation, inspection, and merging as separate decisions; do not auto-merge after polling.
+- Follow this order for each issue: update its metadata and create its linked branch, verify the change, create the PR, inspect CI, merge, then close the issue with the PR URL. Check the actual result after every API write.
+- Record confirmed reusable API commands and workflow findings in the relevant script or project documentation as they are discovered. Never save access tokens or other secrets.
+- After a confirmed PR merge and closure of any linked issue, briefly review the work for repeated manual steps. Propose specific skill or script changes that would reduce future effort, and ask the user before adding new standing rules or implementing those follow-up changes.
+- When feature-issue preparation requires a distinct delegated subtask under the Delegation rule, assign it to `feature_manager`; otherwise prepare the scope, dependencies, order, and metadata directly. Explain the planned order and post a concrete plan in chat before starting each issue.
 - Implement issues sequentially, one at a time. Use a separate branch and pull request for each issue, verify it, merge it into `main`, and close the issue before starting the next one.
 - Keep GitHub Project Status aligned with the actual branch, pull request, and merge state. Create a separate linked branch for each issue.
 - When closing an issue, include the pull request URL in the closing issue comment.
@@ -79,7 +88,7 @@ After changes:
 3. Fix regressions caused by the change.
 4. Never claim a check was run if it was not.
 
-- Match verification to changed behavior; use `tester` for test planning or execution when the task warrants delegation. Do not run the full suites by default for small changes.
+- Match verification to changed behavior; delegate focused test work to `tester` only when the Delegation rule is met. Do not run the full suites by default for small changes.
 
 - On Windows, use `tools/Verify-Tests.ps1` for its standard test suites; pass `-JavaHome` when needed and an explicit `-Serial` for the Android suite. Use direct Gradle or adb commands for narrower checks.
 
