@@ -299,6 +299,19 @@ internal fun MenuTile(label: String, accent: Color, tag: String,
 private fun GameContent(model: GameViewModel, state: GameState) {
     val density = LocalDensity.current.density
     val playing = model.screen == GameScreen.PLAYING
+    val palette = LocalGamePalette.current
+    val insetDensity = LocalDensity.current
+    val topInset = WindowInsets.safeDrawing.getTop(insetDensity).toFloat()
+    val bottomInset = WindowInsets.safeDrawing.getBottom(insetDensity).toFloat()
+    Box(Modifier.fillMaxSize()) {
+    // Continue the board surface behind system icons without placing pieces or touch targets there.
+    Canvas(Modifier.matchParentSize()) {
+        drawRect(brush = Brush.verticalGradient(listOf(palette.glass,
+            lerp(palette.glass, palette.background, if (palette.light) .08f else .35f)),
+            startY = topInset, endY = (size.height - bottomInset).coerceAtLeast(topInset + 1f)))
+        for (x in 0..10) drawLine(palette.grid, Offset(x * size.width / 10, 0f),
+            Offset(x * size.width / 10, size.height))
+    }
     Box(Modifier.fillMaxSize().safeDrawingPadding()) {
     Box(Modifier.fillMaxSize().onSizeChanged { model.setBoardWidth(it.width / density) }.testTag("gameArea").pointerInput(model, playing, density) {
         if (!playing) return@pointerInput
@@ -333,6 +346,7 @@ private fun GameContent(model: GameViewModel, state: GameState) {
         }
         Board(state, landingHint = landing, showNext = hints, clearTime = { model.clearElapsedMillis })
         GameHud(state, showNext = model.hintsEnabled)
+    }
     }
     }
 }
