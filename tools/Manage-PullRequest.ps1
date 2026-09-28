@@ -4,6 +4,8 @@ Creates, inspects, or merges a Swypetris pull request through the GitHub API.
 .EXAMPLE
 ./tools/Manage-PullRequest.ps1 -Action Create -IssueNumber 70 -Head feat/issue-70-launcher-icon -Title 'Launcher icon' -BodyFile .\pr-body.md -WhatIf
 .EXAMPLE
+./tools/Manage-PullRequest.ps1 -Action Create -Head chore/agent-skills-delegation -Title 'Update agent guidance' -BodyFile .\pr-body.md -WhatIf
+.EXAMPLE
 ./tools/Manage-PullRequest.ps1 -Action Inspect -PullRequestNumber 72
 .EXAMPLE
 ./tools/Manage-PullRequest.ps1 -Action Merge -PullRequestNumber 72 -WhatIf
@@ -32,16 +34,16 @@ function Get-PullRequestChecks([string]$Sha) {
 }
 
 if ($Action -eq 'Create') {
-    if (!$IssueNumber -or !$Head -or !$Title -or !$BodyFile) {
-        throw 'Create requires -IssueNumber, -Head, -Title, and -BodyFile.'
+    if (!$Head -or !$Title -or !$BodyFile) {
+        throw 'Create requires -Head, -Title, and -BodyFile.'
     }
     if ($Head -eq $Base) { throw 'Head and base branches must differ.' }
     $path = (Resolve-Path -LiteralPath $BodyFile -ErrorAction Stop).Path
     $body = [System.IO.File]::ReadAllText($path).Trim()
     if (!$body) { throw 'BodyFile must contain a pull request description.' }
-    $null = Invoke-GitHubRest -Client $client -Method Get -Path "issues/$IssueNumber"
+    if ($IssueNumber) { $null = Invoke-GitHubRest -Client $client -Method Get -Path "issues/$IssueNumber" }
     $null = Invoke-GitHubRest -Client $client -Method Get -Path "git/ref/heads/$Head"
-    if ($body -notmatch "(?im)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#$IssueNumber\b") {
+    if ($IssueNumber -and $body -notmatch "(?im)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#$IssueNumber\b") {
         $body = "$body`n`nCloses #$IssueNumber"
     }
     if ($PSCmdlet.ShouldProcess("$Repository $Head -> $Base", 'Create pull request')) {
