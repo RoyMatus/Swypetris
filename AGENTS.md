@@ -9,6 +9,7 @@
 - Fix root causes; do not hide errors with arbitrary retries, delays, or broad exception handling.
 - Do not invent product or game-design decisions. Ask when ambiguity materially affects behavior.
 - If a user's premise conflicts with verified evidence, explain the conflict and recommend the correction. Do not agree merely to be agreeable; separate observed facts from inferences and uncertainty.
+- Before each code change, check current documentation for the affected framework, library, or API through Context7. If Context7 is unavailable or has no relevant documentation, say so and consult the official documentation; do not present that fallback as a Context7 check.
 
 ## Tool economy
 
@@ -73,6 +74,10 @@ After changes:
 2. Run the smallest relevant available build/test/lint checks.
 3. Fix regressions caused by the change.
 4. Never claim a check was run if it was not.
+
+- Match verification to the changed behavior. For resource-only or documentation changes, build the affected variant and perform a focused visual or manual check when applicable; do not run the full Fast or Android suites by default.
+- Use targeted tests for changed logic or UI behavior. Run the full suites only when the change spans multiple systems, a release or CI gate requires them, or a specific regression risk remains after focused checks.
+- If an emulator or test runner fails for an environmental reason, diagnose it once and continue with the narrowest meaningful check instead of rerunning unrelated tests.
 
 - On Windows, use `tools/Verify-Tests.ps1` for its standard test suites; pass `-JavaHome` when needed and an explicit `-Serial` for the Android suite. Use direct Gradle or adb commands for narrower checks.
 
