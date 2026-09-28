@@ -3,6 +3,20 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.dokka")
     id("org.jetbrains.dokka-javadoc")
+    jacoco
+}
+
+tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
+    dependsOn("testDebugUnitTest")
+    executionData(layout.buildDirectory.file("jacoco/testDebugUnitTest.exec"))
+    sourceDirectories.setFrom(files("src/main/java"))
+    classDirectories.setFrom(fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes")) {
+        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.class", "**/Manifest.class", "**/Manifest$*.class")
+    })
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
 
 dokka {
