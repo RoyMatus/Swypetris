@@ -50,6 +50,7 @@ fun ContactsScreen(model: GameViewModel) {
     val messages = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val palette = LocalGamePalette.current
+    var showShareApp by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(palette.background), contentAlignment = Alignment.TopCenter) {
         LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize().navigationBarsPadding().testTag("contactsPage"),
             contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -88,6 +89,10 @@ fun ContactsScreen(model: GameViewModel) {
                         SettingsDivider(accent)
                         Text("Swypetris · © 2026 RoyMatus", color = palette.text,
                             style = MaterialTheme.typography.bodyMedium)
+                        AppActionButton("Поделиться приложением", ActionStyle.SECONDARY,
+                            Modifier.fillMaxWidth().testTag("shareApp"), palette.piece(Tetromino.S)) {
+                            showShareApp = true
+                        }
                         AppActionButton("Лицензии и права", ActionStyle.SECONDARY,
                             Modifier.fillMaxWidth().testTag("legal"), palette.piece(Tetromino.J), model::legal)
                         AppActionButton("Конфиденциальность", ActionStyle.SECONDARY,
@@ -98,4 +103,5 @@ fun ContactsScreen(model: GameViewModel) {
         }
         SnackbarHost(messages, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
     }
+    if (showShareApp) ShareAppDialog(onDismiss = { showShareApp = false })
 }

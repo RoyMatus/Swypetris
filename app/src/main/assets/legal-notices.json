@@ -35,7 +35,8 @@
       "introduction": "Приложение использует библиотеки AndroidX, Jetpack Compose и Kotlin. Ниже приведены проекты и тексты основных лицензий.",
       "items": [
         {"title": "AndroidX и Jetpack Compose", "credit": "Android Open Source Project / Google · Apache License 2.0", "source": "https://github.com/androidx/androidx", "licenseAsset": "tokyo-night.txt"},
-        {"title": "Kotlin", "credit": "JetBrains и участники проекта Kotlin · Apache License 2.0", "source": "https://github.com/JetBrains/kotlin/blob/master/license/README.md", "licenseAsset": "tokyo-night.txt"}
+        {"title": "Kotlin", "credit": "JetBrains и участники проекта Kotlin · Apache License 2.0", "source": "https://github.com/JetBrains/kotlin/blob/master/license/README.md", "licenseAsset": "tokyo-night.txt"},
+        {"title": "ZXing Core", "credit": "ZXing authors · Apache License 2.0; создание QR-кода", "source": "https://github.com/zxing/zxing", "licenseAsset": "tokyo-night.txt"}
       ]
     }
   ]
