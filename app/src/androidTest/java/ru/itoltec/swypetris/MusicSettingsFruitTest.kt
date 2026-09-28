@@ -128,6 +128,7 @@ class MusicSettingsFruitTest {
         val initialX=model.game!!.active.x
         val fruit=compose.onNodeWithTag("earnedFruit_CHERRY").fetchSemanticsNode().boundsInRoot
         val area=compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
+        assertTrue("Fruit gesture must start inside the interactive board", area.contains(fruit.center))
         compose.onNodeWithTag("gameArea").performTouchInput {
             val from=fruit.center-area.topLeft
             swipe(from,from-Offset(area.width*.22f,0f),200)
