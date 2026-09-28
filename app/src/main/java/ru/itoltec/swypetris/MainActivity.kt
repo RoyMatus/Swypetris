@@ -262,41 +262,6 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
     }
 }
 
-/** Separate screen for persisted settings; returning does not automatically resume gameplay. */
-@Composable
-private fun SettingsScreen(model: GameViewModel) {
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp)) {
-        Text("Настройки", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
-        Text("Сложность", style = MaterialTheme.typography.titleLarge)
-        Difficulty.entries.forEach { difficulty ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = model.difficulty == difficulty,
-                    onClick = { model.chooseDifficulty(difficulty) }, modifier = Modifier.testTag("difficulty_${difficulty.id}"))
-                Text(difficulty.title)
-            }
-        }
-        Text("Применяется к новой партии", color = LocalGamePalette.current.muted)
-        Spacer(Modifier.height(16.dp))
-        SettingToggle("Подсказки", "hints", model.hintsEnabled, model::setHints)
-        Text("Тень падения и следующая фигура", color = LocalGamePalette.current.muted)
-        SettingToggle("Звук", "sound", model.soundEnabled, model::setSound)
-        MusicPicker(model)
-        SettingToggle("Вибрация", "vibration", model.vibrationEnabled, model::setVibration)
-        Spacer(Modifier.height(24.dp))
-        PalettePicker(model)
-        Spacer(Modifier.height(24.dp))
-    }
-}
-
-/** Labeled toggle for one setting, with a stable UI-test tag. */
-@Composable
-private fun SettingToggle(label: String, tag: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = LocalGamePalette.current.text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-        Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag(tag))
-    }
-}
 /** Compact rectangular button whose label adapts to increased font size. */
 @Composable
 internal fun MenuTile(label: String, accent: Color, tag: String,

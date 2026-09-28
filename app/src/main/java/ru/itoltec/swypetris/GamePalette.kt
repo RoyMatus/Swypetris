@@ -1,10 +1,19 @@
 ﻿package ru.itoltec.swypetris
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -14,7 +23,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /** Complete UI and seven-piece palette; its stable ID is stored in settings. */
 enum class BlockFinish { BEVEL, MATTE, FROST, SATIN, NEON, RETRO }
@@ -96,32 +108,67 @@ object GamePalettes {
 
 val LocalGamePalette = staticCompositionLocalOf { GamePalettes.all.first() }
 
-/** Shows palette choices with a shared preview of seven beveled blocks. */
+/** Selector and live theme thumbnails form one Appearance control. */
 @Composable
 internal fun PalettePicker(model: GameViewModel) {
     var expanded by remember { mutableStateOf(false) }
     val palette = LocalGamePalette.current
-    Text("Расцветка", style = MaterialTheme.typography.titleLarge)
-    Box {
-        val accent = palette.piece(Tetromino.T)
-        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().testTag("palettePicker"),
-            colors = paletteButtonColors(accent, ActionStyle.SECONDARY),
-            border = paletteButtonBorder(accent, ActionStyle.SECONDARY)) {
-            Text(palette.title, Modifier.weight(1f))
-            Text("▾")
-        }
-        DropdownMenu(expanded, onDismissRequest = { expanded = false }, modifier = Modifier.heightIn(max = 360.dp)) {
-            GamePalettes.all.forEach { item ->
-                DropdownMenuItem(text = { Text(item.title) }, modifier = Modifier.testTag("palette_${item.id}"),
-                    onClick = { model.setPalette(item.id); expanded = false })
+    val accent = palette.piece(Tetromino.T)
+    @Composable fun selector() {
+        Box {
+            OutlinedButton(onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("palettePicker"),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = palette.background.copy(alpha = .65f), contentColor = palette.text),
+                border = BorderStroke(1.dp, accent)) {
+                Text(palette.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("▾")
+            }
+            DropdownMenu(expanded, onDismissRequest = { expanded = false },
+                modifier = Modifier.heightIn(max = 360.dp)) {
+                GamePalettes.all.forEach { item ->
+                    DropdownMenuItem(text = { Text(item.title) }, modifier = Modifier.testTag("palette_${item.id}"),
+                        onClick = { model.setPalette(item.id); expanded = false })
+                }
             }
         }
     }
-    Canvas(Modifier.fillMaxWidth().height(42.dp).testTag("palettePreview")) {
-        val step = size.width / 7
-        Tetromino.entries.forEachIndexed { index, type ->
-            bevelBlock(Offset(index * step + 3.dp.toPx(), 3.dp.toPx()),
-                Size(step - 6.dp.toPx(), size.height - 6.dp.toPx()), palette.piece(type), palette.finish, palette.texture)
+    if (LocalDensity.current.fontScale >= 1.4f) {
+        SettingsLabel("Расцветка", "Выбери стиль игры")
+        Spacer(Modifier.height(6.dp))
+        selector()
+    } else {
+        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { SettingsLabel("Расцветка", "Выбери стиль игры") }
+            Box(Modifier.width(158.dp)) { selector() }
+        }
+    }
+    val previewState = rememberLazyListState()
+    LaunchedEffect(palette.id) {
+        previewState.scrollToItem(GamePalettes.all.indexOfFirst { it.id == palette.id }.coerceAtLeast(0))
+    }
+    LazyRow(Modifier.fillMaxWidth().testTag("palettePreview"), state = previewState,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        items(GamePalettes.all, key = { it.id }) { item ->
+            val selected = palette.id == item.id
+            Column(Modifier.width(68.dp).heightIn(min = 64.dp)
+                .border(2.dp, if (selected) accent else palette.grid, RoundedCornerShape(9.dp))
+                .background(palette.background.copy(alpha = .65f), RoundedCornerShape(9.dp))
+                .clickable { model.setPalette(item.id) }
+                .testTag("palette_${item.id}_preview").padding(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Canvas(Modifier.fillMaxWidth().height(34.dp)) {
+                    val side = minOf(size.width / 4.6f, size.height / 2.4f)
+                    val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
+                    positions.forEachIndexed { index, (column, row) ->
+                        bevelBlock(Offset(column * side + side * .15f, row * side + side * .05f),
+                            Size(side * .89f, side * .89f), item.pieces[index], item.finish, item.texture)
+                    }
+                }
+                Text(item.title, color = palette.text, fontSize = 9.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
