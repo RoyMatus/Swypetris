@@ -68,6 +68,19 @@ class GestureControllerTest {
         assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.RIGHT), commands)
     }
 
+    @Test fun sidewaysDriftDoesNotCountAsDownwardRotationRearm() {
+        gestures.down(100f, 200f, 0)
+        gestures.move(100f, 176f, 20)
+        gestures.move(100f, 150f, 40)
+        gestures.move(200f, 162f, 60) // Mostly sideways; 12 dp down is not a reversal.
+        gestures.move(200f, 138f, 80)
+        assertEquals(1, commands.count { it == GameCommand.CLOCKWISE })
+
+        gestures.move(200f, 150f, 100)
+        gestures.move(200f, 126f, 120)
+        assertEquals(2, commands.count { it == GameCommand.CLOCKWISE })
+    }
+
     @Test fun pieceChangeAndClearDoNotRearmContinuousUpwardStroke() {
         gestures.down(100f, 200f, 0)
         gestures.move(100f, 176f, 20)
