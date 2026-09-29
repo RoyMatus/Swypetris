@@ -59,4 +59,42 @@ class ShareAppTest {
         assertEquals(Intent.ACTION_SEND, send?.action)
         assertEquals(url, send?.getStringExtra(Intent.EXTRA_TEXT))
     }
+
+    @Test fun apkDialogUsesInstalledVersionForQrAndActions() {
+        val url = apkDownloadUrl(BuildConfig.VERSION_NAME)
+        assertEquals(
+            "https://github.com/RoyMatus/Swypetris/releases/download/v1.1.0/Swypetris-1.1.0.apk",
+            apkDownloadUrl("1.1.0")
+        )
+        val bitmap = downloadQrBitmap(url)
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        val decoded = QRCodeReader().decode(BinaryBitmap(HybridBinarizer(
+            RGBLuminanceSource(bitmap.width, bitmap.height, pixels))))
+        assertEquals(url, decoded.text)
+
+        val model = ViewModelProvider(compose.activity)[GameViewModel::class.java]
+        compose.runOnIdle { model.finishLaunchIntro(); model.contacts() }
+        compose.onNodeWithTag("contactsPage").performScrollToNode(hasTestTag("downloadApk"))
+        compose.onNodeWithTag("downloadApk").performClick()
+        compose.onNodeWithTag("apkQr").assertIsDisplayed()
+        compose.onNodeWithText(url).assertExists()
+        compose.onNodeWithTag("openApk").assertExists()
+        compose.onNodeWithTag("shareApk").assertExists()
+        compose.onNodeWithTag("closeApk").performClick()
+        compose.onNodeWithTag("apkQr").assertDoesNotExist()
+
+        var launched: Intent? = null
+        val context = object : ContextWrapper(compose.activity) {
+            override fun startActivity(intent: Intent?) { launched = intent }
+        }
+        assertEquals(true, openAppDownload(context, url))
+        assertEquals(Intent.ACTION_VIEW, launched?.action)
+        assertEquals(url, launched?.dataString)
+        assertEquals(true, shareAppDownload(context, url))
+        assertEquals(Intent.ACTION_CHOOSER, launched?.action)
+        @Suppress("DEPRECATION")
+        val send = launched?.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+        assertEquals(url, send?.getStringExtra(Intent.EXTRA_TEXT))
+    }
 }

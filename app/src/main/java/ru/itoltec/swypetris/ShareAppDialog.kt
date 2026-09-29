@@ -70,37 +70,53 @@ internal fun shareAppDownload(context: Context, url: String): Boolean = try {
     false
 }
 
+/** The installed version selects its own immutable GitHub Release asset. */
+internal fun apkDownloadUrl(version: String): String =
+    "https://github.com/RoyMatus/Swypetris/releases/download/v$version/Swypetris-$version.apk"
+
 /** Shows the canonical store link, a scannable QR code, and Android sharing actions. */
 @Composable
-internal fun ShareAppDialog(onDismiss: () -> Unit) {
+internal fun ShareAppDialog(onDismiss: () -> Unit) = DownloadLinkDialog(onDismiss, directApk = false)
+
+@Composable
+internal fun ApkDownloadDialog(onDismiss: () -> Unit) = DownloadLinkDialog(onDismiss, directApk = true)
+
+@Composable
+private fun DownloadLinkDialog(onDismiss: () -> Unit, directApk: Boolean) {
     val context = LocalContext.current
-    val url = context.getString(R.string.app_download_url)
+    val url = if (directApk) apkDownloadUrl(BuildConfig.VERSION_NAME)
+        else context.getString(R.string.app_download_url)
     val qr = remember(url) { downloadQrBitmap(url).asImageBitmap() }
     var actionUnavailable by remember { mutableStateOf(false) }
 
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Поделиться Swypetris") },
+    AlertDialog(onDismissRequest = onDismiss,
+        title = { Text(if (directApk) "Скачать APK Swypetris" else "Поделиться Swypetris") },
         text = {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Отсканируйте код, чтобы скачать Swypetris")
+                Text(if (directApk) "Отсканируйте код, чтобы скачать APK напрямую"
+                    else "Отсканируйте код, чтобы скачать Swypetris")
                 Image(qr, contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).testTag("downloadQr")
-                        .semantics { contentDescription = "QR-код ссылки на Swypetris в RuStore" },
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                        .testTag(if (directApk) "apkQr" else "downloadQr")
+                        .semantics { contentDescription = if (directApk) "QR-код прямой загрузки APK Swypetris"
+                            else "QR-код ссылки на Swypetris в RuStore" },
                     filterQuality = FilterQuality.None)
                 Text(url, style = MaterialTheme.typography.bodySmall)
-                AppActionButton("Открыть RuStore", ActionStyle.SECONDARY,
-                    Modifier.fillMaxWidth().testTag("openDownload")) {
+                AppActionButton(if (directApk) "Открыть загрузку APK" else "Открыть RuStore", ActionStyle.SECONDARY,
+                    Modifier.fillMaxWidth().testTag(if (directApk) "openApk" else "openDownload")) {
                     actionUnavailable = !openAppDownload(context, url)
                 }
                 AppActionButton("Поделиться ссылкой", ActionStyle.SECONDARY,
-                    Modifier.fillMaxWidth().testTag("shareDownload")) {
+                    Modifier.fillMaxWidth().testTag(if (directApk) "shareApk" else "shareDownload")) {
                     actionUnavailable = !shareAppDownload(context, url)
                 }
                 if (actionUnavailable) Text("Нет приложения для открытия ссылки или передачи её другому пользователю.",
                     color = MaterialTheme.colorScheme.error)
             }
         }, confirmButton = {
-            AppActionButton("Закрыть", ActionStyle.TEXT, Modifier.testTag("closeShareApp"),
+            AppActionButton("Закрыть", ActionStyle.TEXT,
+                Modifier.testTag(if (directApk) "closeApk" else "closeShareApp"),
                 onClick = onDismiss)
         })
 }
