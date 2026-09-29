@@ -9,6 +9,62 @@ permissions:
   contents: read
 
 jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: CI selector tests
+        run: python3 -m unittest discover -s tools/ci -p 'test_*.py'
+      - name: GitHub API script tests
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
+            Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+          $result = Invoke-Pester ./tools/tests/GitHub-Api.Tests.ps1 -PassThru
+          if ($result.FailedCount -gt 0 -or $result.PassedCount -eq 0) { exit 1 }
+      - name: Release script syntax
+        shell: pwsh
+        run: |
+          Get-ChildItem ./tools/release -Filter '*.ps1' | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw "$($_.Name): $($errors -join '; ')" }
+          }
+      - name: Full JVM regression, debug lint, and coverage
+        run: bash ./gradlew :app:assembleDebug :app:lintDebug :app:test :app:jacocoDebugUnitTestReport --console=plain
+      - name: SonarQube Cloud release analysis
+        env:
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_REGION: ${{ vars.SONAR_REGION }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "$SONAR_ORGANIZATION" ] || [ -z "$SONAR_PROJECT_KEY" ] || [ -z "$SONAR_TOKEN" ]; then
+            echo 'SonarQube Cloud configuration is missing.' >&2
+            exit 1
+          fi
+          bash ./gradlew sonar "-Dsonar.branch.name=$GITHUB_REF_NAME" -Dsonar.qualitygate.wait=true --console=plain
+      - name: Save JVM, lint, and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-reports
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+            app/build/reports/lint-results-*
+            app/build/reports/jacoco/
+          if-no-files-found: warn
+
   instrumented-tests:
     runs-on: ubuntu-latest
     steps:
@@ -30,7 +86,9 @@ jobs:
           arch: x86_64
           emulator-port: 5554
           script: |
+            set -euo pipefail
             ANDROID_SERIAL=emulator-5554 bash ./gradlew :app:connectedDebugAndroidTest --console=plain
+            python3 tools/ci/verify_android_results.py full ''
             adb -s emulator-5554 shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1
       - name: Save instrumentation reports
         if: always()
