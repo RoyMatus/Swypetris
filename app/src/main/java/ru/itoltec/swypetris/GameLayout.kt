@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Rect
 
 internal const val FRUIT_SIZE = 20f
 internal const val FRUIT_GAP = 4f
+internal const val HUD_HORIZONTAL_MARGIN = 4f
 private const val PREVIEW_GAP = 8f
 
 /**
@@ -33,13 +34,12 @@ internal data class FruitPlacement(val left: Float, val top: Float)
  * @param next Tetromino shown in the preview when [showNext] is true.
  * @param scoreWidth Width reserved by the score indicator in board-local pixels.
  * @param scoreHeight Height reserved by the score indicator in board-local pixels.
- * @param rightInset Space reserved for Android's side gesture at the right edge.
  */
 internal fun fruitPlacement(width: Float, height: Float, count: Int, next: Tetromino,
-    showNext: Boolean, scoreWidth: Float, scoreHeight: Float, rightInset: Float = 0f): FruitPlacement {
-    val left = (width - rightInset - FRUIT_SIZE - FRUIT_GAP).coerceAtLeast(0f)
+    showNext: Boolean, scoreWidth: Float, scoreHeight: Float): FruitPlacement {
+    val left = (width - FRUIT_SIZE - HUD_HORIZONTAL_MARGIN).coerceAtLeast(0f)
     val right = left + FRUIT_SIZE
-    val score = Rect(4f, 3f, scoreWidth + 4f, scoreHeight + 3f)
+    val score = Rect(HUD_HORIZONTAL_MARGIN, 3f, scoreWidth + HUD_HORIZONTAL_MARGIN, scoreHeight + 3f)
     val obstacles = Tetromino.entries.map { pieceBounds(Piece(it), width, height) } +
         (if (showNext) listOf(pieceBounds(Piece(next), width, height)) else emptyList()) + score
     val obstacleBottom = obstacles.filter { left < it.right && right > it.left }
