@@ -2,7 +2,13 @@
 param([string]$SigningDirectory = (Join-Path $env:USERPROFILE '.swypetris-signing'))
 $ErrorActionPreference = 'Stop'
 $project = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-$destination = Join-Path $project 'dist/1.0.0'
+$versionLines = @(Get-Content -LiteralPath (Join-Path $project 'gradle.properties') |
+    Where-Object { $_ -match '^swypetrisVersion\s*=' })
+if ($versionLines.Count -ne 1 -or $versionLines[0] -notmatch '^swypetrisVersion\s*=\s*(\d+\.\d+\.\d+)\s*$') {
+    throw 'gradle.properties must contain one swypetrisVersion in major.minor.patch format.'
+}
+$version = $Matches[1]
+$destination = Join-Path $project "dist/$version"
 New-Item -ItemType Directory -Force -Path $destination | Out-Null
 $variables = @('SWYPETRIS_STORE_FILE','SWYPETRIS_STORE_PASSWORD','SWYPETRIS_KEY_ALIAS')
 $previous = @{}
@@ -17,11 +23,11 @@ try {
         if ($role -eq 'app') {
             & ./gradlew.bat :app:assembleRelease :app:testDebugUnitTest :app:lintRelease --console=plain --no-daemon
             if ($LASTEXITCODE -ne 0) { throw 'Release APK build or validation failed.' }
-            Copy-Item -LiteralPath 'app/build/outputs/apk/release/app-release.apk' -Destination (Join-Path $destination 'Swypetris-1.0.0.apk')
+            Copy-Item -LiteralPath 'app/build/outputs/apk/release/app-release.apk' -Destination (Join-Path $destination "Swypetris-$version.apk")
         } else {
             & ./gradlew.bat :app:bundleRelease --console=plain --no-daemon
             if ($LASTEXITCODE -ne 0) { throw 'Release AAB build failed.' }
-            Copy-Item -LiteralPath 'app/build/outputs/bundle/release/app-release.aab' -Destination (Join-Path $destination 'Swypetris-1.0.0.aab')
+            Copy-Item -LiteralPath 'app/build/outputs/bundle/release/app-release.aab' -Destination (Join-Path $destination "Swypetris-$version.aab")
         }
     }
     Get-ChildItem -LiteralPath $destination -File | Where-Object { $_.Extension -in @('.apk','.aab') } |
