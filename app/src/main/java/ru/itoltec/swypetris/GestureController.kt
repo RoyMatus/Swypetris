@@ -34,6 +34,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
     private var rotationX = 0f
     private var rotationY = 0f
     private var rotationTop = 0f
+    private var rotationTopX = 0f
     private var dropArmed = true
     private var dropBottom = 0f
 
@@ -82,6 +83,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         rotationX = x
         rotationY = y
         rotationTop = y
+        rotationTopX = x
         if (dropArmed) dropBottom = y
     }
 
@@ -119,6 +121,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         if (!rotationArmed) {
             if (y < rotationTop) {
                 rotationTop = y
+                rotationTopX = x
                 // Suppressed upward motion must not accumulate a debt for a subsequent drop.
                 if (-eventDy >= abs(eventDx)) {
                     anchorX = x
@@ -126,7 +129,8 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
                     horizontalDirection = 0
                 }
             }
-            if (y - rotationTop >= maxOf(config.rotationRearmDistance, config.tapSlop)) {
+            if (y - rotationTop >= maxOf(config.rotationRearmDistance, config.tapSlop) &&
+                y - rotationTop >= abs(x - rotationTopX) * config.directionRatio) {
                 rotationArmed = true
                 rotationX = x
                 rotationY = y
@@ -135,6 +139,10 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
             // The next upward stroke starts at the bottom of the reversal.
             rotationX = x
             rotationY = y
+            if (!rotationArmed) {
+                rotationTop = y
+                rotationTopX = x
+            }
         }
         val dx = x - anchorX
         val dy = y - anchorY
