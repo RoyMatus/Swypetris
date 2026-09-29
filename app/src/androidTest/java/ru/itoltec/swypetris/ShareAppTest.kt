@@ -60,11 +60,11 @@ class ShareAppTest {
         assertEquals(url, send?.getStringExtra(Intent.EXTRA_TEXT))
     }
 
-    @Test fun apkDialogUsesInstalledVersionForQrAndActions() {
-        val url = apkDownloadUrl(BuildConfig.VERSION_NAME)
+    @Test fun apkDialogUsesLatestReleaseForQrAndActions() {
+        val url = apkDownloadUrl()
         assertEquals(
-            "https://github.com/RoyMatus/Swypetris/releases/download/v1.1.0/Swypetris-1.1.0.apk",
-            apkDownloadUrl("1.1.0")
+            "https://github.com/RoyMatus/Swypetris/releases/latest/download/Swypetris.apk",
+            url
         )
         val bitmap = downloadQrBitmap(url)
         val pixels = IntArray(bitmap.width * bitmap.height)

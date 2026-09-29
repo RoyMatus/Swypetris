@@ -23,7 +23,7 @@ try {
         if ($role -eq 'app') {
             & ./gradlew.bat :app:assembleRelease :app:testDebugUnitTest :app:lintRelease --console=plain --no-daemon
             if ($LASTEXITCODE -ne 0) { throw 'Release APK build or validation failed.' }
-            Copy-Item -LiteralPath 'app/build/outputs/apk/release/app-release.apk' -Destination (Join-Path $destination "Swypetris-$version.apk")
+            Copy-Item -LiteralPath 'app/build/outputs/apk/release/app-release.apk' -Destination (Join-Path $destination 'Swypetris.apk')
         } else {
             & ./gradlew.bat :app:bundleRelease --console=plain --no-daemon
             if ($LASTEXITCODE -ne 0) { throw 'Release AAB build failed.' }
