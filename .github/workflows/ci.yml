@@ -85,6 +85,7 @@ jobs:
           api-level: 35
           arch: x86_64
           emulator-port: 5554
+          disable-animations: false
           script: bash tools/ci/run_android_checks.sh
       - name: Save test, lint, and coverage reports
         if: always() && steps.changes.outputs.mode != 'none'
