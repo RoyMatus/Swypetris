@@ -9,12 +9,12 @@ Use this skill for changes to `.github/workflows/ci.yml`, `release-check.yml`, o
 
 ## Preserve the actual check matrix
 
-- Pull requests targeting `main` run the debug APK build, `lintDebug`, fast debug JVM tests (`:app:testDebugUnitTest`), and JaCoCo report when a non-documentation/non-agent file changes.
-- Pushes to `main` run the debug build and lint, all JVM test variants (`:app:test`), and JaCoCo report under the same change filter.
-- A `v*` tag or manual dispatch runs the separate release workflow: API 35 emulator instrumentation and launcher smoke check, signed APK/AAB builds, release lint, and artifact signature/archive checks.
+- Pull requests and pushes to `main` select mapped JVM and Android tests plus an API 35 emulator smoke test for changed app components. Cross-cutting or unknown inputs run full regression.
+- Documentation and isolated AI instruction/script changes run no app tests. GitHub API, release, and CI scripts receive their own focused checks.
+- A `v*` tag or manual dispatch runs the separate full release workflow: all JVM and Android correctness tests, debug/release lint, coverage, Sonar, smoke, signed APK/AAB builds, and artifact signature/archive checks.
 - Keep SonarQube Cloud analysis governed by its own configured variables, token availability, and fork restriction. Preserve an established required Quality Gate check; Android test skipping does not imply Sonar is disabled.
 
-The Android change detector skips Android build, lint, JVM tests, and report upload only when every changed path is Markdown or `.codex/agents/*.toml`. If the base commit cannot be resolved or the diff fails, it deliberately runs Android checks. Keep that conservative fallback. Workflow or other code changes must continue to receive the applicable full PR or main checks.
+`tools/ci/select_checks.py` owns path classification and the source-to-test map. If the base commit cannot be resolved or the diff fails, it deliberately runs full regression. Keep that conservative fallback. Do not select an empty test suite for app behavior changes. Workflow and build configuration changes run full regression.
 
 ## Required status and workflow edits
 

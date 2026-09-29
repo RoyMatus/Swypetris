@@ -6,18 +6,21 @@ The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 
 
 | Event | Checks |
 | --- | --- |
-| Pull request to `main` with changes beyond Markdown and agent TOML | Debug APK build, `lintDebug`, `testDebugUnitTest`, JaCoCo XML/HTML report; SonarQube Cloud analysis after setup |
-| Push to `main` with changes beyond Markdown and agent TOML | Debug APK build, `lintDebug`, all variant JVM tests via `:app:test`, JaCoCo report; Sonar main analysis after setup |
-| Pull request or `main` push changing only Markdown and agent TOML | SonarQube Cloud analysis; Android build, lint, tests, coverage, and report upload skipped |
-| `v*` tag or manual release verification | Full Android instrumentation suite on an API 35 emulator, launcher smoke check, signed release APK and AAB builds, `lintRelease`, APK/AAB signature and archive checks |
+| Pull request to `main` or push to `main` changing an app component | Debug APK build, `lintDebug`, mapped JVM and Android test classes, and `SmokeTest` on an API 35 emulator; SonarQube Cloud analysis |
+| Shared or unmapped build input | Debug build and lint, full JVM and Android regression, JaCoCo, smoke, and Sonar analysis |
+| Documentation or AI instruction/script-only change | SonarQube Cloud analysis; no Android build or tests |
+| GitHub API, release, or CI script-only change | Pester, PowerShell syntax, or selector unit tests respectively; no Android build or tests |
+| `v*` tag or manual release verification | All JVM, Android, and CI/tool correctness tests, debug/release lint, JaCoCo, Sonar, launcher smoke, signed APK/AAB builds, signature and archive checks |
 
-Test, lint, and coverage reports are attached to CI runs. Signed release artifacts are attached to release verification runs. A successful workflow verifies a candidate; it does not publish a release or replace a manual device/store review.
+Available test and lint reports are attached to CI runs; coverage is attached when full regression runs. Signed release artifacts are attached to release verification runs. A successful workflow verifies a candidate; it does not publish a release or replace a manual device/store review.
 
-For changes limited to Markdown and `.codex/agents/*.toml`, Android build, lint, JVM tests, coverage, and report upload are skipped. SonarQube Cloud still runs because its Quality Gate is required for merging. Other changes, including Gradle, manifest, and workflow edits, run the normal PR checks. A newer push to the same PR cancels its older in-progress Android CI run; pushes to `main` are not cancelled.
+`tools/ci/select_checks.py` classifies changes from the event base commit. Repository Markdown outside `app/`, `AGENTS.md`, `.agents/`, and `.codex/` need no app tests. GitHub API, release, and CI scripts have their own checks. Changes to multiple app areas union their mapped test classes. `GameSession`, `GameViewModel`, `MainActivity`, Gradle, manifest, workflow, and any unknown path run full regression; unresolved diffs do too. The selector's output determines the CI steps, and an Android XML report check rejects an empty or incorrectly filtered run. `EnergyScenarioTest` remains an opt-in measurement. SonarQube Cloud still runs for instruction-only changes because its Quality Gate is required for merging. A newer push to the same PR cancels its older in-progress Android CI run; pushes to `main` are not cancelled.
 
-On Linux/macOS, run the PR checks locally with `bash ./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:jacocoDebugUnitTestReport`. Run all JVM variants with `bash ./gradlew :app:test`. Run instrumentation on a selected emulator with `ANDROID_SERIAL=<serial> bash ./gradlew :app:connectedDebugAndroidTest`. Use JDK 21 for the Sonar scanner. On Windows, `tools/Verify-Tests.ps1` runs and summarizes the fast checks or instrumentation on an explicitly selected emulator; see [TESTING.md](../TESTING.md).
+The mapped Android tests run before Sonar analysis in the same CI job. This keeps the currently required SonarCloud check pending if an app test fails. Release analysis uses the release ref name and waits for its Quality Gate result.
 
-JaCoCo XML is at `app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml`. It measures production Kotlin classes compiled for the debug variant, excluding generated `R`, `BuildConfig`, and `Manifest` classes. It includes only JVM-test execution; Android instrumentation/Compose UI coverage is not merged. Do not interpret its overall percentage as complete application coverage.
+On Linux/macOS, run broad local checks with `bash ./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:jacocoDebugUnitTestReport`; CI uses the selector above for focused changes. Run all JVM variants with `bash ./gradlew :app:test`. Run instrumentation on a selected emulator with `ANDROID_SERIAL=<serial> bash ./gradlew :app:connectedDebugAndroidTest`. Use JDK 21 for the Sonar scanner. On Windows, `tools/Verify-Tests.ps1` runs and summarizes the fast checks or instrumentation on an explicitly selected emulator; see [TESTING.md](../TESTING.md).
+
+JaCoCo XML is produced for full regression at `app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml`. Selective CI does not report partial coverage as whole-app coverage. It measures production Kotlin classes compiled for the debug variant, excluding generated `R`, `BuildConfig`, and `Manifest` classes. It includes only JVM-test execution; Android instrumentation/Compose UI coverage is not merged. Do not interpret its overall percentage as complete application coverage.
 
 ## SonarQube Cloud setup (Issue #63)
 

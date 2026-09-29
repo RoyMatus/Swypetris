@@ -6,11 +6,11 @@ Use JDK 21 and the Android SDK. On Windows, `./tools/Verify-Tests.ps1 -Suite Fas
 
 JVM tests use JUnit 4 for concise rule checks and Kotest BehaviorSpec for multi-step state behavior. Gradle runs both through JUnit Platform and Vintage. Android framework, activity lifecycle, media decoding, and Compose interactions remain in `androidTest` with AndroidX JUnit 4 and Compose test APIs. New tests should use controlled clocks and seeded or injected random sources; a sleep or an actual device belongs only in an explicitly opt-in measurement scenario.
 
-PR CI runs the fast JVM suite and uploads test and JaCoCo reports. The release verification workflow runs the full Android suite on an API 35 emulator and uploads its reports. The `EnergyScenarioTest` workload is opt-in via `energyScenario=true`; it is skipped in the normal suite.
+PR and `main` CI use the explicit source-to-test map in `tools/ci/select_checks.py` to run affected JVM and Android classes plus `SmokeTest` on an API 35 emulator. Cross-cutting or unmapped inputs run full regression. Selective runs do not publish whole-app JaCoCo coverage. The release verification workflow runs all JVM, Android, and CI/tool correctness tests, coverage, lint, Sonar, and signed-artifact checks. The `EnergyScenarioTest` workload is opt-in via `energyScenario=true`; it is skipped in the normal and release correctness suites.
 
 ## Inventory and decisions
 
-Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android test classes with 71 methods, plus the `IsolatedStorageRule` fixture. The following review compares each class with current game behavior. Tests marked **keep** have a distinct regression purpose; no class was removed merely to reduce the count.
+Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android test classes with 71 methods, plus the `IsolatedStorageRule` fixture. These counts predate the CI `SmokeTest` added later. The following review compares each class with current game behavior. Tests marked **keep** have a distinct regression purpose; no class was removed merely to reduce the count.
 
 | Test class | Level and behavior checked | Decision |
 | --- | --- | --- |
@@ -45,6 +45,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `ResultsIntegrationTest` | Compose/storage: record name, game-over result and history | Keep; user flow and persistence. |
 | `SessionLifecycleTest` | Android model/storage: preferences, resume, gesture, clear, corruption, victory | Keep; covers current lifecycle rules with controlled clock. |
 | `SessionWriteTest` | Android storage: snapshot writes and board cache | Keep; protects persistence integrity. |
+| `SmokeTest` | Android UI: launch, new game, pause to menu, continue | Keep; runs on every app change and in full release regression. |
 | `StatisticsResetTest` | Android UI/storage: confirm versus cancel | Keep; protects destructive settings action. |
 | `VictoryThemeIntegrationTest` | Compose/model: victory continuation, palettes, hints, large font | Keep; covers state and presentation together. |
 
