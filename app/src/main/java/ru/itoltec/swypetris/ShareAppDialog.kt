@@ -70,9 +70,9 @@ internal fun shareAppDownload(context: Context, url: String): Boolean = try {
     false
 }
 
-/** The installed version selects its own immutable GitHub Release asset. */
-internal fun apkDownloadUrl(version: String): String =
-    "https://github.com/RoyMatus/Swypetris/releases/download/v$version/Swypetris-$version.apk"
+/** The latest published GitHub Release provides the APK for every new app build. */
+internal fun apkDownloadUrl(): String =
+    "https://github.com/RoyMatus/Swypetris/releases/latest/download/Swypetris.apk"
 
 /** Shows the canonical store link, a scannable QR code, and Android sharing actions. */
 @Composable
@@ -84,7 +84,7 @@ internal fun ApkDownloadDialog(onDismiss: () -> Unit) = DownloadLinkDialog(onDis
 @Composable
 private fun DownloadLinkDialog(onDismiss: () -> Unit, directApk: Boolean) {
     val context = LocalContext.current
-    val url = if (directApk) apkDownloadUrl(BuildConfig.VERSION_NAME)
+    val url = if (directApk) apkDownloadUrl()
         else context.getString(R.string.app_download_url)
     val qr = remember(url) { downloadQrBitmap(url).asImageBitmap() }
     var actionUnavailable by remember { mutableStateOf(false) }
