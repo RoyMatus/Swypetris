@@ -43,3 +43,40 @@ Describe 'Assert-GitHubPullRequestReady' {
         $message | Should Match 'no check runs or commit statuses'
     }
 }
+
+Describe 'Get-GitHubPullRequestBlockers' {
+    It 'returns no blockers for a ready pull request' {
+        $checks = @([pscustomobject]@{ name = 'android'; status = 'completed'; conclusion = 'success' })
+        $blockers = @(Get-GitHubPullRequestBlockers -PullRequest (New-ReadyPullRequest) -Checks $checks)
+        $blockers.Count | Should Be 0
+    }
+
+    It 'reports all applicable blockers and matches the merge assertion' {
+        $pr = New-ReadyPullRequest
+        $pr.draft = $true
+        $pr.mergeable_state = 'blocked'
+        $checks = @([pscustomobject]@{ name = 'android'; status = 'in_progress'; conclusion = $null })
+        $required = @([pscustomobject]@{ context = 'SonarCloud Code Analysis'; app_id = 12526 })
+        $blockers = @(Get-GitHubPullRequestBlockers -PullRequest $pr -Checks $checks -RequiredChecks $required)
+        $blockers.Count | Should Be 4
+        $message = try { Assert-GitHubPullRequestReady -PullRequest $pr -Checks $checks -RequiredChecks $required; '' } catch { $_.Exception.Message }
+        $message | Should Be ($blockers -join '; ')
+    }
+
+    It 'reports a merged pull request without requesting CI evidence' {
+        $pr = New-ReadyPullRequest
+        $pr.state = 'closed'
+        $pr.merged = $true
+        $blockers = @(Get-GitHubPullRequestBlockers -PullRequest $pr)
+        $blockers.Count | Should Be 1
+        $blockers[0] | Should Match 'already merged'
+    }
+
+    It 'reports a closed unmerged pull request' {
+        $pr = New-ReadyPullRequest
+        $pr.state = 'closed'
+        $blockers = @(Get-GitHubPullRequestBlockers -PullRequest $pr)
+        $blockers.Count | Should Be 1
+        $blockers[0] | Should Match 'closed'
+    }
+}

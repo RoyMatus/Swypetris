@@ -72,7 +72,7 @@ function Invoke-GitHubGraphQL {
     return $result.data
 }
 
-function Assert-GitHubPullRequestReady {
+function Get-GitHubPullRequestBlockers {
     param(
         [Parameter(Mandatory)]$PullRequest,
         [array]$Checks = @(),
@@ -81,24 +81,33 @@ function Assert-GitHubPullRequestReady {
     )
 
     $number = $PullRequest.number
-    if ($PullRequest.state -ne 'open' -or $PullRequest.draft -or $PullRequest.merged) {
-        throw "PR #$number must be open, ready for review, and unmerged."
+    $blockers = [System.Collections.Generic.List[string]]::new()
+    if ($PullRequest.merged) {
+        $blockers.Add("PR #$number is already merged.")
+        return $blockers.ToArray()
+    }
+    if ($PullRequest.state -ne 'open') {
+        $blockers.Add("PR #$number is closed.")
+        return $blockers.ToArray()
+    }
+    if ($PullRequest.draft) {
+        $blockers.Add("PR #$number is a draft.")
     }
     if ($PullRequest.mergeable -ne $true -or $PullRequest.mergeable_state -ne 'clean') {
-        throw "PR #$number is not ready to merge (state: $($PullRequest.mergeable_state))."
+        $blockers.Add("PR #$number is not ready to merge (state: $($PullRequest.mergeable_state)).")
     }
     if ($Checks.Count -eq 0 -and $Statuses.Count -eq 0) {
-        throw "PR #$number has no check runs or commit statuses; refusing to merge without CI evidence."
+        $blockers.Add("PR #$number has no check runs or commit statuses; refusing to merge without CI evidence.")
     }
     $badChecks = @($Checks | Where-Object { $_.status -ne 'completed' -or $_.conclusion -notin @('success', 'neutral', 'skipped') })
     if ($badChecks.Count -gt 0) {
         $summary = @($badChecks | ForEach-Object { "$($_.name): $($_.status)/$($_.conclusion)" }) -join '; '
-        throw "PR #$number has incomplete or failed checks: $summary"
+        $blockers.Add("PR #$number has incomplete or failed checks: $summary")
     }
     $badStatuses = @($Statuses | Where-Object { $_.state -ne 'success' })
     if ($badStatuses.Count -gt 0) {
         $summary = @($badStatuses | ForEach-Object { "$($_.context): $($_.state)" }) -join '; '
-        throw "PR #$number has pending or failed commit statuses: $summary"
+        $blockers.Add("PR #$number has pending or failed commit statuses: $summary")
     }
     foreach ($required in $RequiredChecks) {
         $matchingChecks = @($Checks | Where-Object {
@@ -109,9 +118,22 @@ function Assert-GitHubPullRequestReady {
             @($Statuses | Where-Object { $_.context -eq $required.context })
         } else { @() }
         if ($matchingChecks.Count -eq 0 -and $matchingStatuses.Count -eq 0) {
-            throw "PR #$number is missing required check '$($required.context)' (app: $($required.app_id))."
+            $blockers.Add("PR #$number is missing required check '$($required.context)' (app: $($required.app_id)).")
         }
     }
+    return $blockers.ToArray()
 }
 
-Export-ModuleMember -Function New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Assert-GitHubPullRequestReady
+function Assert-GitHubPullRequestReady {
+    param(
+        [Parameter(Mandatory)]$PullRequest,
+        [array]$Checks = @(),
+        [array]$Statuses = @(),
+        [array]$RequiredChecks = @()
+    )
+
+    $blockers = @(Get-GitHubPullRequestBlockers -PullRequest $PullRequest -Checks $Checks -Statuses $Statuses -RequiredChecks $RequiredChecks)
+    if ($blockers.Count -gt 0) { throw ($blockers -join '; ') }
+}
+
+Export-ModuleMember -Function New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Get-GitHubPullRequestBlockers, Assert-GitHubPullRequestReady

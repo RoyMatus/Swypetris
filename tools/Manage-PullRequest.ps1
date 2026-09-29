@@ -112,9 +112,15 @@ if ($Action -eq 'Update') {
     return
 }
 
-$checks = @(Get-PullRequestChecks $pr.head.sha)
-$statuses = @(Get-PullRequestStatuses $pr.head.sha)
-$requiredChecks = @(Get-RequiredChecks $pr.base.ref)
+$checks = @()
+$statuses = @()
+$requiredChecks = @()
+if ($pr.state -eq 'open' -and !$pr.merged) {
+    $checks = @(Get-PullRequestChecks $pr.head.sha)
+    $statuses = @(Get-PullRequestStatuses $pr.head.sha)
+    $requiredChecks = @(Get-RequiredChecks $pr.base.ref)
+}
+$blockers = @(Get-GitHubPullRequestBlockers -PullRequest $pr -Checks $checks -Statuses $statuses -RequiredChecks $requiredChecks)
 $checkSummary = @($checks | ForEach-Object { "$($_.name): $($_.status)/$($_.conclusion)" })
 $statusSummary = @($statuses | ForEach-Object { "$($_.context): $($_.state)" })
 $requiredSummary = @($requiredChecks | ForEach-Object { if ($null -ne $_.app_id) { "$($_.context) (app $($_.app_id))" } else { $_.context } })
@@ -126,6 +132,7 @@ if ($Action -eq 'Inspect') {
         State = $pr.state
         Draft = $pr.draft
         Merged = $pr.merged
+        MergeCommitSha = if ($pr.merged) { $pr.merge_commit_sha } else { $null }
         Head = $pr.head.sha
         HeadRef = $pr.head.ref
         BaseRef = $pr.base.ref
@@ -134,6 +141,8 @@ if ($Action -eq 'Inspect') {
         Checks = $checkSummary
         Statuses = $statusSummary
         RequiredChecks = $requiredSummary
+        ReadyToMerge = ($blockers.Count -eq 0)
+        Blockers = $blockers
     }
     return
 }
