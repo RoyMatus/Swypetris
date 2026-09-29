@@ -81,15 +81,14 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Android instrumentation and launch smoke test
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          CHECK_MODE: full
+          ANDROID_CLASSES: ''
         with:
           api-level: 35
           arch: x86_64
           emulator-port: 5554
-          script: |
-            set -euo pipefail
-            ANDROID_SERIAL=emulator-5554 bash ./gradlew :app:connectedDebugAndroidTest --console=plain
-            python3 tools/ci/verify_android_results.py full ''
-            adb -s emulator-5554 shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1
+          script: bash tools/ci/run_android_checks.sh
       - name: Save instrumentation reports
         if: always()
         uses: actions/upload-artifact@v4
