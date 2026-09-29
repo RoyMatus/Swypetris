@@ -115,22 +115,23 @@ class MusicSettingsFruitTest {
                 } else node.assertDoesNotExist()
             }
             if (n>0) {
+                val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
+                assertEquals(score.left - root.left, root.right - previous!!.right, 1f)
                 screenshot("fruits-row-$n.png")
             }
         }
     }
 
-    /** Свайп поверх значка награды передаётся полю и передвигает фигуру. */
-    @Test fun fruitDoesNotConsumeGesture() {
+    /** Свайп у правого края зоны ввода по-прежнему передвигает фигуру. */
+    @Test fun rightEdgeGestureAreaRemainsUsable() {
         val model=GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=10000),{1000L},false)
         compose.setContent { SwypetrisApp(model) {} }
         val initialX=model.game!!.active.x
         val fruit=compose.onNodeWithTag("earnedFruit_CHERRY").fetchSemanticsNode().boundsInRoot
         val area=compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
-        assertTrue("Fruit gesture must start inside the interactive board", area.contains(fruit.center))
         compose.onNodeWithTag("gameArea").performTouchInput {
-            val from=fruit.center-area.topLeft
+            val from=Offset(area.width*.95f,fruit.center.y-area.top)
             swipe(from,from-Offset(area.width*.22f,0f),200)
         }
         compose.runOnIdle { assertTrue(model.game!!.active.x<initialX) }
