@@ -52,7 +52,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         if: steps.changes.outputs.mode != 'none' || (vars.SONAR_ORGANIZATION != '' && vars.SONAR_PROJECT_KEY != '')
       - name: Build and lint app
         if: steps.changes.outputs.mode != 'none'
@@ -77,7 +77,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Run affected Android tests and smoke
         if: steps.changes.outputs.mode != 'none'
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         env:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
           ANDROID_CLASSES: ${{ steps.changes.outputs.android }}
