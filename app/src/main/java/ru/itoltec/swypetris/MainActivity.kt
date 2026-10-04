@@ -75,6 +75,7 @@ internal val ScorePulseScale = androidx.compose.ui.semantics.SemanticsPropertyKe
 /** Android entry point that connects a retained game model to the Compose UI. */
 class MainActivity : ComponentActivity() {
     private val gameModel: GameViewModel by viewModels()
+    private val appUpdates by lazy { AppUpdates(this) }
 
     /** Draw backgrounds edge-to-edge, keeping system bars visible on every screen. */
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,9 +102,15 @@ class MainActivity : ComponentActivity() {
                     controller.show(WindowInsetsCompat.Type.systemBars())
                     onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
                 }
-                SwypetrisApp(gameModel, onExit = { gameModel.pause(); finishAndRemoveTask() })
+                SwypetrisApp(gameModel, appUpdates, onExit = { gameModel.pause(); finishAndRemoveTask() })
             }
         }
+        appUpdates.check(manual = false)
+    }
+
+    override fun onDestroy() {
+        appUpdates.close()
+        super.onDestroy()
     }
 
     /** Forwards backgrounding to the model so gameplay clocks and effects stop. */
@@ -135,7 +142,7 @@ class MainActivity : ComponentActivity() {
 
 /** Connects Android lifecycle, system gesture settings, and screen selection. */
 @Composable
-fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
+internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onExit: () -> Unit) {
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -166,12 +173,12 @@ fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
             if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
                 LaunchIntroMotion.approachProgress(model.launchIntroMillis))
             key(model.screen) {
-            if (model.screen == GameScreen.MENU) MainMenu(model, onExit)
+            if (model.screen == GameScreen.MENU) MainMenu(model, onExit, onCheckUpdates = { updates?.check(true) })
             else if (model.screen == GameScreen.CONTACTS) ContactsScreen(model)
             else if (model.screen == GameScreen.PRIVACY) PrivacyScreen(model)
             else if (model.screen == GameScreen.LEGAL) LegalScreen()
             else if (model.screen == GameScreen.HELP) HelpScreen(model)
-            else if (model.screen == GameScreen.SETTINGS) SettingsScreen(model)
+            else if (model.screen == GameScreen.SETTINGS) SettingsScreen(model, onCheckUpdates = { updates?.check(true) })
             else if (model.screen == GameScreen.VICTORY) VictoryScreen(model)
             else if (model.screen == GameScreen.RECORD) RecordScreen(model)
             else if (model.screen in listOf(GameScreen.GAME_OVER, GameScreen.RESULTS)) ResultsScreen(model)
@@ -180,6 +187,24 @@ fun SwypetrisApp(model: GameViewModel, onExit: () -> Unit) {
         }
     }
 }
+
+    updates?.notice?.let { notice ->
+        AlertDialog(onDismissRequest = updates::dismiss,
+            title = { Text(if (notice is UpdateNotice.Available) "Доступно обновление" else "Проверка обновлений") },
+            text = { Text(when (notice) {
+                is UpdateNotice.Available -> "Установлена версия ${BuildConfig.VERSION_NAME}. Доступна ${notice.update.versionName}."
+                UpdateNotice.Current -> "Установлена актуальная версия ${BuildConfig.VERSION_NAME}."
+                UpdateNotice.Failed -> "Не удалось проверить обновления. Проверьте подключение и повторите позже."
+            }) },
+            confirmButton = {
+                if (notice is UpdateNotice.Available) TextButton(onClick = { updates.open(notice.update) },
+                    modifier = Modifier.testTag("confirmUpdate")) { Text("Обновить") }
+                else TextButton(onClick = updates::dismiss) { Text("Понятно") }
+            },
+            dismissButton = if (notice is UpdateNotice.Available) ({
+                TextButton(onClick = updates::dismiss, modifier = Modifier.testTag("laterUpdate")) { Text("Позже") }
+            }) else null)
+    }
 
     }
 }
@@ -190,7 +215,7 @@ private data class MenuAction(val label: String, val color: Color, val tag: Stri
 
 /** Primary gameplay actions sit above compact navigation; the logo keeps the final intro position. */
 @Composable
-private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
+private fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: () -> Unit) {
     var menuOrigin by remember { mutableStateOf(Offset.Zero) }
     var logoBounds by remember { mutableStateOf(Rect.Zero) }
     val intro = model.launchIntroPending
@@ -257,6 +282,11 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit) {
                     Icons.Outlined.ExitToApp, ActionStyle.SECONDARY, exitHeight,
                     enabled = !intro, destructive = true, onClick = onExit)
             }
+        }
+        TextButton(onClick = onCheckUpdates, enabled = !intro,
+            modifier = Modifier.align(Alignment.BottomStart).testTag("versionCheck")) {
+            Text(BuildConfig.VERSION_NAME, color = palette.muted,
+                style = MaterialTheme.typography.labelSmall)
         }
     }
     if (intro) LaunchIntroOverlay(model, logoBounds, Modifier.matchParentSize())

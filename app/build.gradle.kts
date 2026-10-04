@@ -45,7 +45,7 @@ android {
         applicationId = "ru.itoltec.swypetris"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
+        versionCode = 4
         versionName = providers.gradleProperty("swypetrisVersion").get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -88,6 +88,7 @@ android {
 }
 
 dependencies {
+    implementation("ru.rustore.sdk:appupdate:10.5.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.1")
     implementation("androidx.core:core-ktx:1.10.1")
