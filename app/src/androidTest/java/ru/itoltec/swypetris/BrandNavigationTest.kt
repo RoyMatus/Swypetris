@@ -35,7 +35,7 @@ class BrandNavigationTest {
         compose.onNodeWithContentDescription("SWYPETRIS").assertIsDisplayed()
         compose.onNodeWithText("Рекорд:", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Прежние правила:", substring = true).assertDoesNotExist()
-        val expected = listOf("newGame", "settings", "help", "results", "contacts", "exitGame")
+        val expected = listOf("newGame", "settings", "help", "results", "contacts", "exitGame", "versionCheck")
         val observed = compose.onAllNodes(hasClickAction()).fetchSemanticsNodes()
             .map { it.config.getOrElse(SemanticsProperties.TestTag) { "" } }.filter { it.isNotEmpty() }
         assertEquals(expected, observed)
@@ -80,6 +80,9 @@ class BrandNavigationTest {
             assertTrue(node.left >= viewport.left && node.right <= viewport.right)
             assertTrue(node.width > node.height)
         }
+        val version = compose.onNodeWithTag("versionCheck").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue(version.left >= viewport.left && version.right <= viewport.right)
+        assertTrue(version.top >= viewport.top && version.bottom <= viewport.bottom)
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).assertCountEquals(0)
         screenshot("menu-compact-large-font.png")
     }

@@ -24,6 +24,23 @@ try {
             & ./gradlew.bat :app:assembleRelease :app:testDebugUnitTest :app:lintRelease --console=plain --no-daemon
             if ($LASTEXITCODE -ne 0) { throw 'Release APK build or validation failed.' }
             Copy-Item -LiteralPath 'app/build/outputs/apk/release/app-release.apk' -Destination (Join-Path $destination 'Swypetris.apk')
+            Copy-Item -LiteralPath 'app/src/main/res/drawable-nodpi/ic_launcher_artwork.png' -Destination (Join-Path $destination 'RuStore-icon.png') -Force
+            $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
+            $aapt = Get-ChildItem -LiteralPath (Join-Path $sdk 'build-tools') -Directory |
+                Sort-Object { [version]$_.Name } -Descending |
+                ForEach-Object { Join-Path $_.FullName 'aapt.exe' } |
+                Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+            if (!$aapt) { throw 'Android aapt.exe is required to read the signed APK metadata.' }
+            $apk = Join-Path $destination 'Swypetris.apk'
+            $packageLine = & $aapt dump badging $apk | Select-Object -First 1
+            if ($LASTEXITCODE -ne 0 -or $packageLine -notmatch "^package: name='ru\.itoltec\.swypetris' versionCode='(\d+)' versionName='([^']+)'" -or
+                $Matches[2] -ne $version) { throw 'Signed APK package or version does not match release configuration.' }
+            $metadata = [ordered]@{
+                versionCode = [int]$Matches[1]
+                versionName = $Matches[2]
+                sha256 = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+            $metadata | ConvertTo-Json | Set-Content -Encoding utf8 -LiteralPath (Join-Path $destination 'update.json')
         } else {
             & ./gradlew.bat :app:bundleRelease --console=plain --no-daemon
             if ($LASTEXITCODE -ne 0) { throw 'Release AAB build failed.' }

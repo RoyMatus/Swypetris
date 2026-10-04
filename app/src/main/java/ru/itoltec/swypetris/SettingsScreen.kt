@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 
 /** The four panels follow the approved settings reference while keeping real settings. */
 @Composable
-internal fun SettingsScreen(model: GameViewModel) {
+internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {}) {
     val palette = LocalGamePalette.current
     var confirmReset by remember { mutableStateOf(false) }
     val gameplay = palette.piece(Tetromino.I)
@@ -64,6 +64,10 @@ internal fun SettingsScreen(model: GameViewModel) {
             }
             SettingsPanel("ВНЕШНИЙ ВИД", "Цветовая тема и оформление", Icons.Outlined.Palette, appearance) {
                 PalettePicker(model)
+            }
+            SettingsPanel("О ПРИЛОЖЕНИИ", "Версия и обновления", Icons.Outlined.Lightbulb, assistance) {
+                OutlinedButton(onClick = onCheckUpdates, modifier = Modifier.fillMaxWidth()
+                    .testTag("checkUpdates")) { Text("Проверить обновления") }
             }
             SettingsPanel("ДАННЫЕ", "История игр и рекорды", Icons.Outlined.DeleteOutline,
                 MaterialTheme.colorScheme.error) {
