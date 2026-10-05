@@ -42,6 +42,7 @@ class VictoryThemeIntegrationTest {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
             { now }, false, musicPlayback = music)
+        val initialGravity = model.game!!.gravityMillis
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
         compose.runOnIdle { now += 100; model.command(GameCommand.SOFT_DROP) }
@@ -69,7 +70,8 @@ class VictoryThemeIntegrationTest {
             assertEquals(GameScreen.PLAYING, model.screen)
             assertEquals(80000, model.game!!.score)
             assertEquals(100, model.game!!.lines)
-            assertEquals(120L, model.game!!.gravityMillis)
+            assertEquals(initialGravity, model.game!!.gravityMillis)
+            assertEquals(11, model.game!!.level)
             assertEquals(1, model.game!!.completedRounds)
             assertEquals(0, model.game!!.roundFruits)
             assertTrue(model.game!!.board.flatten().all { it == null })
