@@ -9,7 +9,8 @@
 | Движение влево / вправо | Сдвиг фигуры; дальнейшие шаги связаны с шириной клетки |
 | Свайп вверх | Поворот по часовой стрелке |
 | Длинный направленный жест вниз | Мгновенный бросок до упора |
-| Короткий тап | Один шаг вниз; при препятствии — фиксация |
+| Short tap | One manual cell downward; grounded pieces retain their lock delay |
+| Hold nearly still for 300 ms, then swipe up | Store or retrieve the held piece; once per lock, then release |
 | Неподвижное удержание | Не вызывает действий и не ускоряет гравитацию |
 | Системный «Назад» | Пауза и главное меню с Continue |
 
@@ -17,7 +18,7 @@
 
 ## Экран и меню
 
-Поле 10×20 занимает безопасную область между видимыми системными панелями; клетки могут быть прямоугольными. Слева сверху показаны уровень и счёт: «2 | 1450», уровень крупнее на 25%. На последних 10% интервала счёт заменяется золотым отрицательным остатком до следующего уровня: «2 | −125». Изменение остатка вызывает один импульс 1 → 1,08 → 1 за 220 мс без перезапуска при частых начислениях. Учитываются системные отступы. При включённых подсказках следующая фигура видна в месте своего появления как силуэт с непрозрачностью 20%. Активные и занятые клетки рисуются поверх него.
+The visible 10×20 field fills the safe area; cells may be rectangular. The upper-left HUD shows level and actual score, for example “2 | 1450”, with the level 25% larger. At nine lines within a level, the HUD turns gold; a line change starts a single 220 ms pulse without score changes restarting it. System insets are respected. With hints enabled, Next appears as a faint silhouette at spawn, below active and settled cells.
 
 Вверху меню расположен новый логотип: полосатый силуэт собора Василия Блаженного и надпись из цветных блоков. Ниже — компактная сетка прямоугольных кнопок без прокрутки в порядке «Новая игра», «Продолжить» (для незавершённой партии), «Настройки», «Как играть», «Результаты», «Контакты», «Выход». Рекорды показаны только на странице результатов. Ориентация приложения на телефоне фиксирована: поворот устройства не переворачивает экран.
 
@@ -25,7 +26,7 @@
 
 ## Правила
 
-Фигуры выдаются перемешанными наборами по семь. Поворот у препятствий пробует горизонтальные сдвиги 0, −1, +1, −2, +2; это простая система, не SRS. Фигура фиксируется при неудачной попытке спуска; бросок фиксирует сразу.
+Pieces use shuffled seven-bags and SRS rotations with separate I and JLSTZ transition tables. The full board contains 20 hidden spawn rows and 20 visible rows. Grounded pieces have a 500 ms lock delay with at most 15 successful grounded move/rotation resets. Hard Drop locks immediately.
 
 Заполненные строки исчезают по клетке каждые 60 мс, всего 600 мс. Первая очистка идёт слева направо, следующая справа налево; события чередуются. Несколько строк очищаются одновременно по столбцам. До окончания эффекта игра и управление фигурами остановлены. После него блоки сверху сдвигаются, начисляются очки и появляется следующая фигура.
 
@@ -73,7 +74,7 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. Unit-тесты проверя
 
 Все записи переработаны в насыщенном стиле Sega: отдельные FM-инструменты, ответные фразы, подвижный бас, короткие аккорды и разнообразная перкуссия. Народные темы полностью проведены в собственных вариациях длительностью около трёх минут. Пьесы Чайковского сохраняют все разделы и нотные повторы: «Трепак» около 72 секунд, «Фея Драже» около 114 секунд. Полные нотные данные, происхождение редакций, источники и закреплённые зависимости описаны в [tools/music/README.md](tools/music/README.md). Готовые чужие записи и игровые семплы не используются. В APK включены Ogg Vorbis; генератор создаёт WAV и 30-секундные образцы.
 
-Фрукты выдаются за каждые 10 000 очков: вишня, банан, виноград, клубника, яблоко, груша, ананас, арбуз. На поле только заработанные фрукты текущего круга: горизонтальные ряды, без теней будущих наград и без чисел. Значки 20 dp, промежутки 4 dp. Предпочтительное положение — относительно центра поля, со смещением вправо от области появления любой фигуры и превью следующей фигуры на 8 dp. Доступная ширина определяет перенос строк. Коллекция не перехватывает жесты и очищается при начале следующего круга. Полный набор при 80 000 очков открывает отдельное поздравление с кубком, фанфарами и восьмисекундным пиксельным салютом. До нажатия «Следующий круг» партия остановлена. Кнопка очищает поле и фрукты, выдаёт свежие фигуры, retains score, line-derived level, gravity, cleared lines and active time. При превышении порога остаток очков сохраняется: после победы на 80 500 следующая вишня выдаётся при 90 000. Следующая победа — при 160 000.
+Фрукты выдаются за каждые 10 000 очков: вишня, банан, виноград, клубника, яблоко, груша, ананас, арбуз. На поле только заработанные фрукты текущего круга: горизонтальные ряды, без теней будущих наград и без чисел. Значки 20 dp, промежутки 4 dp. Предпочтительное положение — относительно центра поля, со смещением вправо от области появления любой фигуры и превью следующей фигуры на 8 dp. Доступная ширина определяет перенос строк. Коллекция не перехватывает жесты и очищается при начале следующего круга. Полный набор при 80 000 очков открывает отдельное поздравление с кубком, фанфарами и восьмисекундным пиксельным салютом. До нажатия «Следующий круг» партия остановлена. Starting the next round clears the board and fruit display, draws fresh pieces, and retains score, line-derived level, gravity, cleared lines and active time. При превышении порога остаток очков сохраняется: после победы на 80 500 следующая вишня выдаётся при 90 000. Следующая победа — при 160 000.
 
 Возврат через меню сохраняет ожидающее поздравление и не повторяет фанфары или салют. Победа имеет приоритет перед невозможностью появления следующей фигуры. Время поздравления в игровое время не входит; таблица получает один итог после проигрыша только при новом рекорде выбранной сложности, с числом завершённых кругов.
 
@@ -111,7 +112,7 @@ Unit-тесты проверяют циклы победы, превышение
 
 Rotation uses SRS orientations 0, R, 2, L, with ordered wall/floor kicks. I has its own kick table; O changes orientation without moving its cells. Kicks and collisions also work in the hidden rows.
 
-The logical board has 20 hidden rows above the 10×20 visible field. Piece coordinates use y=0 for the first visible row; negative y positions are hidden. Collision, ghost, and line shifting use all 40 rows. A blocked spawn causes block-out; locking all four cells above the visible field causes lock-out. Partial hidden placement is allowed. Saved sessions use schema 2; incompatible schema-1 sessions are discarded without changing settings or result history.
+The logical board has 20 hidden rows above the 10×20 visible field. Piece coordinates use y=0 for the first visible row; negative y positions are hidden. Collision, ghost, and line shifting use all 40 rows. A blocked spawn causes block-out; locking all four cells above the visible field causes lock-out. Partial hidden placement is allowed. Saved sessions use schema 3 and rules version 5; incompatible older sessions are discarded without changing settings or result history.
 
 ### Lock delay
 

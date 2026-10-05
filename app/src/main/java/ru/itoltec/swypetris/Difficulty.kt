@@ -3,7 +3,7 @@ package ru.itoltec.swypetris
 import kotlin.math.pow
 import kotlin.math.roundToLong
 
-/** Early progression stays gentle; the last fruit is a deliberate late-game challenge. */
+/** Early progression stays gentle; later line-based levels increase the challenge. */
 enum class Difficulty(val id: String, val title: String, val earlyMultiplier: Double, val finalMillis: Long) {
     EASY("easy", "Лёгкая", 0.95, 180),
     MEDIUM("medium", "Средняя", 0.93, 120),
