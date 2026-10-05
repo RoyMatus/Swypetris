@@ -2,7 +2,9 @@ name: Release verification
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
+    paths: ['gradle.properties']
   workflow_dispatch:
 
 permissions:
@@ -161,3 +163,50 @@ jobs:
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+      - name: Prepare GitHub APK and update metadata
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk release/Swypetris.apk
+          aapt=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)
+          test -n "$aapt"
+          "$aapt" dump badging release/Swypetris.apk > "$RUNNER_TEMP/apk-badging.txt"
+          python3 - <<'PYTHON'
+          import hashlib, json, os, pathlib, re
+          badging = pathlib.Path(os.environ['RUNNER_TEMP'], 'apk-badging.txt').read_text()
+          match = re.search(r"^package: name='ru\.itoltec\.swypetris' versionCode='(\d+)' versionName='(\d+\.\d+\.\d+)'", badging, re.M)
+          if not match or int(match[1]) <= 0:
+              raise SystemExit('Signed APK package/version is invalid')
+          configured = re.findall(r'^swypetrisVersion=(\d+\.\d+\.\d+)$', pathlib.Path('gradle.properties').read_text(), re.M)
+          if configured != [match[2]]:
+              raise SystemExit('Signed APK version differs from release configuration')
+          metadata = {'versionCode': int(match[1]), 'versionName': match[2], 'sha256': hashlib.sha256(pathlib.Path('release/Swypetris.apk').read_bytes()).hexdigest()}
+          pathlib.Path('release/update.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          PYTHON
+          (cd release && sha256sum Swypetris.apk update.json > SHA256SUMS.txt)
+      - name: Save GitHub release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-release
+          path: release/
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [regression, instrumented-tests, signed-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: github-release
+          path: release
+      - name: Publish verified APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version=$(python3 -c "import json; print(json.load(open('release/update.json'))['versionName'])")
+          (cd release && sha256sum --check SHA256SUMS.txt)
+          gh release create "v$version" --target "$GITHUB_SHA" --title "Swypetris $version" --generate-notes release/Swypetris.apk release/update.json release/SHA256SUMS.txt
