@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
                 SwypetrisApp(gameModel, appUpdates, onExit = { gameModel.pause(); finishAndRemoveTask() })
             }
         }
-        appUpdates.check(manual = false)
+        if (savedInstanceState == null) appUpdates.check(manual = false)
     }
 
     override fun onDestroy() {
