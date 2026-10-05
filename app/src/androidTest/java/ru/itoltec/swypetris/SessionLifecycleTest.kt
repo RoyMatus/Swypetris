@@ -13,6 +13,26 @@ class SessionLifecycleTest {
     private fun model(state: GameState? = null) = GameViewModel(app, state, { now }, false)
     private fun state() = GameState(active = Piece(Tetromino.O), next = Tetromino.T)
 
+    @Test fun hiddenCellsAndNegativePiecePositionSurviveRestore() {
+        val board = BoardGeometry.empty().map { it.toMutableList() }
+        board[BoardGeometry.row(-5)][0] = Tetromino.J
+        val hidden = state().copy(board = board, active = Piece(Tetromino.T, y = -1))
+        val snapshot = GameSession("hidden", hidden, listOf(Tetromino.I), 0, 0, 800, 0)
+        assertEquals(snapshot, SessionStore.decode(SessionStore.encode(snapshot)))
+    }
+
+    @Test fun incompatibleSessionRetainsSettings() {
+        val settings = GameStorage.preferences(app)
+        settings.edit().putBoolean("hints", true).putString("player_name", "Roy").apply()
+        val sessions = GameStorage.sessionPreferences(app)
+        val snapshot = GameSession("old", state(), emptyList(), 0, 0, 800, 0)
+        val json = org.json.JSONObject(SessionStore.encode(snapshot)).put("version", 1).toString()
+        sessions.edit().putString("session_v1", json).apply()
+        assertNull(SessionStore(sessions).read())
+        assertTrue(settings.getBoolean("hints", false))
+        assertEquals("Roy", settings.getString("player_name", null))
+    }
+
     @Test fun defaultsAndExistingPreferencesArePreserved() {
         val first = model()
         assertEquals(Difficulty.MEDIUM, first.difficulty)
@@ -102,7 +122,7 @@ class SessionLifecycleTest {
     }
 
     private fun clearingStart(): GameState {
-        val board = List(20) { y -> List<Tetromino?>(10) { x -> if (y == 19 && x < 8) Tetromino.J else null } }
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(19) && x < 8) Tetromino.J else null } }
         return state().copy(board = board, active = Piece(Tetromino.O, x = 8, y = 18))
     }
 
@@ -164,7 +184,7 @@ class SessionLifecycleTest {
         first.pause()
         assertEquals(first.game, model().game)
         val board = state().board.map { it.toMutableList() }
-        board[0][4] = Tetromino.Z
+        board[BoardGeometry.row(0)][4] = Tetromino.Z
         val losing = model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18), score = 50))
         losing.command(GameCommand.TICK)
         assertTrue(losing.game!!.gameOver)
@@ -178,7 +198,7 @@ class SessionLifecycleTest {
     @Test fun recordsAreIndependentAndNonRecordsAreOnlyShownAsLatestResult() {
         fun finish(score: Int, difficulty: Difficulty): GameViewModel {
             val board = state().board.map { it.toMutableList() }
-            board[0][4] = Tetromino.Z
+            board[BoardGeometry.row(0)][4] = Tetromino.Z
             return model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
                 score = score, difficulty = difficulty)).also { it.command(GameCommand.TICK) }
         }
@@ -207,7 +227,7 @@ class SessionLifecycleTest {
 
     @Test fun victoryWithBlockedSpawnCanBeSavedAndContinued() {
         val board = state().board.map { it.toMutableList() }
-        board[0][4] = Tetromino.Z
+        board[BoardGeometry.row(0)][4] = Tetromino.Z
         val first = model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 17),
             next = Tetromino.O, score = 79999))
         first.command(GameCommand.HARD_DROP)

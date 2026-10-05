@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.app.Application
 import android.graphics.Bitmap
@@ -45,8 +45,8 @@ class PublicationTest {
     @Test fun exportStoreMedia() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val heights = listOf(5,4,3,4,2,0,0,2,4,3)
-        val board = List(20) { y -> List(10) { x ->
-            if (y >= 20 - heights[x]) Tetromino.entries[(x / 2 + y / 2) % 7] else null
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List(10) { x ->
+            if (y >= BoardGeometry.TOTAL_ROWS - heights[x]) Tetromino.entries[(x / 2 + y / 2) % 7] else null
         } }
         val model = GameViewModel(app, GameState(board=board,active=Piece(Tetromino.T,x=4,y=6),next=Tetromino.L,score=34620,lines=28), { 1000L }, false)
         model.setHints(true); model.menu()

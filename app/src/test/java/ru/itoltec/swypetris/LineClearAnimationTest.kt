@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import org.junit.Assert.*
 import org.junit.Test
@@ -19,8 +19,8 @@ class LineClearAnimationTest {
         val engine = GameEngine()
         var state = engine.newGame()
         repeat(4) { event ->
-            val board = List(20) { y -> List<Tetromino?>(10) { if (y == 19) Tetromino.O else null } }
-            state = engine.finishClear(state.copy(board = board, clearingRows = listOf(19)))
+            val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { if (y == BoardGeometry.row(19)) Tetromino.O else null } }
+            state = engine.finishClear(state.copy(board = board, clearingRows = listOf(19).map(BoardGeometry::row)))
             assertEquals(event + 1, state.completedClears)
             assertEquals(state, engine.finishClear(state))
         }

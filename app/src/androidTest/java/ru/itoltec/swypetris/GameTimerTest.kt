@@ -78,7 +78,7 @@ class GameTimerTest {
     }
 
     @Test fun clearOnlySchedulesVisibleStepsAndRestoresFractionalProgress() = main {
-        val board = List(20) { y -> List<Tetromino?>(10) { x -> if (y == 19 && x < 8) Tetromino.J else null } }
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(19) && x < 8) Tetromino.J else null } }
         val model = model(state().copy(board = board, active = Piece(Tetromino.O, x = 8, y = 18)))
         model.command(GameCommand.HARD_DROP)
         assertEquals(now + 60, timer.deadline)
@@ -115,7 +115,7 @@ class GameTimerTest {
         assertNotNull(timer.action)
         model.pause()
         val board = state().board.map { it.toMutableList() }
-        board[0][4] = Tetromino.Z
+        board[BoardGeometry.row(0)][4] = Tetromino.Z
         val losing = model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18)))
         timer.fire()
         assertTrue(losing.game!!.gameOver)

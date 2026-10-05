@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import org.junit.Assert.*
 import org.junit.Test
@@ -18,7 +18,7 @@ class GameEngineTest {
         val right = state(Piece(Tetromino.O, x = 8))
         assertEquals(right, engine.apply(right, GameCommand.RIGHT))
         val board = left.board.map { it.toMutableList() }
-        board[0][2] = Tetromino.I
+        board[BoardGeometry.row(0)][2] = Tetromino.I
         val blocked = left.copy(board = board)
         assertEquals(blocked, engine.apply(blocked, GameCommand.RIGHT))
     }
@@ -58,20 +58,20 @@ class GameEngineTest {
         assertEquals(18, ghost.y)
         assertEquals(18, result.score)
         assertEquals(1, result.generation)
-        ghost.cells().forEach { assertEquals(Tetromino.O, result.board[it.y][it.x]) }
+        ghost.cells().forEach { assertEquals(Tetromino.O, result.board[BoardGeometry.row(it.y)][it.x]) }
     }
 
     /** Occupied cells stop the ghost without mutating the saved board or score. */
     @Test fun ghostStopsAboveStackWithoutChangingGame() {
         val start = state(Piece(Tetromino.O, x = 0))
         val board = start.board.map { it.toMutableList() }
-        board[10][0] = Tetromino.I
+        board[BoardGeometry.row(10)][0] = Tetromino.I
         val stacked = start.copy(board = board)
 
         assertEquals(8, engine.ghost(stacked).y)
         assertEquals(0, stacked.active.y)
         assertEquals(0, stacked.score)
-        assertEquals(Tetromino.I, stacked.board[10][0])
+        assertEquals(Tetromino.I, stacked.board[BoardGeometry.row(10)][0])
     }
 
     /** Достижение опоры не фиксирует фигуру до следующей неудачной попытки спуска. */
@@ -89,10 +89,10 @@ class GameEngineTest {
         for (count in 1..4) {
             val start = state(Piece(Tetromino.I, x = 2, y = 16, rotation = 1))
             val board = start.board.map { it.toMutableList() }
-            for (y in 20 - count..19) for (x in 0..9) if (x != 4) board[y][x] = Tetromino.J
-            board[10][0] = Tetromino.L
+            for (y in 20 - count..19) for (x in 0..9) if (x != 4) board[BoardGeometry.row(y)][x] = Tetromino.J
+            board[BoardGeometry.row(10)][0] = Tetromino.L
             val pending = engine.apply(start.copy(board = board, lines = 9), GameCommand.TICK)
-            assertEquals((20 - count..19).toList(), pending.clearingRows)
+            assertEquals((20 - count..19).map(BoardGeometry::row), pending.clearingRows)
             assertEquals(9, pending.lines)
             assertEquals(0, pending.score)
             assertEquals(0, pending.generation)
@@ -105,7 +105,7 @@ class GameEngineTest {
             assertEquals(9 + count, result.lines)
             assertEquals(listOf(0, 100, 300, 700, 1500)[count], result.score)
             assertEquals(if (count == 4) 2 else 1, result.level)
-            assertEquals(Tetromino.L, result.board[10 + count][0])
+            assertEquals(Tetromino.L, result.board[BoardGeometry.row(10 + count)][0])
         }
     }
 
@@ -113,7 +113,7 @@ class GameEngineTest {
     @Test fun blockedSpawnEndsGame() {
         val start = state(Piece(Tetromino.O, x = 0, y = 18))
         val board = start.board.map { it.toMutableList() }
-        board[0][4] = Tetromino.Z
+        board[BoardGeometry.row(0)][4] = Tetromino.Z
         val result = engine.apply(start.copy(board = board), GameCommand.TICK)
         assertTrue(result.gameOver)
         assertEquals(result, engine.apply(result, GameCommand.HARD_DROP))
@@ -126,7 +126,7 @@ class GameEngineTest {
             val types = mutableListOf<Tetromino>()
             repeat(7) {
                 types += current.active.type
-                current = engine.apply(current.copy(board = List(20) { List(10) { null } }), GameCommand.HARD_DROP)
+                current = engine.apply(current.copy(board = List(BoardGeometry.TOTAL_ROWS) { List(10) { null } }), GameCommand.HARD_DROP)
             }
             assertEquals(Tetromino.entries.toSet(), types.toSet())
         }

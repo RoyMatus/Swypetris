@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.app.Application
 import android.graphics.Bitmap
@@ -31,7 +31,7 @@ class ResultsIntegrationTest {
     @Test fun savedNamePrefillsNextRecordAndSkippingKeepsIt() {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val preferences = GameStorage.preferences(application)
-        val board = List(20) { MutableList<Tetromino?>(10) { null } }.also { it[0][4] = Tetromino.Z }
+        val board = List(BoardGeometry.TOTAL_ROWS) { MutableList<Tetromino?>(10) { null } }.also { it[BoardGeometry.row(0)][4] = Tetromino.Z }
         fun recordState(score: Int) = GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
             next = Tetromino.O, score = score)
         var model by mutableStateOf(GameViewModel(application, recordState(10000), { 1000L }, false))
@@ -71,8 +71,8 @@ class ResultsIntegrationTest {
         val backup = preferences.all.toMap()
         try {
             preferences.edit().remove("rules_4_migrated").remove("record_v4").remove("record_v2").putInt("record", 4321).remove("results_v2").commit()
-            val board = List(20) { MutableList<Tetromino?>(10) { null } }
-            board[0][4] = Tetromino.Z
+            val board = List(BoardGeometry.TOTAL_ROWS) { MutableList<Tetromino?>(10) { null } }
+            board[BoardGeometry.row(0)][4] = Tetromino.Z
             var now = 1000L
             val state = GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
                 next = Tetromino.O, score = 10000)

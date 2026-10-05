@@ -106,3 +106,7 @@ Unit-тесты проверяют циклы победы, превышение
 Касание или системный «Назад» только завершают заставку. В фоне часы заморожены; ViewModel сохраняет прогресс при пересоздании Activity. Возврат из игры, меню и фона не повторяет завершённую заставку. При нулевой системной длительности анимации сразу доступно меню. Звука и вибрации у заставки нет.
 
 Прозрачные логотип и рисунок значка, промпты и воспроизводимая разметка частей описаны в [tools/branding/README.md](tools/branding/README.md).
+
+### Hidden spawn buffer
+
+The logical board has 20 hidden rows above the 10×20 visible field. Piece coordinates use y=0 for the first visible row; negative y positions are hidden. Collision, ghost, and line shifting use all 40 rows. A blocked spawn causes block-out; locking all four cells above the visible field causes lock-out. Partial hidden placement is allowed. Saved sessions use schema 2; incompatible schema-1 sessions are discarded without changing settings or result history.

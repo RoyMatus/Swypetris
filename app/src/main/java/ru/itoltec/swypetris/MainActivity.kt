@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.os.Build
 import android.os.Bundle
@@ -460,11 +460,11 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         for (y in 0..20) drawLine(palette.grid, Offset(0f, y * cell.height), Offset(size.width, y * cell.height))
         if (showNext) previewCells.forEach { block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell, alpha = 0.20f) }
         state.board.forEachIndexed { y, row -> row.forEachIndexed { x, type ->
-            if (type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y), palette.piece(type), palette.finish, palette.texture, origin, cell)
+            if (y >= BoardGeometry.HIDDEN_ROWS && type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y - BoardGeometry.HIDDEN_ROWS), palette.piece(type), palette.finish, palette.texture, origin, cell)
         } }
         if (!state.gameOver && state.clearingRows.isEmpty()) {
-            landingHint?.let { hint -> hint.cells().forEach { block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell, alpha = palette.ghostAlpha, outline = true) } }
-            state.active.cells().forEach { block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell) }
+            landingHint?.let { hint -> hint.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach { block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell, alpha = palette.ghostAlpha, outline = true) } }
+            state.active.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach { block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell) }
         }
     }
 }
