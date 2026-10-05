@@ -27,7 +27,7 @@ class StatisticsResetTest {
         compose.onNodeWithTag("cancelResetStatistics").assertExists().performClick()
         compose.runOnIdle {
             assertEquals(1, model.results.size)
-            assertEquals(5678, model.legacyRecord)
+            assertEquals(6789, model.legacyRecord)
         }
 
         compose.onNodeWithTag("resetStatistics").performClick()
