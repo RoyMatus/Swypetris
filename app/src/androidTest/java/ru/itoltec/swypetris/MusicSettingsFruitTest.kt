@@ -114,9 +114,14 @@ class MusicSettingsFruitTest {
                     previous = bounds
                 } else node.assertDoesNotExist()
             }
+            val hold = compose.onNodeWithTag("holdPreview").fetchSemanticsNode().boundsInRoot
             if (n>0) {
+                val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
                 val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
-                assertEquals(score.left - root.left, root.right - previous!!.right, 1f)
+                assertTrue(fruits.top >= hold.bottom)
+                assertTrue(fruits.right <= hold.right + 1f)
+                assertTrue(fruits.left >= root.left + root.width * .55f)
+                assertTrue(score.right <= hold.left + 1f)
                 screenshot("fruits-row-$n.png")
             }
         }
