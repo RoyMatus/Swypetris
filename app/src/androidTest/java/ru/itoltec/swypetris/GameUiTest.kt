@@ -97,27 +97,23 @@ class GameUiTest {
         }
     }
 
-    @Test fun settingsRowsAndDifficultySegmentsRespondToWholeTarget() {
+    @Test fun settingsRowsRespondToWholeTarget() {
         compose.onNodeWithTag("settings").performClick()
         var originalHints = false
-        var originalDifficulty = Difficulty.MEDIUM
         compose.runOnIdle {
             originalHints = model().hintsEnabled
-            originalDifficulty = model().difficulty
         }
         try {
             compose.onNodeWithTag("hintsRow").performScrollTo().performClick()
-            compose.onNodeWithTag("difficulty_hard").performScrollTo().performClick()
+            compose.onNodeWithTag("difficulty_hard").assertDoesNotExist()
             compose.runOnIdle {
                 assertEquals(!originalHints, model().hintsEnabled)
-                assertEquals(Difficulty.HARD, model().difficulty)
             }
             compose.onNodeWithTag("settingsBack").performScrollTo().performClick()
             compose.runOnIdle { assertEquals(GameScreen.MENU, model().screen) }
         } finally {
             compose.runOnIdle {
                 model().setHints(originalHints)
-                model().chooseDifficulty(originalDifficulty)
             }
         }
     }

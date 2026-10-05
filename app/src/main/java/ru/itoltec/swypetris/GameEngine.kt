@@ -64,7 +64,6 @@ data class GameState(
     val accelerated: Boolean = false,
     val completedRounds: Int = 0,
     val victoryPending: Boolean = false,
-    val difficulty: Difficulty = Difficulty.MEDIUM,
     val topOut: TopOut? = null,
     val lockRemaining: Long = LockRules.DELAY_MILLIS,
     val lockResets: Int = 0,
@@ -83,8 +82,8 @@ data class GameState(
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
     /** Derives the current level from cleared lines using the shared rules. */
     val level: Int get() = GameRules.level(lines, startingLevel)
-    /** Gravity uses the difficulty selected when this game began. */
-    val gravityMillis: Long get() = GameRules.gravityMillis(level, difficulty)
+    val gravityNanos: Long get() = GameRules.gravityNanos(level)
+    val gravityMillis: Long get() = GameRules.gravityMillis(level)
 }
 
 /** Engine commands; PAUSE is handled by the screen model and does not change board cells. */
@@ -111,15 +110,15 @@ class GameEngine(private val random: Random = Random.Default) {
     private fun spawn(type: Tetromino): Piece = Piece(type, y = if (type == Tetromino.I) -2 else -1)
 
     /** Creates an empty board, its first piece, and the next-piece preview. */
-    fun newGame(difficulty: Difficulty = Difficulty.MEDIUM, startingLevel: Int = 1): GameState {
+    fun newGame(startingLevel: Int = 1): GameState {
         bag.clear()
-        return GameState(active = spawn(draw()), next = draw(), difficulty = difficulty, startingLevel = startingLevel)
+        return GameState(active = spawn(draw()), next = draw(), startingLevel = startingLevel)
     }
 
     /** Clears the board after victory while keeping score and speed. */
     fun nextRound(state: GameState): GameState {
         if (!state.victoryPending) return state
-        val fresh = newGame(state.difficulty, state.startingLevel)
+        val fresh = newGame(state.startingLevel)
         return fresh.copy(score = state.score, lines = state.lines,
             generation = state.generation + 1, completedClears = state.completedClears,
             completedRounds = state.completedRounds + 1)

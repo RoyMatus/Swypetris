@@ -35,16 +35,13 @@ class StartingLevelTest {
             .performSemanticsAction(SemanticsActions.SetProgress) { it(5f) }
         compose.runOnIdle {
             assertEquals(5, model.startingLevel)
-            assertEquals(Difficulty.MEDIUM, model.difficulty)
             model.newGame()
             assertEquals(5, model.game!!.level)
             assertEquals(0, model.game!!.lines)
             model.pause()
             model.chooseStartingLevel(15)
-            model.chooseDifficulty(Difficulty.HARD)
             model.resume()
             assertEquals(5, model.game!!.startingLevel)
-            assertEquals(Difficulty.MEDIUM, model.game!!.difficulty)
             model.pause()
             val restored = GameViewModel(app, null, { 1000L }, false)
             assertEquals(15, restored.startingLevel)
@@ -52,20 +49,20 @@ class StartingLevelTest {
             assertEquals(5, restored.game!!.startingLevel)
             restored.newGame()
             assertEquals(15, restored.game!!.level)
-            assertEquals(Difficulty.HARD, restored.game!!.difficulty)
             restored.pause()
         }
     }
 
-    @Test fun sessionsRetainStartAndOldVersionFiveSessionsDefaultToOne() {
+    @Test fun sessionsRetainStartAndRejectPreviousRules() {
         val state = GameEngine().newGame(startingLevel = 5).copy(lines = 49)
-        val session = GameSession("start-five", state, emptyList(), 100, 0, state.gravityMillis, 0)
+        val session = GameSession("start-five", state, emptyList(), 100, 0, state.gravityNanos, 0)
         val encoded = SessionStore.encode(session)
         assertEquals(session, SessionStore.decode(encoded))
-        val old = JSONObject(encoded).apply { remove("startingLevel") }
-        val migrated = SessionStore.decode(old.toString())
-        assertEquals(1, migrated.state.startingLevel)
-        assertEquals(5, migrated.state.level)
+        val old = JSONObject(encoded).put("version", 3).put("rulesVersion", 5)
+        try {
+            SessionStore.decode(old.toString())
+            fail("Previous rules session accepted")
+        } catch (_: IllegalArgumentException) { }
         for (invalid in listOf(0, 16)) {
             try {
                 SessionStore.decode(JSONObject(encoded).put("startingLevel", invalid).toString())

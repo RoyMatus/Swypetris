@@ -41,7 +41,7 @@ class GameTimerTest {
         val model = model()
         assertNull(timer.action)
         model.newGame()
-        assertEquals(now + 800, timer.deadline)
+        assertEquals(now + 1000, timer.deadline)
         model.menu()
         assertNull(timer.action)
         model.help()
@@ -61,19 +61,19 @@ class GameTimerTest {
 
     @Test fun movementDoesNotPostponeGravityAndPausePreservesItsRemainder() = main {
         val model = model(state())
-        assertEquals(1800L, timer.deadline)
+        assertEquals(2000L, timer.deadline)
         now += 217
         model.command(GameCommand.RIGHT)
         assertEquals(1, timer.scheduled)
-        assertEquals(1800L, timer.deadline)
+        assertEquals(2000L, timer.deadline)
         model.pause()
         assertNull(timer.action)
         now += 10000
         model.resume()
-        assertEquals(now + 583, timer.deadline)
+        assertEquals(now + 783, timer.deadline)
         timer.fire()
         assertEquals(1, model.game!!.active.y)
-        assertEquals(800L, SessionStore(GameStorage.sessionPreferences(app)).read()!!.playedMillis)
+        assertEquals(1000L, SessionStore(GameStorage.sessionPreferences(app)).read()!!.playedMillis)
         model.pause()
     }
 
@@ -102,7 +102,7 @@ class GameTimerTest {
         now += 200
         model.command(GameCommand.SOFT_DROP)
         assertEquals(1000L + model.game!!.gravityMillis, timer.deadline)
-        assertEquals(1800L, timer.deadline)
+        assertEquals(2000L, timer.deadline)
         assertEquals(1, model.game!!.level)
         model.pause()
     }
@@ -116,12 +116,12 @@ class GameTimerTest {
         assertEquals(10, model.game!!.lines)
         assertEquals(2, model.game!!.level)
         assertEquals(100, model.game!!.score)
-        assertEquals(now + 744L, timer.deadline)
+        assertEquals(now + 793L, timer.deadline)
         model.pause()
         val restored = GameViewModel(app, null, { now }, false)
         assertEquals(model.game, restored.game)
         assertEquals(2, restored.game!!.level)
-        assertEquals(744L, restored.game!!.gravityMillis)
+        assertEquals(793L, restored.game!!.gravityMillis)
     }
 
     @Test fun terminalStatesCancelTimerAndNextRoundSchedulesAgain() = main {
@@ -176,9 +176,33 @@ class GameTimerTest {
         assertEquals(now + 300, timer.deadline)
         timer.fire()
         assertEquals(initial, model.game)
-        assertEquals(1800L, timer.deadline)
+        assertEquals(2000L, timer.deadline)
         model.pointerUp(100f, 200f, now)
         assertEquals(initial, model.game)
         model.pause()
+    }
+
+    @Test fun highGravityRestoresFractionalLockClockWithoutGroundedGravityCallbacks() = main {
+        val original = model(state().copy(active = Piece(Tetromino.O, y = 17), lines = 180))
+        assertEquals(now + 1, timer.deadline)
+        timer.fire()
+        assertEquals(18, original.game!!.active.y)
+        assertEquals(now + 500, timer.deadline)
+        now += 217
+        original.pause()
+        val snapshot = SessionStore(GameStorage.sessionPreferences(app)).read()!!
+        assertEquals(283L, snapshot.state.lockRemaining)
+        assertEquals(166_666L, snapshot.lockFractionNanos)
+        now += 10000
+        val restored = model()
+        assertEquals(original.game, restored.game)
+        restored.resume()
+        assertEquals(now + 283, timer.deadline)
+        timer.fire()
+        assertEquals(1, restored.game!!.generation)
+        assertEquals(now + 1, timer.deadline)
+        val spawned = SessionStore(GameStorage.sessionPreferences(app)).read()!!
+        assertEquals(666_668L, spawned.gravityRemainingNanos)
+        restored.pause()
     }
 }

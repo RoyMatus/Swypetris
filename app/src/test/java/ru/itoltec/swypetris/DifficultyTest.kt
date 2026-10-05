@@ -3,47 +3,14 @@ package ru.itoltec.swypetris
 import org.junit.Assert.*
 import org.junit.Test
 
+/** Legacy IDs and titles remain usable when reading historical records. */
 class DifficultyTest {
-    @Test fun curvesAreMonotonicOrderedAndBounded() {
-        for (level in 1..200) {
-            val values = Difficulty.entries.map { it.gravityMillis(level) }
-            assertTrue(values.zipWithNext().all { (easy, hard) -> easy >= hard })
-            Difficulty.entries.forEach {
-                assertTrue(it.gravityMillis(level) in 100..800)
-                assertTrue(it.gravityMillis(level + 1) <= it.gravityMillis(level))
-            }
-        }
-    }
-
-    @Test fun gentleEarlyLevelsAndPreservedLateEndpoint() {
-        assertEquals(9, GameRules.level(80))
-        assertEquals(10, GameRules.level(90))
-        assertEquals(23, GameRules.level(220))
-        assertTrue(Difficulty.MEDIUM.gravityMillis(9) in 440..450)
-        assertTrue(Difficulty.MEDIUM.gravityMillis(10) in 410..420)
-        Difficulty.entries.forEach {
-            assertEquals(800L, it.gravityMillis(1))
-            assertEquals(it.finalMillis, it.gravityMillis(23))
-            assertEquals(100L, it.gravityMillis(200))
-        }
-    }
-
-    @Test fun mediumReservesPressureForLaterLevels() {
-        val medium = Difficulty.MEDIUM
-        assertEquals(416L, medium.gravityMillis(10))
-        assertEquals(378L, medium.gravityMillis(13))
-        assertEquals(302L, medium.gravityMillis(16))
-        assertEquals(190L, medium.gravityMillis(20))
-        assertEquals(120L, medium.gravityMillis(23))
-        assertTrue(medium.gravityMillis(13) > 312L) // Previous curve at the playtested level.
-    }
-
-    @Test fun difficultySurvivesCopiesSpawnsAndRounds() {
-        val engine = GameEngine(kotlin.random.Random(3))
-        val state = engine.newGame(Difficulty.HARD)
-        assertEquals(Difficulty.HARD, engine.apply(state, GameCommand.HARD_DROP).difficulty)
-        val victory = state.copy(score = 80000, victoryPending = true)
-        assertEquals(Difficulty.HARD, engine.nextRound(victory).difficulty)
-        assertEquals(Difficulty.MEDIUM, Difficulty.restore(null))
+    @Test fun historicalMetadataIsRetained() {
+        assertEquals(Difficulty.EASY, Difficulty.find("easy"))
+        assertEquals(Difficulty.MEDIUM, Difficulty.find("medium"))
+        assertEquals(Difficulty.HARD, Difficulty.find("hard"))
+        assertEquals("Сложная", Difficulty.HARD.title)
+        assertNull(Difficulty.find(null))
+        assertNull(Difficulty.find("unknown"))
     }
 }

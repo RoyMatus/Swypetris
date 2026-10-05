@@ -1,9 +1,15 @@
 ﻿package ru.itoltec.swypetris
 
-/** Shared version-5 rules for engine, HUD, and help; thresholds avoid Int overflow. */
+import kotlin.math.pow
+import kotlin.math.roundToLong
+
+/** Shared version-6 rules for engine, HUD, and help; thresholds avoid Int overflow. */
 object GameRules {
-    const val VERSION = 5
-    const val PREVIOUS_VERSION = 4
+    const val VERSION = 6
+    const val PREVIOUS_VERSION = 5
+    const val NANOS_PER_MILLI = 1_000_000L
+    // Rounded upward to keep the effective rate at or below 20G.
+    const val MIN_GRAVITY_NANOS = 833_334L
     const val FRUIT_STEP = 10_000
     const val ROUND_SCORE = FRUIT_STEP * 8
 
@@ -69,6 +75,14 @@ object GameRules {
             .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
-    /** Returns the gravity interval for [level] using the selected [difficulty]. */
-    fun gravityMillis(level: Int, difficulty: Difficulty = Difficulty.MEDIUM): Long = difficulty.gravityMillis(level)
+    /** Tetris Worlds Marathon; levels 19+ retain 20G and the ordinary lock delay. */
+    fun gravityNanos(level: Int): Long {
+        if (level >= 19) return MIN_GRAVITY_NANOS
+        val steps = level.coerceAtLeast(1) - 1
+        return ((0.8 - steps * 0.007).pow(steps) * 1_000_000_000).roundToLong()
+            .coerceAtLeast(MIN_GRAVITY_NANOS)
+    }
+
+    /** Rounded up for scheduling/display only; simulation retains nanosecond precision. */
+    fun gravityMillis(level: Int): Long = (gravityNanos(level) + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI
 }
