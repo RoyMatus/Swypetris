@@ -501,7 +501,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
         }
     }
 }
-/** Draws the board and optional landing ghost while omitting removed cells. */
+/** Draws the logical board, spawn preview, active piece, and optional landing ghost. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
     clearTime: () -> Long = { clearElapsedMillis }) {
@@ -510,16 +510,19 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         " Следующая фигура ${state.next.name}" +
         " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }.testTag("board")) {
         val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
-        val cell = Size(size.width / 10, size.height / 20)
-        val origin = Offset.Zero
-        drawRect(brush = Brush.verticalGradient(listOf(palette.glass,
-            lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
-        if (palette.finish == BlockFinish.RETRO || palette.finish == BlockFinish.NEON) {
-            for (y in 1 until 20) drawLine(palette.accent.copy(alpha = if (palette.light) .035f else .05f),
-                Offset(0f, (y - .5f) * cell.height), Offset(size.width, (y - .5f) * cell.height))
-        }
-        for (x in 0..10) drawLine(palette.grid, Offset(x * cell.width, 0f), Offset(x * cell.width, size.height))
-        for (y in 0..20) drawLine(palette.grid, Offset(0f, y * cell.height), Offset(size.width, y * cell.height))
+        val side = size.width / BoardGeometry.WIDTH
+        val cell = Size(side, side)
+        val origin = Offset(0f, SPAWN_DISPLAY_ROWS * side)
+        val firstVisibleSpawnRow = -SPAWN_DISPLAY_ROWS
+
+        // The upcoming piece uses the exact engine spawn geometry and remains translucent behind gameplay.
+        spawnPiece(state.next).cells()
+            .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
+            .forEach {
+                block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell,
+                    alpha = .24f)
+            }
+
         state.held?.let { held ->
             Piece(held, x = 0).cells().forEach {
                 block(it, palette.piece(held), palette.finish, palette.texture,
@@ -527,12 +530,28 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
                     alpha = if (state.holdUsed) .12f else .30f)
             }
         }
-        state.board.forEachIndexed { y, row -> row.forEachIndexed { x, type ->
-            if (y >= BoardGeometry.HIDDEN_ROWS && type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y - BoardGeometry.HIDDEN_ROWS), palette.piece(type), palette.finish, palette.texture, origin, cell)
+
+        state.board.forEachIndexed { rowIndex, row -> row.forEachIndexed { x, type ->
+            val logicalY = rowIndex - BoardGeometry.HIDDEN_ROWS
+            if (logicalY >= firstVisibleSpawnRow && type != null &&
+                !(rowIndex in state.clearingRows &&
+                    LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) {
+                block(Cell(x, logicalY), palette.piece(type), palette.finish, palette.texture, origin, cell)
+            }
         } }
+
         if (!state.gameOver && state.clearingRows.isEmpty()) {
-            landingHint?.let { hint -> hint.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach { block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell, alpha = palette.ghostAlpha, outline = true) } }
-            state.active.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach { block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell) }
+            landingHint?.let { hint ->
+                hint.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach {
+                    block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell,
+                        alpha = palette.ghostAlpha, outline = true)
+                }
+            }
+            state.active.cells()
+                .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
+                .forEach {
+                    block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell)
+                }
         }
     }
 }
