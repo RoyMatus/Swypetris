@@ -36,6 +36,9 @@ enum class Tetromino(val shape: List<Cell>, val box: Int = 3) {
 }
 
 /** An active tetromino stores its rotation-square position and clockwise rotation count (0–3). */
+/** I uses the second hidden row because its spawn shape occupies rotation-box row one. */
+internal fun spawnPiece(type: Tetromino): Piece = Piece(type, y = if (type == Tetromino.I) -2 else -1)
+
 data class Piece(val type: Tetromino, val x: Int = (10 - type.box) / 2, val y: Int = 0, val rotation: Int = 0) {
     val orientation: RotationState get() = RotationState.entries[rotation]
     /** Transforms the original shape into board coordinates using the piece position and rotation. */
@@ -106,8 +109,8 @@ class GameEngine(private val random: Random = Random.Default) {
         return bag.removeFirst()
     }
 
-    /** I uses the second hidden row because its spawn shape occupies rotation-box row one. */
-    private fun spawn(type: Tetromino): Piece = Piece(type, y = if (type == Tetromino.I) -2 else -1)
+    /** Creates a tetromino at the shared logical spawn position. */
+    private fun spawn(type: Tetromino): Piece = spawnPiece(type)
 
     /** Creates an empty board, its first piece, and the next-piece preview. */
     fun newGame(startingLevel: Int = 1): GameState {

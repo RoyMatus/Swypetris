@@ -86,13 +86,15 @@ class HoldIntegrationTest {
         val board = BoardGeometry.empty().map { it.toMutableList() }
         board[BoardGeometry.row(2)][1] = Tetromino.J
         var state by mutableStateOf(GameState(board = board, active = Piece(Tetromino.T, y = 10), next = Tetromino.I))
-        compose.setContent { Box(Modifier.size(320.dp, 480.dp)) { Board(state) } }
+        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
         val before = compose.onNodeWithTag("board").captureToImage().toPixelMap()
         compose.runOnIdle { state = state.copy(held = Tetromino.O) }
         val after = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        fun pixel(image: androidx.compose.ui.graphics.PixelMap, x: Float, y: Float) =
-            image[(image.width * x / 10).toInt(), (image.height * y / 20).toInt()]
+        fun pixel(image: androidx.compose.ui.graphics.PixelMap, x: Float, visualRow: Float) =
+            image[(image.width * x / BoardGeometry.WIDTH).toInt(),
+                (image.height * visualRow / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)).toInt()]
         assertNotEquals(pixel(before, .6f, 1.7f), pixel(after, .6f, 1.7f))
-        assertEquals(pixel(before, 1.2f, 2.3f), pixel(after, 1.2f, 2.3f))
+        assertEquals(pixel(before, 1.2f, 2.3f + SPAWN_DISPLAY_ROWS),
+            pixel(after, 1.2f, 2.3f + SPAWN_DISPLAY_ROWS))
     }
 }

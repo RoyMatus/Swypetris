@@ -226,15 +226,22 @@ class GameUiTest {
         }
         val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
+        val grid = compose.onNodeWithTag("gridBackground").fetchSemanticsNode().boundsInRoot
         val preview = compose.onNodeWithTag("nextPreview").fetchSemanticsNode().boundsInRoot
-        val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
-        assertEquals(root.left, board.left, 1f)
-        assertEquals(root.right, board.right, 1f)
-        assertTrue(board.top > area.top)
-        assertTrue(preview.bottom <= board.top + 1f)
-        assertTrue(score.bottom <= board.top + 1f)
-        assertEquals(root.bottom, board.bottom, 1f)
+        assertTrue(grid.top > root.top)
+        assertTrue(grid.bottom <= root.bottom + 1f)
+        assertEquals(grid.top, board.top, 1f)
+        assertTrue(board.left >= grid.left)
+        assertTrue(board.right <= grid.right)
+        assertTrue(board.top >= area.top)
+        val cellWidth = board.width / BoardGeometry.WIDTH
+        val cellHeight = board.height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
+        assertEquals(cellWidth, cellHeight, 1f)
+        assertEquals(board.left, preview.left, 1f)
+        assertEquals(board.right, preview.right, 1f)
+        assertEquals(board.top, preview.top, 1f)
+        assertEquals(board.top + cellHeight * SPAWN_DISPLAY_ROWS, preview.bottom, 1f)
         compose.onNodeWithTag("score").assertIsDisplayed()
     }
 }

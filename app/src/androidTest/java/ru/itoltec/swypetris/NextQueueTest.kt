@@ -19,12 +19,12 @@ class NextQueueTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    @Test fun nextStaysVisibleOutsideBoardWithEitherGhostSetting() {
+    @Test fun nextUsesSquareSpawnGridWithEitherGhostSetting() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         var width by mutableIntStateOf(320)
         var height by mutableIntStateOf(640)
         var fontScale by mutableFloatStateOf(1f)
-        val state = GameState(active = Piece(Tetromino.T, y = 8), next = Tetromino.I,
+        val state = GameState(active = spawnPiece(Tetromino.T).copy(y = 8), next = Tetromino.I,
             held = Tetromino.O, score = 70000)
         val model = GameViewModel(app, state, { 1000L }, false)
         compose.setContent {
@@ -32,32 +32,43 @@ class NextQueueTest {
                 Box(Modifier.size(width.dp, height.dp)) { SwypetrisApp(model) {} }
             }
         }
+
         for ((w, h, scale) in listOf(Triple(240, 400, 2f), Triple(320, 640, 1f), Triple(600, 400, 2f))) {
             compose.runOnIdle { width = w; height = h; fontScale = scale }
-            var previousPixels: IntArray? = null
             for (ghost in listOf(false, true)) {
                 compose.runOnIdle { model.setHints(ghost) }
-                val preview = compose.onNodeWithTag("nextPreview").assertIsDisplayed()
-                    .assertContentDescriptionEquals("Следующая фигура I")
-                val previewBounds = preview.getUnclippedBoundsInRoot()
+                val previewBounds = compose.onNodeWithTag("nextPreview").assertIsDisplayed()
+                    .assertContentDescriptionEquals("Следующая фигура I").getUnclippedBoundsInRoot()
                 val boardBounds = compose.onNodeWithTag("board").getUnclippedBoundsInRoot()
-                val fruits = compose.onNodeWithTag("earnedFruits").getUnclippedBoundsInRoot()
-                assertTrue(previewBounds.bottom <= boardBounds.top)
-                assertTrue(previewBounds.bottom <= fruits.top)
-                val bitmap = preview.captureToImage().asAndroidBitmap()
-                val pixels = IntArray(bitmap.width * bitmap.height)
-                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-                previousPixels?.let { assertArrayEquals(it, pixels) }
-                previousPixels = pixels
+                val gridBounds = compose.onNodeWithTag("gridBackground").getUnclippedBoundsInRoot()
+
+                assertEquals(boardBounds.left.value, previewBounds.left.value, 0.5f)
+                assertEquals(boardBounds.right.value, previewBounds.right.value, 0.5f)
+                assertEquals(boardBounds.top.value, previewBounds.top.value, 0.5f)
+                assertTrue(previewBounds.bottom < boardBounds.bottom)
+                val boardWidth = boardBounds.right - boardBounds.left
+                val boardHeight = boardBounds.bottom - boardBounds.top
+                val gridWidth = gridBounds.right - gridBounds.left
+                val gridHeight = gridBounds.bottom - gridBounds.top
+                assertTrue(gridWidth >= boardWidth)
+                assertTrue(gridHeight >= boardHeight)
+
+                val cellWidth = boardWidth / BoardGeometry.WIDTH.toFloat()
+                val cellHeight = boardHeight /
+                    (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS).toFloat()
+                assertEquals(cellWidth.value, cellHeight.value, 0.5f)
+
                 compose.runOnIdle {
                     assertEquals(state, model.game)
                     assertTrue(model.engine.remainingBag().isEmpty())
                 }
             }
-            val file = java.io.File(app.getExternalFilesDir(null), "next-layout-$w.png")
+            val file = java.io.File(app.getExternalFilesDir(null), "spawn-grid-$w.png")
             file.outputStream().use {
-                compose.onRoot().captureToImage().asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                compose.onRoot().captureToImage().asAndroidBitmap()
+                    .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }
         }
     }
+
 }

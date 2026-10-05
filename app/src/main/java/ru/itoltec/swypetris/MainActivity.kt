@@ -343,7 +343,40 @@ internal fun MenuTile(label: String, accent: Color, tag: String,
         }
     }
 }
-/** The board fills the screen; its HUD overlay does not intercept touches. */
+/** Number of square grid rows reserved above the visible playfield for spawning pieces. */
+internal const val SPAWN_DISPLAY_ROWS = 2
+private const val GAME_GRID_ROWS = BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS
+
+/** Draws one square-cell grid across the safe gameplay surface. */
+@Composable
+private fun GameGridBackground(cellSize: Dp) {
+    val palette = LocalGamePalette.current
+    Canvas(Modifier.fillMaxSize().testTag("gridBackground")) {
+        val step = cellSize.toPx()
+        if (step <= 0f) return@Canvas
+        drawRect(brush = Brush.verticalGradient(listOf(palette.glass,
+            lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
+        val boardWidth = step * BoardGeometry.WIDTH
+        val boardLeft = (size.width - boardWidth) / 2f
+        var x = boardLeft
+        while (x >= 0f) {
+            drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
+            x -= step
+        }
+        x = boardLeft + step
+        while (x <= size.width) {
+            drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
+            x += step
+        }
+        var y = 0f
+        while (y <= size.height) {
+            drawLine(palette.grid, Offset(0f, y), Offset(size.width, y))
+            y += step
+        }
+    }
+}
+
+/** The square-cell board starts at the highest safe position; the HUD overlay does not intercept touches. */
 @Composable
 private fun GameContent(model: GameViewModel, state: GameState) {
     val localDensity = LocalDensity.current
@@ -351,26 +384,33 @@ private fun GameContent(model: GameViewModel, state: GameState) {
     val layoutDirection = LocalLayoutDirection.current
     val gestureLeft = WindowInsets.safeContent.getLeft(localDensity, layoutDirection).toFloat()
     val playing = model.screen == GameScreen.PLAYING
-    val palette = LocalGamePalette.current
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val headerHeight = (maxHeight * .07f).coerceIn(48.dp, 72.dp)
-        // The status icons remain above the grid; actual pieces begin below them.
-        Canvas(Modifier.matchParentSize()) {
-            drawRect(palette.glass)
-            for (x in 0..10) drawLine(palette.grid, Offset(x * size.width / 10, 0f),
-                Offset(x * size.width / 10, size.height))
-        }
+    Box(Modifier.fillMaxSize()) {
         val hints = model.hintsEnabled
         val landing = remember(state.board, state.active, state.clearingRows, hints) {
             if (hints && state.clearingRows.isEmpty()) model.engine.ghost(state) else null
         }
-        // All twenty rows reach the physical bottom edge; Android draws navigation above the board.
-        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
-            Box(Modifier.fillMaxSize().padding(top = headerHeight)) {
-                Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis })
+        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val cellSize = minOf(
+                    maxWidth / BoardGeometry.WIDTH.toFloat(),
+                    maxHeight / GAME_GRID_ROWS.toFloat()
+                )
+                val boardWidth = cellSize * BoardGeometry.WIDTH
+                val boardHeight = cellSize * GAME_GRID_ROWS
+                val spawnBandHeight = cellSize * SPAWN_DISPLAY_ROWS
+                LaunchedEffect(boardWidth) { model.setBoardWidth(boardWidth.value) }
+
+                GameGridBackground(cellSize)
+                Box(Modifier.align(Alignment.TopCenter).size(boardWidth, boardHeight)) {
+                    Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis })
+                    Box(Modifier.fillMaxWidth().height(spawnBandHeight)
+                        .semantics { contentDescription = "Следующая фигура ${state.next.name}" }
+                        .testTag("nextPreview"))
+                }
+                Box(Modifier.fillMaxSize()) { GameHud(state, spawnBandHeight) }
             }
         }
-        Box(Modifier.fillMaxSize().onSizeChanged { model.setBoardWidth(it.width / density) }) {
+
         // Leave the system's side-gesture zones free; movement begins inside the safe area.
         Box(Modifier.fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical))
@@ -402,8 +442,6 @@ private fun GameContent(model: GameViewModel, state: GameState) {
             model.cancelGesture()
         }
         }) {}
-        Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, headerHeight) }
-        }
     }
 }
 
@@ -434,11 +472,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
-        val previewWidth = nextPreviewWidth(maxWidth.value).dp
-        val scoreWidth = (maxWidth - previewWidth - HUD_HORIZONTAL_MARGIN.dp * 3).coerceAtLeast(0.dp)
-        NextPreview(state.next, Modifier.align(Alignment.TopEnd)
-            .padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp)
-            .size(previewWidth, headerHeight - 6.dp))
+        val scoreWidth = (maxWidth - HUD_HORIZONTAL_MARGIN.dp * 2).coerceAtLeast(0.dp)
         val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
         Row(Modifier.fillMaxWidth().padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -467,23 +501,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
         }
     }
 }
-/** Always-visible spawn-orientation preview in the header, outside the playfield. */
-@Composable
-private fun NextPreview(next: Tetromino, modifier: Modifier) {
-    val palette = LocalGamePalette.current
-    Canvas(modifier.semantics { contentDescription = "Следующая фигура ${next.name}" }.testTag("nextPreview")) {
-        val cells = next.shape
-        val columns = cells.maxOf { it.x } + 1
-        val firstRow = cells.minOf { it.y }
-        val rows = cells.maxOf { it.y } - firstRow + 1
-        val step = minOf(size.width / columns, size.height / rows)
-        val origin = Offset((size.width - columns * step) / 2, (size.height - rows * step) / 2)
-        cells.forEach { block(Cell(it.x, it.y - firstRow), palette.piece(next), palette.finish,
-            palette.texture, origin, Size(step, step)) }
-    }
-}
-
-/** Draws the board and optional landing ghost while omitting removed cells. */
+/** Draws the logical board, spawn preview, active piece, and optional landing ghost. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
     clearTime: () -> Long = { clearElapsedMillis }) {
@@ -492,29 +510,52 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         " Следующая фигура ${state.next.name}" +
         " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }.testTag("board")) {
         val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
-        val cell = Size(size.width / 10, size.height / 20)
-        val origin = Offset.Zero
-        drawRect(brush = Brush.verticalGradient(listOf(palette.glass,
-            lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
-        if (palette.finish == BlockFinish.RETRO || palette.finish == BlockFinish.NEON) {
-            for (y in 1 until 20) drawLine(palette.accent.copy(alpha = if (palette.light) .035f else .05f),
-                Offset(0f, (y - .5f) * cell.height), Offset(size.width, (y - .5f) * cell.height))
-        }
-        for (x in 0..10) drawLine(palette.grid, Offset(x * cell.width, 0f), Offset(x * cell.width, size.height))
-        for (y in 0..20) drawLine(palette.grid, Offset(0f, y * cell.height), Offset(size.width, y * cell.height))
+        val side = minOf(
+            size.width / BoardGeometry.WIDTH,
+            size.height / GAME_GRID_ROWS
+        )
+        val cell = Size(side, side)
+        val boardLeft = (size.width - side * BoardGeometry.WIDTH) / 2f
+        val origin = Offset(boardLeft, SPAWN_DISPLAY_ROWS * side)
+        val firstVisibleSpawnRow = -SPAWN_DISPLAY_ROWS
+
+        // The upcoming piece uses the exact engine spawn geometry and remains translucent behind gameplay.
+        spawnPiece(state.next).cells()
+            .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
+            .forEach {
+                block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell,
+                    alpha = .24f)
+            }
+
         state.held?.let { held ->
             Piece(held, x = 0).cells().forEach {
                 block(it, palette.piece(held), palette.finish, palette.texture,
-                    Offset(cell.width * .3f, cell.height * 1.5f), cell * .55f,
+                    Offset(boardLeft + cell.width * .3f, cell.height * 1.5f), cell * .55f,
                     alpha = if (state.holdUsed) .12f else .30f)
             }
         }
-        state.board.forEachIndexed { y, row -> row.forEachIndexed { x, type ->
-            if (y >= BoardGeometry.HIDDEN_ROWS && type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y - BoardGeometry.HIDDEN_ROWS), palette.piece(type), palette.finish, palette.texture, origin, cell)
+
+        state.board.forEachIndexed { rowIndex, row -> row.forEachIndexed { x, type ->
+            val logicalY = rowIndex - BoardGeometry.HIDDEN_ROWS
+            if (logicalY >= firstVisibleSpawnRow && type != null &&
+                !(rowIndex in state.clearingRows &&
+                    LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) {
+                block(Cell(x, logicalY), palette.piece(type), palette.finish, palette.texture, origin, cell)
+            }
         } }
+
         if (!state.gameOver && state.clearingRows.isEmpty()) {
-            landingHint?.let { hint -> hint.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach { block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell, alpha = palette.ghostAlpha, outline = true) } }
-            state.active.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach { block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell) }
+            landingHint?.let { hint ->
+                hint.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach {
+                    block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell,
+                        alpha = palette.ghostAlpha, outline = true)
+                }
+            }
+            state.active.cells()
+                .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
+                .forEach {
+                    block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell)
+                }
         }
     }
 }
