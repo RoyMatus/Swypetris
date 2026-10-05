@@ -14,6 +14,7 @@ SMOKE = "SmokeTest"
 SOURCE_GROUPS = {
     "AndroidGameFeedback.kt": ("feedback",),
     "AppActionButton.kt": ("navigation",),
+    "AppUpdates.kt": ("updates",),
     "ContactsScreen.kt": ("navigation", "legal"),
     "Difficulty.kt": ("engine", "settings"),
     "GameArt.kt": ("visual",),
@@ -44,6 +45,7 @@ SOURCE_GROUPS = {
     "ScreenDecor.kt": ("visual",),
     "SettingsScreen.kt": ("settings",),
     "ShareAppDialog.kt": ("legal", "navigation"),
+    "Srs.kt": ("engine",),
     "VictoryScreen.kt": ("results", "visual"),
     "ui/theme/Color.kt": ("visual",),
     "ui/theme/Theme.kt": ("visual",),
@@ -54,7 +56,8 @@ SOURCE_GROUPS = {
 FULL_SOURCES = {"GameSession.kt", "GameViewModel.kt", "MainActivity.kt"}
 
 GROUP_TESTS = {
-    "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
+    "updates": ((), ("AppUpdatesTest",)),
+    "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
                ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictoryThemeIntegrationTest")),
     "input": (("GestureControllerTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "GameUiTest")),
     "line_clear": (("LineClearAnimationTest", "GameEngineTest", "GameRulesTest"), ("LineClearUiTest", "GameUiTest")),
