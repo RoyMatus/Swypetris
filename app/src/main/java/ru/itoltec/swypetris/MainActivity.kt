@@ -146,14 +146,17 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    var updateWindowActive by remember(owner) {
+        mutableStateOf(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+    }
     DisposableEffect(model, density, owner) {
         val configuration = ViewConfiguration.get(context)
         model.configureGestures(GestureConfig(
             tapSlop = configuration.scaledTouchSlop / density
         ))
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) model.onBackground()
-            if (event == Lifecycle.Event.ON_RESUME) model.onForeground()
+            if (event == Lifecycle.Event.ON_PAUSE) { updateWindowActive = false; model.onBackground() }
+            if (event == Lifecycle.Event.ON_RESUME) { updateWindowActive = true; model.onForeground() }
         }
         owner.lifecycle.addObserver(observer)
         onDispose {
@@ -162,6 +165,10 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
         }
     }
     LaunchIntroClock(model)
+    LaunchedEffect(updateWindowActive, model.screen, updates?.automaticEnabled,
+        updates?.delivery?.notice, updates?.notice) {
+        if (updateWindowActive) updates?.installAutomaticallyIfReady(model)
+    }
     BackHandler(enabled = model.launchIntroPending || model.screen != GameScreen.MENU) {
         model.back()
     }
@@ -178,7 +185,9 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
             else if (model.screen == GameScreen.PRIVACY) PrivacyScreen(model)
             else if (model.screen == GameScreen.LEGAL) LegalScreen()
             else if (model.screen == GameScreen.HELP) HelpScreen(model)
-            else if (model.screen == GameScreen.SETTINGS) SettingsScreen(model, onCheckUpdates = { updates?.check(true) })
+            else if (model.screen == GameScreen.SETTINGS) SettingsScreen(model,
+                onCheckUpdates = { updates?.check(true) }, automaticUpdates = updates?.automaticEnabled == true,
+                onAutomaticUpdatesChange = { updates?.requestAutomatic(it) })
             else if (model.screen == GameScreen.VICTORY) VictoryScreen(model)
             else if (model.screen == GameScreen.RECORD) RecordScreen(model)
             else if (model.screen in listOf(GameScreen.GAME_OVER, GameScreen.RESULTS)) ResultsScreen(model)
@@ -188,22 +197,30 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
     }
 }
 
-    updates?.notice?.let { notice ->
-        AlertDialog(onDismissRequest = updates::dismiss,
+    if (model.screen in listOf(GameScreen.MENU, GameScreen.SETTINGS) && updates != null) {
+    if (updates.consentRequested) AutomaticUpdateConsentDialog(updates)
+    else UpdateDeliveryDialog(updates.delivery, model) { updates.check(true) }
+    if (!updates.consentRequested && updates.delivery.notice == null) updates.notice?.let { notice ->
+        AlertDialog(onDismissRequest = { if (notice != UpdateNotice.StoreInstalling) updates.dismiss() },
             title = { Text(if (notice is UpdateNotice.Available) "Доступно обновление" else "Проверка обновлений") },
             text = { Text(when (notice) {
                 is UpdateNotice.Available -> "Установлена версия ${BuildConfig.VERSION_NAME}. Доступна ${notice.update.versionName}."
+                is UpdateNotice.StoreReady -> "RuStore загрузил версию ${notice.update.versionName}. Установка сохранит партию и перезапустит приложение."
+                UpdateNotice.StoreInstalling -> "Сохраняем партию. RuStore устанавливает обновление."
                 UpdateNotice.Current -> "Установлена актуальная версия ${BuildConfig.VERSION_NAME}."
-                UpdateNotice.Failed -> "Не удалось проверить обновления. Проверьте подключение и повторите позже."
+                UpdateNotice.Failed -> "Не удалось завершить обновление. Проверьте подключение и повторите проверку позже."
+                UpdateNotice.RateLimited -> "GitHub временно ограничил запросы с вашей сети. Попробуйте позже. Игру можно продолжить."
             }) },
             confirmButton = {
                 if (notice is UpdateNotice.Available) TextButton(onClick = { updates.open(notice.update) },
                     modifier = Modifier.testTag("confirmUpdate")) { Text("Обновить") }
-                else TextButton(onClick = updates::dismiss) { Text("Понятно") }
+                else if (notice is UpdateNotice.StoreReady) TextButton(onClick = { updates.installStore(model) }) { Text("Установить") }
+                else if (notice != UpdateNotice.StoreInstalling) TextButton(onClick = updates::dismiss) { Text("Понятно") }
             },
-            dismissButton = if (notice is UpdateNotice.Available) ({
+            dismissButton = if (notice is UpdateNotice.Available || notice is UpdateNotice.StoreReady) ({
                 TextButton(onClick = updates::dismiss, modifier = Modifier.testTag("laterUpdate")) { Text("Позже") }
             }) else null)
+    }
     }
 
     }
