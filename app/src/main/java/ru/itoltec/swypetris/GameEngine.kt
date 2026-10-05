@@ -75,12 +75,14 @@ data class GameState(
     val hardDropCells: Int = 0,
     val backToBack: Boolean = false,
     val combo: Int = -1,
-    val placement: PlacementResult? = null
+    val placement: PlacementResult? = null,
+    val startingLevel: Int = 1
 ) {
+    init { require(startingLevel in GameRules.MIN_STARTING_LEVEL..GameRules.MAX_STARTING_LEVEL) }
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
     /** Derives the current level from cleared lines using the shared rules. */
-    val level: Int get() = GameRules.level(lines)
+    val level: Int get() = GameRules.level(lines, startingLevel)
     /** Gravity uses the difficulty selected when this game began. */
     val gravityMillis: Long get() = GameRules.gravityMillis(level, difficulty)
 }
@@ -109,15 +111,15 @@ class GameEngine(private val random: Random = Random.Default) {
     private fun spawn(type: Tetromino): Piece = Piece(type, y = if (type == Tetromino.I) -2 else -1)
 
     /** Creates an empty board, its first piece, and the next-piece preview. */
-    fun newGame(difficulty: Difficulty = Difficulty.MEDIUM): GameState {
+    fun newGame(difficulty: Difficulty = Difficulty.MEDIUM, startingLevel: Int = 1): GameState {
         bag.clear()
-        return GameState(active = spawn(draw()), next = draw(), difficulty = difficulty)
+        return GameState(active = spawn(draw()), next = draw(), difficulty = difficulty, startingLevel = startingLevel)
     }
 
     /** Clears the board after victory while keeping score and speed. */
     fun nextRound(state: GameState): GameState {
         if (!state.victoryPending) return state
-        val fresh = newGame(state.difficulty)
+        val fresh = newGame(state.difficulty, state.startingLevel)
         return fresh.copy(score = state.score, lines = state.lines,
             generation = state.generation + 1, completedClears = state.completedClears,
             completedRounds = state.completedRounds + 1)

@@ -392,10 +392,10 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
     var scoreSize by remember { mutableStateOf(Size.Zero) }
     val displayed = GameRules.displayScore(state.score)
     val currentLines by rememberUpdatedState(state.lines)
-    val nearing by rememberUpdatedState(GameRules.nearingLevel(state.lines))
+    val nearing by rememberUpdatedState(GameRules.nearingLevel(state.lines, state.startingLevel))
     val scale = remember { Animatable(1f) }
     val color by animateColorAsState(
-        if (GameRules.nearingLevel(state.lines)) LocalGamePalette.current.gold else LocalGamePalette.current.text,
+        if (GameRules.nearingLevel(state.lines, state.startingLevel)) LocalGamePalette.current.gold else LocalGamePalette.current.text,
         tween(220), label = "scoreColor")
     LaunchedEffect(Unit) {
         var pulsing = false

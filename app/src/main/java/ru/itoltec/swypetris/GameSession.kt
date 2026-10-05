@@ -73,7 +73,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 .put("active", JSONObject().put("type", s.active.type.name)
                     .put("x", s.active.x).put("y", s.active.y).put("rotation", s.active.rotation))
                 .put("next", s.next.name).put("bag", JSONArray(session.bag.map { it.name }))
-                .put("score", s.score).put("lines", s.lines).put("generation", s.generation)
+                .put("startingLevel", s.startingLevel).put("score", s.score).put("lines", s.lines).put("generation", s.generation)
                 .put("lockRemaining", s.lockRemaining).put("lockResets", s.lockResets)
                 .put("held", s.held?.name ?: "").put("holdUsed", s.holdUsed)
                 .put("lastRotationKick", s.lastRotationKick).put("softDropCells", s.softDropCells)
@@ -125,7 +125,8 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 root.optBoolean("backToBack", false), root.optInt("combo", -1),
                 root.optJSONObject("placement")?.let { p -> PlacementResult(p.getInt("lines"),
                     Spin.valueOf(p.getString("spin")), p.getBoolean("backToBack"), p.getInt("combo"),
-                    p.getBoolean("perfectClear"), p.getInt("softDropCells"), p.getInt("hardDropCells"), p.getInt("level")) })
+                    p.getBoolean("perfectClear"), p.getInt("softDropCells"), p.getInt("hardDropCells"), p.getInt("level")) },
+                startingLevel = if (root.has("startingLevel")) root.getInt("startingLevel") else 1)
             require(state.lastRotationKick in -1..4 && state.softDropCells >= 0 &&
                 state.hardDropCells in 0..BoardGeometry.TOTAL_ROWS && state.combo >= -1)
             state.placement?.let { p -> require(p.lines in 0..4 && p.combo >= -1 && p.level >= 1 &&

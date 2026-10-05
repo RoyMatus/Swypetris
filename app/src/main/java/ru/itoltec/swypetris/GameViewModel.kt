@@ -36,6 +36,9 @@ class GameViewModel internal constructor(
     private var finishedAt = restored?.finishedAt ?: 0L
     var difficulty by mutableStateOf(Difficulty.restore(preferences.getString("difficulty", null)))
         private set
+    var startingLevel by mutableStateOf(preferences.getInt("starting_level", 1)
+        .coerceIn(GameRules.MIN_STARTING_LEVEL, GameRules.MAX_STARTING_LEVEL))
+        private set
     private val music = musicPlayback ?: if (autoTick) GameMusic(application) else null
     var legacyRecord by mutableStateOf(GameStorage.legacyRecord(preferences))
         private set
@@ -189,6 +192,13 @@ class GameViewModel internal constructor(
         if (game == null || game?.gameOver == true) record = bestFor(value)
     }
 
+    /** Applies only to future games; a resumed session keeps its own starting level. */
+    fun chooseStartingLevel(value: Int) {
+        require(value in GameRules.MIN_STARTING_LEVEL..GameRules.MAX_STARTING_LEVEL)
+        startingLevel = value
+        preferences.edit().putInt("starting_level", value).apply()
+    }
+
     /** Returns the current-rules record for the requested [mode]. */
     fun recordFor(mode: Difficulty): Int = bestFor(mode)
 
@@ -325,7 +335,7 @@ class GameViewModel internal constructor(
         requestRecordName = false
         feedback.stop()
         gestures.cancel()
-        game = engine.newGame(difficulty)
+        game = engine.newGame(difficulty, startingLevel)
         gestures.setEnabled(true)
         clearElapsedMillis = 0L
         lastGravity = clock()
