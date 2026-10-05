@@ -97,4 +97,16 @@ class ProgressionTest {
         assertEquals(149, next.lines)
         assertEquals(won.gravityMillis, next.gravityMillis)
     }
+    @Test fun cumulativeFruitCountsFollowEveryTenThousandPointAward() {
+        val base = GameState(active = Piece(Tetromino.O), next = Tetromino.T)
+        assertEquals(List(Fruit.entries.size) { 0 }, base.fruitCounts)
+        assertEquals(listOf(1, 0, 0, 0, 0, 0, 0, 0), base.copy(score = 10000).fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 1 }, base.copy(score = 80000).fruitCounts)
+        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), base.copy(score = 90000).fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 2 }, base.copy(score = 160000).fruitCounts)
+        assertEquals(listOf(3, 2, 2, 2, 2, 2, 2, 2), base.copy(score = 170000).fruitCounts)
+        assertEquals(1, base.copy(score = 179999, completedRounds = 2).roundFruits)
+        assertEquals(2, base.copy(score = 180000, completedRounds = 2).roundFruits)
+    }
+
 }

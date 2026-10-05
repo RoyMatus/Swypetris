@@ -30,14 +30,19 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Complete fruit set without numeric multipliers; unearned silhouettes are dimmed. */
+/** Complete fruit set with cumulative quantities; unearned silhouettes are dimmed. */
 @Composable
-internal fun RoundFruitCollection(count: Int, iconSize: Dp = 28.dp) {
-    Row(Modifier.testTag("fruitCollection"), horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+internal fun RoundFruitCollection(counts: List<Int>, iconSize: Dp = 28.dp) {
+    Row(Modifier.testTag("fruitCollection"), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         Fruit.entries.forEachIndexed { index, fruit ->
-            Box(Modifier.clearAndSetSemantics {
-                contentDescription = "${fruit.title}: ${if (index < count) "получен" else "ещё не получен"}"
-            }) { FruitIcon(fruit, Modifier.size(iconSize).alpha(if (index < count) 1f else .22f)) }
+            val count = counts.getOrElse(index) { 0 }
+            Row(Modifier.clearAndSetSemantics {
+                contentDescription = "${fruit.title}: ${if (count == 0) "ещё не получен" else "собрано $count"}"
+            }, verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                if (count > 1) Text("$count ×", fontSize = 10.sp, color = LocalGamePalette.current.text)
+                FruitIcon(fruit, Modifier.size(iconSize).alpha(if (count > 0) 1f else .22f))
+            }
         }
     }
 }
@@ -74,7 +79,7 @@ internal fun VictoryScreen(model: GameViewModel) {
                 Image(painterResource(R.drawable.victory_trophy), "Кубок из блоков и восемь фруктов",
                     contentScale = ContentScale.Fit, modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth().aspectRatio(1.5f))
             }
-            item { RoundFruitCollection(8) }
+            item { RoundFruitCollection(state.fruitCounts) }
             item {
                 Text("Круг ${state.completedRounds + 1} пройден", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                 Text("${state.score} очков", style = MaterialTheme.typography.headlineMedium,

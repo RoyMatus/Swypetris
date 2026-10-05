@@ -98,7 +98,7 @@ class MusicSettingsFruitTest {
                 Board(state); GameHud(state)
             }
         }
-        for (n in listOf(0,1,7,8,0)) {
+        for (n in listOf(0,1,7,8,9,0)) {
             compose.runOnIdle { count=n }
             if (n==0) compose.onNodeWithTag("earnedFruits").assertDoesNotExist()
             val root=compose.onRoot().fetchSemanticsNode().boundsInRoot
@@ -115,6 +115,12 @@ class MusicSettingsFruitTest {
                 } else node.assertDoesNotExist()
             }
             val hold = compose.onNodeWithTag("holdPreview").fetchSemanticsNode().boundsInRoot
+            if (n == 9) {
+                compose.onNodeWithTag("earnedFruitCount_CHERRY").assertTextEquals("2 ×")
+                Fruit.entries.drop(1).forEach { fruit ->
+                    compose.onNodeWithTag("earnedFruitCount_${fruit.name}").assertDoesNotExist()
+                }
+            }
             if (n>0) {
                 val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
                 val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot

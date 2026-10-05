@@ -34,6 +34,7 @@ class VictoryRulesTest {
         assertEquals(won.gravityMillis, next.gravityMillis)
         assertEquals(1, next.completedRounds)
         assertEquals(1, next.roundFruits)
+        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), next.fruitCounts)
         assertTrue(next.board.flatten().all { it == null })
         assertEquals(next, engine.nextRound(next))
         assertEquals(0, next.copy(score = 89999).roundFruits)
@@ -53,6 +54,7 @@ class VictoryRulesTest {
         val fresh = engine.newGame()
         assertEquals(0, fresh.score)
         assertEquals(0, fresh.completedRounds)
+        assertEquals(List(Fruit.entries.size) { 0 }, fresh.fruitCounts)
         assertFalse(fresh.victoryPending)
     }
 }

@@ -41,4 +41,16 @@ class SessionWriteTest {
         assertEquals(original, store.read())
         assertEquals(6, preferences.edits)
     }
+
+    @Test fun cumulativeFruitCountsSurviveExistingSessionFormat() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val state = GameState(active = Piece(Tetromino.T), next = Tetromino.O,
+            score = 90000, completedRounds = 1)
+        val session = GameSession("fruit-counts", state, emptyList(), 0, 0,
+            state.gravityNanos, 0)
+        val restored = SessionStore.decode(SessionStore.encode(session))
+        assertEquals(session, restored)
+        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), restored.state.fruitCounts)
+    }
+
 }

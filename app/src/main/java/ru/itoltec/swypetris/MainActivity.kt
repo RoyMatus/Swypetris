@@ -500,10 +500,10 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
         ) {
             HoldPreview(state.held, state.holdUsed,
                 Modifier.fillMaxWidth().height(holdHeight).testTag("holdPreview"))
-            if (state.roundFruits > 0) {
+            if (state.fruitCounts.any { it > 0 }) {
                 val iconSize = minOf(FRUIT_SIZE.dp, (holdWidth - FRUIT_GAP.dp) / 2)
                     .coerceAtLeast(16.dp)
-                val fruits = Fruit.entries.take(state.roundFruits)
+                val fruits = Fruit.entries.zip(state.fruitCounts).filter { it.second > 0 }
                 Column(
                     modifier = Modifier.padding(top = FRUIT_GAP.dp).testTag("earnedFruits"),
                     verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp),
@@ -511,8 +511,21 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
                 ) {
                     fruits.chunked(2).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
-                            row.forEach { fruit ->
-                                FruitIcon(fruit, Modifier.size(iconSize).testTag("earnedFruit_${fruit.name}"))
+                            row.forEach { (fruit, count) ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                    modifier = Modifier.testTag("earnedFruit_${fruit.name}")
+                                ) {
+                                    if (count > 1) Text(
+                                        "${count} ×",
+                                        fontSize = 10.sp,
+                                        maxLines = 1,
+                                        color = LocalGamePalette.current.text,
+                                        modifier = Modifier.testTag("earnedFruitCount_${fruit.name}")
+                                    )
+                                    FruitIcon(fruit, Modifier.size(iconSize))
+                                }
                             }
                         }
                     }

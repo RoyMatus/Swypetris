@@ -144,4 +144,34 @@ class GameEngineTest {
         assertEquals(793L, state().copy(lines = 10).gravityMillis)
         assertEquals(1L, state().copy(lines = 1000000).gravityMillis)
     }
+
+    /** Fruit quantities accumulate by 10,000-point awards and survive round boundaries. */
+    @Test fun fruitCountsAccumulateAcrossRoundsAndOvershoot() {
+        val base = state()
+        assertEquals(List(Fruit.entries.size) { 0 }, base.fruitCounts)
+
+        val firstComplete = base.copy(score = 80000, victoryPending = true)
+        assertEquals(List(Fruit.entries.size) { 1 }, firstComplete.fruitCounts)
+        assertEquals(8, firstComplete.roundFruits)
+
+        val roundTwo = engine.nextRound(firstComplete)
+        assertEquals(1, roundTwo.completedRounds)
+        assertEquals(0, roundTwo.roundFruits)
+        assertEquals(List(Fruit.entries.size) { 1 }, roundTwo.fruitCounts)
+
+        val firstRepeat = roundTwo.copy(score = 90000)
+        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), firstRepeat.fruitCounts)
+        assertEquals(1, firstRepeat.roundFruits)
+
+        val overshoot = roundTwo.copy(score = 105001)
+        assertEquals(listOf(2, 2, 1, 1, 1, 1, 1, 1), overshoot.fruitCounts)
+        assertEquals(2, overshoot.roundFruits)
+
+        val thirdRound = roundTwo.copy(score = 170000, completedRounds = 2)
+        assertEquals(listOf(3, 2, 2, 2, 2, 2, 2, 2), thirdRound.fruitCounts)
+        assertEquals(1, thirdRound.roundFruits)
+
+        assertEquals(List(Fruit.entries.size) { 0 }, engine.newGame().fruitCounts)
+    }
+
 }
