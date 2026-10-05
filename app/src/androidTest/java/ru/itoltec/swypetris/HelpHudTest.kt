@@ -40,6 +40,11 @@ class HelpHudTest {
         compose.onNodeWithTag("helpPage").assertIsDisplayed()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
         compose.onNodeWithTag("helpPage").performScrollToKey("fruits")
+        compose.onNodeWithText("Фрукты").assertIsDisplayed()
+        compose.onNodeWithText("Hold").performScrollTo().assertExists()
+        compose.onNodeWithText("Очки").assertDoesNotExist()
+        compose.onNodeWithText("Цепочки и пустое поле").assertDoesNotExist()
+        compose.onNodeWithText("Ещё важно").assertDoesNotExist()
         Fruit.entries.forEach { fruit ->
             compose.onNodeWithContentDescription(fruit.title).assertExists()
         }
