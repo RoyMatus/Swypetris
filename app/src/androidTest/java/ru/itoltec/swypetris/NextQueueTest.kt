@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -19,7 +20,23 @@ class NextQueueTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    @Test fun nextUsesSquareSpawnGridWithEitherGhostSetting() {
+    @Test fun previewAppearsOnlyAfterActiveLeavesOneEmptyRow() {
+        var state by mutableStateOf(GameState(active = Piece(Tetromino.O, x = 0, y = -1), next = Tetromino.I))
+        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
+        fun previewPixel(): androidx.compose.ui.graphics.Color {
+            val image = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+            return image[(image.width * .35f).toInt(), (image.height * 1.5f / 22).toInt()]
+        }
+        val hidden = previewPixel()
+        compose.runOnIdle { state = state.copy(active = state.active.copy(y = 0)) }
+        assertEquals("An adjacent active piece must still hide the preview", hidden, previewPixel())
+        compose.runOnIdle { state = state.copy(active = state.active.copy(y = 1)) }
+        assertNotEquals("One empty row must reveal the preview", hidden, previewPixel())
+        compose.runOnIdle { state = state.copy(active = spawnPiece(Tetromino.O).copy(x = 0)) }
+        assertEquals("A replacement spawn must hide the preview again", hidden, previewPixel())
+    }
+
+    @Test fun nextUsesFullScreenSpawnGridWithEitherGhostSetting() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         var width by mutableIntStateOf(320)
         var height by mutableIntStateOf(640)
@@ -50,13 +67,11 @@ class NextQueueTest {
                 val boardHeight = boardBounds.bottom - boardBounds.top
                 val gridWidth = gridBounds.right - gridBounds.left
                 val gridHeight = gridBounds.bottom - gridBounds.top
-                assertTrue(gridWidth >= boardWidth)
-                assertTrue(gridHeight >= boardHeight)
-
-                val cellWidth = boardWidth / BoardGeometry.WIDTH.toFloat()
-                val cellHeight = boardHeight /
-                    (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS).toFloat()
-                assertEquals(cellWidth.value, cellHeight.value, 0.5f)
+                assertEquals(gridWidth.value, boardWidth.value, 0.5f)
+                assertEquals(gridHeight.value, boardHeight.value, 0.5f)
+                val area = compose.onNodeWithTag("gameArea").getUnclippedBoundsInRoot()
+                assertEquals(area, boardBounds)
+                assertEquals(area, gridBounds)
 
                 compose.runOnIdle {
                     assertEquals(state, model.game)

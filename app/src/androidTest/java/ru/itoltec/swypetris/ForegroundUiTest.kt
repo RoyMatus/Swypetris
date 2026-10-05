@@ -25,12 +25,12 @@ class ForegroundUiTest {
         }
     }
 
-    @Test fun statusBarVisibleAndNotificationShadePausesWithoutAutoResume() {
+    @Test fun immersiveGameplayAndNotificationShadePausesWithoutAutoResume() {
         compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
         compose.onNodeWithTag("board").assertIsDisplayed()
-        compose.runOnIdle {
-            val insets = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-            assertTrue(insets.isVisible(WindowInsetsCompat.Type.statusBars()))
+        compose.waitUntil(5000) {
+            ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.systemBars()) == false
         }
         try {
             shell("cmd statusbar expand-notifications")
@@ -45,6 +45,10 @@ class ForegroundUiTest {
                 assertEquals(saved, model().game)
             }
             compose.onNodeWithTag("resumeGame").assertIsDisplayed()
+            compose.waitUntil(5000) {
+                ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                    ?.isVisible(WindowInsetsCompat.Type.statusBars()) == true
+            }
         } finally { shell("cmd statusbar collapse") }
     }
 
@@ -68,18 +72,46 @@ class ForegroundUiTest {
         }
     }
 
+    @Test fun focusLossKeepsImmersiveOverlayOpenUntilFocusReturns() {
+        compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
+        compose.waitUntil(5000) {
+            ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.systemBars()) == false
+        }
+        compose.runOnIdle { compose.activity.onWindowFocusChanged(false) }
+        compose.onNodeWithTag("resumeGame").assertIsDisplayed()
+        val saved = model().game
+        compose.runOnIdle {
+            assertFalse(ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+                .isVisible(WindowInsetsCompat.Type.systemBars()))
+            assertEquals(GameScreen.MENU, model().screen)
+        }
+        compose.runOnIdle { compose.activity.onWindowFocusChanged(true) }
+        compose.waitUntil(5000) {
+            ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.statusBars()) == true
+        }
+        compose.runOnIdle {
+            assertEquals(saved, model().game)
+            assertEquals(GameScreen.MENU, model().screen)
+        }
+    }
+
     @Test fun lifecycleReturnRequiresContinueAndScoreRespectsInsets() {
         compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
-        val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
-        val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
         val density = compose.activity.resources.displayMetrics.density
-        val safeLeft = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-            .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).left
-        assertEquals(safeLeft + 4 * density, score.left, 1f)
-        assertEquals(area.top + 3 * density, score.top, 1f)
-        val statusTop = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-            .getInsets(WindowInsetsCompat.Type.statusBars()).top
-        assertTrue(area.top >= statusTop)
+        // Platform bar visibility and Compose inset padding update asynchronously.
+        compose.waitUntil(5000) {
+            val insets = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+            val safe = insets?.getInsets(WindowInsetsCompat.Type.systemBars() or
+                WindowInsetsCompat.Type.displayCutout()) ?: return@waitUntil false
+            val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
+            !insets.isVisible(WindowInsetsCompat.Type.systemBars()) &&
+                kotlin.math.abs(score.top - safe.top - 3 * density) <= 1f &&
+                kotlin.math.abs(score.left - safe.left - 4 * density) <= 1f
+        }
+        val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
+        assertEquals(0f, area.top, 1f)
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         val saved = model().game
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
