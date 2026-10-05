@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Rule
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.rules.ExternalResource
 
@@ -63,9 +64,9 @@ class AutomaticUpdatesTest {
                 val update = AvailableUpdate(Long.MAX_VALUE, "9.9.9", "https://example.invalid/Swypetris.apk",
                     false, "0".repeat(64), 1)
                 updates.showAvailable(update, manual = false)
-                assert(updates.notice is UpdateNotice.Available)
-                assert(updates.automaticEnabled)
-                assert(!updates.consentRequested)
+                assertTrue(updates.notice is UpdateNotice.Available)
+                assertTrue(updates.automaticEnabled)
+                assertTrue(!updates.consentRequested)
             } finally {
                 updates.close()
             }
