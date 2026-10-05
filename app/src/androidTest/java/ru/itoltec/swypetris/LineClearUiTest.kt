@@ -54,12 +54,16 @@ class LineClearUiTest {
             model.advanceFrame(now)
         }
         val white = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        val bottomRowY = (white.height * (SPAWN_DISPLAY_ROWS + 19.5f) /
-            (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)).toInt()
-        assertNotEquals(beforeRemoval[white.width / 20, bottomRowY],
-            white[white.width / 20, bottomRowY])
-        assertEquals(beforeRemoval[white.width * 19 / 20, bottomRowY],
-            white[white.width * 19 / 20, bottomRowY])
+        val side = minOf(
+            white.width.toFloat() / BoardGeometry.WIDTH,
+            white.height.toFloat() / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
+        )
+        val boardLeft = (white.width - side * BoardGeometry.WIDTH) / 2f
+        val bottomRowY = ((SPAWN_DISPLAY_ROWS + 19.5f) * side).toInt()
+        val leftCellX = (boardLeft + .5f * side).toInt()
+        val rightCellX = (boardLeft + 9.5f * side).toInt()
+        assertNotEquals(beforeRemoval[leftCellX, bottomRowY], white[leftCellX, bottomRowY])
+        assertEquals(beforeRemoval[rightCellX, bottomRowY], white[rightCellX, bottomRowY])
         compose.runOnIdle {
             model.pause()
             now += 5000
