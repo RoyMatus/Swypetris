@@ -8,6 +8,8 @@ internal class GameTimeline(
 ) {
     private val milli = GameRules.NANOS_PER_MILLI
     val clearMillis: Long get() = clearElapsedNanos / milli
+    var advancedNanos: Long = 0
+        private set
 
     /** A spawn starts fresh gravity; an allowed grounded move resets the entire lock clock. */
     fun observe(previous: GameState, updated: GameState) {
@@ -40,6 +42,7 @@ internal class GameTimeline(
         publish: (GameState, GameState) -> Unit): GameState {
         var state = initial
         var budget = elapsedMillis.coerceIn(0, Long.MAX_VALUE / milli) * milli
+        advancedNanos = 0
         while (!state.gameOver && !state.victoryPending) {
             val clearing = state.clearingRows.isNotEmpty()
             val grounded = !clearing && engine.grounded(state)
@@ -61,6 +64,7 @@ internal class GameTimeline(
                 else -> gravityRemainingNanos -= spent
             }
             budget -= spent
+            advancedNanos += spent
             if (spent == untilEvent) {
                 if (clearing) state = engine.finishClear(state)
                 else if (!grounded) {

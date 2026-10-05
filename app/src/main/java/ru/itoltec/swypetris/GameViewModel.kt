@@ -143,17 +143,19 @@ class GameViewModel internal constructor(
     private fun advanceGameTime(now: Long) {
         val current = game ?: return
         val elapsed = (now - lastGameFrame).coerceAtLeast(0)
-        playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
+        val playedBefore = playedMillis
         lastPlayFrame = now
         lastGameFrame = now
         advancing = true
         try {
             game = timeline.advance(current, elapsed, engine) { previous, updated ->
+                playedMillis = playedBefore + timeline.advancedNanos / GameRules.NANOS_PER_MILLI
                 acceptState(previous, updated, now)
                 if (screen == GameScreen.PLAYING)
                     feedbackEvent(previous, updated, GameCommand.TICK)?.let { feedback.play(it, soundEnabled, vibrationEnabled) }
             }
         } finally { advancing = false }
+        playedMillis = playedBefore + timeline.advancedNanos / GameRules.NANOS_PER_MILLI
         clearElapsedMillis = timeline.clearMillis
         if (game != current || elapsed > 0) saveSession()
     }

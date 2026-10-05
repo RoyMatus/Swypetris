@@ -86,4 +86,22 @@ class MarathonTimingTest {
         assertEquals(airborne, due.freeze(airborne, 1100, engine))
         assertEquals(1, due.advance(airborne, 0, engine) { _, _ -> }.active.y)
     }
+
+    @Test fun gameOverConsumesOnlyTimeBeforeItsLogicalDeadline() {
+        val board = BoardGeometry.empty().map { it.toMutableList() }
+        board[BoardGeometry.row(0)][4] = Tetromino.Z
+        val initial = GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18), next = Tetromino.T)
+        for (frames in listOf(listOf(1000L), List(1000) { 1L })) {
+            val engine = GameEngine(Random(42))
+            val timeline = GameTimeline(initial.gravityNanos)
+            var state = initial
+            var elapsed = 0L
+            frames.forEach {
+                state = timeline.advance(state, it, engine) { _, _ -> }
+                elapsed += timeline.advancedNanos
+            }
+            assertTrue(state.gameOver)
+            assertEquals(500_000_000L, elapsed)
+        }
+    }
 }

@@ -205,4 +205,14 @@ class GameTimerTest {
         assertEquals(666_668L, spawned.gravityRemainingNanos)
         restored.pause()
     }
+
+    @Test fun lateCallbackRecordsOnlyTimeBeforeGameOver() = main {
+        val board = BoardGeometry.empty().map { it.toMutableList() }
+        board[BoardGeometry.row(0)][4] = Tetromino.Z
+        val model = model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18), score = 50))
+        now += 1000
+        model.advanceFrame(now)
+        assertTrue(model.game!!.gameOver)
+        assertEquals(500L, model.latestResult!!.durationMillis)
+    }
 }
