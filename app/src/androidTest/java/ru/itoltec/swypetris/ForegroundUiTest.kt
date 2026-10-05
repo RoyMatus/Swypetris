@@ -25,12 +25,12 @@ class ForegroundUiTest {
         }
     }
 
-    @Test fun statusBarVisibleAndNotificationShadePausesWithoutAutoResume() {
+    @Test fun immersiveGameplayAndNotificationShadePausesWithoutAutoResume() {
         compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
         compose.onNodeWithTag("board").assertIsDisplayed()
-        compose.runOnIdle {
-            val insets = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-            assertTrue(insets.isVisible(WindowInsetsCompat.Type.statusBars()))
+        compose.waitUntil(5000) {
+            ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.systemBars()) == false
         }
         try {
             shell("cmd statusbar expand-notifications")
@@ -45,6 +45,10 @@ class ForegroundUiTest {
                 assertEquals(saved, model().game)
             }
             compose.onNodeWithTag("resumeGame").assertIsDisplayed()
+            compose.waitUntil(5000) {
+                ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                    ?.isVisible(WindowInsetsCompat.Type.statusBars()) == true
+            }
         } finally { shell("cmd statusbar collapse") }
     }
 
