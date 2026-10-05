@@ -97,9 +97,6 @@ internal class AppUpdates(private val activity: ComponentActivity) {
             return
         }
         val now = System.currentTimeMillis()
-        if (!manual && now - preferences.getLong("last_check", 0) < AUTO_CHECK_INTERVAL_MS) return
-        // Failed anonymous checks must also respect the interval across process restarts.
-        preferences.edit().putLong("last_check", now).apply()
         checking = true
         manualRequested = manual
         if (isRuStoreInstall(activity)) checkRuStore(now)
@@ -118,9 +115,7 @@ internal class AppUpdates(private val activity: ComponentActivity) {
                     info.updateAvailability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) &&
                     newerVersion(info.availableVersionCode, currentCode)) {
                     val update = AvailableUpdate(info.availableVersionCode, info.availableVersionName, null, true)
-                    if (info.updateAvailability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS)
-                        open(update, automatic = automaticEnabled)
-                    else showAvailable(update, manual)
+                    showAvailable(update, manual)
                 } else if (manual) notice = UpdateNotice.Current
             }
         }.addOnFailureListener {
@@ -150,14 +145,12 @@ internal class AppUpdates(private val activity: ComponentActivity) {
         }
     }
 
-    private fun showAvailable(update: AvailableUpdate, manual: Boolean) {
+    internal fun showAvailable(update: AvailableUpdate, manual: Boolean) {
         val dismissedCode = preferences.getLong("dismissed_code", 0)
         val dismissedAt = preferences.getLong("dismissed_at", 0)
         if (manual || update.versionCode != dismissedCode ||
             System.currentTimeMillis() - dismissedAt >= REMIND_INTERVAL_MS) {
             notice = UpdateNotice.Available(update)
-            if (automaticEnabled) open(update, automatic = true)
-            else if (!preferences.getBoolean("automatic_choice", false)) consentRequested = true
         }
     }
 

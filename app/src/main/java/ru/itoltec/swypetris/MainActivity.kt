@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
                 SwypetrisApp(gameModel, appUpdates, onExit = { gameModel.pause(); finishAndRemoveTask() })
             }
         }
-        appUpdates.check(manual = false)
+        if (savedInstanceState == null) appUpdates.check(manual = false)
     }
 
     override fun onDestroy() {
@@ -137,6 +137,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         // Reusing the task must never start or resume a game implicitly.
         gameModel.pause()
+        appUpdates.check(manual = false)
     }
 }
 

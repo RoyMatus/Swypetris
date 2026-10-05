@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Rule
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.rules.ExternalResource
 
@@ -51,4 +52,25 @@ class AutomaticUpdatesTest {
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag("automaticUpdates").performScrollTo().assertIsOff()
     }
+    @Test fun availableUpdateAlwaysWaitsForExplicitLaunchChoice() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences("app_updates", Context.MODE_PRIVATE).edit()
+            .putBoolean("automatic", true)
+            .putBoolean("automatic_choice", true)
+            .commit()
+        compose.activityRule.scenario.onActivity { activity ->
+            val updates = AppUpdates(activity)
+            try {
+                val update = AvailableUpdate(Long.MAX_VALUE, "9.9.9", "https://example.invalid/Swypetris.apk",
+                    false, "0".repeat(64), 1)
+                updates.showAvailable(update, manual = false)
+                assertTrue(updates.notice is UpdateNotice.Available)
+                assertTrue(updates.automaticEnabled)
+                assertTrue(!updates.consentRequested)
+            } finally {
+                updates.close()
+            }
+        }
+    }
+
 }
