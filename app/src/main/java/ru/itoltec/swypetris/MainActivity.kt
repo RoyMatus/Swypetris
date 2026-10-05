@@ -343,7 +343,40 @@ internal fun MenuTile(label: String, accent: Color, tag: String,
         }
     }
 }
-/** The board fills the screen; its HUD overlay does not intercept touches. */
+/** Number of square grid rows reserved above the visible playfield for spawning pieces. */
+internal const val SPAWN_DISPLAY_ROWS = 2
+private const val GAME_GRID_ROWS = BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS
+
+/** Draws one square-cell grid across the safe gameplay surface. */
+@Composable
+private fun GameGridBackground(cellSize: Dp) {
+    val palette = LocalGamePalette.current
+    Canvas(Modifier.fillMaxSize().testTag("gridBackground")) {
+        val step = cellSize.toPx()
+        if (step <= 0f) return@Canvas
+        drawRect(brush = Brush.verticalGradient(listOf(palette.glass,
+            lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
+        val boardWidth = step * BoardGeometry.WIDTH
+        val boardLeft = (size.width - boardWidth) / 2f
+        var x = boardLeft
+        while (x >= 0f) {
+            drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
+            x -= step
+        }
+        x = boardLeft + step
+        while (x <= size.width) {
+            drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
+            x += step
+        }
+        var y = 0f
+        while (y <= size.height) {
+            drawLine(palette.grid, Offset(0f, y), Offset(size.width, y))
+            y += step
+        }
+    }
+}
+
+/** The square-cell board starts at the highest safe position; the HUD overlay does not intercept touches. */
 @Composable
 private fun GameContent(model: GameViewModel, state: GameState) {
     val localDensity = LocalDensity.current
@@ -351,26 +384,33 @@ private fun GameContent(model: GameViewModel, state: GameState) {
     val layoutDirection = LocalLayoutDirection.current
     val gestureLeft = WindowInsets.safeContent.getLeft(localDensity, layoutDirection).toFloat()
     val playing = model.screen == GameScreen.PLAYING
-    val palette = LocalGamePalette.current
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val headerHeight = (maxHeight * .07f).coerceIn(48.dp, 72.dp)
-        // The status icons remain above the grid; actual pieces begin below them.
-        Canvas(Modifier.matchParentSize()) {
-            drawRect(palette.glass)
-            for (x in 0..10) drawLine(palette.grid, Offset(x * size.width / 10, 0f),
-                Offset(x * size.width / 10, size.height))
-        }
+    Box(Modifier.fillMaxSize()) {
         val hints = model.hintsEnabled
         val landing = remember(state.board, state.active, state.clearingRows, hints) {
             if (hints && state.clearingRows.isEmpty()) model.engine.ghost(state) else null
         }
-        // All twenty rows reach the physical bottom edge; Android draws navigation above the board.
-        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
-            Box(Modifier.fillMaxSize().padding(top = headerHeight)) {
-                Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis })
+        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val cellSize = minOf(
+                    maxWidth / BoardGeometry.WIDTH.toFloat(),
+                    maxHeight / GAME_GRID_ROWS.toFloat()
+                )
+                val boardWidth = cellSize * BoardGeometry.WIDTH
+                val boardHeight = cellSize * GAME_GRID_ROWS
+                val spawnBandHeight = cellSize * SPAWN_DISPLAY_ROWS
+                LaunchedEffect(boardWidth) { model.setBoardWidth(boardWidth.value) }
+
+                GameGridBackground(cellSize)
+                Box(Modifier.align(Alignment.TopCenter).size(boardWidth, boardHeight)) {
+                    Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis })
+                    Box(Modifier.fillMaxWidth().height(spawnBandHeight)
+                        .semantics { contentDescription = "Следующая фигура ${state.next.name}" }
+                        .testTag("nextPreview"))
+                }
+                Box(Modifier.fillMaxSize()) { GameHud(state, spawnBandHeight) }
             }
         }
-        Box(Modifier.fillMaxSize().onSizeChanged { model.setBoardWidth(it.width / density) }) {
+
         // Leave the system's side-gesture zones free; movement begins inside the safe area.
         Box(Modifier.fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical))
@@ -402,8 +442,6 @@ private fun GameContent(model: GameViewModel, state: GameState) {
             model.cancelGesture()
         }
         }) {}
-        Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, headerHeight) }
-        }
     }
 }
 
@@ -434,11 +472,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
-        val previewWidth = nextPreviewWidth(maxWidth.value).dp
-        val scoreWidth = (maxWidth - previewWidth - HUD_HORIZONTAL_MARGIN.dp * 3).coerceAtLeast(0.dp)
-        NextPreview(state.next, Modifier.align(Alignment.TopEnd)
-            .padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp)
-            .size(previewWidth, headerHeight - 6.dp))
+        val scoreWidth = (maxWidth - HUD_HORIZONTAL_MARGIN.dp * 2).coerceAtLeast(0.dp)
         val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
         Row(Modifier.fillMaxWidth().padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -467,22 +501,6 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
         }
     }
 }
-/** Always-visible spawn-orientation preview in the header, outside the playfield. */
-@Composable
-private fun NextPreview(next: Tetromino, modifier: Modifier) {
-    val palette = LocalGamePalette.current
-    Canvas(modifier.semantics { contentDescription = "Следующая фигура ${next.name}" }.testTag("nextPreview")) {
-        val cells = next.shape
-        val columns = cells.maxOf { it.x } + 1
-        val firstRow = cells.minOf { it.y }
-        val rows = cells.maxOf { it.y } - firstRow + 1
-        val step = minOf(size.width / columns, size.height / rows)
-        val origin = Offset((size.width - columns * step) / 2, (size.height - rows * step) / 2)
-        cells.forEach { block(Cell(it.x, it.y - firstRow), palette.piece(next), palette.finish,
-            palette.texture, origin, Size(step, step)) }
-    }
-}
-
 /** Draws the board and optional landing ghost while omitting removed cells. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
