@@ -14,8 +14,8 @@ import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 
-/** Audio mode: silence, the game playlist, or a one-shot record fanfare. */
-enum class MusicMode { SILENT, GAME, RECORD }
+/** Audio mode: silence, menu theme, game playlist, or a one-shot record fanfare. */
+enum class MusicMode { SILENT, MENU, GAME, RECORD }
 
 /** Music control separated from Android playback so mode transitions can be tested without a speaker. */
 interface MusicPlayback {
@@ -35,6 +35,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
     private val handler = Handler(Looper.getMainLooper())
     private val resources = Song.entries.map { it.resource }
     private val playlist = PlaylistClock(resources.size, clock = SystemClock::uptimeMillis)
+    private var menuPlayer: MenuThemePlayer? = null
     private var gamePlayer: MediaPlayer? = null
     private var gameOccurrence = -1L
     private var selection: MusicSelection = MusicSelection.ShuffleAll
@@ -88,6 +89,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
     override fun setMode(next: MusicMode) {
         if (released || next == mode) return
         playlist.setActive(false)
+        menuPlayer?.pause()
         gamePlayer?.pause()
         recordPlayer?.pause()
         mode = next
@@ -117,9 +119,15 @@ class GameMusic(private val context: Context) : MusicPlayback {
         val allowed = hasFocus && !blockedByHeadphones
         playlist.setActive(allowed && mode == MusicMode.GAME)
         playlist.advance()
+        if (mode != MusicMode.MENU || !allowed) menuPlayer?.pause()
         if (mode != MusicMode.GAME || !allowed) gamePlayer?.pause()
         if (mode != MusicMode.RECORD || !allowed) recordPlayer?.pause()
         if (!allowed) return
+        if (mode == MusicMode.MENU) {
+            if (menuPlayer == null) menuPlayer = MenuThemePlayer.create(attributes)
+            menuPlayer?.play()
+            return
+        }
         if (mode == MusicMode.RECORD) { recordPlayer?.start(); return }
         if (mode != MusicMode.GAME) return
         if (playlist.remainingGap != null) {
@@ -160,8 +168,10 @@ class GameMusic(private val context: Context) : MusicPlayback {
         released = true
         handler.removeCallbacks(timer)
         context.unregisterReceiver(noisyReceiver)
+        menuPlayer?.release()
         gamePlayer?.release()
         recordPlayer?.release()
+        menuPlayer = null
         gamePlayer = null
         recordPlayer = null
     }

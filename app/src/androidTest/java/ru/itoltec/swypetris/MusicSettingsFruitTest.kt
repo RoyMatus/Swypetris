@@ -36,7 +36,7 @@ class MusicSettingsFruitTest {
         override fun release() = Unit
     }
 
-    /** Выбор сразу звучит, одинаковый выбор не перезапускает, фон и меню замораживают музыку. */
+    /** Выбор сразу звучит, одинаковый выбор не перезапускает, фон глушит звук, а меню включает свою тему. */
     @Test fun previewLifecyclePersistenceAndMigration() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         GameStorage.preferences(app).edit().putBoolean("music",false).commit()
@@ -56,7 +56,7 @@ class MusicSettingsFruitTest {
             assertEquals(count,recorder.selections.size)
             model.onBackground(); assertEquals(MusicMode.SILENT,recorder.modes.last())
             model.onForeground(); assertEquals(MusicMode.GAME,recorder.modes.last())
-            model.menu(); assertEquals(MusicMode.SILENT,recorder.modes.last())
+            model.menu(); assertEquals(MusicMode.MENU,recorder.modes.last())
             model.resume(); assertEquals(MusicMode.GAME,recorder.modes.last())
             assertEquals(initial,model.game)
             assertEquals(model.musicSelection,GameViewModel(app,null,{1000L},false).musicSelection)

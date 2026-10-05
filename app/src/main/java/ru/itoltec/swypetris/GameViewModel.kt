@@ -108,7 +108,20 @@ class GameViewModel internal constructor(
             requestRecordName = false
         }
         music?.select(musicSelection)
+        if (autoTick) syncOrdinaryMusic()
         scheduleNextEvent()
+    }
+
+    /** Keeps ordinary navigation music mutually exclusive and lifecycle-aware. */
+    private fun syncOrdinaryMusic() {
+        val next = when {
+            !musicEnabled || !activeForeground -> MusicMode.SILENT
+            screen in listOf(GameScreen.MENU, GameScreen.HELP, GameScreen.CONTACTS,
+                GameScreen.PRIVACY, GameScreen.LEGAL, GameScreen.RESULTS) -> MusicMode.MENU
+            screen in listOf(GameScreen.PLAYING, GameScreen.SETTINGS) -> MusicMode.GAME
+            else -> MusicMode.SILENT
+        }
+        music?.setMode(next)
     }
 
     /** Sleep until a visible clear step or gravity is due; paused games have no timer. */
@@ -267,7 +280,7 @@ class GameViewModel internal constructor(
     fun settings() {
         menu()
         screen = GameScreen.SETTINGS
-        music?.setPlaying(musicEnabled && activeForeground)
+        syncOrdinaryMusic()
     }
 
     /** Opens help while preserving the game and stopping its clock. */
@@ -349,7 +362,7 @@ class GameViewModel internal constructor(
             clearElapsedMillis = timeline.clearMillis
             screen = GameScreen.MENU
         } else if (screen == GameScreen.VICTORY) screen = GameScreen.MENU
-        music?.setPlaying(false)
+        syncOrdinaryMusic()
         feedback.stop()
         gestures.cancel()
         saveSession()
@@ -362,23 +375,24 @@ class GameViewModel internal constructor(
         pause()
     }
 
-    /** Returning to settings resumes music preview; gameplay remains explicitly paused. */
+    /** Returning to the foreground restores only the music appropriate for the current screen. */
     fun onForeground() {
         foreground = true
-        if (screen == GameScreen.SETTINGS) music?.setPlaying(musicEnabled && activeForeground)
+        syncOrdinaryMusic()
     }
 
-    /** Pauses gameplay on focus loss and resumes settings preview only when focus returns. */
+    /** Focus loss silences playback; focus return restores the current screen's ordinary mode. */
     fun onWindowFocusChanged(focused: Boolean) {
         windowFocused = focused
         if (!focused) pause()
-        else if (screen == GameScreen.SETTINGS) music?.setPlaying(musicEnabled && activeForeground)
+        else syncOrdinaryMusic()
     }
 
     /** Opens the main menu while retaining the current game in memory. */
     fun menu() {
         pause()
         screen = GameScreen.MENU
+        syncOrdinaryMusic()
     }
 
     /** Applies commands only while both lifecycle and window focus permit active play. */
@@ -476,7 +490,7 @@ class GameViewModel internal constructor(
         musicSelection = selection
         preferences.edit().putString("music_selection", selection.id).apply()
         music?.select(selection)
-        music?.setPlaying(musicEnabled && activeForeground && screen in listOf(GameScreen.PLAYING, GameScreen.SETTINGS))
+        syncOrdinaryMusic()
     }
 
     /** Opens saved results while keeping the current game paused. */
