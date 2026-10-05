@@ -100,19 +100,20 @@ class BrandNavigationTest {
             }
         }
         compose.runOnIdle { model.help() }
-        for (control in listOf("Двигайте фигуру", "Вверх или вверх-вправо — поворот по часовой",
-            "Вверх-влево — поворот против часовой", "Длинный жест вниз — бросок", "Короткий тап — клетка вниз",
-            "Для повторного поворота слегка опустите палец", "После броска новой фигуре нужен новый жест вниз",
-            "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт коллекции") ) {
-            compose.onNodeWithTag("helpPage").performScrollToNode(hasText(control, substring = true))
+        // Indexed lazy-list actions execute scrolling on the UI thread in Compose 1.7.
+        for ((item, control) in listOf(2 to "Двигайте фигуру", 3 to "Вверх или вверх-вправо — поворот по часовой",
+            4 to "Вверх-влево — поворот против часовой", 6 to "Длинный жест вниз — бросок", 7 to "Короткий тап — клетка вниз",
+            8 to "Для повторного поворота слегка опустите палец", 8 to "После броска новой фигуре нужен новый жест вниз",
+            13 to "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт коллекции") ) {
+            compose.onNodeWithTag("helpPage").performScrollToIndex(item)
             compose.onNodeWithText(control, substring = true).assertIsDisplayed()
         }
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("helpPage").performScrollToIndex(0)
         screenshot("help-controls.png")
         compose.runOnIdle { fontScale = 2f; model.contacts() }
-        for (contact in DeveloperContact.entries) {
-            compose.onNodeWithTag("contactsPage").performScrollToNode(hasText(contact.address))
+        for ((index, contact) in DeveloperContact.entries.withIndex()) {
+            compose.onNodeWithTag("contactsPage").performScrollToIndex(index + 1)
             compose.onNodeWithText(contact.address).assertIsDisplayed()
         }
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
