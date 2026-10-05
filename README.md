@@ -19,7 +19,7 @@
 
 ## Экран и меню
 
-The visible 10×20 field fills the safe area; cells may be rectangular. The upper-left HUD shows level and actual score, for example “2 | 1450”, with the level 25% larger. At nine lines within a level, the HUD turns gold; a line change starts a single 220 ms pulse without score changes restarting it. System insets are respected. With hints enabled, Next appears as a faint silhouette at spawn, below active and settled cells.
+The visible 10×20 field fills the area below the HUD header through the bottom edge; cells may be rectangular. The upper-left HUD shows level and actual score, for example “2 | 1450”, with the level 25% larger. At nine lines within a level, the HUD turns gold; a line change starts a single 220 ms pulse without score changes restarting it. System insets are respected. Next is always visible in its spawn orientation at the upper-right of the header, independently of the landing Ghost setting.
 
 Вверху меню расположен новый логотип: полосатый силуэт собора Василия Блаженного и надпись из цветных блоков. Ниже — компактная сетка прямоугольных кнопок без прокрутки в порядке «Новая игра», «Продолжить» (для незавершённой партии), «Настройки», «Как играть», «Результаты», «Контакты», «Выход». Рекорды показаны только на странице результатов. Ориентация приложения на телефоне фиксирована: поворот устройства не переворачивает экран.
 
