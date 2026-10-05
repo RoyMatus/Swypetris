@@ -4,39 +4,139 @@
       "title": "Музыка",
       "introduction": "Звучат собственные синтезированные записи и аранжировки, созданные для Swypetris. Сторонние аудиозаписи в приложение не включены. Ниже указаны источники нот и авторы произведений там, где они известны.",
       "items": [
-        {"title": "Коробейники", "credit": "Русская народная мелодия; текст Николая Некрасова. Использован нотный источник с редакцией M. Thienel, Wikimedia Commons.", "source": "https://commons.wikimedia.org/wiki/File:Korobeiniki.svg"},
-        {"title": "Калинка", "credit": "Музыка Ивана Ларионова. Нотный источник: Free Sheet Music.", "source": "https://www.freesheetmusic.net/music/worldfolk/russian/kalinka.pdf"},
-        {"title": "Камаринская", "credit": "Русская народная мелодия. Нотный источник: Free Sheet Music.", "source": "https://www.freesheetmusic.net/music/worldfolk/russian/kamarynska.pdf"},
-        {"title": "Барыня", "credit": "Русская народная мелодия. Нотный источник: Free Sheet Music.", "source": "https://www.freesheetmusic.net/music/worldfolk/russian/barinya.pdf"},
-        {"title": "Светит месяц", "credit": "Русская народная мелодия. Использована только народная тема из опубликованных нот.", "source": "https://balalaika.org.ru/svetit-mesyac.htm"},
-        {"title": "Во саду ли, в огороде", "credit": "Русская народная мелодия. Нотный источник: Free Sheet Music.", "source": "https://www.freesheetmusic.net/music/worldfolk/russian/vo%20sadu%20ly%20v%20ohorode.pdf"},
-        {"title": "Трепак", "credit": "Музыка П. И. Чайковского; нотная редакция George Luft. Источник MusicXML: ScoreBase / PDMX.", "source": "https://scorebase.org/scores/194750"},
-        {"title": "Танец Феи Драже", "credit": "Музыка П. И. Чайковского. Источник MusicXML: ScoreBase / PDMX, Partition originale.", "source": "https://scorebase.org/scores/1441"},
-        {"title": "PDMX", "credit": "Корпус нотных файлов: Phillip Long, Zachary Novack, Taylor Berg-Kirkpatrick, Julian McAuley. PDMX: A Large-Scale Public Domain MusicXML Dataset for Symbolic Music Processing, ICASSP 2025.", "source": "https://github.com/pnlong/PDMX"}
+        {
+          "title": "Тема главного меню Swypetris",
+          "credit": "Оригинальная синтезированная аранжировка Swypetris · © 2026 RoyMatus. Гармония, тембр, ритм и структура созданы для приложения; короткий мотив основан на народной мелодии «Коробейники». Сторонняя аудиозапись не используется.",
+          "source": "https://commons.wikimedia.org/wiki/File:Korobeiniki.svg"
+        },
+        {
+          "title": "Коробейники",
+          "credit": "Русская народная мелодия; текст Николая Некрасова. Использован нотный источник с редакцией M. Thienel, Wikimedia Commons.",
+          "source": "https://commons.wikimedia.org/wiki/File:Korobeiniki.svg"
+        },
+        {
+          "title": "Калинка",
+          "credit": "Музыка Ивана Ларионова. Нотный источник: Free Sheet Music.",
+          "source": "https://www.freesheetmusic.net/music/worldfolk/russian/kalinka.pdf"
+        },
+        {
+          "title": "Камаринская",
+          "credit": "Русская народная мелодия. Нотный источник: Free Sheet Music.",
+          "source": "https://www.freesheetmusic.net/music/worldfolk/russian/kamarynska.pdf"
+        },
+        {
+          "title": "Барыня",
+          "credit": "Русская народная мелодия. Нотный источник: Free Sheet Music.",
+          "source": "https://www.freesheetmusic.net/music/worldfolk/russian/barinya.pdf"
+        },
+        {
+          "title": "Светит месяц",
+          "credit": "Русская народная мелодия. Использована только народная тема из опубликованных нот.",
+          "source": "https://balalaika.org.ru/svetit-mesyac.htm"
+        },
+        {
+          "title": "Во саду ли, в огороде",
+          "credit": "Русская народная мелодия. Нотный источник: Free Sheet Music.",
+          "source": "https://www.freesheetmusic.net/music/worldfolk/russian/vo%20sadu%20ly%20v%20ohorode.pdf"
+        },
+        {
+          "title": "Трепак",
+          "credit": "Музыка П. И. Чайковского; нотная редакция George Luft. Источник MusicXML: ScoreBase / PDMX.",
+          "source": "https://scorebase.org/scores/194750"
+        },
+        {
+          "title": "Танец Феи Драже",
+          "credit": "Музыка П. И. Чайковского. Источник MusicXML: ScoreBase / PDMX, Partition originale.",
+          "source": "https://scorebase.org/scores/1441"
+        },
+        {
+          "title": "PDMX",
+          "credit": "Корпус нотных файлов: Phillip Long, Zachary Novack, Taylor Berg-Kirkpatrick, Julian McAuley. PDMX: A Large-Scale Public Domain MusicXML Dataset for Symbolic Music Processing, ICASSP 2025.",
+          "source": "https://github.com/pnlong/PDMX"
+        }
       ]
     },
     {
       "title": "Цветовые схемы",
       "introduction": "Палитры адаптированы для игры; код тем редакторов не используется. Тексты лицензий доступны без подключения к сети.",
       "items": [
-        {"title": "Monokai и VS Code Dark+", "credit": "Microsoft Corporation · MIT", "source": "https://github.com/microsoft/vscode", "licenseAsset": "vscode-monokai.txt"},
-        {"title": "Gruvbox Dark", "credit": "morhetz · MIT/X11; использованы значения цветов палитры", "source": "https://github.com/morhetz/gruvbox"},
-        {"title": "Dracula", "credit": "Dracula Theme · MIT", "source": "https://github.com/dracula/dracula-theme", "licenseAsset": "dracula.txt"},
-        {"title": "Nord", "credit": "Sven Greb / Arctic Ice Studio · MIT", "source": "https://github.com/nordtheme/nord", "licenseAsset": "nord.txt"},
-        {"title": "Solarized Light and Dark", "credit": "Ethan Schoonover · MIT", "source": "https://github.com/altercation/solarized", "licenseAsset": "solarized.txt"},
-        {"title": "SynthWave '84", "credit": "Robb Owen · MIT", "source": "https://github.com/robb0wen/synthwave-vscode", "licenseAsset": "synthwave-84.txt"},
-        {"title": "GitHub Light", "credit": "Primer / GitHub · MIT", "source": "https://github.com/primer/github-vscode-theme", "licenseAsset": "github-light.txt"},
-        {"title": "Tokyo Night", "credit": "folke · Apache License 2.0", "source": "https://github.com/folke/tokyonight.nvim", "licenseAsset": "tokyo-night.txt"},
-        {"title": "Catppuccin Mocha", "credit": "Catppuccin · MIT", "source": "https://github.com/catppuccin/catppuccin", "licenseAsset": "catppuccin.txt"}
+        {
+          "title": "Monokai и VS Code Dark+",
+          "credit": "Microsoft Corporation · MIT",
+          "source": "https://github.com/microsoft/vscode",
+          "licenseAsset": "vscode-monokai.txt"
+        },
+        {
+          "title": "Gruvbox Dark",
+          "credit": "morhetz · MIT/X11; использованы значения цветов палитры",
+          "source": "https://github.com/morhetz/gruvbox"
+        },
+        {
+          "title": "Dracula",
+          "credit": "Dracula Theme · MIT",
+          "source": "https://github.com/dracula/dracula-theme",
+          "licenseAsset": "dracula.txt"
+        },
+        {
+          "title": "Nord",
+          "credit": "Sven Greb / Arctic Ice Studio · MIT",
+          "source": "https://github.com/nordtheme/nord",
+          "licenseAsset": "nord.txt"
+        },
+        {
+          "title": "Solarized Light and Dark",
+          "credit": "Ethan Schoonover · MIT",
+          "source": "https://github.com/altercation/solarized",
+          "licenseAsset": "solarized.txt"
+        },
+        {
+          "title": "SynthWave '84",
+          "credit": "Robb Owen · MIT",
+          "source": "https://github.com/robb0wen/synthwave-vscode",
+          "licenseAsset": "synthwave-84.txt"
+        },
+        {
+          "title": "GitHub Light",
+          "credit": "Primer / GitHub · MIT",
+          "source": "https://github.com/primer/github-vscode-theme",
+          "licenseAsset": "github-light.txt"
+        },
+        {
+          "title": "Tokyo Night",
+          "credit": "folke · Apache License 2.0",
+          "source": "https://github.com/folke/tokyonight.nvim",
+          "licenseAsset": "tokyo-night.txt"
+        },
+        {
+          "title": "Catppuccin Mocha",
+          "credit": "Catppuccin · MIT",
+          "source": "https://github.com/catppuccin/catppuccin",
+          "licenseAsset": "catppuccin.txt"
+        }
       ]
     },
     {
       "title": "Программные компоненты",
       "introduction": "Приложение использует библиотеки AndroidX, Jetpack Compose и Kotlin. Ниже приведены проекты и тексты основных лицензий.",
       "items": [
-        {"title": "AndroidX и Jetpack Compose", "credit": "Android Open Source Project / Google · Apache License 2.0", "source": "https://github.com/androidx/androidx", "licenseAsset": "tokyo-night.txt"},
-        {"title": "Kotlin", "credit": "JetBrains и участники проекта Kotlin · Apache License 2.0", "source": "https://github.com/JetBrains/kotlin/blob/master/license/README.md", "licenseAsset": "tokyo-night.txt"},
-        {"title": "ZXing Core", "credit": "ZXing authors · Apache License 2.0; создание QR-кода", "source": "https://github.com/zxing/zxing", "licenseAsset": "tokyo-night.txt"}
+        {
+          "title": "AndroidX и Jetpack Compose",
+          "credit": "Android Open Source Project / Google · Apache License 2.0",
+          "source": "https://github.com/androidx/androidx",
+          "licenseAsset": "tokyo-night.txt"
+        },
+        {
+          "title": "Kotlin",
+          "credit": "JetBrains и участники проекта Kotlin · Apache License 2.0",
+          "source": "https://github.com/JetBrains/kotlin/blob/master/license/README.md",
+          "licenseAsset": "tokyo-night.txt"
+        },
+        {
+          "title": "ZXing Core",
+          "credit": "ZXing authors · Apache License 2.0; создание QR-кода",
+          "source": "https://github.com/zxing/zxing",
+          "licenseAsset": "tokyo-night.txt"
+        }
       ]
     }
   ]
