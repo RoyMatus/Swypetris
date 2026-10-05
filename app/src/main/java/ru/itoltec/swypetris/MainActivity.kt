@@ -445,10 +445,9 @@ private fun GameContent(model: GameViewModel, state: GameState) {
     }
 }
 
-/** Compact level and score HUD; line progress drives its near-level pulse. */
+/** Score, Hold, and collected-fruit HUD layered over the square gameplay grid. */
 @Composable
 internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
-    var scoreSize by remember { mutableStateOf(Size.Zero) }
     val displayed = GameRules.displayScore(state.score)
     val currentLines by rememberUpdatedState(state.lines)
     val nearing by rememberUpdatedState(GameRules.nearingLevel(state.lines, state.startingLevel))
@@ -472,35 +471,69 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
-        val scoreWidth = (maxWidth - HUD_HORIZONTAL_MARGIN.dp * 2).coerceAtLeast(0.dp)
         val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
-        Row(Modifier.fillMaxWidth().padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Text(buildAnnotatedString {
-                withStyle(SpanStyle(fontSize = textSize * 1.25f)) { append("${state.level}") }
-                append(" | $displayed")
-            }, color = color, maxLines = 1,
-                style = TextStyle(fontSize = textSize, platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                modifier = Modifier.widthIn(max = scoreWidth)
-                    .onSizeChanged { scoreSize = Size(it.width.toFloat(), it.height.toFloat()) }.graphicsLayer {
+        Text(displayed, color = color, maxLines = 1,
+            style = TextStyle(fontSize = textSize, platformStyle = PlatformTextStyle(includeFontPadding = false)),
+            modifier = Modifier.align(Alignment.TopStart)
+                .padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp)
+                .graphicsLayer {
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
                     scaleX = scale.value; scaleY = scale.value
                 }
-                    .semantics { this[ScorePulseScale] = scale.value }
-                    .testTag("score"))
-        }
-        if (state.roundFruits > 0) {
-            val layout = fruitPlacement(maxWidth.value, maxHeight.value, state.roundFruits,
-                with(density) { scoreSize.width.toDp().value }, with(density) { scoreSize.height.toDp().value }, headerHeight.value)
-            Column(Modifier.offset(layout.left.dp, layout.top.dp).testTag("earnedFruits"),
-                verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
-                Fruit.entries.take(state.roundFruits).forEach { fruit ->
-                    FruitIcon(fruit, Modifier.size(FRUIT_SIZE.dp).testTag("earnedFruit_${fruit.name}"))
+                .semantics { this[ScorePulseScale] = scale.value }
+                .testTag("score"))
+
+        val holdWidth = (maxWidth * .22f).coerceIn(52.dp, 92.dp)
+        val holdHeight = headerHeight.coerceAtLeast(44.dp)
+        Column(
+            Modifier.align(Alignment.TopEnd)
+                .padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp)
+                .width(holdWidth)
+                .testTag("holdHud"),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            HoldPreview(state.held, state.holdUsed,
+                Modifier.fillMaxWidth().height(holdHeight).testTag("holdPreview"))
+            if (state.roundFruits > 0) {
+                val fruitSize = minOf(FRUIT_SIZE.dp, (holdWidth - FRUIT_GAP.dp) / 2f)
+                Column(
+                    Modifier.padding(top = FRUIT_GAP.dp).testTag("earnedFruits"),
+                    verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)
+                ) {
+                    Fruit.entries.take(state.roundFruits).chunked(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
+                            row.forEach { fruit ->
+                                FruitIcon(fruit, Modifier.size(fruitSize).testTag("earnedFruit_${fruit.name}"))
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
+
+/** Renders Hold independently from the board without changing Hold game rules. */
+@Composable
+private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier = Modifier) {
+    val palette = LocalGamePalette.current
+    Canvas(modifier.semantics {
+        contentDescription = "Запас: ${held?.name ?: "пусто"}, ${if (used) "обмен недоступен" else "обмен доступен"}"
+    }) {
+        val piece = held ?: return@Canvas
+        val cells = piece.shape
+        val firstRow = cells.minOf { it.y }
+        val columns = cells.maxOf { it.x } + 1
+        val rows = cells.maxOf { it.y } - firstRow + 1
+        val step = minOf(size.width / columns, size.height / rows)
+        val origin = Offset((size.width - columns * step) / 2f, (size.height - rows * step) / 2f)
+        cells.forEach {
+            block(Cell(it.x, it.y - firstRow), palette.piece(piece), palette.finish,
+                palette.texture, origin, Size(step, step), alpha = if (used) .28f else .82f)
+        }
+    }
+}
+
 /** Draws the logical board, spawn preview, active piece, and optional landing ghost. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
@@ -526,14 +559,6 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
                 block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell,
                     alpha = .24f)
             }
-
-        state.held?.let { held ->
-            Piece(held, x = 0).cells().forEach {
-                block(it, palette.piece(held), palette.finish, palette.texture,
-                    Offset(boardLeft + cell.width * .3f, cell.height * 1.5f), cell * .55f,
-                    alpha = if (state.holdUsed) .12f else .30f)
-            }
-        }
 
         state.board.forEachIndexed { rowIndex, row -> row.forEachIndexed { x, type ->
             val logicalY = rowIndex - BoardGeometry.HIDDEN_ROWS
