@@ -149,7 +149,7 @@ class SessionLifecycleTest {
     }
 
     @Test fun restartDuringClearPreservesItsExactProgress() {
-        val first = model(clearingStart())
+        val first = model(clearingStart().copy(lines = 9))
         first.command(GameCommand.HARD_DROP)
         now += 217
         first.pause()
@@ -165,6 +165,9 @@ class SessionLifecycleTest {
         restored.advanceFrame(now)
         assertEquals(1, restored.game!!.generation)
         assertEquals(100, restored.game!!.score)
+        assertEquals(10, restored.game!!.lines)
+        assertEquals(2, restored.game!!.level)
+        assertEquals(1, restored.game!!.placement!!.level)
     }
 
     @Test fun tapMovesExactlyOneCellAndHoldUsesOnlyGravity() {

@@ -110,7 +110,7 @@ class GameEngineTest {
             assertEquals(result, engine.finishClear(result))
             assertEquals(9 + count, result.lines)
             assertEquals(listOf(0, 100, 300, 500, 800)[count], result.score)
-            assertEquals(1, result.level)
+            assertEquals(2, result.level)
             assertEquals(Tetromino.L, result.board[BoardGeometry.row(10 + count)][0])
         }
     }
@@ -141,7 +141,7 @@ class GameEngineTest {
     /** Скорость растёт по уровням, но не становится быстрее установленного минимума. */
     @Test fun gravityHasMinimumInterval() {
         assertEquals(800L, state().gravityMillis)
-        assertEquals(744L, state().copy(score = 1000).gravityMillis)
-        assertEquals(100L, state().copy(score = 1000000).gravityMillis)
+        assertEquals(744L, state().copy(lines = 10).gravityMillis)
+        assertEquals(100L, state().copy(lines = 1000000).gravityMillis)
     }
 }

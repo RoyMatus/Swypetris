@@ -5,26 +5,18 @@ import org.junit.Test
 
 /** Проверяет общую арифметику и переходы движка на границах новых правил. */
 class GameRulesTest {
-    /** The final 10% is inclusive, and a new level shows the full score again. */
-    @Test fun thresholdsAndDisplay() {
-        val scores = listOf(799, 800, 899, 900, 999, 1000, 2000, 2124, 2125, 2249, 2250, 2100)
-        val displays = listOf("799", "800", "899", "−100", "−1", "1000", "2000", "2124", "−125", "−1", "2250", "2100")
-        scores.zip(displays).forEach { (score, display) -> assertEquals(display, GameRules.displayScore(score)) }
-        listOf(0L, 1000L, 2250L, 3750L, 5500L, 7500L, 9750L).forEachIndexed { index, score ->
-            assertEquals(score, GameRules.threshold(index + 1))
-            assertEquals(index + 1, GameRules.level(score.toInt()))
+    @Test fun lineThresholdsAndActualScoreDisplay() {
+        for (lines in listOf(0,8,9,10,19,20,99,100,Int.MAX_VALUE)) {
+            assertEquals(1 + lines / 10, GameRules.level(lines))
+            assertEquals(lines % 10 == 9, GameRules.nearingLevel(lines))
+            assertEquals((lines % 10) / 10f, GameRules.progress(lines), .00001f)
         }
-        assertEquals(18000L, GameRules.threshold(10))
-        assertEquals(10, GameRules.level(GameRules.add(799, 17201)))
-        assertEquals(0.8f, GameRules.progress(2000), 0.00001f)
+        assertEquals(10L, GameRules.threshold(2))
+        assertEquals(90L, GameRules.threshold(10))
         assertTrue(GameRules.nextThreshold(Int.MAX_VALUE) > Int.MAX_VALUE.toLong())
+        for (score in listOf(899,900,999,1000,2125,Int.MAX_VALUE))
+            assertEquals("$score", GameRules.displayScore(score))
         assertEquals(Int.MAX_VALUE, GameRules.add(Int.MAX_VALUE, 1500))
-        val clearing = GameState(active = Piece(Tetromino.I), next = Tetromino.T,
-            score = 799, clearingRows = listOf(16, 17, 18, 19).map(BoardGeometry::row))
-        val crossed = GameEngine().finishClear(clearing)
-        assertEquals(3599, crossed.score)
-        assertEquals(3, crossed.level)
-        assertEquals("3599", GameRules.displayScore(crossed.score))
     }
 
     /** Разные способы спуска суммарно оплачивают пройденное расстояние ровно один раз. */

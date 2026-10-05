@@ -79,8 +79,8 @@ data class GameState(
 ) {
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
-    /** Derives the current level from the total score using the shared rules. */
-    val level: Int get() = GameRules.level(score)
+    /** Derives the current level from cleared lines using the shared rules. */
+    val level: Int get() = GameRules.level(lines)
     /** Gravity uses the difficulty selected when this game began. */
     val gravityMillis: Long get() = GameRules.gravityMillis(level, difficulty)
 }
@@ -236,7 +236,7 @@ class GameEngine(private val random: Random = Random.Default) {
         return checkVictory(spawnNext(state.copy(
             board = board, placement = event,
             score = GameRules.add(state.score, GameRules.placementScore(event)),
-            lines = state.lines + cleared, clearingRows = emptyList(), completedClears = state.completedClears + 1
+            lines = GameRules.add(state.lines, cleared), clearingRows = emptyList(), completedClears = state.completedClears + 1
         )))
     }
 
