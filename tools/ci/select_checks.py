@@ -46,6 +46,7 @@ SOURCE_GROUPS = {
     "SettingsScreen.kt": ("settings",),
     "ShareAppDialog.kt": ("legal", "navigation"),
     "Srs.kt": ("engine",),
+    "Placement.kt": ("engine",),
     "VictoryScreen.kt": ("results", "visual"),
     "ui/theme/Color.kt": ("visual",),
     "ui/theme/Theme.kt": ("visual",),
@@ -57,9 +58,9 @@ FULL_SOURCES = {"GameSession.kt", "GameViewModel.kt", "MainActivity.kt"}
 
 GROUP_TESTS = {
     "updates": ((), ("AppUpdatesTest",)),
-    "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
+    "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
                ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictoryThemeIntegrationTest")),
-    "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
+    "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "PlacementTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
     "line_clear": (("LineClearAnimationTest", "GameEngineTest", "GameRulesTest"), ("LineClearUiTest", "GameUiTest")),
     "feedback": (("GameFeedbackTest",), ("GameFeedbackIntegrationTest", "MusicIntegrationTest")),
     "music": (("PlaylistClockTest",), ("MusicIntegrationTest", "MusicSettingsFruitTest")),
