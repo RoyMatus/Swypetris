@@ -12,7 +12,7 @@ The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 
 | GitHub API, release, or CI script-only change | Pester, PowerShell syntax, or selector unit tests respectively; no Android build or tests |
 | `v*` tag or manual release verification | All JVM, Android, and CI/tool correctness tests, debug/release lint, JaCoCo, Sonar, launcher smoke, signed APK/AAB builds, signature and archive checks |
 
-Available test and lint reports are attached to CI runs; coverage is attached when full regression runs. Signed release artifacts are attached to release verification runs. A successful workflow verifies a candidate; it does not publish a release or replace a manual device/store review.
+Available test and lint reports are attached to CI runs; coverage is attached when full regression runs. Signed release artifacts are attached to release verification runs. Tag/manual runs verify a candidate. A main-branch change to `gradle.properties` also runs release verification and publishes the APK only after regression, emulator/smoke, and signed artifact checks all pass. It does not replace a manual device/store review.
 
 `tools/ci/select_checks.py` classifies changes from the event base commit. Repository Markdown outside `app/`, `AGENTS.md`, `.agents/`, and `.codex/` need no app tests. GitHub API, release, and CI scripts have their own checks. Changes to multiple app areas union their mapped test classes. `GameSession`, `GameViewModel`, `MainActivity`, Gradle, manifest, workflow, and any unknown path run full regression; unresolved diffs do too. The selector's output determines the CI steps, and an Android XML report check rejects an empty or incorrectly filtered run. `EnergyScenarioTest` remains an opt-in measurement. SonarQube Cloud still runs for instruction-only changes because its Quality Gate is required for merging. A newer push to the same PR cancels its older in-progress Android CI run; pushes to `main` are not cancelled.
 
@@ -42,3 +42,7 @@ The local release process uses separate keys for the directly distributed APK an
 | `SWYPETRIS_APP_KEY_ALIAS` | `SWYPETRIS_UPLOAD_KEY_ALIAS` |
 
 Base64 values must encode the corresponding `.p12` keystore files. The workflow restores them into the runner's temporary directory and does not commit them. Missing secrets deliberately fail the signed-release job. The verification step checks the APK and AAB signatures and compares each signer's SHA-256 certificate fingerprint with the matching public certificate in `publishing/certificates/`. `jarsigner -verify -strict` is deliberately not used: Android upload certificates are self-signed and strict chain validation rejects a valid app bundle.
+
+## Cloud GitHub release
+
+Changing `swypetrisVersion` on `main` triggers release verification. Increase the Android versionCode as part of the same release change. Only the final publish job receives contents-write permission; signing jobs keep read-only permissions. Signing keys remain in the runner temporary directory. APK metadata and SHA-256 are read from the verified signed APK, then `Swypetris.apk`, `update.json`, and `SHA256SUMS.txt` are published to a new version tag. An existing release is never overwritten. Tag/manual runs verify artifacts without publishing.
