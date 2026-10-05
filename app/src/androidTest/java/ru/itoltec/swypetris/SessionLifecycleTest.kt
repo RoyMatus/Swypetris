@@ -21,6 +21,15 @@ class SessionLifecycleTest {
         assertEquals(snapshot, SessionStore.decode(SessionStore.encode(snapshot)))
     }
 
+    @Test fun cumulativeFruitCountsSurviveExistingSessionFormat() {
+        val collected = state().copy(score = 93000, completedRounds = 1)
+        val snapshot = GameSession("fruits", collected, listOf(Tetromino.I), 0, 0, 1_000_000_000, 0)
+        val restored = SessionStore.decode(SessionStore.encode(snapshot))
+        assertEquals(snapshot, restored)
+        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), restored.state.fruitCounts)
+        assertEquals(1, restored.state.roundFruits)
+    }
+
     @Test fun placementAndChainMetadataSurviveRestore() {
         val qualified = state().copy(lastRotationKick = 4, softDropCells = 3,
             hardDropCells = 2, backToBack = true, combo = 2,
