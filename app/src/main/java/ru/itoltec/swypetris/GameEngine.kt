@@ -32,6 +32,7 @@ enum class Tetromino(val shape: List<Cell>, val box: Int = 3) {
 
 /** An active tetromino stores its rotation-square position and clockwise rotation count (0–3). */
 data class Piece(val type: Tetromino, val x: Int = (10 - type.box) / 2, val y: Int = 0, val rotation: Int = 0) {
+    val orientation: RotationState get() = RotationState.entries[rotation]
     /** Transforms the original shape into board coordinates using the piece position and rotation. */
     fun cells(): List<Cell> = type.shape.map { original ->
         var cell = original
@@ -135,11 +136,12 @@ class GameEngine(private val random: Random = Random.Default) {
                 if (fits(state, moved)) state.copy(active = moved) else state
             }
             GameCommand.CLOCKWISE, GameCommand.COUNTERCLOCKWISE -> {
-                if (piece.type == Tetromino.O) state else {
-                    val rotated = piece.copy(rotation = (piece.rotation + if (command == GameCommand.CLOCKWISE) 1 else 3) % 4)
-                    val valid = listOf(0, -1, 1, -2, 2).map { rotated.copy(x = rotated.x + it) }.firstOrNull { fits(state, it) }
-                    if (valid == null) state else state.copy(active = valid)
-                }
+                val target = piece.orientation.turn(command == GameCommand.CLOCKWISE)
+                val rotated = piece.copy(rotation = target.value)
+                val valid = Srs.kicks(piece.type, piece.orientation, target)
+                    .asSequence().map { rotated.copy(x = rotated.x + it.x, y = rotated.y + it.y) }
+                    .firstOrNull { fits(state, it) }
+                if (valid == null) state else state.copy(active = valid)
             }
             GameCommand.TICK, GameCommand.SOFT_DROP -> {
                 val moved = piece.copy(y = piece.y + 1)
@@ -186,4 +188,3 @@ class GameEngine(private val random: Random = Random.Default) {
         return nextState.copy(gameOver = blocked, topOut = if (blocked) TopOut.BLOCK_OUT else null)
     }
 }
-
