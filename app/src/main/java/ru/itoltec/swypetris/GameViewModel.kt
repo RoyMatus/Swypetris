@@ -86,6 +86,7 @@ class GameViewModel internal constructor(
         private set
     private var gestures = GestureController(GestureConfig(), ::command)
     private var lastGravity = clock()
+    private var lastLockFrame = clock()
     private var gravityRemaining = restored?.gravityRemaining ?: (game?.gravityMillis ?: Difficulty.INITIAL_MILLIS)
 
     /** Elapsed line-clear time increases only during active play, not in the menu or on pause. */
@@ -120,7 +121,8 @@ class GameViewModel internal constructor(
             val nextStep = ((clearElapsedMillis / LineClearAnimation.STEP_MILLIS + 1) *
                 LineClearAnimation.STEP_MILLIS).coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
             lastAnimationFrame + nextStep - clearElapsedMillis
-        } else lastGravity + state.gravityMillis
+        } else minOf(lastGravity + state.gravityMillis,
+            if (engine.grounded(state)) lastLockFrame + state.lockRemaining else Long.MAX_VALUE)
         if (scheduledAt == deadline) return
         scheduledAt = deadline
         timer.schedule((deadline - clock()).coerceAtLeast(0)) {
@@ -133,9 +135,10 @@ class GameViewModel internal constructor(
     /** Advances game time; during a clear, only its 600 ms animation progresses, without gravity. */
     internal fun advanceFrame(now: Long) {
         if (screen != GameScreen.PLAYING || !activeForeground) return
-        val current = game ?: return
         playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
         lastPlayFrame = now
+        if (consumeLockTime(now)) return
+        val current = game ?: return
         if (current.clearingRows.isNotEmpty()) {
             clearElapsedMillis = (clearElapsedMillis + (now - lastAnimationFrame).coerceAtLeast(0)).coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
             lastAnimationFrame = now
@@ -148,6 +151,19 @@ class GameViewModel internal constructor(
             lastGravity = now
             command(GameCommand.TICK)
         }
+    }
+
+    /** Synchronize before input so late touches cannot reset an already expired lock clock. */
+    private fun consumeLockTime(now: Long): Boolean {
+        val previous = game ?: return false
+        val updated = engine.advanceLock(previous, now - lastLockFrame)
+        lastLockFrame = now
+        if (updated != previous) {
+            acceptState(previous, updated, now)
+            if (screen == GameScreen.PLAYING)
+                feedbackEvent(previous, updated, GameCommand.TICK)?.let { feedback.play(it, soundEnabled, vibrationEnabled) }
+        }
+        return updated.generation != previous.generation || updated.clearingRows != previous.clearingRows || updated.gameOver
     }
     /** Applies Android's system gesture timings and tap-movement allowance. */
     fun configureGestures(config: GestureConfig) {
@@ -253,6 +269,7 @@ class GameViewModel internal constructor(
         lastPlayFrame = lastGravity
         lastAnimationFrame = lastGravity
         screen = GameScreen.PLAYING
+        lastLockFrame = clock()
         music?.setPlaying(musicEnabled)
         saveSession()
         scheduleNextEvent()
@@ -310,6 +327,7 @@ class GameViewModel internal constructor(
         gravityRemaining = game!!.gravityMillis
         lastAnimationFrame = clock()
         screen = GameScreen.PLAYING
+        lastLockFrame = clock()
         music?.setPlaying(musicEnabled)
         saveSession()
         scheduleNextEvent()
@@ -330,6 +348,7 @@ class GameViewModel internal constructor(
         lastAnimationFrame = clock()
         screen = GameScreen.PLAYING
         lastPlayFrame = clock()
+        lastLockFrame = clock()
         music?.setPlaying(musicEnabled)
         scheduleNextEvent()
     }
@@ -340,6 +359,8 @@ class GameViewModel internal constructor(
         if (screen == GameScreen.PLAYING) {
             playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
             lastPlayFrame = now
+            game = game?.let { engine.advanceLock(it, now - lastLockFrame, allowLock = false) }
+            lastLockFrame = now
             if (game?.clearingRows?.isNotEmpty() == true) {
                 clearElapsedMillis = (clearElapsedMillis + (now - lastAnimationFrame).coerceAtLeast(0))
                     .coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
@@ -388,10 +409,11 @@ class GameViewModel internal constructor(
             pause()
             return
         }
-        val previous = game ?: return
         val now = clock()
         playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
         lastPlayFrame = now
+        if (consumeLockTime(now)) return
+        val previous = game ?: return
         val updated = engine.apply(previous, command)
         acceptState(previous, updated, now)
         if (screen == GameScreen.PLAYING)

@@ -36,10 +36,10 @@ class MusicIntegrationTest {
             val model = GameViewModel(application,
                 GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18), next = Tetromino.O, score = 100),
                 { 1000L }, false, musicPlayback = recorder)
-            model.command(GameCommand.TICK)
+            model.command(GameCommand.HARD_DROP)
             assertEquals(GameScreen.RECORD, model.screen)
             assertEquals(if (musicEnabled) 1 else 0, recorder.modes.count { it == MusicMode.RECORD })
-            repeat(3) { model.advanceFrame(1000L); model.command(GameCommand.TICK) }
+            repeat(3) { model.advanceFrame(1000L); model.command(GameCommand.HARD_DROP) }
             assertEquals(if (musicEnabled) 1 else 0, recorder.modes.count { it == MusicMode.RECORD })
             model.pause()
             assertEquals(MusicMode.SILENT, recorder.modes.last())

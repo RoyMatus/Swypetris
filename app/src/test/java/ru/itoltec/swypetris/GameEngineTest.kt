@@ -80,12 +80,13 @@ class GameEngineTest {
     }
 
     /** Достижение опоры не фиксирует фигуру до следующей неудачной попытки спуска. */
-    @Test fun softDropAndGravityLockOnNextAttempt() {
+    @Test fun softDropAndGravityWaitForLockDelay() {
         val start = state(Piece(Tetromino.O, y = 17))
         val soft = engine.apply(start, GameCommand.SOFT_DROP)
         assertEquals(1, soft.score)
         assertEquals(0, soft.generation)
-        assertEquals(1, engine.apply(soft, GameCommand.TICK).generation)
+        assertEquals(0, engine.apply(soft, GameCommand.TICK).generation)
+        assertEquals(1, engine.advanceLock(soft, 500).generation)
         assertEquals(1, engine.apply(start, GameCommand.TICK).score)
     }
 
@@ -96,7 +97,7 @@ class GameEngineTest {
             val board = start.board.map { it.toMutableList() }
             for (y in 20 - count..19) for (x in 0..9) if (x != 4) board[BoardGeometry.row(y)][x] = Tetromino.J
             board[BoardGeometry.row(10)][0] = Tetromino.L
-            val pending = engine.apply(start.copy(board = board, lines = 9), GameCommand.TICK)
+            val pending = engine.apply(start.copy(board = board, lines = 9), GameCommand.HARD_DROP)
             assertEquals((20 - count..19).map(BoardGeometry::row), pending.clearingRows)
             assertEquals(9, pending.lines)
             assertEquals(0, pending.score)
@@ -119,7 +120,7 @@ class GameEngineTest {
         val start = state(Piece(Tetromino.O, x = 0, y = 18))
         val board = start.board.map { it.toMutableList() }
         board[BoardGeometry.row(0)][4] = Tetromino.Z
-        val result = engine.apply(start.copy(board = board), GameCommand.TICK)
+        val result = engine.apply(start.copy(board = board), GameCommand.HARD_DROP)
         assertTrue(result.gameOver)
         assertEquals(result, engine.apply(result, GameCommand.HARD_DROP))
     }
