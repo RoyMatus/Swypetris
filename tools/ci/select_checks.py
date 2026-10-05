@@ -57,9 +57,9 @@ FULL_SOURCES = {"GameSession.kt", "GameViewModel.kt", "MainActivity.kt"}
 
 GROUP_TESTS = {
     "updates": ((), ("AppUpdatesTest",)),
-    "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
+    "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
                ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictoryThemeIntegrationTest")),
-    "input": (("GestureControllerTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "GameUiTest")),
+    "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
     "line_clear": (("LineClearAnimationTest", "GameEngineTest", "GameRulesTest"), ("LineClearUiTest", "GameUiTest")),
     "feedback": (("GameFeedbackTest",), ("GameFeedbackIntegrationTest", "MusicIntegrationTest")),
     "music": (("PlaylistClockTest",), ("MusicIntegrationTest", "MusicSettingsFruitTest")),

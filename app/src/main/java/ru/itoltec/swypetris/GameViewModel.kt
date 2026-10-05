@@ -84,7 +84,10 @@ class GameViewModel internal constructor(
         private set
     var record by mutableStateOf(bestFor(game?.difficulty ?: difficulty))
         private set
-    private var gestures = GestureController(GestureConfig(), ::command)
+    private var gestures = createGestures(GestureConfig())
+    private fun createGestures(config: GestureConfig) = GestureController(config, ::command).also {
+        it.onHoldReady = { if (vibrationEnabled && activeForeground && screen == GameScreen.PLAYING && game?.holdUsed == false) feedback.holdReady() }
+    }
     private var lastGravity = clock()
     private var lastLockFrame = clock()
     private var gravityRemaining = restored?.gravityRemaining ?: (game?.gravityMillis ?: Difficulty.INITIAL_MILLIS)
@@ -123,9 +126,10 @@ class GameViewModel internal constructor(
             lastAnimationFrame + nextStep - clearElapsedMillis
         } else minOf(lastGravity + state.gravityMillis,
             if (engine.grounded(state)) lastLockFrame + state.lockRemaining else Long.MAX_VALUE)
-        if (scheduledAt == deadline) return
-        scheduledAt = deadline
-        timer.schedule((deadline - clock()).coerceAtLeast(0)) {
+        val nextDeadline = minOf(deadline, gestures.holdDeadline ?: Long.MAX_VALUE)
+        if (scheduledAt == nextDeadline) return
+        scheduledAt = nextDeadline
+        timer.schedule((nextDeadline - clock()).coerceAtLeast(0)) {
             scheduledAt = null
             advanceFrame(clock())
             scheduleNextEvent()
@@ -138,6 +142,7 @@ class GameViewModel internal constructor(
         playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
         lastPlayFrame = now
         if (consumeLockTime(now)) return
+        gestures.advanceTime(now)
         val current = game ?: return
         if (current.clearingRows.isNotEmpty()) {
             clearElapsedMillis = (clearElapsedMillis + (now - lastAnimationFrame).coerceAtLeast(0)).coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
@@ -169,7 +174,7 @@ class GameViewModel internal constructor(
     fun configureGestures(config: GestureConfig) {
         gestures.cancel()
         gestureConfig = if (boardWidthDp > 0) config.copy(horizontalStepDistance = boardWidthDp / 12f) else config
-        gestures = GestureController(gestureConfig, ::command)
+        gestures = createGestures(gestureConfig)
         gestures.setEnabled(game?.clearingRows?.isEmpty() != false)
     }
 
@@ -415,6 +420,7 @@ class GameViewModel internal constructor(
         if (consumeLockTime(now)) return
         val previous = game ?: return
         val updated = engine.apply(previous, command)
+        if (command == GameCommand.HOLD) gestures.cancel()
         acceptState(previous, updated, now)
         if (screen == GameScreen.PLAYING)
             feedbackEvent(previous, updated, command)?.let { feedback.play(it, soundEnabled, vibrationEnabled) }
@@ -461,21 +467,24 @@ class GameViewModel internal constructor(
     /** Forwards touch start in dp with time measured in uptime milliseconds. */
     fun pointerDown(x: Float, y: Float, time: Long) {
         if (screen == GameScreen.PLAYING && activeForeground) gestures.down(x, y, time)
+        scheduleNextEvent()
     }
 
     /** Forwards a single pointer's next position to the gesture recognizer. */
     fun pointerMove(x: Float, y: Float, time: Long) {
         if (screen == GameScreen.PLAYING && activeForeground) gestures.move(x, y, time)
+        scheduleNextEvent()
     }
 
     /** A short tap makes one downward step without resetting normal gravity. */
     fun pointerUp(x: Float, y: Float, time: Long) {
         if (screen != GameScreen.PLAYING || !activeForeground) return
         gestures.up(x, y, time)
+        scheduleNextEvent()
     }
 
     /** Cancels touch after a multi-touch event or disposal of the Compose handler. */
-    fun cancelGesture() = gestures.cancel()
+    fun cancelGesture() { gestures.cancel(); scheduleNextEvent() }
 
     /** Recalculates swipe step when board width changes; coordinates remain in dp. */
     fun setBoardWidth(widthDp: Float) {

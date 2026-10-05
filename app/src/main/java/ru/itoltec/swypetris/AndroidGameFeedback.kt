@@ -48,6 +48,7 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
 
     /** Previews vibration when its setting is enabled, without playing sound. */
     override fun previewVibration() = vibrate(HapticPulse.Preview, true)
+    override fun holdReady() = vibrate(HapticPulse(35L, 100, 20L), true)
 
     /** Chooses an amplitude supported by the device and respects system vibration settings. */
     @Suppress("DEPRECATION")

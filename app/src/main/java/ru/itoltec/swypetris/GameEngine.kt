@@ -67,7 +67,9 @@ data class GameState(
     val difficulty: Difficulty = Difficulty.MEDIUM,
     val topOut: TopOut? = null,
     val lockRemaining: Long = LockRules.DELAY_MILLIS,
-    val lockResets: Int = 0
+    val lockResets: Int = 0,
+    val held: Tetromino? = null,
+    val holdUsed: Boolean = false
 ) {
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
@@ -78,7 +80,7 @@ data class GameState(
 }
 
 /** Engine commands; PAUSE is handled by the screen model and does not change board cells. */
-enum class GameCommand { LEFT, RIGHT, CLOCKWISE, COUNTERCLOCKWISE, SOFT_DROP, HARD_DROP, TICK, PAUSE }
+enum class GameCommand { LEFT, RIGHT, CLOCKWISE, COUNTERCLOCKWISE, SOFT_DROP, HARD_DROP, HOLD, TICK, PAUSE }
 
 /** Android-independent Tetris rules; inject [random] for reproducible pieces in tests. */
 class GameEngine(private val random: Random = Random.Default) {
@@ -176,6 +178,16 @@ class GameEngine(private val random: Random = Random.Default) {
                 val landed = ghost(state)
                 lock(state.copy(active = landed, score = GameRules.add(state.score, landed.y - piece.y)))
             }
+            GameCommand.HOLD -> {
+                if (state.holdUsed) state else {
+                    val swapped = state.copy(active = spawn(state.held ?: state.next), held = piece.type,
+                        next = if (state.held == null) draw() else state.next, holdUsed = true,
+                        generation = state.generation + 1, accelerated = false,
+                        lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0)
+                    val blocked = !fits(swapped, swapped.active)
+                    swapped.copy(gameOver = blocked, topOut = if (blocked) TopOut.BLOCK_OUT else null)
+                }
+            }
             GameCommand.PAUSE -> state
         })
     }
@@ -207,7 +219,7 @@ class GameEngine(private val random: Random = Random.Default) {
     /** Spawns the next piece after locking without a clear or once a clear finishes. */
     private fun spawnNext(state: GameState): GameState {
         val nextState = state.copy(active = spawn(state.next), next = draw(), generation = state.generation + 1,
-            accelerated = false, lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0)
+            accelerated = false, lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0, holdUsed = false)
         val blocked = !fits(nextState, nextState.active)
         return nextState.copy(gameOver = blocked, topOut = if (blocked) TopOut.BLOCK_OUT else null)
     }

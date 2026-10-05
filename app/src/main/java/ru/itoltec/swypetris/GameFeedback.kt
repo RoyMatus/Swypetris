@@ -6,7 +6,7 @@ enum class FeedbackEvent { DROP, CLEAR }
 /** Selects one transition effect; a line clear takes priority over a drop. */
 fun feedbackEvent(before: GameState, after: GameState, command: GameCommand): FeedbackEvent? = when {
     before.clearingRows.isEmpty() && after.clearingRows.isNotEmpty() -> FeedbackEvent.CLEAR
-    before.clearingRows.isEmpty() && (command == GameCommand.HARD_DROP || before.accelerated) && after.generation != before.generation -> FeedbackEvent.DROP
+    command != GameCommand.HOLD && before.clearingRows.isEmpty() && (command == GameCommand.HARD_DROP || before.accelerated) && after.generation != before.generation -> FeedbackEvent.DROP
     else -> null
 }
 
@@ -18,6 +18,7 @@ interface GameFeedback {
     fun resumeClear(remainingMillis: Long, vibration: Boolean) = Unit
     /** Tests the motor with one pulse when vibration is explicitly enabled. */
     fun previewVibration() = Unit
+    fun holdReady() = Unit
     /** Stops vibration without muting any permitted sound. */
     fun stopVibration() = Unit
     /** Stops sound effects without cancelling vibration. */
@@ -37,4 +38,3 @@ object SilentFeedback : GameFeedback {
     /** Owns no resources to release. */
     override fun release() = Unit
 }
-

@@ -75,6 +75,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 .put("next", s.next.name).put("bag", JSONArray(session.bag.map { it.name }))
                 .put("score", s.score).put("lines", s.lines).put("generation", s.generation)
                 .put("lockRemaining", s.lockRemaining).put("lockResets", s.lockResets)
+                .put("held", s.held?.name ?: "").put("holdUsed", s.holdUsed)
                 .put("gameOver", s.gameOver).put("clearingRows", JSONArray(s.clearingRows))
                 .put("completedClears", s.completedClears).put("accelerated", s.accelerated)
                 .put("completedRounds", s.completedRounds).put("victoryPending", s.victoryPending)
@@ -112,7 +113,8 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 clearing, root.getInt("completedClears"), root.getBoolean("accelerated"),
                 root.getInt("completedRounds"), root.getBoolean("victoryPending"), difficulty,
                 root.getString("topOut").let { if (it.isEmpty()) null else TopOut.valueOf(it) },
-                root.optLong("lockRemaining", LockRules.DELAY_MILLIS), root.optInt("lockResets", 0))
+                root.optLong("lockRemaining", LockRules.DELAY_MILLIS), root.optInt("lockResets", 0),
+                root.optString("held").let { if (it.isEmpty()) null else Tetromino.valueOf(it) }, root.optBoolean("holdUsed", false))
             require(state.lockRemaining in 0..LockRules.DELAY_MILLIS && state.lockResets in 0..LockRules.MAX_RESETS)
             require(state.score >= 0 && state.lines >= 0 && state.generation >= 0 && state.completedClears >= 0)
             require(state.completedRounds in 0..(state.score / GameRules.ROUND_SCORE))

@@ -13,10 +13,12 @@ data class GestureConfig(
     val tapMillis: Long = 250,
     val directionRatio: Float = 1.5f,
     val dropRatio: Float = 2f,
-    val rotationRearmDistance: Float = 12f
+    val rotationRearmDistance: Float = 12f,
+    val holdMillis: Long = 300,
+    val holdSlop: Float = 8f
 )
 
-/** One pointer can control several pieces. Only displacement, never holding time, acts. */
+/** One pointer controls play; a stationary hold followed by an upward swipe exchanges Hold. */
 class GestureController(private val config: GestureConfig, private val emit: (GameCommand) -> Unit) {
     private var down = false
     private var enabled = true
@@ -37,11 +39,27 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
     private var rotationTopX = 0f
     private var dropArmed = true
     private var dropBottom = 0f
+    private var holdCandidate = false
+    private var holdReady = false
+    var onHoldReady: () -> Unit = {}
+    val holdDeadline: Long? get() = if (down && enabled && holdCandidate && !holdReady) downTime + config.holdMillis else null
+
+    /** Readiness itself never moves a piece and emits at most one feedback pulse. */
+    fun advanceTime(time: Long) {
+        val deadline = holdDeadline ?: return
+        if (time >= deadline) {
+            holdReady = true
+            tapEligible = false
+            onHoldReady()
+        }
+    }
 
     /** Discards the current touch and re-arms gestures without emitting a command. */
     fun cancel() {
         down = false
         tapEligible = false
+        holdCandidate = false
+        holdReady = false
         horizontalDirection = 0
         rotationArmed = true
         dropArmed = true
@@ -58,12 +76,15 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         touchY = y
         downTime = time
         tapEligible = enabled
+        holdCandidate = enabled
         rebase()
     }
 
     /** Rebase at the current pointer, without synthesizing a touch or an action. */
     fun onPieceChanged() {
         tapEligible = false
+        holdCandidate = false
+        holdReady = false
         rebase()
         epoch++
     }
@@ -94,6 +115,14 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
      */
     fun move(x: Float, y: Float, time: Long) {
         if (!down) return
+        advanceTime(time)
+        if (!holdReady && hypot(x - touchX, y - touchY) > config.holdSlop) holdCandidate = false
+        if (holdReady && touchY - y >= maxOf(config.rotationDistance, config.tapSlop * 2) &&
+            touchY - y >= abs(x - touchX) * config.directionRatio) {
+            cancel()
+            emit(GameCommand.HOLD)
+            return
+        }
         val eventDx = x - this.x
         val eventDy = y - this.y
         // A reversal starts at the extreme point, not at the beginning of the touch.
@@ -158,6 +187,8 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
             else -> return
         }
         tapEligible = false
+        holdCandidate = false
+        holdReady = false
         val horizontal = action == GameCommand.LEFT || action == GameCommand.RIGHT
         val sign = if (dx < 0) -1 else 1
         val steps = if (horizontal) {
