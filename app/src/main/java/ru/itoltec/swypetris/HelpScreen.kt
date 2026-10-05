@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/** Quick visual controls and only the essential rules needed to start playing. */
+/** Quick visual controls and essential rules for starting a game. */
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 fun HelpScreen(model: GameViewModel) {
