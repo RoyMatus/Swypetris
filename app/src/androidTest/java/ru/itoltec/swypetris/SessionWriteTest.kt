@@ -20,12 +20,12 @@ class SessionWriteTest {
         val preferences = CountingPreferences(GameStorage.sessionPreferences(app))
         val store = SessionStore(preferences)
         val original = GameSession("session", GameState(active = Piece(Tetromino.T), next = Tetromino.O),
-            emptyList(), 0, 0, 800, 0)
+            emptyList(), 0, 0, 1_000_000_000, 0)
         store.write(original)
         store.write(original.copy())
         assertEquals(1, preferences.edits)
         val moved = original.copy(state = original.state.copy(active = original.state.active.copy(x = 2)))
-        val timed = moved.copy(playedMillis = 200, gravityRemaining = 600)
+        val timed = moved.copy(playedMillis = 200, gravityRemainingNanos = 600_000_000)
         val cleared = timed.copy(clearMillis = 60)
         for (session in listOf(moved, timed, cleared)) {
             store.write(session)

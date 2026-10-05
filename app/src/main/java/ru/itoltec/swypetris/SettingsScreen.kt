@@ -48,7 +48,6 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SettingsPanel("ИГРОВОЙ ПРОЦЕСС", "Основные параметры игры", Icons.Outlined.SportsEsports, gameplay) {
-                DifficultySetting(model, gameplay)
                 SettingsDivider(gameplay)
                 StartingLevelSetting(model)
             }
@@ -130,24 +129,9 @@ internal fun SettingsDivider(accent: Color) {
 }
 
 @Composable
-private fun DifficultySetting(model: GameViewModel, accent: Color) {
-    val stacked = LocalDensity.current.fontScale >= 1.4f
-    if (stacked) {
-        SettingsLabel("Сложность", "Применяется к новой партии")
-        Spacer(Modifier.height(8.dp))
-        DifficultySegments(model, accent)
-    } else {
-        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(.43f)) { SettingsLabel("Сложность", "Применяется к\nновой партии") }
-            Box(Modifier.weight(.57f)) { DifficultySegments(model, accent) }
-        }
-    }
-}
-
-@Composable
 private fun StartingLevelSetting(model: GameViewModel) {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        SettingsLabel("Начальный уровень: ${model.startingLevel}", "Для новой партии. Сложность задаёт кривую скорости.")
+        SettingsLabel("Начальный уровень: ${model.startingLevel}", "Для новой партии. Скорость Marathon, максимум 20G.")
         Slider(value = model.startingLevel.toFloat(),
             onValueChange = { model.chooseStartingLevel(it.roundToInt()) },
             valueRange = GameRules.MIN_STARTING_LEVEL.toFloat()..GameRules.MAX_STARTING_LEVEL.toFloat(),
@@ -155,31 +139,6 @@ private fun StartingLevelSetting(model: GameViewModel) {
             modifier = Modifier.fillMaxWidth().testTag("startingLevel"))
         Text("Следующий уровень после ${model.startingLevel * GameRules.LINES_PER_LEVEL} линий",
             color = LocalGamePalette.current.muted, fontSize = 11.sp)
-    }
-}
-
-@Composable
-private fun DifficultySegments(model: GameViewModel, accent: Color) {
-    val palette = LocalGamePalette.current
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-        Difficulty.entries.forEachIndexed { index, difficulty ->
-            val selected = model.difficulty == difficulty
-            Surface(onClick = { model.chooseDifficulty(difficulty) },
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("difficulty_${difficulty.id}"),
-                shape = RoundedCornerShape(topStart = if (index == 0) 10.dp else 0.dp,
-                    bottomStart = if (index == 0) 10.dp else 0.dp,
-                    topEnd = if (index == Difficulty.entries.lastIndex) 10.dp else 0.dp,
-                    bottomEnd = if (index == Difficulty.entries.lastIndex) 10.dp else 0.dp),
-                border = BorderStroke(1.dp, accent),
-                color = if (selected) accent else palette.background.copy(alpha = .7f),
-                contentColor = if (selected) palette.background else palette.text) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
-                    Text(difficulty.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
     }
 }
 

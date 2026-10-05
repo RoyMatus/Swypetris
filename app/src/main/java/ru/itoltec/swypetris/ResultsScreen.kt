@@ -78,11 +78,9 @@ fun ResultsScreen(model: GameViewModel) {
                 AccentPanel(Lavender, Modifier.padding(horizontal = 12.dp)) {
                     Text("ИСТОРИЯ РЕКОРДОВ", color = Lavender, style = MaterialTheme.typography.labelLarge)
                     SettingsDivider(Lavender)
-                    Difficulty.entries.forEach { mode ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(mode.title, color = palette.text)
-                            Text("${model.recordFor(mode)}", color = Ice, fontWeight = FontWeight.Bold)
-                        }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Правила ${GameRules.VERSION}", color = palette.text)
+                        Text("${model.record}", color = Ice, fontWeight = FontWeight.Bold)
                     }
                     if (model.legacyRecord > 0) Text("Прежние правила: ${model.legacyRecord}", color = Muted,
                         style = MaterialTheme.typography.bodySmall)
@@ -202,7 +200,7 @@ private fun ResultCard(result: GameResult) {
             Text("Уровень: ${result.level}", color = Muted)
             Text(formatDuration(result.durationMillis), color = Muted)
         }
-        Text(result.difficulty?.let { "${it.title} · Правила ${result.rulesVersion}" } ?: "Прежние правила", color = Muted)
+        Text(result.difficulty?.let { "${it.title} · Правила ${result.rulesVersion}" } ?: if (result.rulesVersion == GameRules.VERSION) "Правила ${result.rulesVersion}" else "Прежние правила ${result.rulesVersion}", color = Muted)
         Box(Modifier.fillMaxWidth()) { FruitCollection(result) }
     }
 }

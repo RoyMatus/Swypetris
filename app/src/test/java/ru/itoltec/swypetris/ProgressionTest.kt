@@ -22,7 +22,7 @@ class ProgressionTest {
             val completed = engine.finishClear(pending)
             assertEquals(GameRules.lineScore(count) * start.level, completed.score)
             assertEquals(1 + (lines + count) / 10, completed.level)
-            assertEquals(start.difficulty.gravityMillis(completed.level), completed.gravityMillis)
+            assertEquals(GameRules.gravityMillis(completed.level), completed.gravityMillis)
             assertTrue(completed.gravityMillis < start.gravityMillis)
         }
     }
@@ -48,7 +48,7 @@ class ProgressionTest {
         assertEquals(1, hard.level)
         val highScore = start.copy(score = 1000000, lines = 0)
         assertEquals(1, highScore.level)
-        assertEquals(800L, highScore.gravityMillis)
+        assertEquals(1000L, highScore.gravityMillis)
         assertEquals(2, start.copy(score = 0, lines = 10).level)
     }
 
@@ -66,7 +66,7 @@ class ProgressionTest {
     }
     @Test fun higherStartsWaitForCumulativeFirstGoalAndKeepPreClearScoring() {
         for (start in 1..15) {
-            val initial = engine.newGame(Difficulty.HARD, start)
+            val initial = engine.newGame(start)
             assertEquals(start, initial.level)
             assertEquals(0, initial.lines)
             val goal = start * 10

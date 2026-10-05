@@ -17,7 +17,7 @@ class SessionLifecycleTest {
         val board = BoardGeometry.empty().map { it.toMutableList() }
         board[BoardGeometry.row(-5)][0] = Tetromino.J
         val hidden = state().copy(board = board, active = Piece(Tetromino.T, y = -1))
-        val snapshot = GameSession("hidden", hidden, listOf(Tetromino.I), 0, 0, 800, 0)
+        val snapshot = GameSession("hidden", hidden, listOf(Tetromino.I), 0, 0, 1_000_000_000, 0)
         assertEquals(snapshot, SessionStore.decode(SessionStore.encode(snapshot)))
     }
 
@@ -25,7 +25,7 @@ class SessionLifecycleTest {
         val qualified = state().copy(lastRotationKick = 4, softDropCells = 3,
             hardDropCells = 2, backToBack = true, combo = 2,
             placement = PlacementResult(2, Spin.FULL, true, 2, true, 3, 2, 5))
-        val snapshot = GameSession("chains", qualified, listOf(Tetromino.I), 0, 0, 800, 0)
+        val snapshot = GameSession("chains", qualified, listOf(Tetromino.I), 0, 0, 1_000_000_000, 0)
         assertEquals(snapshot, SessionStore.decode(SessionStore.encode(snapshot)))
     }
 
@@ -33,7 +33,7 @@ class SessionLifecycleTest {
         val settings = GameStorage.preferences(app)
         settings.edit().putBoolean("hints", true).putString("player_name", "Roy").apply()
         val sessions = GameStorage.sessionPreferences(app)
-        val snapshot = GameSession("old", state(), emptyList(), 0, 0, 800, 0)
+        val snapshot = GameSession("old", state(), emptyList(), 0, 0, 1_000_000_000, 0)
         val json = org.json.JSONObject(SessionStore.encode(snapshot)).put("version", 1).toString()
         sessions.edit().putString("session_v1", json).apply()
         assertNull(SessionStore(sessions).read())
@@ -43,14 +43,15 @@ class SessionLifecycleTest {
 
     @Test fun defaultsAndExistingPreferencesArePreserved() {
         val first = model()
-        assertEquals(Difficulty.MEDIUM, first.difficulty)
         assertFalse(first.hintsEnabled)
-        first.chooseDifficulty(Difficulty.HARD)
+        GameStorage.preferences(app).edit().putString("difficulty", "hard").apply()
         first.setHints(true)
         repeat(3) {
             val fresh = model()
-            assertEquals(Difficulty.HARD, fresh.difficulty)
             assertTrue(fresh.hintsEnabled)
+            fresh.newGame()
+            assertEquals(1000L, fresh.game!!.gravityMillis)
+            assertEquals("hard", GameStorage.preferences(app).getString("difficulty", null))
         }
     }
 
@@ -58,11 +59,11 @@ class SessionLifecycleTest {
         val first = model()
         first.newGame()
         first.menu()
-        first.chooseDifficulty(Difficulty.EASY)
+        first.chooseStartingLevel(5)
         first.resume()
-        assertEquals(Difficulty.MEDIUM, first.game!!.difficulty)
+        assertEquals(1, first.game!!.startingLevel)
         first.newGame()
-        assertEquals(Difficulty.EASY, first.game!!.difficulty)
+        assertEquals(5, first.game!!.startingLevel)
     }
 
     @Test fun restoresBoardQueueAndRemainingGravityAfterFullRestart() {
@@ -82,18 +83,18 @@ class SessionLifecycleTest {
         restored.advanceFrame(now)
         assertEquals(saved, restored.game)
         restored.resume()
-        now += 499
+        now += 699
         restored.advanceFrame(now)
         assertEquals(saved, restored.game)
         now++
         restored.advanceFrame(now)
         assertEquals(saved!!.active.y + 1, restored.game!!.active.y)
-        assertEquals(800L, SessionStore(GameStorage.sessionPreferences(app)).read()!!.playedMillis)
+        assertEquals(1000L, SessionStore(GameStorage.sessionPreferences(app)).read()!!.playedMillis)
     }
 
     @Test fun focusAndLifecycleFreezeImmediatelyAndNeverAutoResume() {
         val first = model(state())
-        now += 900 // A due tick must not be executed by pause itself.
+        now += 1100 // A due tick must not be executed by pause itself.
         first.onWindowFocusChanged(false)
         assertEquals(state(), first.game)
         assertEquals(GameScreen.MENU, first.screen)
@@ -177,7 +178,7 @@ class SessionLifecycleTest {
         assertEquals(1, first.game!!.active.y)
         assertEquals(0, first.game!!.active.rotation)
         first.pointerDown(100f, 100f, now + 200)
-        now += 799
+        now += 999
         first.advanceFrame(now)
         assertEquals(1, first.game!!.active.y)
         now++
@@ -206,24 +207,26 @@ class SessionLifecycleTest {
         repeat(3) { assertEquals(1, model().results.size) }
     }
 
-    @Test fun recordsAreIndependentAndNonRecordsAreOnlyShownAsLatestResult() {
-        fun finish(score: Int, difficulty: Difficulty): GameViewModel {
+    @Test fun historicalRecordsDoNotCompeteWithNewRules() {
+        val legacy = GameResult("legacy", 1, "Roy", 10000, 0, 1, 0, rulesVersion = 5, difficulty = Difficulty.HARD)
+        ResultStore(GameStorage.preferences(app)).write(listOf(legacy))
+        fun finish(score: Int): GameViewModel {
             val board = state().board.map { it.toMutableList() }
             board[BoardGeometry.row(0)][4] = Tetromino.Z
             return model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
-                score = score, difficulty = difficulty)).also { it.command(GameCommand.HARD_DROP) }
+                score = score)).also { it.command(GameCommand.HARD_DROP) }
         }
-        assertEquals(1, finish(100, Difficulty.EASY).results.size)
-        assertEquals(1, finish(100, Difficulty.EASY).results.size)
-        val ordinary = finish(50, Difficulty.EASY)
-        assertEquals(1, ordinary.results.size)
+        val record = finish(100)
+        assertEquals(2, record.results.size)
+        assertTrue(record.requestRecordName)
+        assertNull(record.latestResult!!.difficulty)
+        assertEquals(6, record.latestResult!!.rulesVersion)
+        assertEquals(legacy, record.results.last())
+        val ordinary = finish(50)
+        assertEquals(2, ordinary.results.size)
         assertEquals(50, ordinary.latestResult!!.score)
         assertFalse(ordinary.requestRecordName)
-        val hard = finish(20, Difficulty.HARD)
-        assertEquals(2, hard.results.size)
-        assertTrue(hard.requestRecordName)
-        assertEquals(100, hard.recordFor(Difficulty.EASY))
-        assertEquals(20, hard.recordFor(Difficulty.HARD))
+        assertEquals(100, ordinary.record)
     }
 
     @Test fun corruptedSaveDoesNotClearPreferencesOrResults() {
@@ -233,7 +236,7 @@ class SessionLifecycleTest {
         val restored = model()
         assertNull(restored.game)
         assertTrue(restored.hintsEnabled)
-        assertEquals(Difficulty.HARD, restored.difficulty)
+        assertEquals("hard", preferences.getString("difficulty", null))
     }
 
     @Test fun victoryWithBlockedSpawnCanBeSavedAndContinued() {
@@ -248,6 +251,5 @@ class SessionLifecycleTest {
         assertEquals(GameScreen.VICTORY, restored.screen)
         restored.nextRound()
         assertEquals(1, restored.game!!.completedRounds)
-        assertEquals(Difficulty.MEDIUM, restored.game!!.difficulty)
     }
 }

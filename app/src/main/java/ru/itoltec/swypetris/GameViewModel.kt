@@ -34,8 +34,6 @@ class GameViewModel internal constructor(
     private val restored = if (initialState == null) sessionStore.read() else null
     private var sessionId = restored?.id ?: java.util.UUID.randomUUID().toString()
     private var finishedAt = restored?.finishedAt ?: 0L
-    var difficulty by mutableStateOf(Difficulty.restore(preferences.getString("difficulty", null)))
-        private set
     var startingLevel by mutableStateOf(preferences.getInt("starting_level", 1)
         .coerceIn(GameRules.MIN_STARTING_LEVEL, GameRules.MAX_STARTING_LEVEL))
         private set
@@ -64,7 +62,7 @@ class GameViewModel internal constructor(
         private set
     val launchIntroPending by derivedStateOf { launchIntroMillis < LaunchIntroMotion.DURATION }
     val launchLogoAssembled by derivedStateOf { launchIntroMillis >= 2650L }
-    private var recordAtStart = restored?.recordAtStart ?: bestFor(initialState?.difficulty ?: difficulty)
+    private var recordAtStart = restored?.recordAtStart ?: bestFor()
     private var playedMillis = restored?.playedMillis ?: 0L
     private var lastPlayFrame = clock()
     private var gestureConfig = GestureConfig()
@@ -85,20 +83,19 @@ class GameViewModel internal constructor(
         private set
     var screen by mutableStateOf(if (initialState == null) GameScreen.MENU else GameScreen.PLAYING)
         private set
-    var record by mutableStateOf(bestFor(game?.difficulty ?: difficulty))
+    var record by mutableStateOf(bestFor())
         private set
     private var gestures = createGestures(GestureConfig())
     private fun createGestures(config: GestureConfig) = GestureController(config, ::command).also {
         it.onHoldReady = { if (vibrationEnabled && activeForeground && screen == GameScreen.PLAYING && game?.holdUsed == false) feedback.holdReady() }
     }
-    private var lastGravity = clock()
-    private var lastLockFrame = clock()
-    private var gravityRemaining = restored?.gravityRemaining ?: (game?.gravityMillis ?: Difficulty.INITIAL_MILLIS)
-
-    /** Elapsed line-clear time increases only during active play, not in the menu or on pause. */
-    var clearElapsedMillis by mutableStateOf(restored?.clearMillis ?: 0L)
+    private var lastGameFrame = clock()
+    private var timeline = GameTimeline(restored?.gravityRemainingNanos ?: (game?.gravityNanos ?: GameRules.gravityNanos(1)),
+        restored?.lockFractionNanos ?: 0, (restored?.clearMillis ?: 0) * GameRules.NANOS_PER_MILLI +
+            (restored?.clearFractionNanos ?: 0))
+    private var advancing = false
+    var clearElapsedMillis by mutableStateOf(timeline.clearMillis)
         private set
-    private var lastAnimationFrame = clock()
     private val timer = timer ?: if (autoTick) AndroidGameTimer() else null
     private var scheduledAt: Long? = null
 
@@ -123,12 +120,8 @@ class GameViewModel internal constructor(
             scheduledAt = null
             return
         }
-        val deadline = if (state.clearingRows.isNotEmpty()) {
-            val nextStep = ((clearElapsedMillis / LineClearAnimation.STEP_MILLIS + 1) *
-                LineClearAnimation.STEP_MILLIS).coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
-            lastAnimationFrame + nextStep - clearElapsedMillis
-        } else minOf(lastGravity + state.gravityMillis,
-            if (engine.grounded(state)) lastLockFrame + state.lockRemaining else Long.MAX_VALUE)
+        val nanos = timeline.nextEventNanos(state, engine)
+        val deadline = lastGameFrame + (nanos + GameRules.NANOS_PER_MILLI - 1) / GameRules.NANOS_PER_MILLI
         val nextDeadline = minOf(deadline, gestures.holdDeadline ?: Long.MAX_VALUE)
         if (scheduledAt == nextDeadline) return
         scheduledAt = nextDeadline
@@ -139,40 +132,34 @@ class GameViewModel internal constructor(
         }
     }
 
-    /** Advances game time; during a clear, only its 600 ms animation progresses, without gravity. */
+    /** Account for all elapsed time, ordering events independently of callback frequency. */
     internal fun advanceFrame(now: Long) {
         if (screen != GameScreen.PLAYING || !activeForeground) return
-        playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
-        lastPlayFrame = now
-        if (consumeLockTime(now)) return
-        gestures.advanceTime(now)
-        val current = game ?: return
-        if (current.clearingRows.isNotEmpty()) {
-            clearElapsedMillis = (clearElapsedMillis + (now - lastAnimationFrame).coerceAtLeast(0)).coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
-            lastAnimationFrame = now
-            if (clearElapsedMillis >= LineClearAnimation.TOTAL_MILLIS) {
-                acceptState(current, engine.finishClear(current), now)
-            }
-            return
-        }
-        if (screen == GameScreen.PLAYING && game?.clearingRows?.isEmpty() == true && now - lastGravity >= current.gravityMillis) {
-            lastGravity = now
-            command(GameCommand.TICK)
-        }
+        advanceGameTime(now)
+        if (screen == GameScreen.PLAYING) gestures.advanceTime(now)
+        scheduleNextEvent()
     }
 
-    /** Synchronize before input so late touches cannot reset an already expired lock clock. */
-    private fun consumeLockTime(now: Long): Boolean {
-        val previous = game ?: return false
-        val updated = engine.advanceLock(previous, now - lastLockFrame)
-        lastLockFrame = now
-        if (updated != previous) {
-            acceptState(previous, updated, now)
-            if (screen == GameScreen.PLAYING)
-                feedbackEvent(previous, updated, GameCommand.TICK)?.let { feedback.play(it, soundEnabled, vibrationEnabled) }
-        }
-        return updated.generation != previous.generation || updated.clearingRows != previous.clearingRows || updated.gameOver
+    private fun advanceGameTime(now: Long) {
+        val current = game ?: return
+        val elapsed = (now - lastGameFrame).coerceAtLeast(0)
+        val playedBefore = playedMillis
+        lastPlayFrame = now
+        lastGameFrame = now
+        advancing = true
+        try {
+            game = timeline.advance(current, elapsed, engine) { previous, updated ->
+                playedMillis = playedBefore + timeline.advancedNanos / GameRules.NANOS_PER_MILLI
+                acceptState(previous, updated, now)
+                if (screen == GameScreen.PLAYING)
+                    feedbackEvent(previous, updated, GameCommand.TICK)?.let { feedback.play(it, soundEnabled, vibrationEnabled) }
+            }
+        } finally { advancing = false }
+        playedMillis = playedBefore + timeline.advancedNanos / GameRules.NANOS_PER_MILLI
+        clearElapsedMillis = timeline.clearMillis
+        if (game != current || elapsed > 0) saveSession()
     }
+
     /** Applies Android's system gesture timings and tap-movement allowance. */
     fun configureGestures(config: GestureConfig) {
         gestures.cancel()
@@ -181,16 +168,9 @@ class GameViewModel internal constructor(
         gestures.setEnabled(game?.clearingRows?.isEmpty() != false)
     }
 
-    /** Highest saved score for [mode] under the current rules version. */
-    private fun bestFor(mode: Difficulty): Int = results.filter { it.difficulty == mode && it.rulesVersion == GameRules.VERSION }
+    /** Historical rules and difficulty records remain separate from the new Marathon record. */
+    private fun bestFor(): Int = results.filter { it.difficulty == null && it.rulesVersion == GameRules.VERSION }
         .maxOfOrNull { it.score } ?: 0
-
-    /** Persists [value] for future games and refreshes the displayed record when no game is active. */
-    fun chooseDifficulty(value: Difficulty) {
-        difficulty = value
-        preferences.edit().putString("difficulty", value.id).apply()
-        if (game == null || game?.gameOver == true) record = bestFor(value)
-    }
 
     /** Applies only to future games; a resumed session keeps its own starting level. */
     fun chooseStartingLevel(value: Int) {
@@ -198,9 +178,6 @@ class GameViewModel internal constructor(
         startingLevel = value
         preferences.edit().putInt("starting_level", value).apply()
     }
-
-    /** Returns the current-rules record for the requested [mode]. */
-    fun recordFor(mode: Difficulty): Int = bestFor(mode)
 
     /** Clears saved results without changing settings or the current game's state. */
     fun resetStatistics() {
@@ -216,13 +193,11 @@ class GameViewModel internal constructor(
     }
 
     /** Saves the board, bag, timers, and record baseline for game restoration after lifecycle changes. */
-    private fun saveSession(now: Long = clock()) {
+    private fun saveSession() {
         val state = game ?: return
-        val remaining = if (screen == GameScreen.PLAYING && state.clearingRows.isEmpty())
-            (state.gravityMillis - (now - lastGravity).coerceAtLeast(0)).coerceIn(0, state.gravityMillis)
-        else gravityRemaining
         sessionStore.write(GameSession(sessionId, state, engine.remainingBag(), playedMillis,
-            clearElapsedMillis, remaining, recordAtStart, finishedAt))
+            timeline.clearMillis, timeline.gravityRemainingNanos, recordAtStart, finishedAt,
+            timeline.lockFractionNanos, timeline.clearElapsedNanos % GameRules.NANOS_PER_MILLI))
     }
 
     /** Persists only the landing ghost setting; Next is always visible. */
@@ -279,12 +254,10 @@ class GameViewModel internal constructor(
         gestures.setEnabled(true)
         feedback.stop()
         clearElapsedMillis = 0L
-        lastGravity = clock()
-        gravityRemaining = game!!.gravityMillis
-        lastPlayFrame = lastGravity
-        lastAnimationFrame = lastGravity
+        lastGameFrame = clock()
+        lastPlayFrame = lastGameFrame
+        timeline = GameTimeline(game!!.gravityNanos)
         screen = GameScreen.PLAYING
-        lastLockFrame = clock()
         music?.setPlaying(musicEnabled)
         saveSession()
         scheduleNextEvent()
@@ -326,7 +299,7 @@ class GameViewModel internal constructor(
         if (!activeForeground) return
         sessionId = java.util.UUID.randomUUID().toString()
         finishedAt = 0L
-        record = bestFor(difficulty)
+        record = bestFor()
         recordAtStart = record
         playedMillis = 0L
         lastPlayFrame = clock()
@@ -335,14 +308,13 @@ class GameViewModel internal constructor(
         requestRecordName = false
         feedback.stop()
         gestures.cancel()
-        game = engine.newGame(difficulty, startingLevel)
+        game = engine.newGame(startingLevel)
         gestures.setEnabled(true)
         clearElapsedMillis = 0L
-        lastGravity = clock()
-        gravityRemaining = game!!.gravityMillis
-        lastAnimationFrame = clock()
+        lastGameFrame = clock()
+        lastPlayFrame = lastGameFrame
+        timeline = GameTimeline(game!!.gravityNanos)
         screen = GameScreen.PLAYING
-        lastLockFrame = clock()
         music?.setPlaying(musicEnabled)
         saveSession()
         scheduleNextEvent()
@@ -359,11 +331,9 @@ class GameViewModel internal constructor(
         if (game?.clearingRows?.isNotEmpty() == true) feedback.resumeClear(LineClearAnimation.TOTAL_MILLIS - clearElapsedMillis, vibrationEnabled)
         gestures.cancel()
         gestures.setEnabled(game?.clearingRows?.isEmpty() == true)
-        lastGravity = clock() - (game!!.gravityMillis - gravityRemaining.coerceAtMost(game!!.gravityMillis))
-        lastAnimationFrame = clock()
+        lastGameFrame = clock()
+        lastPlayFrame = lastGameFrame
         screen = GameScreen.PLAYING
-        lastPlayFrame = clock()
-        lastLockFrame = clock()
         music?.setPlaying(musicEnabled)
         scheduleNextEvent()
     }
@@ -374,21 +344,15 @@ class GameViewModel internal constructor(
         if (screen == GameScreen.PLAYING) {
             playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
             lastPlayFrame = now
-            game = game?.let { engine.advanceLock(it, now - lastLockFrame, allowLock = false) }
-            lastLockFrame = now
-            if (game?.clearingRows?.isNotEmpty() == true) {
-                clearElapsedMillis = (clearElapsedMillis + (now - lastAnimationFrame).coerceAtLeast(0))
-                    .coerceAtMost(LineClearAnimation.TOTAL_MILLIS)
-            } else {
-                val interval = game?.gravityMillis ?: Difficulty.INITIAL_MILLIS
-                gravityRemaining = (interval - (now - lastGravity).coerceAtLeast(0)).coerceIn(0, interval)
-            }
+            game = game?.let { timeline.freeze(it, now - lastGameFrame, engine) }
+            lastGameFrame = now
+            clearElapsedMillis = timeline.clearMillis
             screen = GameScreen.MENU
         } else if (screen == GameScreen.VICTORY) screen = GameScreen.MENU
         music?.setPlaying(false)
         feedback.stop()
         gestures.cancel()
-        saveSession(now)
+        saveSession()
         scheduleNextEvent()
     }
 
@@ -425,12 +389,13 @@ class GameViewModel internal constructor(
             return
         }
         val now = clock()
-        playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
-        lastPlayFrame = now
-        if (consumeLockTime(now)) return
+        val generation = game?.generation
+        advanceGameTime(now)
+        if (screen != GameScreen.PLAYING || game?.generation != generation) return
         val previous = game ?: return
         val updated = engine.apply(previous, command)
         if (command == GameCommand.HOLD) gestures.cancel()
+        timeline.observe(previous, updated)
         acceptState(previous, updated, now)
         if (screen == GameScreen.PLAYING)
             feedbackEvent(previous, updated, command)?.let { feedback.play(it, soundEnabled, vibrationEnabled) }
@@ -442,13 +407,10 @@ class GameViewModel internal constructor(
         if (previous.clearingRows.isEmpty() && updated.clearingRows.isNotEmpty()) {
             gestures.setEnabled(false)
             clearElapsedMillis = 0L
-            lastAnimationFrame = now
         }
         if (updated.generation != previous.generation) {
             gestures.onPieceChanged()
             gestures.setEnabled(updated.clearingRows.isEmpty())
-            lastGravity = now
-            gravityRemaining = updated.gravityMillis
             clearElapsedMillis = 0L
         }
         if (updated.victoryPending && !previous.victoryPending) {
@@ -463,15 +425,18 @@ class GameViewModel internal constructor(
         } else if (updated.gameOver) {
             finishedAt = System.currentTimeMillis()
             // Journal before the history write, so a process death cannot lose or duplicate a record.
-            saveSession(now)
+            saveSession()
             music?.setPlaying(false)
             saveResult(updated, now)
             gestures.cancel()
             screen = if (requestRecordName) GameScreen.RECORD else GameScreen.GAME_OVER
             if (requestRecordName && musicEnabled) music?.setMode(MusicMode.RECORD)
         }
-        if (updated != previous && !updated.gameOver) saveSession(now)
-        scheduleNextEvent()
+        if (!advancing) {
+            clearElapsedMillis = timeline.clearMillis
+            if (updated != previous && !updated.gameOver) saveSession()
+            scheduleNextEvent()
+        }
     }
 
     /** Forwards touch start in dp with time measured in uptime milliseconds. */
@@ -526,8 +491,7 @@ class GameViewModel internal constructor(
         if (screen == GameScreen.PLAYING) playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
         lastPlayFrame = now
         val result = results.firstOrNull { it.id == sessionId } ?: GameResult(sessionId, finishedAt,
-            "Игрок", state.score, state.lines, state.level, playedMillis, completedRounds = state.completedRounds,
-            difficulty = state.difficulty)
+            "Игрок", state.score, state.lines, state.level, playedMillis, completedRounds = state.completedRounds)
         latestResult = result
         currentResultId = result.id
         requestRecordName = state.score > recordAtStart
@@ -535,7 +499,7 @@ class GameViewModel internal constructor(
             results = listOf(result) + results
             resultStore.write(results)
         }
-        record = bestFor(state.difficulty)
+        record = bestFor()
     }
 
     /** Updates a record holder's name, replacing blank input with a neutral label. */
