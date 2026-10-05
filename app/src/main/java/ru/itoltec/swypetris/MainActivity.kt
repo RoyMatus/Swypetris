@@ -75,6 +75,7 @@ internal val ScorePulseScale = androidx.compose.ui.semantics.SemanticsPropertyKe
 class MainActivity : ComponentActivity() {
     private val gameModel: GameViewModel by viewModels()
     private val appUpdates by lazy { AppUpdates(this) }
+    private var windowFocused by mutableStateOf(false)
 
     /** Draw edge-to-edge and hide system bars while the game is playing. */
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,7 +83,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SwypetrisTheme(darkTheme = true, dynamicColor = false) {
-                DisposableEffect(gameModel.paletteId, gameModel.screen) {
+                DisposableEffect(gameModel.paletteId) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
                     val palette = GamePalettes.find(gameModel.paletteId)
                     controller.isAppearanceLightStatusBars = palette.light
@@ -99,12 +100,18 @@ class MainActivity : ComponentActivity() {
                         window.navigationBarColor = palette.background.toArgb()
                     }
                     controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                    if (gameModel.screen == GameScreen.PLAYING) {
-                        controller.hide(WindowInsetsCompat.Type.systemBars())
-                    } else {
-                        controller.show(WindowInsetsCompat.Type.systemBars())
-                    }
                     onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
+                }
+                LaunchedEffect(gameModel.screen, windowFocused) {
+                    // Keep Android's immersive confirmation open while it owns focus.
+                    if (windowFocused) {
+                        val controller = WindowCompat.getInsetsController(window, window.decorView)
+                        if (gameModel.screen == GameScreen.PLAYING) {
+                            controller.hide(WindowInsetsCompat.Type.systemBars())
+                        } else {
+                            controller.show(WindowInsetsCompat.Type.systemBars())
+                        }
+                    }
                 }
                 SwypetrisApp(gameModel, appUpdates, onExit = { gameModel.pause(); finishAndRemoveTask() })
             }
@@ -132,6 +139,7 @@ class MainActivity : ComponentActivity() {
     /** Reports focus changes so an obscured window cannot keep gameplay running. */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        windowFocused = hasFocus
         gameModel.onWindowFocusChanged(hasFocus)
     }
 

@@ -72,6 +72,31 @@ class ForegroundUiTest {
         }
     }
 
+    @Test fun focusLossKeepsImmersiveOverlayOpenUntilFocusReturns() {
+        compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
+        compose.waitUntil(5000) {
+            ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.systemBars()) == false
+        }
+        compose.runOnIdle { compose.activity.onWindowFocusChanged(false) }
+        compose.onNodeWithTag("resumeGame").assertIsDisplayed()
+        val saved = model().game
+        compose.runOnIdle {
+            assertFalse(ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+                .isVisible(WindowInsetsCompat.Type.systemBars()))
+            assertEquals(GameScreen.MENU, model().screen)
+        }
+        compose.runOnIdle { compose.activity.onWindowFocusChanged(true) }
+        compose.waitUntil(5000) {
+            ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.statusBars()) == true
+        }
+        compose.runOnIdle {
+            assertEquals(saved, model().game)
+            assertEquals(GameScreen.MENU, model().screen)
+        }
+    }
+
     @Test fun lifecycleReturnRequiresContinueAndScoreRespectsInsets() {
         compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
