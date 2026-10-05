@@ -15,11 +15,15 @@ import kotlin.math.sin
  */
 internal object MenuTheme {
     const val SAMPLE_RATE = 16_000
-    const val DURATION_SECONDS = 60
+    const val DURATION_SECONDS = 72
     const val FRAME_COUNT = SAMPLE_RATE * DURATION_SECONDS
 
     private const val BPM = 80.0
+    private const val TABLE_SIZE = 4096
     private val beatSeconds = 60.0 / BPM
+    private val sineTable = DoubleArray(TABLE_SIZE) { index ->
+        sin(2.0 * PI * index / TABLE_SIZE)
+    }
     private val chords = arrayOf(
         intArrayOf(52, 59, 64), // E3 B3 E4
         intArrayOf(48, 55, 64), // C3 G3 E4
@@ -31,7 +35,6 @@ internal object MenuTheme {
     /** Renders one exact 60-second loop at conservative amplitude. */
     fun render(): ShortArray {
         val output = ShortArray(FRAME_COUNT)
-        val twoPi = 2.0 * PI
         for (frame in output.indices) {
             val seconds = frame.toDouble() / SAMPLE_RATE
             val beat = seconds / beatSeconds
@@ -41,8 +44,8 @@ internal object MenuTheme {
             var sample = 0.0
             chord.forEachIndexed { index, midi ->
                 val hz = midiToHz(midi)
-                val base = sin(twoPi * hz * seconds)
-                val overtone = sin(twoPi * hz * 2.0 * seconds)
+                val base = sine(hz, seconds)
+                val overtone = sine(hz * 2.0, seconds)
                 sample += base * if (index == 0) 0.075 else 0.052
                 sample += overtone * 0.012
             }
@@ -52,7 +55,7 @@ internal object MenuTheme {
             val beatInBar = beat.toInt() % 4
             if ((beatInBar == 0 || beatInBar == 2) && beatPhase < 0.42) {
                 val fade = 1.0 - beatPhase / 0.42
-                sample += triangle(twoPi * midiToHz(chord[0]) * seconds) * 0.035 * fade
+                sample += triangle(midiToHz(chord[0]), seconds) * 0.035 * fade
             }
 
             // One transformed Korobeiniki-derived cell every eight bars.
@@ -62,31 +65,38 @@ internal object MenuTheme {
                 val noteIndex = (localBeat / 0.5).toInt()
                 if (noteIndex in motif.indices) {
                     val notePhase = (localBeat - noteIndex * 0.5) / 0.5
-                    val envelope = sin(PI * notePhase.coerceIn(0.0, 1.0))
-                    sample += triangle(twoPi * midiToHz(motif[noteIndex]) * seconds) * 0.075 * envelope
+                    val envelope = 1.0 - kotlin.math.abs(notePhase * 2.0 - 1.0)
+                    sample += triangle(midiToHz(motif[noteIndex]), seconds) * 0.075 * envelope
                 }
             }
 
             // Slow amplitude movement replaces drums and keeps the loop unobtrusive.
-            sample *= 0.90 + 0.10 * sin(twoPi * seconds / 15.0)
+            sample *= 0.90 + 0.10 * sine(1.0 / 18.0, seconds)
             output[frame] = (sample.coerceIn(-0.82, 0.82) * Short.MAX_VALUE).toInt().toShort()
         }
 
-        // Blend both ends to suppress a discontinuity at the AudioTrack loop point.
-        val blendFrames = SAMPLE_RATE
-        for (i in 0 until blendFrames) {
-            val weight = i.toDouble() / blendFrames
-            val tailIndex = FRAME_COUNT - blendFrames + i
-            val blended = (output[tailIndex] * (1.0 - weight) + output[i] * weight).toInt().toShort()
-            output[i] = blended
-            output[tailIndex] = blended
+        // A short zero-crossing envelope removes clicks without a perceptible restart.
+        val edgeFrames = SAMPLE_RATE / 20
+        for (i in 0 until edgeFrames) {
+            val gain = i.toDouble() / edgeFrames
+            output[i] = (output[i] * gain).toInt().toShort()
+            val tail = output.lastIndex - i
+            output[tail] = (output[tail] * gain).toInt().toShort()
         }
         return output
     }
 
     private fun midiToHz(note: Int): Double = 440.0 * Math.pow(2.0, (note - 69) / 12.0)
 
-    private fun triangle(phase: Double): Double = 2.0 / PI * kotlin.math.asin(sin(phase))
+    private fun sine(hz: Double, seconds: Double): Double {
+        val phase = (hz * seconds) % 1.0
+        return sineTable[(phase * TABLE_SIZE).toInt().coerceIn(0, TABLE_SIZE - 1)]
+    }
+
+    private fun triangle(hz: Double, seconds: Double): Double {
+        val phase = (hz * seconds) % 1.0
+        return 1.0 - 4.0 * kotlin.math.abs(phase - 0.5)
+    }
 }
 
 /** Static PCM loop owned by [GameMusic]; it never acquires audio focus on its own. */
