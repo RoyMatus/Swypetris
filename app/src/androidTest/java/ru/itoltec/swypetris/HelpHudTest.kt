@@ -72,10 +72,10 @@ class HelpHudTest {
             }
         }
         compose.mainClock.advanceTimeBy(32)
-        compose.onNodeWithTag("score").assertTextEquals("1 | 899")
+        compose.onNodeWithTag("score").assertTextEquals("899")
         compose.runOnIdle { lines = 9; score = 900 }
         compose.mainClock.advanceTimeBy(64)
-        compose.onNodeWithTag("score").assertTextEquals("1 | 900")
+        compose.onNodeWithTag("score").assertTextEquals("900")
         val scale = compose.onNodeWithTag("score").fetchSemanticsNode().config[ScorePulseScale]
         assertTrue(scale > 1f && scale <= 1.08f)
         repeat(3) {
@@ -87,7 +87,7 @@ class HelpHudTest {
         compose.runOnIdle { score++ }
         compose.mainClock.advanceTimeBy(64)
         assertEquals(1f, compose.onNodeWithTag("score").fetchSemanticsNode().config[ScorePulseScale], 0.001f)
-        for ((value, text) in listOf(10 to "2 | 904", 19 to "2 | 904", 20 to "3 | 904", 90 to "10 | 904")) {
+        for ((value, text) in listOf(10 to "904", 19 to "904", 20 to "904", 90 to "904")) {
             compose.runOnIdle { lines = value }
             compose.mainClock.advanceTimeBy(272)
             compose.onNodeWithTag("score").assertTextEquals(text)
