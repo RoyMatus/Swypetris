@@ -17,25 +17,25 @@ object GameStorage {
 
     /** Initializes the current-version record once while retaining legacy keys and history. */
     fun migrate(preferences: SharedPreferences) {
-        if (preferences.getBoolean("rules_4_migrated", false)) return
+        val migration = "rules_${GameRules.VERSION}_migrated"
+        val record = "record_v${GameRules.VERSION}"
+        if (preferences.getBoolean(migration, false)) return
         val editor = preferences.edit()
-        if (!preferences.contains("record_v4")) editor.putInt("record_v4", 0)
-        check(editor.putBoolean("rules_4_migrated", true).commit()) { "Не удалось сохранить миграцию правил" }
+        if (!preferences.contains(record)) editor.putInt(record, 0)
+        check(editor.putBoolean(migration, true).commit()) { "Не удалось сохранить миграцию правил" }
     }
 
     /** Returns the best score from stored record keys and results saved under older rule versions. */
     fun legacyRecord(preferences: SharedPreferences): Int = maxOf(
         preferences.getInt("record", 0), preferences.getInt("legacy_record", 0),
-        preferences.getInt("record_v2", 0),
-        preferences.getInt("record_v3", 0),
-        preferences.getInt("record_v4", 0),
+        (2 until GameRules.VERSION).maxOfOrNull { preferences.getInt("record_v$it", 0) } ?: 0,
         ResultStore(preferences).read().filter { it.rulesVersion < GameRules.VERSION }.maxOfOrNull { it.score } ?: 0
     )
 
     /** Removes result history and every legacy record key in one preferences transaction. */
     fun clearStatistics(preferences: SharedPreferences) {
         val editor = preferences.edit().remove("results_v2")
-        listOf("record", "legacy_record", "record_v2", "record_v3", "record_v4")
+        (listOf("record", "legacy_record") + (2..GameRules.VERSION).map { "record_v$it" })
             .forEach(editor::remove)
         check(editor.commit()) { "Не удалось удалить статистику" }
     }

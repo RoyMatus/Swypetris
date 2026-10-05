@@ -16,20 +16,20 @@ class MigrationTest {
         val oldJson = """[{"id":"old","date":123,"name":"Иван","score":12000,"lines":30,"level":4,"duration":999}]"""
         preferences.edit().putString("results_v2", oldJson).putInt("record_v2", 15000)
             .putInt("legacy_record", 17000).putInt("record_v3", 25000)
-            .putBoolean("rules_3_migrated", true).putBoolean("music", false).putBoolean("sound", false)
+            .putInt("record_v4", 30000).putBoolean("rules_4_migrated", true).putBoolean("rules_3_migrated", true).putBoolean("music", false).putBoolean("sound", false)
             .putBoolean("vibration", true).putBoolean("hints", true).putString("player_name", "Иван").commit()
         GameStorage.migrate(preferences)
         assertEquals(oldJson, preferences.getString("results_v2", null))
-        assertEquals(0, preferences.getInt("record_v4", -1))
+        assertEquals(0, preferences.getInt("record_v5", -1))
         val store = ResultStore(preferences)
         val old = store.read().single()
         assertEquals(2, old.rulesVersion)
-        assertEquals(25000, GameStorage.legacyRecord(preferences))
+        assertEquals(30000, GameStorage.legacyRecord(preferences))
         val fresh = GameResult("new", 456, "Анна", 2000, 2, 2, 500)
         store.write(listOf(fresh, old))
-        preferences.edit().putInt("record_v4", 2000).commit()
+        preferences.edit().putInt("record_v5", 2000).commit()
         repeat(3) { GameStorage.migrate(preferences) }
-        assertEquals(2000, preferences.getInt("record_v4", -1))
+        assertEquals(2000, preferences.getInt("record_v5", -1))
         assertEquals(listOf(fresh, old), store.read())
         assertEquals("Иван", preferences.getString("player_name", null))
         assertFalse(preferences.getBoolean("music", true))
@@ -40,5 +40,22 @@ class MigrationTest {
         assertEquals(25000, preferences.getInt("record_v3", -1))
         assertTrue(preferences.getBoolean("rules_3_migrated", false))
     }
+    @Test fun versionFourHistorySurvivesAndIncompatibleSessionIsDiscarded() {
+        val preferences = GameStorage.preferences(ApplicationProvider.getApplicationContext<Application>())
+        val old = GameResult("v4", 123, "Roy", 32000, 17, 23, 456, rulesVersion = 4)
+        ResultStore(preferences).write(listOf(old))
+        preferences.edit().putBoolean("hints", true).putInt("record_v4", 32000).commit()
+        val snapshot = GameSession("old-active", GameState(active = Piece(Tetromino.T), next = Tetromino.O),
+            emptyList(), 0, 0, 800, 0)
+        val json = org.json.JSONObject(SessionStore.encode(snapshot)).put("rulesVersion", 4).toString()
+        preferences.edit().putString("session_v1", json).commit()
+        GameStorage.migrate(preferences)
+        assertNull(SessionStore(preferences).read())
+        assertEquals(listOf(old), ResultStore(preferences).read())
+        assertEquals(32000, GameStorage.legacyRecord(preferences))
+        assertEquals(0, preferences.getInt("record_v5", -1))
+        assertTrue(preferences.getBoolean("hints", false))
+    }
+
 }
 

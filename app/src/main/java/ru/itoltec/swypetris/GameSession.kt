@@ -69,7 +69,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
         /** Combines session metadata with a previously encoded board to avoid redundant work. */
         private fun encode(session: GameSession, board: String): String {
             val s = session.state
-            return JSONObject().put("version", 2).put("topOut", s.topOut?.name ?: "").put("id", session.id)
+            return JSONObject().put("version", 3).put("rulesVersion", GameRules.VERSION).put("topOut", s.topOut?.name ?: "").put("id", session.id)
                 .put("active", JSONObject().put("type", s.active.type.name)
                     .put("x", s.active.x).put("y", s.active.y).put("rotation", s.active.rotation))
                 .put("next", s.next.name).put("bag", JSONArray(session.bag.map { it.name }))
@@ -92,13 +92,13 @@ internal class SessionStore(private val preferences: SharedPreferences) {
         }
 
         /**
-         * Reconstructs a version-two session and validates board dimensions, piece placement,
+         * Reconstructs a version-three session and validates board dimensions, piece placement,
          * clearing rows, bag contents, score, and clock bounds before gameplay can resume.
          * Throws for malformed or inconsistent data; [read] removes such snapshots safely.
          */
         internal fun decode(json: String): GameSession {
             val root = JSONObject(json)
-            require(root.getInt("version") == 2)
+            require(root.getInt("version") == 3 && root.getInt("rulesVersion") == GameRules.VERSION)
             val rows = root.getJSONArray("board")
             require(rows.length() == BoardGeometry.TOTAL_ROWS)
             val board = List(BoardGeometry.TOTAL_ROWS) { y ->
