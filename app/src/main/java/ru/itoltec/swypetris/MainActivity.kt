@@ -250,6 +250,7 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: (
         MenuAction("Контакты", palette.piece(Tetromino.L), "contacts", Icons.Outlined.MailOutline, model::contacts)
     )
     Box(Modifier.fillMaxSize().onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
+    MenuTetrominoBackdrop(logoBounds, Modifier.matchParentSize())
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
         val gap = (maxHeight * .01f).coerceIn(3.dp, 8.dp)
         val primaryHeight = (maxHeight * .11f).coerceIn(48.dp, 64.dp)
