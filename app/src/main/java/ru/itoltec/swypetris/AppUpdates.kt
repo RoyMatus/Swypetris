@@ -145,7 +145,7 @@ internal class AppUpdates(private val activity: ComponentActivity) {
         }
     }
 
-    private fun showAvailable(update: AvailableUpdate, manual: Boolean) {
+    internal fun showAvailable(update: AvailableUpdate, manual: Boolean) {
         val dismissedCode = preferences.getLong("dismissed_code", 0)
         val dismissedAt = preferences.getLong("dismissed_at", 0)
         if (manual || update.versionCode != dismissedCode ||
