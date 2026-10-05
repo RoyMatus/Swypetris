@@ -69,7 +69,13 @@ data class GameState(
     val lockRemaining: Long = LockRules.DELAY_MILLIS,
     val lockResets: Int = 0,
     val held: Tetromino? = null,
-    val holdUsed: Boolean = false
+    val holdUsed: Boolean = false,
+    val lastRotationKick: Int = -1,
+    val softDropCells: Int = 0,
+    val hardDropCells: Int = 0,
+    val backToBack: Boolean = false,
+    val combo: Int = -1,
+    val placement: PlacementResult? = null
 ) {
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
@@ -158,32 +164,40 @@ class GameEngine(private val random: Random = Random.Default) {
         return checkVictory(when (command) {
             GameCommand.LEFT, GameCommand.RIGHT -> {
                 val moved = piece.copy(x = piece.x + if (command == GameCommand.LEFT) -1 else 1)
-                if (fits(state, moved)) moved(state, moved) else state
+                if (fits(state, moved)) moved(state, moved).copy(lastRotationKick = -1) else state
             }
             GameCommand.CLOCKWISE, GameCommand.COUNTERCLOCKWISE -> {
                 val target = piece.orientation.turn(command == GameCommand.CLOCKWISE)
                 val rotated = piece.copy(rotation = target.value)
                 val valid = Srs.kicks(piece.type, piece.orientation, target)
-                    .asSequence().map { rotated.copy(x = rotated.x + it.x, y = rotated.y + it.y) }
-                    .firstOrNull { fits(state, it) }
-                if (valid == null) state else moved(state, valid)
+                    .withIndex().firstOrNull { (_, offset) ->
+                        fits(state, rotated.copy(x = rotated.x + offset.x, y = rotated.y + offset.y))
+                    }
+                if (valid == null) state else moved(state,
+                    rotated.copy(x = rotated.x + valid.value.x, y = rotated.y + valid.value.y))
+                    .copy(lastRotationKick = valid.index)
             }
             GameCommand.TICK, GameCommand.SOFT_DROP -> {
                 val moved = piece.copy(y = piece.y + 1)
                 if (fits(state, moved)) state.copy(active = moved, score = GameRules.add(state.score, 1),
-                    accelerated = state.accelerated || command == GameCommand.SOFT_DROP)
+                    accelerated = state.accelerated || command == GameCommand.SOFT_DROP,
+                    lastRotationKick = -1,
+                    softDropCells = state.softDropCells + if (command == GameCommand.SOFT_DROP) 1 else 0)
                 else state
             }
             GameCommand.HARD_DROP -> {
                 val landed = ghost(state)
-                lock(state.copy(active = landed, score = GameRules.add(state.score, landed.y - piece.y)))
+                val distance = landed.y - piece.y
+                lock(state.copy(active = landed, score = GameRules.add(state.score, distance),
+                    hardDropCells = distance, lastRotationKick = if (distance == 0) state.lastRotationKick else -1))
             }
             GameCommand.HOLD -> {
                 if (state.holdUsed) state else {
                     val swapped = state.copy(active = spawn(state.held ?: state.next), held = piece.type,
                         next = if (state.held == null) draw() else state.next, holdUsed = true,
                         generation = state.generation + 1, accelerated = false,
-                        lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0)
+                        lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0,
+                        lastRotationKick = -1, softDropCells = 0, hardDropCells = 0)
                     val blocked = !fits(swapped, swapped.active)
                     swapped.copy(gameOver = blocked, topOut = if (blocked) TopOut.BLOCK_OUT else null)
                 }
@@ -200,7 +214,13 @@ class GameEngine(private val random: Random = Random.Default) {
         // Complete lock-out: all four cells are above the visible field. Partial lock-out is allowed.
         if (state.active.cells().all { it.y < 0 })
             return state.copy(board = board, gameOver = true, topOut = TopOut.LOCK_OUT)
-        val locked = state.copy(board = board, clearingRows = rows)
+        val spin = SpinRecognition.classify(state)
+        val combo = if (rows.isEmpty()) -1 else (state.combo.toLong() + 1).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val difficult = rows.isNotEmpty() && (rows.size == 4 || spin != Spin.NONE)
+        val event = PlacementResult(rows.size, spin, difficult && state.backToBack, combo,
+            softDropCells = state.softDropCells, hardDropCells = state.hardDropCells, level = state.level)
+        val locked = state.copy(board = board, clearingRows = rows, combo = combo, placement = event,
+            backToBack = if (rows.isEmpty()) state.backToBack else difficult)
         return if (rows.isEmpty()) spawnNext(locked) else locked
     }
 
@@ -209,8 +229,9 @@ class GameEngine(private val random: Random = Random.Default) {
         if (state.clearingRows.isEmpty()) return state
         val cleared = state.clearingRows.size
         val remaining = state.board.filterIndexed { index, _ -> index !in state.clearingRows }
+        val board = List(cleared) { List<Tetromino?>(10) { null } } + remaining
         return checkVictory(spawnNext(state.copy(
-            board = List(cleared) { List<Tetromino?>(10) { null } } + remaining,
+            board = board, placement = state.placement?.copy(perfectClear = board.all { row -> row.all { it == null } }),
             score = GameRules.add(state.score, GameRules.lineScore(cleared)),
             lines = state.lines + cleared, clearingRows = emptyList(), completedClears = state.completedClears + 1
         )))
@@ -219,7 +240,8 @@ class GameEngine(private val random: Random = Random.Default) {
     /** Spawns the next piece after locking without a clear or once a clear finishes. */
     private fun spawnNext(state: GameState): GameState {
         val nextState = state.copy(active = spawn(state.next), next = draw(), generation = state.generation + 1,
-            accelerated = false, lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0, holdUsed = false)
+            accelerated = false, lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0, holdUsed = false,
+            lastRotationKick = -1, softDropCells = 0, hardDropCells = 0)
         val blocked = !fits(nextState, nextState.active)
         return nextState.copy(gameOver = blocked, topOut = if (blocked) TopOut.BLOCK_OUT else null)
     }

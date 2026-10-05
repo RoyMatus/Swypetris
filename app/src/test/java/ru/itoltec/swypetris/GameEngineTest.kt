@@ -27,10 +27,10 @@ class GameEngineTest {
     @Test fun rotationsAreReversible() {
         Tetromino.entries.forEach { type ->
             val start = state(Piece(type, y = 4))
-            assertEquals(start, engine.apply(engine.apply(start, GameCommand.CLOCKWISE), GameCommand.COUNTERCLOCKWISE))
+            assertEquals(start.active, engine.apply(engine.apply(start, GameCommand.CLOCKWISE), GameCommand.COUNTERCLOCKWISE).active)
             var rotated = start
             repeat(4) { rotated = engine.apply(rotated, GameCommand.CLOCKWISE) }
-            assertEquals(start, rotated)
+            assertEquals(start.active, rotated.active)
         }
     }
 

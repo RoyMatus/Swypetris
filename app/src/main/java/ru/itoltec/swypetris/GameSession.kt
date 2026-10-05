@@ -76,6 +76,12 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 .put("score", s.score).put("lines", s.lines).put("generation", s.generation)
                 .put("lockRemaining", s.lockRemaining).put("lockResets", s.lockResets)
                 .put("held", s.held?.name ?: "").put("holdUsed", s.holdUsed)
+                .put("lastRotationKick", s.lastRotationKick).put("softDropCells", s.softDropCells)
+                .put("hardDropCells", s.hardDropCells).put("backToBack", s.backToBack).put("combo", s.combo)
+                .put("placement", s.placement?.let { p -> JSONObject().put("lines", p.lines)
+                    .put("spin", p.spin.name).put("backToBack", p.backToBack).put("combo", p.combo)
+                    .put("perfectClear", p.perfectClear).put("softDropCells", p.softDropCells)
+                    .put("hardDropCells", p.hardDropCells).put("level", p.level) })
                 .put("gameOver", s.gameOver).put("clearingRows", JSONArray(s.clearingRows))
                 .put("completedClears", s.completedClears).put("accelerated", s.accelerated)
                 .put("completedRounds", s.completedRounds).put("victoryPending", s.victoryPending)
@@ -114,7 +120,16 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 root.getInt("completedRounds"), root.getBoolean("victoryPending"), difficulty,
                 root.getString("topOut").let { if (it.isEmpty()) null else TopOut.valueOf(it) },
                 root.optLong("lockRemaining", LockRules.DELAY_MILLIS), root.optInt("lockResets", 0),
-                root.optString("held").let { if (it.isEmpty()) null else Tetromino.valueOf(it) }, root.optBoolean("holdUsed", false))
+                root.optString("held").let { if (it.isEmpty()) null else Tetromino.valueOf(it) }, root.optBoolean("holdUsed", false),
+                root.optInt("lastRotationKick", -1), root.optInt("softDropCells", 0), root.optInt("hardDropCells", 0),
+                root.optBoolean("backToBack", false), root.optInt("combo", -1),
+                root.optJSONObject("placement")?.let { p -> PlacementResult(p.getInt("lines"),
+                    Spin.valueOf(p.getString("spin")), p.getBoolean("backToBack"), p.getInt("combo"),
+                    p.getBoolean("perfectClear"), p.getInt("softDropCells"), p.getInt("hardDropCells"), p.getInt("level")) })
+            require(state.lastRotationKick in -1..4 && state.softDropCells >= 0 &&
+                state.hardDropCells in 0..BoardGeometry.TOTAL_ROWS && state.combo >= -1)
+            state.placement?.let { p -> require(p.lines in 0..4 && p.combo >= -1 && p.level >= 1 &&
+                p.softDropCells >= 0 && p.hardDropCells in 0..BoardGeometry.TOTAL_ROWS) }
             require(state.lockRemaining in 0..LockRules.DELAY_MILLIS && state.lockResets in 0..LockRules.MAX_RESETS)
             require(state.score >= 0 && state.lines >= 0 && state.generation >= 0 && state.completedClears >= 0)
             require(state.completedRounds in 0..(state.score / GameRules.ROUND_SCORE))

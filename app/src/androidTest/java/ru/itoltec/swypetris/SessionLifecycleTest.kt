@@ -21,6 +21,14 @@ class SessionLifecycleTest {
         assertEquals(snapshot, SessionStore.decode(SessionStore.encode(snapshot)))
     }
 
+    @Test fun placementAndChainMetadataSurviveRestore() {
+        val qualified = state().copy(lastRotationKick = 4, softDropCells = 3,
+            hardDropCells = 2, backToBack = true, combo = 2,
+            placement = PlacementResult(2, Spin.FULL, true, 2, true, 3, 2, 5))
+        val snapshot = GameSession("chains", qualified, listOf(Tetromino.I), 0, 0, 800, 0)
+        assertEquals(snapshot, SessionStore.decode(SessionStore.encode(snapshot)))
+    }
+
     @Test fun incompatibleSessionRetainsSettings() {
         val settings = GameStorage.preferences(app)
         settings.edit().putBoolean("hints", true).putString("player_name", "Roy").apply()
