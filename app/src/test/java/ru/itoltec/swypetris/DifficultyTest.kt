@@ -15,10 +15,10 @@ class DifficultyTest {
         }
     }
 
-    @Test fun gentleBananaAndDifficultFinalFruit() {
-        assertEquals(9, GameRules.level(16000))
-        assertEquals(10, GameRules.level(20000))
-        assertEquals(23, GameRules.level(GameRules.ROUND_SCORE))
+    @Test fun gentleEarlyLevelsAndPreservedLateEndpoint() {
+        assertEquals(9, GameRules.level(80))
+        assertEquals(10, GameRules.level(90))
+        assertEquals(23, GameRules.level(220))
         assertTrue(Difficulty.MEDIUM.gravityMillis(9) in 440..450)
         assertTrue(Difficulty.MEDIUM.gravityMillis(10) in 410..420)
         Difficulty.entries.forEach {

@@ -386,20 +386,20 @@ private fun GameContent(model: GameViewModel, state: GameState) {
     }
 }
 
-/** Compact level and score HUD; frequent drops do not restart its score pulse. */
+/** Compact level and score HUD; line progress drives its near-level pulse. */
 @Composable
 internal fun GameHud(state: GameState, showNext: Boolean = true) {
     var scoreSize by remember { mutableStateOf(Size.Zero) }
     val displayed = GameRules.displayScore(state.score)
-    val currentDisplayed by rememberUpdatedState(displayed)
-    val nearing by rememberUpdatedState(GameRules.nearingLevel(state.score))
+    val currentLines by rememberUpdatedState(state.lines)
+    val nearing by rememberUpdatedState(GameRules.nearingLevel(state.lines))
     val scale = remember { Animatable(1f) }
     val color by animateColorAsState(
-        if (GameRules.nearingLevel(state.score)) LocalGamePalette.current.gold else LocalGamePalette.current.text,
+        if (GameRules.nearingLevel(state.lines)) LocalGamePalette.current.gold else LocalGamePalette.current.text,
         tween(220), label = "scoreColor")
     LaunchedEffect(Unit) {
         var pulsing = false
-        snapshotFlow { currentDisplayed }.drop(1).collect {
+        snapshotFlow { currentLines }.drop(1).collect {
             if (nearing && !pulsing) {
                 pulsing = true
                 launch {

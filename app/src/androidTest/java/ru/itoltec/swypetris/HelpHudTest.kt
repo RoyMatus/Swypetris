@@ -39,7 +39,7 @@ class HelpHudTest {
         compose.runOnIdle { model.help() }
         compose.onNodeWithTag("helpPage").assertIsDisplayed()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
-        compose.onNodeWithTag("helpPage").performScrollToNode(hasText("Фрукты"))
+        compose.onNodeWithTag("helpPage").performScrollToKey("fruits")
         Fruit.entries.forEach { fruit ->
             compose.onNodeWithContentDescription(fruit.title).assertExists()
         }
@@ -57,14 +57,15 @@ class HelpHudTest {
         }
     }
 
-    /** Частые изменения не продлевают импульс, а переход уровня сразу меняет итоговую надпись. */
+    /** Line progress pulses once; frequent score changes cannot restart or extend it. */
     @Test fun hudBoundariesAndSinglePulse() {
         var score by mutableIntStateOf(899)
+        var lines by mutableIntStateOf(8)
         compose.mainClock.autoAdvance = false
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 Box(Modifier.size(320.dp, 480.dp)) {
-                    val state = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = score)
+                    val state = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = score, lines = lines)
                     Board(state)
                     GameHud(state)
                 }
@@ -72,9 +73,9 @@ class HelpHudTest {
         }
         compose.mainClock.advanceTimeBy(32)
         compose.onNodeWithTag("score").assertTextEquals("1 | 899")
-        compose.runOnIdle { score = 900 }
+        compose.runOnIdle { lines = 9; score = 900 }
         compose.mainClock.advanceTimeBy(64)
-        compose.onNodeWithTag("score").assertTextEquals("1 | −100")
+        compose.onNodeWithTag("score").assertTextEquals("1 | 900")
         val scale = compose.onNodeWithTag("score").fetchSemanticsNode().config[ScorePulseScale]
         assertTrue(scale > 1f && scale <= 1.08f)
         repeat(3) {
@@ -83,9 +84,11 @@ class HelpHudTest {
         }
         compose.mainClock.advanceTimeBy(80)
         assertEquals(1f, compose.onNodeWithTag("score").fetchSemanticsNode().config[ScorePulseScale], 0.001f)
-        for ((value, text) in listOf(999 to "1 | −1", 1000 to "2 | 1000", 1999 to "2 | 1999",
-            2000 to "2 | 2000", 2124 to "2 | 2124", 2125 to "2 | −125", 2249 to "2 | −1", 2250 to "3 | 2250", 18000 to "10 | 18000")) {
-            compose.runOnIdle { score = value }
+        compose.runOnIdle { score++ }
+        compose.mainClock.advanceTimeBy(64)
+        assertEquals(1f, compose.onNodeWithTag("score").fetchSemanticsNode().config[ScorePulseScale], 0.001f)
+        for ((value, text) in listOf(10 to "2 | 904", 19 to "2 | 904", 20 to "3 | 904", 90 to "10 | 904")) {
+            compose.runOnIdle { lines = value }
             compose.mainClock.advanceTimeBy(272)
             compose.onNodeWithTag("score").assertTextEquals(text)
         }

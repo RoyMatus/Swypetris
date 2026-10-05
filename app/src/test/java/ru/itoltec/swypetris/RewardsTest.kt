@@ -22,7 +22,7 @@ class RewardsTest {
     @Test fun scoreUsesCapturedLevelAndPerfectClearBonus() {
         val engine = GameEngine()
         val state = engine.newGame().copy(lines = 100, clearingRows = listOf(16, 17, 18, 19).map(BoardGeometry::row))
-        assertEquals(2800, engine.finishClear(state).score)
+        assertEquals(30800, engine.finishClear(state).score)
     }
 
     /** Cell width controls movement, and holding never creates repeated actions. */

@@ -66,7 +66,7 @@ class ScoringTest {
         val pending = engine.apply(start, GameCommand.HARD_DROP)
         assertEquals(0, pending.score)
         assertEquals(1, pending.placement!!.level)
-        val finished = engine.finishClear(pending.copy(score = 10000))
+        val finished = engine.finishClear(pending.copy(score = 10000, lines = 100))
         assertEquals(10800, finished.score)
         assertEquals(finished, engine.finishClear(finished))
     }

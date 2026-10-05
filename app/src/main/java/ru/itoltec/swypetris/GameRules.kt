@@ -7,40 +7,23 @@ object GameRules {
     const val FRUIT_STEP = 10_000
     const val ROUND_SCORE = FRUIT_STEP * 8
 
-    /** Returns the cumulative score threshold for [level], starting with level one. */
-    fun threshold(level: Int): Long {
-        val n = level.coerceAtLeast(1).toLong() - 1
-        return 1000L * n + 125L * n * (n - 1)
-    }
+    const val LINES_PER_LEVEL = 10
 
-    /** Finds the level for total [score], even when one award crosses several thresholds. */
-    fun level(score: Int): Int {
-        var low = 1
-        var high = 5000 // Bound above the maximum positive Int score.
-        while (low < high) {
-            val middle = (low + high + 1) / 2
-            if (threshold(middle) <= score.coerceAtLeast(0).toLong()) low = middle else high = middle - 1
-        }
-        return low
-    }
+    /** Cumulative cleared-line threshold; Long keeps even extreme inputs safe. */
+    fun threshold(level: Int): Long = (level.coerceAtLeast(1).toLong() - 1) * LINES_PER_LEVEL
 
-    /** Returns the nearest score threshold not yet reached. */
-    fun nextThreshold(score: Int): Long = threshold(level(score) + 1)
+    /** Fixed-goal Marathon: each ten cleared lines advance one level. */
+    fun level(lines: Int): Int = 1 + lines.coerceAtLeast(0) / LINES_PER_LEVEL
 
-    /** Fraction of the current level interval completed, between zero and one. */
-    fun progress(score: Int): Float {
-        val start = threshold(level(score))
-        return ((score.coerceAtLeast(0).toLong() - start).toDouble() / (nextThreshold(score) - start)).toFloat()
-    }
+    fun nextThreshold(lines: Int): Long = threshold(level(lines) + 1)
 
-    /** Tests the final 10% of a level interval with integer arithmetic to avoid rounding drift. */
-    fun nearingLevel(score: Int): Boolean {
-        val start = threshold(level(score))
-        return (score.toLong() - start) * 10 >= (nextThreshold(score) - start) * 9
-    }
+    fun progress(lines: Int): Float = (lines.coerceAtLeast(0) % LINES_PER_LEVEL).toFloat() / LINES_PER_LEVEL
 
-    /** Displays either the score or negative points remaining to the next level. */
-    fun displayScore(score: Int): String = if (nearingLevel(score)) "−${nextThreshold(score) - score}" else "$score"
+    /** The final line before the next level drives the HUD cue. */
+    fun nearingLevel(lines: Int): Boolean = lines.coerceAtLeast(0) % LINES_PER_LEVEL == LINES_PER_LEVEL - 1
+
+    /** Score remains score; level progress has its own source of truth. */
+    fun displayScore(score: Int): String = "$score"
 
     /** Adds earned [points] to [score] without overflowing Int; negative awards are ignored. */
     fun add(score: Int, points: Int): Int = (score.toLong() + points.coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()

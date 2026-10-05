@@ -97,13 +97,31 @@ class GameTimerTest {
         model.pause()
     }
 
-    @Test fun scoreChangingSpeedReschedulesDeadline() = main {
+    @Test fun dropPointsDoNotChangeLevelOrGravityDeadline() = main {
         val model = model(state().copy(score = 999))
         now += 200
         model.command(GameCommand.SOFT_DROP)
         assertEquals(1000L + model.game!!.gravityMillis, timer.deadline)
-        assertTrue(timer.deadline!! < 1800L)
+        assertEquals(1800L, timer.deadline)
+        assertEquals(1, model.game!!.level)
         model.pause()
+    }
+
+    @Test fun clearingThresholdSchedulesNewLevelAndRestoresIt() = main {
+        val board = BoardGeometry.empty().map { it.toMutableList() }
+        for (x in 0..7) board[BoardGeometry.row(19)][x] = Tetromino.J
+        val model = model(state().copy(board = board, active = Piece(Tetromino.O,x=8,y=18), lines = 9))
+        model.command(GameCommand.HARD_DROP)
+        repeat(10) { timer.fire() }
+        assertEquals(10, model.game!!.lines)
+        assertEquals(2, model.game!!.level)
+        assertEquals(100, model.game!!.score)
+        assertEquals(now + 744L, timer.deadline)
+        model.pause()
+        val restored = GameViewModel(app, null, { now }, false)
+        assertEquals(model.game, restored.game)
+        assertEquals(2, restored.game!!.level)
+        assertEquals(744L, restored.game!!.gravityMillis)
     }
 
     @Test fun terminalStatesCancelTimerAndNextRoundSchedulesAgain() = main {

@@ -58,9 +58,9 @@ FULL_SOURCES = {"GameSession.kt", "GameViewModel.kt", "MainActivity.kt"}
 
 GROUP_TESTS = {
     "updates": ((), ("AppUpdatesTest",)),
-    "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "ScoringTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
+    "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
                ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictoryThemeIntegrationTest")),
-    "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "PlacementTest", "ScoringTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
+    "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
     "line_clear": (("LineClearAnimationTest", "GameEngineTest", "GameRulesTest"), ("LineClearUiTest", "GameUiTest")),
     "feedback": (("GameFeedbackTest",), ("GameFeedbackIntegrationTest", "MusicIntegrationTest")),
     "music": (("PlaylistClockTest",), ("MusicIntegrationTest", "MusicSettingsFruitTest")),
