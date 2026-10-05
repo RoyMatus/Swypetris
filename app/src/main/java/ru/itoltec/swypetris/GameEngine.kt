@@ -82,7 +82,15 @@ data class GameState(
 ) {
     init { require(startingLevel in GameRules.MIN_STARTING_LEVEL..GameRules.MAX_STARTING_LEVEL) }
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
-    val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
+    val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * Fruit.entries.size).coerceIn(0, Fruit.entries.size)
+    /** Cumulative collected quantity for each fruit in display order across all completed/current rounds. */
+    val fruitCounts: List<Int> get() {
+        val awards = score / GameRules.FRUIT_STEP
+        val cycle = Fruit.entries.size
+        return Fruit.entries.indices.map { index ->
+            if (awards <= index) 0 else ((awards - 1 - index) / cycle) + 1
+        }
+    }
     /** Derives the current level from cleared lines using the shared rules. */
     val level: Int get() = GameRules.level(lines, startingLevel)
     val gravityNanos: Long get() = GameRules.gravityNanos(level)
