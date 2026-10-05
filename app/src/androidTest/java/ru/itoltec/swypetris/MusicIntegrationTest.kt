@@ -81,7 +81,7 @@ class MusicIntegrationTest {
         assertEquals(MusicMode.MENU, recorder.modes.last())
     }
 
-    /** Синтезированная тема имеет целевые 60 секунд, слышимый сигнал и согласованный шов цикла. */
+    /** Синтезированная тема имеет целевые 72 секунды, слышимый сигнал и согласованный шов цикла. */
     @Test fun generatedMenuThemeHasStableLoop() {
         val samples = MenuTheme.render()
         assertEquals(MenuTheme.FRAME_COUNT, samples.size)
