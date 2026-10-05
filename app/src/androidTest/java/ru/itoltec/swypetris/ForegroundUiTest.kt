@@ -103,24 +103,15 @@ class ForegroundUiTest {
         // Platform bar visibility and Compose inset padding update asynchronously.
         compose.waitUntil(5000) {
             val insets = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
-            val safeTop = insets?.getInsets(WindowInsetsCompat.Type.systemBars() or
-                WindowInsetsCompat.Type.displayCutout())?.top ?: return@waitUntil false
+            val safe = insets?.getInsets(WindowInsetsCompat.Type.systemBars() or
+                WindowInsetsCompat.Type.displayCutout()) ?: return@waitUntil false
             val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
             !insets.isVisible(WindowInsetsCompat.Type.systemBars()) &&
-                kotlin.math.abs(score.top - safeTop - 3 * density) <= 1f
+                kotlin.math.abs(score.top - safe.top - 3 * density) <= 1f &&
+                kotlin.math.abs(score.left - safe.left - 4 * density) <= 1f
         }
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
-        val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
-        val safeLeft = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-            .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).left
-        assertEquals(safeLeft + 4 * density, score.left, 1f)
-        val safeTop = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-            .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).top
-        assertEquals(safeTop + 3 * density, score.top, 1f)
-        val statusTop = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-            .getInsets(WindowInsetsCompat.Type.statusBars()).top
         assertEquals(0f, area.top, 1f)
-        assertTrue(score.top >= statusTop)
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         val saved = model().game
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
