@@ -46,12 +46,16 @@ class NextQueueTest {
                 assertEquals(boardBounds.right.value, previewBounds.right.value, 0.5f)
                 assertEquals(boardBounds.top.value, previewBounds.top.value, 0.5f)
                 assertTrue(previewBounds.bottom < boardBounds.bottom)
-                assertTrue(gridBounds.width >= boardBounds.width)
-                assertTrue(gridBounds.height >= boardBounds.height)
+                val boardWidth = boardBounds.right - boardBounds.left
+                val boardHeight = boardBounds.bottom - boardBounds.top
+                val gridWidth = gridBounds.right - gridBounds.left
+                val gridHeight = gridBounds.bottom - gridBounds.top
+                assertTrue(gridWidth >= boardWidth)
+                assertTrue(gridHeight >= boardHeight)
 
-                val cellWidth = boardBounds.width / BoardGeometry.WIDTH
-                val cellHeight = boardBounds.height /
-                    (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
+                val cellWidth = boardWidth / BoardGeometry.WIDTH.toFloat()
+                val cellHeight = boardHeight /
+                    (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS).toFloat()
                 assertEquals(cellWidth.value, cellHeight.value, 0.5f)
 
                 compose.runOnIdle {
