@@ -32,7 +32,7 @@ internal object MenuTheme {
     )
     private val motif = intArrayOf(76, 71, 72, 74, 72, 71, 69, 72)
 
-    /** Renders one exact 60-second loop at conservative amplitude. */
+    /** Renders one exact 72-second loop at conservative amplitude. */
     fun render(): ShortArray {
         val output = ShortArray(FRAME_COUNT)
         for (frame in output.indices) {
