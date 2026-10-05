@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import org.junit.Assert.*
 import org.junit.Test
@@ -21,7 +21,7 @@ class RewardsTest {
     /** Четыре строки дают 1500 на любом уровне; награда не зависит от числа ранее удалённых строк. */
     @Test fun scoreDoesNotMultiplyAtHighLevel() {
         val engine = GameEngine()
-        val state = engine.newGame().copy(lines = 100, clearingRows = listOf(16, 17, 18, 19))
+        val state = engine.newGame().copy(lines = 100, clearingRows = listOf(16, 17, 18, 19).map(BoardGeometry::row))
         assertEquals(1500, engine.finishClear(state).score)
     }
 

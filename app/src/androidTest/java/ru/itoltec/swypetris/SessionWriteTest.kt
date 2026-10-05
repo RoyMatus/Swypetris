@@ -33,7 +33,7 @@ class SessionWriteTest {
             assertEquals(session, SessionStore.decode(SessionStore.encode(session)))
         }
         val board = original.state.board.map { it.toMutableList() }
-        board[19][0] = Tetromino.J
+        board[BoardGeometry.row(19)][0] = Tetromino.J
         val changed = timed.copy(state = timed.state.copy(board = board))
         store.write(changed)
         assertEquals(changed, store.read())

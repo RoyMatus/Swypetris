@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
@@ -99,7 +99,7 @@ class GameFeedbackIntegrationTest {
     /** Очистка звучит один раз, настройки независимы, продолжение не повторяет эффект. */
     @Test fun clearIsSingleAndResumeDoesNotReplay() {
         val application = ApplicationProvider.getApplicationContext<Application>()
-        val board = List(20) { y -> List<Tetromino?>(10) { x -> if (y == 19 && x !in 4..5) Tetromino.J else null } }
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(19) && x !in 4..5) Tetromino.J else null } }
         val initial = GameState(board = board, active = Piece(Tetromino.O, y = 18), next = Tetromino.T)
         var now = 1000L
         val recorder = Recorder()

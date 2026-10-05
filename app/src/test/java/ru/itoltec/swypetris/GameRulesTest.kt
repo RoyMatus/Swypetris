@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import org.junit.Assert.*
 import org.junit.Test
@@ -20,7 +20,7 @@ class GameRulesTest {
         assertTrue(GameRules.nextThreshold(Int.MAX_VALUE) > Int.MAX_VALUE.toLong())
         assertEquals(Int.MAX_VALUE, GameRules.add(Int.MAX_VALUE, 1500))
         val clearing = GameState(active = Piece(Tetromino.I), next = Tetromino.T,
-            score = 799, clearingRows = listOf(16, 17, 18, 19))
+            score = 799, clearingRows = listOf(16, 17, 18, 19).map(BoardGeometry::row))
         val crossed = GameEngine().finishClear(clearing)
         assertEquals(2299, crossed.score)
         assertEquals(3, crossed.level)
@@ -57,7 +57,7 @@ class GameRulesTest {
         assertEquals(FeedbackEvent.DROP, feedbackEvent(soft, landed, GameCommand.TICK))
         assertFalse(landed.accelerated)
         val board = soft.board.map { it.toMutableList() }
-        for (x in 0..9) if (x !in 4..5) board[19][x] = Tetromino.J
+        for (x in 0..9) if (x !in 4..5) board[BoardGeometry.row(19)][x] = Tetromino.J
         val before = soft.copy(board = board)
         val clearing = engine.apply(before, GameCommand.TICK)
         assertEquals(FeedbackEvent.CLEAR, feedbackEvent(before, clearing, GameCommand.TICK))

@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
@@ -22,8 +22,8 @@ class LineClearUiTest {
 
     /** Создаёт фигуру, которая следующим шагом заполнит нижнюю строку. */
     private fun almostFull(): GameState {
-        val board = List(20) { MutableList<Tetromino?>(10) { null } }
-        for (x in 0..7) board[19][x] = Tetromino.J
+        val board = List(BoardGeometry.TOTAL_ROWS) { MutableList<Tetromino?>(10) { null } }
+        for (x in 0..7) board[BoardGeometry.row(19)][x] = Tetromino.J
         return GameState(board = board, active = Piece(Tetromino.O, x = 8, y = 18), next = Tetromino.T)
     }
 

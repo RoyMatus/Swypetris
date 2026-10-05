@@ -29,7 +29,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
 
     /**
      * Persists a changed [session] asynchronously. Reuses the encoded board while its immutable
-     * board instance is unchanged, so piece movement need not serialize all 200 cells again.
+     * board instance is unchanged, so piece movement need not serialize all 400 cells again.
      */
     fun write(session: GameSession) {
         if (session == lastWritten) return
@@ -58,7 +58,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
 
     companion object {
         private const val KEY = "session_v1"
-        /** Serializes the 20-row board as piece names, using empty strings for vacant cells. */
+        /** Serializes the full logical board as piece names, using empty strings for vacant cells. */
         private fun encodeBoard(board: List<List<Tetromino?>>): String = JSONArray().apply {
             board.forEach { row -> put(JSONArray(row.map { it?.name ?: "" })) }
         }.toString()
@@ -69,7 +69,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
         /** Combines session metadata with a previously encoded board to avoid redundant work. */
         private fun encode(session: GameSession, board: String): String {
             val s = session.state
-            return JSONObject().put("version", 1).put("id", session.id)
+            return JSONObject().put("version", 2).put("topOut", s.topOut?.name ?: "").put("id", session.id)
                 .put("active", JSONObject().put("type", s.active.type.name)
                     .put("x", s.active.x).put("y", s.active.y).put("rotation", s.active.rotation))
                 .put("next", s.next.name).put("bag", JSONArray(session.bag.map { it.name }))
@@ -84,16 +84,16 @@ internal class SessionStore(private val preferences: SharedPreferences) {
         }
 
         /**
-         * Reconstructs a version-one session and validates board dimensions, piece placement,
+         * Reconstructs a version-two session and validates board dimensions, piece placement,
          * clearing rows, bag contents, score, and clock bounds before gameplay can resume.
          * Throws for malformed or inconsistent data; [read] removes such snapshots safely.
          */
         internal fun decode(json: String): GameSession {
             val root = JSONObject(json)
-            require(root.getInt("version") == 1)
+            require(root.getInt("version") == 2)
             val rows = root.getJSONArray("board")
-            require(rows.length() == 20)
-            val board = List(20) { y ->
+            require(rows.length() == BoardGeometry.TOTAL_ROWS)
+            val board = List(BoardGeometry.TOTAL_ROWS) { y ->
                 val row = rows.getJSONArray(y)
                 require(row.length() == 10)
                 List(10) { x -> row.getString(x).let { if (it.isEmpty()) null else Tetromino.valueOf(it) } }
@@ -101,15 +101,16 @@ internal class SessionStore(private val preferences: SharedPreferences) {
             val active = root.getJSONObject("active")
             val piece = Piece(Tetromino.valueOf(active.getString("type")), active.getInt("x"),
                 active.getInt("y"), active.getInt("rotation"))
-            require(piece.rotation in 0..3 && piece.x in -3..9 && piece.y in 0..19)
-            require(piece.cells().all { it.x in 0..9 && it.y in 0..19 })
+            require(piece.rotation in 0..3 && piece.x in -3..9 && piece.y in -BoardGeometry.HIDDEN_ROWS until BoardGeometry.VISIBLE_ROWS)
+            require(piece.cells().all { it.x in 0..9 && BoardGeometry.row(it.y) in board.indices })
             val clearing = root.getJSONArray("clearingRows").let { a -> List(a.length()) { a.getInt(it) } }
-            require(clearing.size <= 4 && clearing.distinct().size == clearing.size && clearing.all { it in 0..19 && board[it].all { cell -> cell != null } })
+            require(clearing.size <= 4 && clearing.distinct().size == clearing.size && clearing.all { it in board.indices && board[it].all { cell -> cell != null } })
             val difficulty = requireNotNull(Difficulty.find(root.getString("difficulty")))
             val state = GameState(board, piece, Tetromino.valueOf(root.getString("next")),
                 root.getInt("score"), root.getInt("lines"), root.getInt("generation"), root.getBoolean("gameOver"),
                 clearing, root.getInt("completedClears"), root.getBoolean("accelerated"),
-                root.getInt("completedRounds"), root.getBoolean("victoryPending"), difficulty)
+                root.getInt("completedRounds"), root.getBoolean("victoryPending"), difficulty,
+                root.getString("topOut").let { if (it.isEmpty()) null else TopOut.valueOf(it) })
             require(state.score >= 0 && state.lines >= 0 && state.generation >= 0 && state.completedClears >= 0)
             require(state.completedRounds in 0..(state.score / GameRules.ROUND_SCORE))
             require(!state.victoryPending || (!state.gameOver && clearing.isEmpty() && state.roundFruits == 8))

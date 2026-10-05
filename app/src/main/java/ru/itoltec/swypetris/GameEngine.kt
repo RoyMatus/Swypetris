@@ -1,8 +1,20 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 
 
 import kotlin.random.Random
+
+/** Full logical matrix uses hidden rows first; piece coordinates retain visible y=0..19. */
+object BoardGeometry {
+    const val WIDTH = 10
+    const val VISIBLE_ROWS = 20
+    const val HIDDEN_ROWS = 20
+    const val TOTAL_ROWS = VISIBLE_ROWS + HIDDEN_ROWS
+    fun row(y: Int): Int = y + HIDDEN_ROWS
+    fun empty(): List<List<Tetromino?>> = List(TOTAL_ROWS) { List(WIDTH) { null } }
+}
+
+enum class TopOut { BLOCK_OUT, LOCK_OUT }
 
 /** Board cell coordinates: x increases rightward and y downward from the upper-left corner. */
 data class Cell(val x: Int, val y: Int)
@@ -34,7 +46,7 @@ data class Piece(val type: Tetromino, val x: Int = (10 - type.box) / 2, val y: I
  * [accelerated] запоминает успешный мягкий спуск до появления следующей фигуры.
  */
 data class GameState(
-    val board: List<List<Tetromino?>> = List(20) { List(10) { null } },
+    val board: List<List<Tetromino?>> = BoardGeometry.empty(),
     val active: Piece,
     val next: Tetromino,
     val score: Int = 0,
@@ -46,7 +58,8 @@ data class GameState(
     val accelerated: Boolean = false,
     val completedRounds: Int = 0,
     val victoryPending: Boolean = false,
-    val difficulty: Difficulty = Difficulty.MEDIUM
+    val difficulty: Difficulty = Difficulty.MEDIUM,
+    val topOut: TopOut? = null
 ) {
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * 8).coerceIn(0, 8)
@@ -79,7 +92,7 @@ class GameEngine(private val random: Random = Random.Default) {
     /** Creates an empty board, its first piece, and the next-piece preview. */
     fun newGame(difficulty: Difficulty = Difficulty.MEDIUM): GameState {
         bag.clear()
-        return GameState(active = Piece(draw()), next = draw(), difficulty = difficulty)
+        return GameState(active = Piece(draw(), y = -1), next = draw(), difficulty = difficulty)
     }
 
     /** Clears the board after victory while keeping score and speed. */
@@ -98,7 +111,8 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Checks that every cell of [piece] is inside the board and unoccupied. */
     fun fits(state: GameState, piece: Piece): Boolean = piece.cells().all {
-        it.x in 0..9 && it.y in 0..19 && state.board[it.y][it.x] == null
+        it.x in 0 until BoardGeometry.WIDTH && BoardGeometry.row(it.y) in state.board.indices &&
+            state.board[BoardGeometry.row(it.y)][it.x] == null
     }
 
     /** Finds the lowest reachable position without changing the board or awarding points. */
@@ -141,8 +155,11 @@ class GameEngine(private val random: Random = Random.Default) {
     /** Locks piece cells; complete rows remain until their removal animation finishes. */
     private fun lock(state: GameState): GameState {
         val board = state.board.map { it.toMutableList() }
-        state.active.cells().forEach { board[it.y][it.x] = state.active.type }
+        state.active.cells().forEach { board[BoardGeometry.row(it.y)][it.x] = state.active.type }
         val rows = board.indices.filter { y -> board[y].all { it != null } }
+        // Complete lock-out: all four cells are above the visible field. Partial lock-out is allowed.
+        if (state.active.cells().all { it.y < 0 })
+            return state.copy(board = board, gameOver = true, topOut = TopOut.LOCK_OUT)
         val locked = state.copy(board = board, clearingRows = rows)
         return if (rows.isEmpty()) spawnNext(locked) else locked
     }
@@ -161,8 +178,9 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Spawns the next piece after locking without a clear or once a clear finishes. */
     private fun spawnNext(state: GameState): GameState {
-        val nextState = state.copy(active = Piece(state.next), next = draw(), generation = state.generation + 1, accelerated = false)
-        return nextState.copy(gameOver = !fits(nextState, nextState.active))
+        val nextState = state.copy(active = Piece(state.next, y = -1), next = draw(), generation = state.generation + 1, accelerated = false)
+        val blocked = !fits(nextState, nextState.active)
+        return nextState.copy(gameOver = blocked, topOut = if (blocked) TopOut.BLOCK_OUT else null)
     }
 }
 

@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.app.Application
 import android.media.MediaPlayer
@@ -30,8 +30,8 @@ class MusicIntegrationTest {
             val preferences = GameStorage.preferences(application)
             preferences.edit().clear().putInt("record_v4", 0).putBoolean("music", musicEnabled)
                 .putBoolean("sound", soundEnabled).commit()
-            val board = List(20) { MutableList<Tetromino?>(10) { null } }
-            board[0][4] = Tetromino.Z
+            val board = List(BoardGeometry.TOTAL_ROWS) { MutableList<Tetromino?>(10) { null } }
+            board[BoardGeometry.row(0)][4] = Tetromino.Z
             val recorder = Recorder()
             val model = GameViewModel(application,
                 GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18), next = Tetromino.O, score = 100),
