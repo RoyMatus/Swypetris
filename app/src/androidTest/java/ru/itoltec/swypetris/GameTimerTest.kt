@@ -116,12 +116,12 @@ class GameTimerTest {
         assertEquals(10, model.game!!.lines)
         assertEquals(2, model.game!!.level)
         assertEquals(100, model.game!!.score)
-        assertEquals(now + 793L, timer.deadline)
+        assertEquals(now + 928L, timer.deadline)
         model.pause()
         val restored = GameViewModel(app, null, { now }, false)
         assertEquals(model.game, restored.game)
         assertEquals(2, restored.game!!.level)
-        assertEquals(793L, restored.game!!.gravityMillis)
+        assertEquals(928L, restored.game!!.gravityMillis)
     }
 
     @Test fun terminalStatesCancelTimerAndNextRoundSchedulesAgain() = main {
@@ -183,7 +183,7 @@ class GameTimerTest {
     }
 
     @Test fun highGravityRestoresFractionalLockClockWithoutGroundedGravityCallbacks() = main {
-        val original = model(state().copy(active = Piece(Tetromino.O, y = 17), lines = 180))
+        val original = model(state().copy(active = Piece(Tetromino.O, y = 17), lines = 540))
         assertEquals(now + 1, timer.deadline)
         timer.fire()
         assertEquals(18, original.game!!.active.y)

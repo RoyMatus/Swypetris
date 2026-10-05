@@ -13,6 +13,16 @@ class SessionLifecycleTest {
     private fun model(state: GameState? = null) = GameViewModel(app, state, { now }, false)
     private fun state() = GameState(active = Piece(Tetromino.O), next = Tetromino.T)
 
+    @Test fun previousGravityRemainderAndGameSurviveSlowerProgression() {
+        val previous = state().copy(score = 55000, lines = 90, held = Tetromino.Z)
+        val snapshot = GameSession("before-slower-gravity", previous, listOf(Tetromino.I),
+            1234, 0, 64_151_585, 10000)
+        val restored = SessionStore.decode(SessionStore.encode(snapshot))
+        assertEquals(snapshot, restored)
+        assertEquals(10, restored.state.level)
+        assertTrue(restored.state.gravityNanos > restored.gravityRemainingNanos)
+    }
+
     @Test fun hiddenCellsAndNegativePiecePositionSurviveRestore() {
         val board = BoardGeometry.empty().map { it.toMutableList() }
         board[BoardGeometry.row(-5)][0] = Tetromino.J

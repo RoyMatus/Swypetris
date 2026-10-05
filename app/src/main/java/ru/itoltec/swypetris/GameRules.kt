@@ -14,6 +14,7 @@ object GameRules {
     const val ROUND_SCORE = FRUIT_STEP * 8
 
     const val LINES_PER_LEVEL = 10
+    const val GRAVITY_PROGRESSION_STRETCH = 3.0
     const val MIN_STARTING_LEVEL = 1
     const val MAX_STARTING_LEVEL = 15
 
@@ -75,14 +76,16 @@ object GameRules {
             .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
-    /** Tetris Worlds Marathon; levels 19+ retain 20G and the ordinary lock delay. */
-    fun gravityNanos(level: Int): Long {
-        if (level >= 19) return MIN_GRAVITY_NANOS
-        val steps = level.coerceAtLeast(1) - 1
+    /** Marathon curve stretched after the selected start; scoring levels stay unchanged. */
+    fun gravityNanos(level: Int, startingLevel: Int = 1): Long {
+        val start = startingLevel.coerceAtLeast(1)
+        val steps = start - 1 + (level.coerceAtLeast(start) - start) / GRAVITY_PROGRESSION_STRETCH
+        if (steps >= 18) return MIN_GRAVITY_NANOS
         return ((0.8 - steps * 0.007).pow(steps) * 1_000_000_000).roundToLong()
             .coerceAtLeast(MIN_GRAVITY_NANOS)
     }
 
     /** Rounded up for scheduling/display only; simulation retains nanosecond precision. */
-    fun gravityMillis(level: Int): Long = (gravityNanos(level) + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI
+    fun gravityMillis(level: Int, startingLevel: Int = 1): Long =
+        (gravityNanos(level, startingLevel) + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI
 }

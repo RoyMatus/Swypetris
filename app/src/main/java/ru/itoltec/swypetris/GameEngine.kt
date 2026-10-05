@@ -93,8 +93,8 @@ data class GameState(
     }
     /** Derives the current level from cleared lines using the shared rules. */
     val level: Int get() = GameRules.level(lines, startingLevel)
-    val gravityNanos: Long get() = GameRules.gravityNanos(level)
-    val gravityMillis: Long get() = GameRules.gravityMillis(level)
+    val gravityNanos: Long get() = GameRules.gravityNanos(level, startingLevel)
+    val gravityMillis: Long get() = GameRules.gravityMillis(level, startingLevel)
 }
 
 /** Engine commands; PAUSE is handled by the screen model and does not change board cells. */
