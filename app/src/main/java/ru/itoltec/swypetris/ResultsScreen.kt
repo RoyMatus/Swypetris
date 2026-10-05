@@ -234,9 +234,12 @@ private fun FruitCollection(result: GameResult) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (result.rulesVersion >= 4) {
             Text("Пройдено кругов: ${result.completedRounds}", color = Muted)
-            RoundFruitCollection((fruitCount(result.score) - result.completedRounds * 8).coerceIn(0, 8))
+            val current = (fruitCount(result.score) - result.completedRounds * Fruit.entries.size)
+                .coerceIn(0, Fruit.entries.size)
+            RoundFruitCollection(List(Fruit.entries.size) { index -> if (index < current) 1 else 0 })
         } else {
-            RoundFruitCollection(fruitCount(result.score).coerceAtMost(8))
+            val current = fruitCount(result.score).coerceAtMost(Fruit.entries.size)
+            RoundFruitCollection(List(Fruit.entries.size) { index -> if (index < current) 1 else 0 })
         }
     }
 }
