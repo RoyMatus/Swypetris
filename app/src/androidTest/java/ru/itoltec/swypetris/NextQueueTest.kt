@@ -42,9 +42,9 @@ class NextQueueTest {
                 val boardBounds = compose.onNodeWithTag("board").getUnclippedBoundsInRoot()
                 val gridBounds = compose.onNodeWithTag("gridBackground").getUnclippedBoundsInRoot()
 
-                assertEquals(boardBounds.left, previewBounds.left, 0.5f)
-                assertEquals(boardBounds.right, previewBounds.right, 0.5f)
-                assertEquals(boardBounds.top, previewBounds.top, 0.5f)
+                assertEquals(boardBounds.left.value, previewBounds.left.value, 0.5f)
+                assertEquals(boardBounds.right.value, previewBounds.right.value, 0.5f)
+                assertEquals(boardBounds.top.value, previewBounds.top.value, 0.5f)
                 assertTrue(previewBounds.bottom < boardBounds.bottom)
                 assertTrue(gridBounds.width >= boardBounds.width)
                 assertTrue(gridBounds.height >= boardBounds.height)
@@ -52,7 +52,7 @@ class NextQueueTest {
                 val cellWidth = boardBounds.width / BoardGeometry.WIDTH
                 val cellHeight = boardBounds.height /
                     (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
-                assertEquals(cellWidth, cellHeight, 0.5f)
+                assertEquals(cellWidth.value, cellHeight.value, 0.5f)
 
                 compose.runOnIdle {
                     assertEquals(state, model.game)
