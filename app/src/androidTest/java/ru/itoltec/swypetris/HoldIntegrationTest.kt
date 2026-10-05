@@ -4,12 +4,16 @@ import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.*
 import org.junit.Rule
@@ -52,7 +56,7 @@ class HoldIntegrationTest {
         compose.onNodeWithTag("board").assertContentDescriptionContains("Запас: T, обмен недоступен", substring = true)
     }
 
-    @Test fun vibrationOffAndMultiTouchCancellationSuppressReadiness() {
+    @Test fun vibrationOffAndCancelledTouchSuppressReadiness() {
         var pulses = 0
         var now = 1000L
         val feedback = object : GameFeedback {
@@ -76,5 +80,19 @@ class HoldIntegrationTest {
         model.advanceFrame(now)
         assertEquals(0, pulses)
         model.pause()
+    }
+
+    @Test fun previewIsVisibleButNeverCoversSettledCells() {
+        val board = BoardGeometry.empty().map { it.toMutableList() }
+        board[BoardGeometry.row(2)][1] = Tetromino.J
+        var state by mutableStateOf(GameState(board = board, active = Piece(Tetromino.T, y = 10), next = Tetromino.I))
+        compose.setContent { Box(Modifier.size(320.dp, 480.dp)) { Board(state, showNext = false) } }
+        val before = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+        compose.runOnIdle { state = state.copy(held = Tetromino.O) }
+        val after = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+        fun pixel(image: androidx.compose.ui.graphics.PixelMap, x: Float, y: Float) =
+            image[(image.width * x / 10).toInt(), (image.height * y / 20).toInt()]
+        assertNotEquals(pixel(before, .6f, 1.7f), pixel(after, .6f, 1.7f))
+        assertEquals(pixel(before, 1.2f, 2.3f), pixel(after, 1.2f, 2.3f))
     }
 }
