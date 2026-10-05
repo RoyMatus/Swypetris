@@ -101,10 +101,17 @@ class BrandNavigationTest {
         }
         compose.runOnIdle { model.help() }
         // Indexed lazy-list actions execute scrolling on the UI thread in Compose 1.7.
-        for ((item, control) in listOf(2 to "Двигайте фигуру", 3 to "Вверх или вверх-вправо — поворот по часовой",
-            4 to "Вверх-влево — поворот против часовой", 6 to "Длинный жест вниз — бросок", 7 to "Короткий тап — клетка вниз",
-            8 to "Для повторного поворота слегка опустите палец", 8 to "После броска новой фигуре нужен новый жест вниз",
-            13 to "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт коллекции") ) {
+        for ((item, control) in listOf(
+            2 to "Двигать фигуру",
+            3 to "Поворачивать",
+            4 to "Тап — на клетку вниз",
+            5 to "Свайп вниз — бросок",
+            6 to "Удержать и вверх — Hold",
+            7 to "Заполняйте горизонтальные строки",
+            8 to "Hold справа сверху",
+            9 to "Следующая фигура полупрозрачно показана",
+            10 to "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт"
+        )) {
             compose.onNodeWithTag("helpPage").performScrollToIndex(item)
             compose.onNodeWithText(control, substring = true).assertIsDisplayed()
         }

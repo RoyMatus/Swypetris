@@ -39,6 +39,16 @@ class HelpHudTest {
         compose.runOnIdle { model.help() }
         compose.onNodeWithTag("helpPage").assertIsDisplayed()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
+        compose.onNodeWithTag("helpPage").performScrollToIndex(7)
+        compose.onNodeWithText("Цель").assertIsDisplayed()
+        compose.onNodeWithTag("helpPage").performScrollToIndex(8)
+        compose.onNodeWithText("Hold").assertIsDisplayed()
+        compose.onNodeWithTag("helpPage").performScrollToIndex(9)
+        compose.onNodeWithText("Следующая фигура").assertIsDisplayed()
+        compose.onNodeWithText("Back-to-Back", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Perfect Clear", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("T-Spin", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("0,5 секунды", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("helpPage").performScrollToKey("fruits")
         Fruit.entries.forEach { fruit ->
             compose.onNodeWithContentDescription(fruit.title).assertExists()
