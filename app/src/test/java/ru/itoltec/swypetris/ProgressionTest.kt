@@ -64,4 +64,37 @@ class ProgressionTest {
         assertEquals(Int.MAX_VALUE, completed.score)
         assertEquals(214748365, completed.level)
     }
+    @Test fun higherStartsWaitForCumulativeFirstGoalAndKeepPreClearScoring() {
+        for (start in 1..15) {
+            val initial = engine.newGame(Difficulty.HARD, start)
+            assertEquals(start, initial.level)
+            assertEquals(0, initial.lines)
+            val goal = start * 10
+            assertEquals(goal.toLong(), GameRules.nextThreshold(0, start))
+            assertFalse(GameRules.nearingLevel(goal - 11, start))
+            assertTrue(GameRules.nearingLevel(goal - 1, start))
+            assertEquals(start, initial.copy(lines = goal - 1).level)
+            assertEquals(start + 1, initial.copy(lines = goal).level)
+            assertEquals(start + 2, initial.copy(lines = goal + 10).level)
+            val pending = engine.apply(clearStart(4, goal - 1).copy(startingLevel = start), GameCommand.HARD_DROP)
+            assertEquals(start, pending.placement!!.level)
+            val completed = engine.finishClear(pending)
+            assertEquals(800 * start, completed.score)
+            assertEquals(start + 1, completed.level)
+            assertEquals(0.0f, GameRules.progress(0, start), .00001f)
+            assertEquals((goal - 1f) / goal, GameRules.progress(goal - 1, start), .00001f)
+        }
+    }
+
+    @Test fun higherStartSurvivesRoundAndDropPointsDoNotAdvanceIt() {
+        val initial = engine.newGame(startingLevel = 15)
+        val dropped = engine.apply(initial, GameCommand.HARD_DROP)
+        assertEquals(15, dropped.level)
+        val won = initial.copy(score = 80000, lines = 149, victoryPending = true)
+        val next = engine.nextRound(won)
+        assertEquals(15, next.startingLevel)
+        assertEquals(15, next.level)
+        assertEquals(149, next.lines)
+        assertEquals(won.gravityMillis, next.gravityMillis)
+    }
 }

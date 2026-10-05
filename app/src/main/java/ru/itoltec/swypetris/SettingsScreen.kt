@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 
 /** The four panels follow the approved settings reference while keeping real settings. */
 @Composable
@@ -48,6 +49,8 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SettingsPanel("ИГРОВОЙ ПРОЦЕСС", "Основные параметры игры", Icons.Outlined.SportsEsports, gameplay) {
                 DifficultySetting(model, gameplay)
+                SettingsDivider(gameplay)
+                StartingLevelSetting(model)
             }
             SettingsPanel("ПОМОЩЬ В ИГРЕ", "Подсказки и дополнительная информация", Icons.Outlined.Lightbulb, assistance) {
                 SettingsToggle("Подсказки", "Тень падения и следующая фигура", "hints",
@@ -138,6 +141,20 @@ private fun DifficultySetting(model: GameViewModel, accent: Color) {
             Box(Modifier.weight(.43f)) { SettingsLabel("Сложность", "Применяется к\nновой партии") }
             Box(Modifier.weight(.57f)) { DifficultySegments(model, accent) }
         }
+    }
+}
+
+@Composable
+private fun StartingLevelSetting(model: GameViewModel) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        SettingsLabel("Начальный уровень: ${model.startingLevel}", "Для новой партии. Сложность задаёт кривую скорости.")
+        Slider(value = model.startingLevel.toFloat(),
+            onValueChange = { model.chooseStartingLevel(it.roundToInt()) },
+            valueRange = GameRules.MIN_STARTING_LEVEL.toFloat()..GameRules.MAX_STARTING_LEVEL.toFloat(),
+            steps = GameRules.MAX_STARTING_LEVEL - GameRules.MIN_STARTING_LEVEL - 1,
+            modifier = Modifier.fillMaxWidth().testTag("startingLevel"))
+        Text("Следующий уровень после ${model.startingLevel * GameRules.LINES_PER_LEVEL} линий",
+            color = LocalGamePalette.current.muted, fontSize = 11.sp)
     }
 }
 

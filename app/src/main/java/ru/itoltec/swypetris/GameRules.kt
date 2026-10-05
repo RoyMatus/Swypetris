@@ -8,19 +8,26 @@ object GameRules {
     const val ROUND_SCORE = FRUIT_STEP * 8
 
     const val LINES_PER_LEVEL = 10
+    const val MIN_STARTING_LEVEL = 1
+    const val MAX_STARTING_LEVEL = 15
 
     /** Cumulative cleared-line threshold; Long keeps even extreme inputs safe. */
     fun threshold(level: Int): Long = (level.coerceAtLeast(1).toLong() - 1) * LINES_PER_LEVEL
 
-    /** Fixed-goal Marathon: each ten cleared lines advance one level. */
-    fun level(lines: Int): Int = 1 + lines.coerceAtLeast(0) / LINES_PER_LEVEL
+    /** A higher start waits for its cumulative goal before ten-line transitions begin. */
+    fun level(lines: Int, startingLevel: Int = 1): Int = maxOf(startingLevel, 1 + lines.coerceAtLeast(0) / LINES_PER_LEVEL)
 
-    fun nextThreshold(lines: Int): Long = threshold(level(lines) + 1)
+    fun nextThreshold(lines: Int, startingLevel: Int = 1): Long = threshold(level(lines, startingLevel) + 1)
 
-    fun progress(lines: Int): Float = (lines.coerceAtLeast(0) % LINES_PER_LEVEL).toFloat() / LINES_PER_LEVEL
+    fun progress(lines: Int, startingLevel: Int = 1): Float {
+        val current = level(lines, startingLevel)
+        val previous = if (current == startingLevel) 0L else threshold(current)
+        return (lines.coerceAtLeast(0).toLong() - previous).toFloat() / (threshold(current + 1) - previous)
+    }
 
-    /** The final line before the next level drives the HUD cue. */
-    fun nearingLevel(lines: Int): Boolean = lines.coerceAtLeast(0) % LINES_PER_LEVEL == LINES_PER_LEVEL - 1
+    /** Only the final line before the actual next goal drives the HUD cue. */
+    fun nearingLevel(lines: Int, startingLevel: Int = 1): Boolean =
+        lines.toLong() == nextThreshold(lines, startingLevel) - 1
 
     /** Score remains score; level progress has its own source of truth. */
     fun displayScore(score: Int): String = "$score"
