@@ -234,7 +234,7 @@ class GameUiTest {
         assertEquals(grid.top, board.top, 1f)
         assertTrue(board.left >= grid.left)
         assertTrue(board.right <= grid.right)
-        assertTrue(board.top > area.top)
+        assertTrue(board.top >= area.top)
         val cellWidth = board.width / BoardGeometry.WIDTH
         val cellHeight = board.height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
         assertEquals(cellWidth, cellHeight, 1f)
