@@ -36,7 +36,7 @@ class LineClearUiTest {
         compose.runOnIdle {
             model.command(GameCommand.TICK)
             val locked = model.game
-            assertEquals(listOf(19), locked!!.clearingRows)
+            assertEquals(listOf(BoardGeometry.row(19)), locked!!.clearingRows)
             now += 30
             model.advanceFrame(now)
             assertEquals(30L, model.clearElapsedMillis)
