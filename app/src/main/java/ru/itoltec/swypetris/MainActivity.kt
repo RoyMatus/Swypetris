@@ -510,9 +510,13 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         " Следующая фигура ${state.next.name}" +
         " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }.testTag("board")) {
         val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
-        val side = size.width / BoardGeometry.WIDTH
+        val side = minOf(
+            size.width / BoardGeometry.WIDTH,
+            size.height / GAME_GRID_ROWS
+        )
         val cell = Size(side, side)
-        val origin = Offset(0f, SPAWN_DISPLAY_ROWS * side)
+        val boardLeft = (size.width - side * BoardGeometry.WIDTH) / 2f
+        val origin = Offset(boardLeft, SPAWN_DISPLAY_ROWS * side)
         val firstVisibleSpawnRow = -SPAWN_DISPLAY_ROWS
 
         // The upcoming piece uses the exact engine spawn geometry and remains translucent behind gameplay.
@@ -526,7 +530,7 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         state.held?.let { held ->
             Piece(held, x = 0).cells().forEach {
                 block(it, palette.piece(held), palette.finish, palette.texture,
-                    Offset(cell.width * .3f, cell.height * 1.5f), cell * .55f,
+                    Offset(boardLeft + cell.width * .3f, cell.height * 1.5f), cell * .55f,
                     alpha = if (state.holdUsed) .12f else .30f)
             }
         }
