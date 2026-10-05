@@ -33,7 +33,7 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual("true", workflow["ci_scripts"])
 
     def test_tools_use_own_checks(self):
-        result = select(["tools/GitHub-Api.psm1", "tools/release/Build-Release.ps1", "tools/ci/select_checks.py"])
+        result = select(["tools/GitHub-Api.psm1", "tools/Sync-IssueProject.ps1", "tools/release/Build-Release.ps1", "tools/ci/select_checks.py"])
         self.assertEqual("none", result["mode"])
         self.assertEqual("true", result["github_scripts"])
         self.assertEqual("true", result["release_scripts"])
