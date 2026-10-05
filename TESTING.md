@@ -48,6 +48,10 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `SmokeTest` | Android UI: launch, new game, pause to menu, continue | Keep; runs on every app change and in full release regression. |
 | `StatisticsResetTest` | Android UI/storage: confirm versus cancel | Keep; protects destructive settings action. |
 | `VictoryThemeIntegrationTest` | Compose/model: victory continuation, palettes, hints, large font | Keep; covers state and presentation together. |
+| `UpdateDownloadTest` | JVM: complete downloads, truncation, oversize, corruption, cancellation and untrusted URLs | Keep; verifies that partial or foreign downloads cannot become installable APKs. |
+| `AppUpdatesTest` | Android: release metadata and update entry points | Keep; validates JSON/platform parsing and manual check visibility. |
+| `UpdateApkTest` | Android: package/version and malformed APK rejection | Keep; uses the real package parser. |
+| `AutomaticUpdatesTest` | Android UI: explicit consent, manual-only choice, preference persistence and disabling | Keep; exercises the real Activity and Settings switch across recreation. |
 
 The audit found no proven obsolete or interchangeable test group to remove. The Android classes need framework services or verify actual Compose behavior; moving them to JVM would require an Android simulator or duplicating the UI mechanism. Newly added `SessionQueueBehaviorSpec` covers ordered seven-bag restoration and rejection of a corrupt queue, which the previous tests did not exercise directly. Its `Given/When/Then` structure makes the saved-session transition explicit.
 
@@ -58,3 +62,9 @@ Before this change, JVM JaCoCo recorded 362/2,562 lines (14.1%) and 253/1,524 br
 After this change, 68 JVM cases pass; JaCoCo records 367/2,562 lines (14.3%) and 258/1,524 branches (16.9%). The three additional cases are the stacked-board ghost check and two saved-queue BehaviorSpec cases. The baseline Android run completed 71 cases with zero failures and one intentional `EnergyScenarioTest` skip. No Android test was rewritten, consolidated, or removed because the audit did not establish an obsolete or equivalent replacement.
 
 Known remaining gaps: exact visual rendering on physical devices and broad device/API compatibility are covered by targeted manual checks rather than deterministic JVM assertions. The opt-in energy scenario reports runtime statistics, not a power-consumption claim. Future changes to platform media, system bars, or app-store packaging should be checked on the affected devices and distribution channel.
+
+## Signed update checks (#115)
+
+Follow [publishing/UPDATES.md](publishing/UPDATES.md) for the signed old-to-new installer checks in addition to the automated suites. Use an isolated Android 11/API 30 emulator and the API 35 emulator, selecting each adb serial explicitly. Store fixtures, installer-result XML, UI hierarchies, and before/after preferences/session files under ignored `app/build/verification`. Preserve the actual terminal status and installed version; adb installation of the baseline alone does not exercise self-update.
+
+The installed SDK manager wrapper delegates to Android CLI. On this Windows setup, the verified package-install form is `android.exe --no-metrics --sdk=<SDK-directory> sdk install --ignore-outdated-xmls system-images/android-30/default/x86_64`. The legacy semicolon-separated package argument was split by that wrapper and did not install the image; direct Android CLI with the slash-separated package path succeeded. Create the isolated AVD with `avdmanager.bat create avd --name SwypetrisUpdate30 --package 'system-images;android-30;default;x86_64' --device pixel_2`, then wait for `adb -s <serial> shell getprop sys.boot_completed` to report `1` before running tests.

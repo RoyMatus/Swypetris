@@ -35,7 +35,8 @@ import kotlin.math.roundToInt
 
 /** The four panels follow the approved settings reference while keeping real settings. */
 @Composable
-internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {}) {
+internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {},
+    automaticUpdates: Boolean = false, onAutomaticUpdatesChange: (Boolean) -> Unit = {}) {
     val palette = LocalGamePalette.current
     var confirmReset by remember { mutableStateOf(false) }
     val gameplay = palette.piece(Tetromino.I)
@@ -68,6 +69,9 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
                 PalettePicker(model)
             }
             SettingsPanel("О ПРИЛОЖЕНИИ", "Версия и обновления", Icons.Outlined.Lightbulb, assistance) {
+                SettingsToggle("Автоматические обновления", "Загрузка и установка из меню после согласия",
+                    "automaticUpdates", automaticUpdates, onAutomaticUpdatesChange)
+                SettingsDivider(assistance)
                 OutlinedButton(onClick = onCheckUpdates, modifier = Modifier.fillMaxWidth()
                     .testTag("checkUpdates")) { Text("Проверить обновления") }
             }
