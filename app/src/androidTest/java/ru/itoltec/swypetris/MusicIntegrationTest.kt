@@ -52,6 +52,44 @@ class MusicIntegrationTest {
         }
     }
 
+    /** Меню использует отдельный режим, а потеря фокуса и выключение музыки сразу дают тишину. */
+    @Test fun menuMusicFollowsNavigationAndLifecycle() {
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val preferences = GameStorage.preferences(application)
+        preferences.edit().clear().putBoolean("music", true).commit()
+        val recorder = Recorder()
+        val model = GameViewModel(application, null, { 1000L }, false, musicPlayback = recorder)
+
+        model.onForeground()
+        assertEquals(MusicMode.MENU, recorder.modes.last())
+
+        model.settings()
+        assertEquals(MusicMode.GAME, recorder.modes.last())
+
+        model.help()
+        assertEquals(GameScreen.HELP, model.screen)
+        assertEquals(MusicMode.MENU, recorder.modes.last())
+
+        model.onWindowFocusChanged(false)
+        assertEquals(MusicMode.SILENT, recorder.modes.last())
+        model.onWindowFocusChanged(true)
+        assertEquals(MusicMode.MENU, recorder.modes.last())
+
+        model.chooseMusic(MusicSelection.Off)
+        assertEquals(MusicMode.SILENT, recorder.modes.last())
+        model.chooseMusic(MusicSelection.Track(Song.KOROBEINIKI))
+        assertEquals(MusicMode.MENU, recorder.modes.last())
+    }
+
+    /** Синтезированная тема имеет целевые 60 секунд, слышимый сигнал и согласованный шов цикла. */
+    @Test fun generatedMenuThemeHasStableLoop() {
+        val samples = MenuTheme.render()
+        assertEquals(MenuTheme.FRAME_COUNT, samples.size)
+        assertTrue(samples.any { kotlin.math.abs(it.toInt()) > 500 })
+        val seam = kotlin.math.abs(samples.first().toInt() - samples.last().toInt())
+        assertTrue("Loop seam delta: $seam", seam < 2500)
+    }
+
     /** Проверяет, что упакованный ресурс фанфар декодируется Android и имеет длительность 5 секунд. */
     @Test fun packagedFanfareDecodes() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
