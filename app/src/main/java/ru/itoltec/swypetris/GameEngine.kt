@@ -89,10 +89,13 @@ class GameEngine(private val random: Random = Random.Default) {
         return bag.removeFirst()
     }
 
+    /** I uses the second hidden row because its spawn shape occupies rotation-box row one. */
+    private fun spawn(type: Tetromino): Piece = Piece(type, y = if (type == Tetromino.I) -2 else -1)
+
     /** Creates an empty board, its first piece, and the next-piece preview. */
     fun newGame(difficulty: Difficulty = Difficulty.MEDIUM): GameState {
         bag.clear()
-        return GameState(active = Piece(draw(), y = -1), next = draw(), difficulty = difficulty)
+        return GameState(active = spawn(draw()), next = draw(), difficulty = difficulty)
     }
 
     /** Clears the board after victory while keeping score and speed. */
@@ -178,7 +181,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Spawns the next piece after locking without a clear or once a clear finishes. */
     private fun spawnNext(state: GameState): GameState {
-        val nextState = state.copy(active = Piece(state.next, y = -1), next = draw(), generation = state.generation + 1, accelerated = false)
+        val nextState = state.copy(active = spawn(state.next), next = draw(), generation = state.generation + 1, accelerated = false)
         val blocked = !fits(nextState, nextState.active)
         return nextState.copy(gameOver = blocked, topOut = if (blocked) TopOut.BLOCK_OUT else null)
     }

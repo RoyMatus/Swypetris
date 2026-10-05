@@ -21,7 +21,7 @@ class SessionLifecycleTest {
         assertEquals(snapshot, SessionStore.decode(SessionStore.encode(snapshot)))
     }
 
-    @Test fun incompatibleSessionRetainsSettingsAndHistory() {
+    @Test fun incompatibleSessionRetainsSettings() {
         val settings = GameStorage.preferences(app)
         settings.edit().putBoolean("hints", true).putString("player_name", "Roy").apply()
         val sessions = GameStorage.sessionPreferences(app)
