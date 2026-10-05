@@ -334,7 +334,8 @@ private fun GameContent(model: GameViewModel, state: GameState) {
     val gestureLeft = WindowInsets.safeContent.getLeft(localDensity, layoutDirection).toFloat()
     val playing = model.screen == GameScreen.PLAYING
     val palette = LocalGamePalette.current
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val headerHeight = (maxHeight * .07f).coerceIn(48.dp, 72.dp)
         // The status icons remain above the grid; actual pieces begin below them.
         Canvas(Modifier.matchParentSize()) {
             drawRect(palette.glass)
@@ -347,7 +348,9 @@ private fun GameContent(model: GameViewModel, state: GameState) {
         }
         // All twenty rows reach the physical bottom edge; Android draws navigation above the board.
         Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
-            Board(state, landingHint = landing, showNext = hints, clearTime = { model.clearElapsedMillis })
+            Box(Modifier.fillMaxSize().padding(top = headerHeight)) {
+                Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis })
+            }
         }
         Box(Modifier.fillMaxSize().onSizeChanged { model.setBoardWidth(it.width / density) }) {
         // Leave the system's side-gesture zones free; movement begins inside the safe area.
@@ -381,14 +384,14 @@ private fun GameContent(model: GameViewModel, state: GameState) {
             model.cancelGesture()
         }
         }) {}
-        Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, showNext = hints) }
+        Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, headerHeight) }
         }
     }
 }
 
 /** Compact level and score HUD; line progress drives its near-level pulse. */
 @Composable
-internal fun GameHud(state: GameState, showNext: Boolean = true) {
+internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
     var scoreSize by remember { mutableStateOf(Size.Zero) }
     val displayed = GameRules.displayScore(state.score)
     val currentLines by rememberUpdatedState(state.lines)
@@ -413,6 +416,11 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
+        val previewWidth = nextPreviewWidth(maxWidth.value).dp
+        val scoreWidth = (maxWidth - previewWidth - HUD_HORIZONTAL_MARGIN.dp * 3).coerceAtLeast(0.dp)
+        NextPreview(state.next, Modifier.align(Alignment.TopEnd)
+            .padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp)
+            .size(previewWidth, headerHeight - 6.dp))
         val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
         Row(Modifier.fillMaxWidth().padding(horizontal = HUD_HORIZONTAL_MARGIN.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -421,7 +429,8 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
                 append(" | $displayed")
             }, color = color, maxLines = 1,
                 style = TextStyle(fontSize = textSize, platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                modifier = Modifier.onSizeChanged { scoreSize = Size(it.width.toFloat(), it.height.toFloat()) }.graphicsLayer {
+                modifier = Modifier.widthIn(max = scoreWidth)
+                    .onSizeChanged { scoreSize = Size(it.width.toFloat(), it.height.toFloat()) }.graphicsLayer {
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
                     scaleX = scale.value; scaleY = scale.value
                 }
@@ -429,8 +438,8 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
                     .testTag("score"))
         }
         if (state.roundFruits > 0) {
-            val layout = fruitPlacement(maxWidth.value, maxHeight.value, state.roundFruits, state.next, showNext,
-                with(density) { scoreSize.width.toDp().value }, with(density) { scoreSize.height.toDp().value })
+            val layout = fruitPlacement(maxWidth.value, maxHeight.value, state.roundFruits,
+                with(density) { scoreSize.width.toDp().value }, with(density) { scoreSize.height.toDp().value }, headerHeight.value)
             Column(Modifier.offset(layout.left.dp, layout.top.dp).testTag("earnedFruits"),
                 verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
                 Fruit.entries.take(state.roundFruits).forEach { fruit ->
@@ -440,14 +449,29 @@ internal fun GameHud(state: GameState, showNext: Boolean = true) {
         }
     }
 }
-/** Draws the board, faint next-piece preview, and optional landing ghost while omitting removed cells. */
+/** Always-visible spawn-orientation preview in the header, outside the playfield. */
+@Composable
+private fun NextPreview(next: Tetromino, modifier: Modifier) {
+    val palette = LocalGamePalette.current
+    Canvas(modifier.semantics { contentDescription = "Следующая фигура ${next.name}" }.testTag("nextPreview")) {
+        val cells = next.shape
+        val columns = cells.maxOf { it.x } + 1
+        val firstRow = cells.minOf { it.y }
+        val rows = cells.maxOf { it.y } - firstRow + 1
+        val step = minOf(size.width / columns, size.height / rows)
+        val origin = Offset((size.width - columns * step) / 2, (size.height - rows * step) / 2)
+        cells.forEach { block(Cell(it.x, it.y - firstRow), palette.piece(next), palette.finish,
+            palette.texture, origin, Size(step, step)) }
+    }
+}
+
+/** Draws the board and optional landing ghost while omitting removed cells. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
-    showNext: Boolean = true, clearTime: () -> Long = { clearElapsedMillis }) {
+    clearTime: () -> Long = { clearElapsedMillis }) {
     val palette = LocalGamePalette.current
-    val previewCells = remember(state.next) { Piece(state.next).cells() }
     Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
-        (if (showNext) " Следующая фигура ${state.next.name}" else "") +
+        " Следующая фигура ${state.next.name}" +
         " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }.testTag("board")) {
         val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
         val cell = Size(size.width / 10, size.height / 20)
@@ -460,7 +484,6 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         }
         for (x in 0..10) drawLine(palette.grid, Offset(x * cell.width, 0f), Offset(x * cell.width, size.height))
         for (y in 0..20) drawLine(palette.grid, Offset(0f, y * cell.height), Offset(size.width, y * cell.height))
-        if (showNext) previewCells.forEach { block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell, alpha = 0.20f) }
         state.held?.let { held ->
             Piece(held, x = 0).cells().forEach {
                 block(it, palette.piece(held), palette.finish, palette.texture,

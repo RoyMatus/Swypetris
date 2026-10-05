@@ -225,7 +225,7 @@ class GameViewModel internal constructor(
             clearElapsedMillis, remaining, recordAtStart, finishedAt))
     }
 
-    /** Persists the joint setting for the landing ghost and next-piece preview. */
+    /** Persists only the landing ghost setting; Next is always visible. */
     fun setHints(enabled: Boolean) {
         hintsEnabled = enabled
         preferences.edit().putBoolean("hints", enabled).apply()

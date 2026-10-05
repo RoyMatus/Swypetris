@@ -86,7 +86,7 @@ class HoldIntegrationTest {
         val board = BoardGeometry.empty().map { it.toMutableList() }
         board[BoardGeometry.row(2)][1] = Tetromino.J
         var state by mutableStateOf(GameState(board = board, active = Piece(Tetromino.T, y = 10), next = Tetromino.I))
-        compose.setContent { Box(Modifier.size(320.dp, 480.dp)) { Board(state, showNext = false) } }
+        compose.setContent { Box(Modifier.size(320.dp, 480.dp)) { Board(state) } }
         val before = compose.onNodeWithTag("board").captureToImage().toPixelMap()
         compose.runOnIdle { state = state.copy(held = Tetromino.O) }
         val after = compose.onNodeWithTag("board").captureToImage().toPixelMap()
