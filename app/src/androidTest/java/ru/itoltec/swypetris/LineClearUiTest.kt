@@ -2,11 +2,12 @@ package ru.itoltec.swypetris
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.*
@@ -31,8 +32,10 @@ class LineClearUiTest {
     @Test fun clearPausesAndCompletesOnControlledClock() {
         var now = 1000L
         val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), almostFull(), { now }, false)
-        // Тестовая Activity не скрывает системную навигацию: исключаем её из проверяемого Canvas.
-        compose.setContent { Box(Modifier.safeDrawingPadding()) { model.game?.let { Board(it, model.clearElapsedMillis) } } }
+        // Use the same 10 × 22 square-cell aspect ratio as the gameplay board including its spawn band.
+        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) {
+            model.game?.let { Board(it, model.clearElapsedMillis) }
+        } }
         compose.runOnIdle {
             model.command(GameCommand.HARD_DROP)
             val locked = model.game
@@ -51,10 +54,12 @@ class LineClearUiTest {
             model.advanceFrame(now)
         }
         val white = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        assertNotEquals(beforeRemoval[white.width / 20, white.height * 39 / 40],
-            white[white.width / 20, white.height * 39 / 40])
-        assertEquals(beforeRemoval[white.width * 19 / 20, white.height * 39 / 40],
-            white[white.width * 19 / 20, white.height * 39 / 40])
+        val bottomRowY = (white.height * (SPAWN_DISPLAY_ROWS + 19.5f) /
+            (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)).toInt()
+        assertNotEquals(beforeRemoval[white.width / 20, bottomRowY],
+            white[white.width / 20, bottomRowY])
+        assertEquals(beforeRemoval[white.width * 19 / 20, bottomRowY],
+            white[white.width * 19 / 20, bottomRowY])
         compose.runOnIdle {
             model.pause()
             now += 5000
@@ -78,8 +83,8 @@ class LineClearUiTest {
             assertEquals(100, model.game!!.score)
         }
         val cleared = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        assertEquals(white[white.width / 20, white.height * 39 / 40],
-            cleared[cleared.width / 20, cleared.height * 39 / 40])
+        assertEquals(white[white.width / 20, bottomRowY],
+            cleared[cleared.width / 20, bottomRowY])
     }
 
     /** Новая партия сбрасывает ещё не завершённую очистку и не получает старые очки. */
