@@ -94,7 +94,7 @@ class VictoryThemeIntegrationTest {
         for (palette in GamePalettes.all) {
             compose.runOnIdle { model.setPalette(palette.id); model.setHints(true) }
             compose.onNodeWithTag("board").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription,
-                listOf("Игровое поле, очки 0, линии 0. Следующая фигура T")))
+                listOf("Игровое поле, очки 0, линии 0. Следующая фигура T Запас: пусто, обмен доступен.")))
             screenshot("board-${palette.id}.png")
             compose.runOnIdle {
                 val state = model.game
@@ -104,7 +104,7 @@ class VictoryThemeIntegrationTest {
                 assertEquals(state, model.game)
             }
             compose.onNodeWithTag("board").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription,
-                listOf("Игровое поле, очки 0, линии 0.")))
+                listOf("Игровое поле, очки 0, линии 0. Запас: пусто, обмен доступен.")))
         }
         compose.runOnIdle { model.setPalette("unknown"); assertEquals("classic", model.paletteId); model.settings() }
         compose.onNodeWithTag("palette_github_light_preview").performScrollTo().performClick()
