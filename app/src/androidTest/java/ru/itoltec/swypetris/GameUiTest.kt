@@ -148,7 +148,7 @@ class GameUiTest {
     /** Короткий свайп вниз фиксирует фигуру, перезапуск обнуляет поле и очки. */
     @Test fun dropRestartAndMenuNavigation() {
         compose.onNodeWithTag("newGame").performClick()
-        compose.onNodeWithTag("score").assertTextEquals("1 | 0")
+        compose.onNodeWithTag("score").assertTextEquals("0")
         val density = compose.activity.resources.displayMetrics.density
         val slop = android.view.ViewConfiguration.get(compose.activity).scaledTouchSlop / density
         val distance = (maxOf(GestureConfig().dropDistance, slop * 4) + 4) * density
@@ -161,7 +161,7 @@ class GameUiTest {
             assertTrue(model().game!!.score > 0)
             score = model().game!!.score
         }
-        compose.onNodeWithTag("score").assertTextEquals("1 | $score")
+        compose.onNodeWithTag("score").assertTextEquals("$score")
         compose.runOnIdle {
             model().pause()
         }
