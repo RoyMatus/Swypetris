@@ -86,7 +86,7 @@ class VictoryThemeIntegrationTest {
         }
     }
 
-    /** Все темы сохраняются; скрытое превью не раскрывается экранному диктору. */
+    /** Все темы сохраняются; Next доступен экранному диктору независимо от тени падения. */
     @Test fun palettesAndHintsPreserveBoard() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = GameViewModel(app, GameState(active = Piece(Tetromino.O), next = Tetromino.T), { 1000L }, false)
@@ -106,7 +106,8 @@ class VictoryThemeIntegrationTest {
                 assertEquals(state, model.game)
             }
             compose.onNodeWithTag("board").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription,
-                listOf("Игровое поле, очки 0, линии 0. Запас: пусто, обмен доступен.")))
+                listOf("Игровое поле, очки 0, линии 0. Следующая фигура T Запас: пусто, обмен доступен.")))
+            compose.onNodeWithTag("nextPreview").assertIsDisplayed()
         }
         compose.runOnIdle { model.setPalette("unknown"); assertEquals("classic", model.paletteId); model.settings() }
         compose.onNodeWithTag("palette_github_light_preview").performScrollTo().performClick()

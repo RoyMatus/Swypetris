@@ -7,6 +7,9 @@ internal const val FRUIT_GAP = 4f
 internal const val HUD_HORIZONTAL_MARGIN = 4f
 private const val PREVIEW_GAP = 8f
 
+/** Shared preview width for rendering and fruit collision avoidance, in dp. */
+internal fun nextPreviewWidth(width: Float): Float = (width * .18f).coerceIn(40f, 72f)
+
 /**
  * Returns the occupied rectangle of [piece] in board-local pixels.
  * The board has ten columns and twenty rows, so the result uses the same cell geometry as
@@ -31,17 +34,17 @@ internal data class FruitPlacement(val left: Float, val top: Float)
  * @param width Width of the board drawing area in pixels.
  * @param height Height of the board drawing area in pixels.
  * @param count Number of fruit icons that need space.
- * @param next Tetromino shown in the preview when [showNext] is true.
  * @param scoreWidth Width reserved by the score indicator in board-local pixels.
  * @param scoreHeight Height reserved by the score indicator in board-local pixels.
  */
-internal fun fruitPlacement(width: Float, height: Float, count: Int, next: Tetromino,
-    showNext: Boolean, scoreWidth: Float, scoreHeight: Float): FruitPlacement {
+internal fun fruitPlacement(width: Float, height: Float, count: Int,
+    scoreWidth: Float, scoreHeight: Float, headerHeight: Float = 48f): FruitPlacement {
     val left = (width - FRUIT_SIZE - HUD_HORIZONTAL_MARGIN).coerceAtLeast(0f)
     val right = left + FRUIT_SIZE
     val score = Rect(HUD_HORIZONTAL_MARGIN, 3f, scoreWidth + HUD_HORIZONTAL_MARGIN, scoreHeight + 3f)
-    val obstacles = Tetromino.entries.map { pieceBounds(Piece(it), width, height) } +
-        (if (showNext) listOf(pieceBounds(Piece(next), width, height)) else emptyList()) + score
+    val preview = Rect((width - nextPreviewWidth(width) - HUD_HORIZONTAL_MARGIN).coerceAtLeast(0f),
+        0f, width, headerHeight)
+    val obstacles = Tetromino.entries.map { pieceBounds(Piece(it), width, height) } + preview + score
     val obstacleBottom = obstacles.filter { left < it.right && right > it.left }
         .maxOfOrNull { it.bottom } ?: 0f
     val columnHeight = count * FRUIT_SIZE + (count - 1).coerceAtLeast(0) * FRUIT_GAP

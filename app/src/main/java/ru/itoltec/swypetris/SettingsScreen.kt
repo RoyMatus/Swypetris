@@ -53,7 +53,7 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
                 StartingLevelSetting(model)
             }
             SettingsPanel("ПОМОЩЬ В ИГРЕ", "Подсказки и дополнительная информация", Icons.Outlined.Lightbulb, assistance) {
-                SettingsToggle("Подсказки", "Тень падения и следующая фигура", "hints",
+                SettingsToggle("Тень падения", "Показывать место приземления", "hints",
                     model.hintsEnabled, model::setHints)
             }
             SettingsPanel("ЗВУК И ВИБРАЦИЯ", "Аудио и тактильная обратная связь", Icons.AutoMirrored.Outlined.VolumeUp, audio) {

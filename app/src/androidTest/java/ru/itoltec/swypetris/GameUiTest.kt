@@ -221,7 +221,7 @@ class GameUiTest {
         }
     }
 
-    /** Поле занимает всю область, а Activity запрашивает фиксированную портретную ориентацию. */
+    /** Поле под верхними индикаторами доходит до нижнего края в портретной ориентации. */
     @Test fun boardFillsPortraitScreen() {
         compose.onNodeWithTag("newGame").performClick()
         compose.runOnIdle {
@@ -230,10 +230,14 @@ class GameUiTest {
         }
         val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
+        val preview = compose.onNodeWithTag("nextPreview").fetchSemanticsNode().boundsInRoot
+        val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         assertEquals(root.left, board.left, 1f)
         assertEquals(root.right, board.right, 1f)
-        assertEquals(area.top, board.top, 1f)
+        assertTrue(board.top > area.top)
+        assertTrue(preview.bottom <= board.top + 1f)
+        assertTrue(score.bottom <= board.top + 1f)
         assertEquals(root.bottom, board.bottom, 1f)
         compose.onNodeWithTag("score").assertIsDisplayed()
     }
