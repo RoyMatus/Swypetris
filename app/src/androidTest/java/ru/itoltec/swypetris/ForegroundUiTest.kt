@@ -99,9 +99,18 @@ class ForegroundUiTest {
 
     @Test fun lifecycleReturnRequiresContinueAndScoreRespectsInsets() {
         compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
+        val density = compose.activity.resources.displayMetrics.density
+        // Platform bar visibility and Compose inset padding update asynchronously.
+        compose.waitUntil(5000) {
+            val insets = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+            val safeTop = insets?.getInsets(WindowInsetsCompat.Type.systemBars() or
+                WindowInsetsCompat.Type.displayCutout())?.top ?: return@waitUntil false
+            val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
+            !insets.isVisible(WindowInsetsCompat.Type.systemBars()) &&
+                kotlin.math.abs(score.top - safeTop - 3 * density) <= 1f
+        }
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
         val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
-        val density = compose.activity.resources.displayMetrics.density
         val safeLeft = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
             .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).left
         assertEquals(safeLeft + 4 * density, score.left, 1f)
