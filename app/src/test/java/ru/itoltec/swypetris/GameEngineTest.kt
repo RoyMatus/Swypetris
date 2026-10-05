@@ -47,7 +47,12 @@ class GameEngineTest {
     /** При отсутствии свободного положения поворот ничего не меняет. */
     @Test fun impossibleRotationIsRejected() {
         val start = state(Piece(Tetromino.I, x = 3, y = 18))
-        assertEquals(start, engine.apply(start, GameCommand.CLOCKWISE))
+        val board = start.board.map { it.toMutableList() }
+        for (y in 14..19) for (x in 0..9) board[BoardGeometry.row(y)][x] = Tetromino.J
+        start.active.cells().forEach { board[BoardGeometry.row(it.y)][it.x] = null }
+        val blocked = start.copy(board = board)
+        assertTrue(engine.fits(blocked, blocked.active))
+        assertEquals(blocked, engine.apply(blocked, GameCommand.CLOCKWISE))
     }
 
     /** Бросок совпадает с тенью, начисляет очки за расстояние и сразу фиксирует блоки. */
@@ -139,4 +144,3 @@ class GameEngineTest {
         assertEquals(100L, state().copy(score = 1000000).gravityMillis)
     }
 }
-
