@@ -217,31 +217,37 @@ class GameUiTest {
         }
     }
 
-    /** Поле под верхними индикаторами доходит до нижнего края в портретной ориентации. */
+    /** Поле и область жестов доходят до всех краёв экрана. */
     @Test fun boardFillsPortraitScreen() {
         compose.onNodeWithTag("newGame").performClick()
         compose.runOnIdle {
             assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, compose.activity.requestedOrientation)
             assertEquals(Configuration.ORIENTATION_PORTRAIT, compose.activity.resources.configuration.orientation)
         }
+        compose.waitUntil(5000) {
+            androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.systemBars()) == false
+        }
+        compose.runOnIdle { assertEquals(GameScreen.PLAYING, model().screen) }
         val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
         val grid = compose.onNodeWithTag("gridBackground").fetchSemanticsNode().boundsInRoot
         val preview = compose.onNodeWithTag("nextPreview").fetchSemanticsNode().boundsInRoot
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
-        assertTrue(grid.top > root.top)
-        assertTrue(grid.bottom <= root.bottom + 1f)
-        assertEquals(grid.top, board.top, 1f)
-        assertTrue(board.left >= grid.left)
-        assertTrue(board.right <= grid.right)
-        assertTrue(board.top >= area.top)
-        val cellWidth = board.width / BoardGeometry.WIDTH
+        assertEquals(root, grid)
+        assertEquals(root, board)
+        assertEquals(root, area)
         val cellHeight = board.height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
-        assertEquals(cellWidth, cellHeight, 1f)
         assertEquals(board.left, preview.left, 1f)
         assertEquals(board.right, preview.right, 1f)
         assertEquals(board.top, preview.top, 1f)
         assertEquals(board.top + cellHeight * SPAWN_DISPLAY_ROWS, preview.bottom, 1f)
         compose.onNodeWithTag("score").assertIsDisplayed()
+        Espresso.pressBack()
+        compose.onNodeWithTag("mainMenu").assertIsDisplayed()
+        compose.waitUntil(5000) {
+            androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.statusBars()) == true
+        }
     }
 }

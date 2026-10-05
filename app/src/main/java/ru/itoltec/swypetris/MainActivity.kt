@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import android.view.ViewConfiguration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -42,7 +43,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -77,13 +76,13 @@ class MainActivity : ComponentActivity() {
     private val gameModel: GameViewModel by viewModels()
     private val appUpdates by lazy { AppUpdates(this) }
 
-    /** Draw backgrounds edge-to-edge, keeping system bars visible on every screen. */
+    /** Draw edge-to-edge and hide system bars while the game is playing. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SwypetrisTheme(darkTheme = true, dynamicColor = false) {
-                DisposableEffect(gameModel.paletteId) {
+                DisposableEffect(gameModel.paletteId, gameModel.screen) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
                     val palette = GamePalettes.find(gameModel.paletteId)
                     controller.isAppearanceLightStatusBars = palette.light
@@ -99,7 +98,12 @@ class MainActivity : ComponentActivity() {
                         @Suppress("DEPRECATION")
                         window.navigationBarColor = palette.background.toArgb()
                     }
-                    controller.show(WindowInsetsCompat.Type.systemBars())
+                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    if (gameModel.screen == GameScreen.PLAYING) {
+                        controller.hide(WindowInsetsCompat.Type.systemBars())
+                    } else {
+                        controller.show(WindowInsetsCompat.Type.systemBars())
+                    }
                     onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
                 }
                 SwypetrisApp(gameModel, appUpdates, onExit = { gameModel.pause(); finishAndRemoveTask() })
@@ -344,85 +348,71 @@ internal fun MenuTile(label: String, accent: Color, tag: String,
         }
     }
 }
-/** Number of square grid rows reserved above the visible playfield for spawning pieces. */
+/** Number of grid rows reserved above the visible playfield for spawning pieces. */
 internal const val SPAWN_DISPLAY_ROWS = 2
 private const val GAME_GRID_ROWS = BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS
 
-/** Draws one square-cell grid across the safe gameplay surface. */
+/** Wait for a full empty row between the next preview and the active piece. */
+internal fun nextSpawnPreviewVisible(state: GameState): Boolean {
+    val previewBottom = spawnPiece(state.next).cells().maxOf { it.y }
+    return state.active.cells().minOf { it.y } >= previewBottom + 2
+}
+
+/** Draws the grid across the entire gameplay surface without outer gutters. */
 @Composable
-private fun GameGridBackground(cellSize: Dp) {
+private fun GameGridBackground() {
     val palette = LocalGamePalette.current
     Canvas(Modifier.fillMaxSize().testTag("gridBackground")) {
-        val step = cellSize.toPx()
-        if (step <= 0f) return@Canvas
         drawRect(brush = Brush.verticalGradient(listOf(palette.glass,
             lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
-        val boardWidth = step * BoardGeometry.WIDTH
-        val boardLeft = (size.width - boardWidth) / 2f
-        var x = boardLeft
-        while (x >= 0f) {
+        for (column in 0..BoardGeometry.WIDTH) {
+            val x = column * size.width / BoardGeometry.WIDTH
             drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
-            x -= step
         }
-        x = boardLeft + step
-        while (x <= size.width) {
-            drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
-            x += step
-        }
-        var y = 0f
-        while (y <= size.height) {
+        for (row in 0..GAME_GRID_ROWS) {
+            val y = row * size.height / GAME_GRID_ROWS
             drawLine(palette.grid, Offset(0f, y), Offset(size.width, y))
-            y += step
         }
     }
 }
 
-/** The square-cell board starts at the highest safe position; the HUD overlay does not intercept touches. */
+/** The board fills every screen edge; only the HUD respects display cutouts and transient bars. */
 @Composable
 private fun GameContent(model: GameViewModel, state: GameState) {
     val localDensity = LocalDensity.current
     val density = localDensity.density
-    val layoutDirection = LocalLayoutDirection.current
-    val gestureLeft = WindowInsets.safeContent.getLeft(localDensity, layoutDirection).toFloat()
     val playing = model.screen == GameScreen.PLAYING
     Box(Modifier.fillMaxSize()) {
         val hints = model.hintsEnabled
         val landing = remember(state.board, state.active, state.clearingRows, hints) {
             if (hints && state.clearingRows.isEmpty()) model.engine.ghost(state) else null
         }
-        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        Box(Modifier.fillMaxSize()) {
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                val cellSize = minOf(
-                    maxWidth / BoardGeometry.WIDTH.toFloat(),
-                    maxHeight / GAME_GRID_ROWS.toFloat()
-                )
-                val boardWidth = cellSize * BoardGeometry.WIDTH
-                val boardHeight = cellSize * GAME_GRID_ROWS
-                val spawnBandHeight = cellSize * SPAWN_DISPLAY_ROWS
+                val boardWidth = maxWidth
+                val spawnBandHeight = maxHeight / GAME_GRID_ROWS.toFloat() * SPAWN_DISPLAY_ROWS
                 LaunchedEffect(boardWidth) { model.setBoardWidth(boardWidth.value) }
 
-                GameGridBackground(cellSize)
-                Box(Modifier.align(Alignment.TopCenter).size(boardWidth, boardHeight)) {
+                GameGridBackground()
+                Box(Modifier.fillMaxSize()) {
                     Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis })
                     Box(Modifier.fillMaxWidth().height(spawnBandHeight)
                         .semantics { contentDescription = "Следующая фигура ${state.next.name}" }
                         .testTag("nextPreview"))
                 }
-                Box(Modifier.fillMaxSize()) { GameHud(state, spawnBandHeight) }
+                Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, spawnBandHeight) }
             }
         }
 
-        // Leave the system's side-gesture zones free; movement begins inside the safe area.
+        // Use the same full-screen coordinates for drawing and gameplay gestures.
         Box(Modifier.fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical))
-            .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
-            .testTag("gameArea").pointerInput(model, playing, density, gestureLeft) {
+            .testTag("gameArea").pointerInput(model, playing, density) {
         if (!playing) return@pointerInput
         try {
             awaitEachGesture {
                 val first = awaitFirstDown(requireUnconsumed = false)
                 val id = first.id
-                model.pointerDown((first.position.x + gestureLeft) / density, first.position.y / density, first.uptimeMillis)
+                model.pointerDown(first.position.x / density, first.position.y / density, first.uptimeMillis)
                 first.consume()
                 var canceled = false
                 do {
@@ -433,8 +423,8 @@ private fun GameContent(model: GameViewModel, state: GameState) {
                     }
                     val change = event.changes.firstOrNull { it.id == id }
                     if (!canceled && change != null) {
-                        if (change.pressed) model.pointerMove((change.position.x + gestureLeft) / density, change.position.y / density, change.uptimeMillis)
-                        else model.pointerUp((change.position.x + gestureLeft) / density, change.position.y / density, change.uptimeMillis)
+                        if (change.pressed) model.pointerMove(change.position.x / density, change.position.y / density, change.uptimeMillis)
+                        else model.pointerUp(change.position.x / density, change.position.y / density, change.uptimeMillis)
                     }
                     event.changes.forEach { it.consume() }
                 } while (event.changes.any { it.pressed })
@@ -474,7 +464,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
         val density = LocalDensity.current
         val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
         val holdWidth = (maxWidth * .22f).coerceIn(48.dp, 88.dp)
-        val holdHeight = headerHeight.coerceIn(40.dp, 72.dp)
+        val holdHeight = (headerHeight * .7f).coerceIn(28.dp, 48.dp)
         val reservedRight = holdWidth + HUD_HORIZONTAL_MARGIN.dp * 2
         val scoreWidth = (maxWidth - reservedRight).coerceAtLeast(0.dp)
 
@@ -500,7 +490,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
             horizontalAlignment = Alignment.End
         ) {
             HoldPreview(state.held, state.holdUsed,
-                Modifier.fillMaxWidth().height(holdHeight).testTag("holdPreview"))
+                Modifier.width(holdWidth * .75f).height(holdHeight).testTag("holdPreview"))
             if (state.fruitCounts.any { it > 0 }) {
                 val iconSize = minOf(FRUIT_SIZE.dp, (holdWidth - FRUIT_GAP.dp) / 2)
                     .coerceAtLeast(16.dp)
@@ -547,10 +537,7 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
             else -> "Запас ${held.name}, обмен доступен"
         }
     }) {
-        if (held == null) {
-            drawRect(palette.grid, style = Stroke(width = 1.dp.toPx()))
-            return@Canvas
-        }
+        if (held == null) return@Canvas
         val cells = held.shape
         val columns = cells.maxOf { it.x } + 1
         val firstRow = cells.minOf { it.y }
@@ -573,21 +560,16 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         " Следующая фигура ${state.next.name}" +
         " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }.testTag("board")) {
         val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
-        val side = minOf(
-            size.width / BoardGeometry.WIDTH,
-            size.height / GAME_GRID_ROWS
-        )
-        val cell = Size(side, side)
-        val boardLeft = (size.width - side * BoardGeometry.WIDTH) / 2f
-        val origin = Offset(boardLeft, SPAWN_DISPLAY_ROWS * side)
+        val cell = Size(size.width / BoardGeometry.WIDTH, size.height / GAME_GRID_ROWS)
+        val origin = Offset(0f, SPAWN_DISPLAY_ROWS * cell.height)
         val firstVisibleSpawnRow = -SPAWN_DISPLAY_ROWS
 
         // The upcoming piece uses the exact engine spawn geometry and remains translucent behind gameplay.
-        spawnPiece(state.next).cells()
+        if (nextSpawnPreviewVisible(state)) spawnPiece(state.next).cells()
             .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
             .forEach {
                 block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell,
-                    alpha = .24f)
+                    alpha = .12f)
             }
 
         state.board.forEachIndexed { rowIndex, row -> row.forEachIndexed { x, type ->

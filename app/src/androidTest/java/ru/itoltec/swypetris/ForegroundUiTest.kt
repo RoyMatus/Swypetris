@@ -76,10 +76,13 @@ class ForegroundUiTest {
         val safeLeft = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
             .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).left
         assertEquals(safeLeft + 4 * density, score.left, 1f)
-        assertEquals(area.top + 3 * density, score.top, 1f)
+        val safeTop = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+            .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).top
+        assertEquals(safeTop + 3 * density, score.top, 1f)
         val statusTop = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
             .getInsets(WindowInsetsCompat.Type.statusBars()).top
-        assertTrue(area.top >= statusTop)
+        assertEquals(0f, area.top, 1f)
+        assertTrue(score.top >= statusTop)
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         val saved = model().game
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)

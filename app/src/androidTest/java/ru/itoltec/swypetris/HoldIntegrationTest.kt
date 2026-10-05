@@ -98,4 +98,26 @@ class HoldIntegrationTest {
         assertEquals(pixel(before, 1.2f, 2.3f + SPAWN_DISPLAY_ROWS),
             pixel(after, 1.2f, 2.3f + SPAWN_DISPLAY_ROWS))
     }
+
+    @Test fun emptyHoldDrawsNothingOverTheBoard() {
+        var showHud by mutableStateOf(false)
+        val state = GameState(active = Piece(Tetromino.T, y = 10), next = Tetromino.I)
+        compose.setContent {
+            Box(Modifier.size(220.dp, 484.dp)) {
+                Board(state)
+                if (showHud) GameHud(state)
+            }
+        }
+        val before = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+        compose.runOnIdle { showHud = true }
+        val hold = compose.onNodeWithTag("holdPreview").fetchSemanticsNode().boundsInRoot
+        val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
+        val after = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+        for (y in (hold.top - board.top).toInt() until (hold.bottom - board.top).toInt()) {
+            for (x in (hold.left - board.left).toInt() until (hold.right - board.left).toInt()) {
+                assertEquals("Empty Hold must leave the board unchanged", before[x, y], after[x, y])
+            }
+        }
+        assertTrue(hold.width <= board.width * .22f)
+    }
 }
