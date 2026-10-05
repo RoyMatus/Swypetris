@@ -137,6 +137,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         // Reusing the task must never start or resume a game implicitly.
         gameModel.pause()
+        appUpdates.check(manual = false)
     }
 }
 
