@@ -1,0 +1,31 @@
+name: Issue project sync
+
+on:
+  issues:
+    types: [opened, reopened, transferred]
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: issue-project-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Synchronize open issues with project
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_SYNC_TOKEN }}
+        run: |
+          if (!$env:GH_TOKEN) { throw 'Add the PROJECT_SYNC_TOKEN Actions secret with repo and project scopes.' }
+          ./tools/Sync-IssueProject.ps1 | ConvertTo-Json -Depth 6

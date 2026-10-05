@@ -107,7 +107,7 @@ def select(paths: list[str]) -> dict[str, str]:
             if path.startswith("tools/ci/"):
                 ci_scripts = True
                 continue
-            if path in {"tools/GitHub-Api.psm1", "tools/Update-Issue.ps1", "tools/Manage-PullRequest.ps1"} or path.startswith("tools/tests/"):
+            if path in {"tools/GitHub-Api.psm1", "tools/Update-Issue.ps1", "tools/Manage-PullRequest.ps1", "tools/Sync-IssueProject.ps1"} or path.startswith("tools/tests/"):
                 github_scripts = True
                 continue
             if path.startswith("tools/release/"):

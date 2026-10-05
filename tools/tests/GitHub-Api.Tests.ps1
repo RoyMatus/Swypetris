@@ -6,6 +6,14 @@ BeforeAll {
     }
 }
 
+Describe 'Issue project synchronization' {
+    It 'passes offline membership, pagination, preview, and permission checks' {
+        $output = & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'Sync-IssueProject.Checks.ps1')
+        $LASTEXITCODE | Should -Be 0
+        $output | Should -Contain '12 project synchronization checks passed.'
+    }
+}
+
 Describe 'Assert-GitHubPullRequestReady' {
     It 'accepts a successful required check from the specified app' {
         $checks = @([pscustomobject]@{ name = 'SonarCloud Code Analysis'; status = 'completed'; conclusion = 'success'; app = [pscustomobject]@{ id = 12526 } })
