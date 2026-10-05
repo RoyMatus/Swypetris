@@ -116,3 +116,7 @@ The logical board has 20 hidden rows above the 10×20 visible field. Piece coord
 ### Lock delay
 
 A grounded piece locks after 500 ms. A successful move or rotation from the ground resets this delay at most 15 times per piece. Airborne time freezes the remaining delay without restoring resets. Hard Drop locks immediately. Pausing, backgrounding, and session restoration preserve the remaining delay and reset counter.
+
+### One-finger Hold
+
+Hold nearly still for 300 ms, then swipe upward to store the active piece. A short readiness pulse respects the vibration setting. The same gesture retrieves the held piece by swapping it with the active one. Hold is available once until a piece locks; held pieces return at spawn position/orientation. Release without swiping to cancel without Soft Drop. Release after Hold before controlling the replacement. A small faint preview on the left shows the held piece; a dimmer preview means Hold is unavailable. No Hold button is used. Hold and availability persist with the game.

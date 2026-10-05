@@ -446,7 +446,9 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
     showNext: Boolean = true, clearTime: () -> Long = { clearElapsedMillis }) {
     val palette = LocalGamePalette.current
     val previewCells = remember(state.next) { Piece(state.next).cells() }
-    Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." + if (showNext) " Следующая фигура ${state.next.name}" else "" }.testTag("board")) {
+    Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
+        (if (showNext) " Следующая фигура ${state.next.name}" else "") +
+        " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }.testTag("board")) {
         val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
         val cell = Size(size.width / 10, size.height / 20)
         val origin = Offset.Zero
@@ -459,6 +461,13 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         for (x in 0..10) drawLine(palette.grid, Offset(x * cell.width, 0f), Offset(x * cell.width, size.height))
         for (y in 0..20) drawLine(palette.grid, Offset(0f, y * cell.height), Offset(size.width, y * cell.height))
         if (showNext) previewCells.forEach { block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell, alpha = 0.20f) }
+        state.held?.let { held ->
+            Piece(held, x = 0).cells().forEach {
+                block(it, palette.piece(held), palette.finish, palette.texture,
+                    Offset(cell.width * .3f, cell.height * 1.5f), cell * .55f,
+                    alpha = if (state.holdUsed) .12f else .30f)
+            }
+        }
         state.board.forEachIndexed { y, row -> row.forEachIndexed { x, type ->
             if (y >= BoardGeometry.HIDDEN_ROWS && type != null && !(y in state.clearingRows && LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) block(Cell(x, y - BoardGeometry.HIDDEN_ROWS), palette.piece(type), palette.finish, palette.texture, origin, cell)
         } }

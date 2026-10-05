@@ -150,4 +150,17 @@ class GameTimerTest {
         assertEquals(0, restored.game!!.lockResets)
         restored.pause()
     }
+
+    @Test fun holdReadinessSchedulesOnceWithoutPostponingGravity() = main {
+        val model = model(state())
+        val initial = model.game
+        model.pointerDown(100f, 200f, now)
+        assertEquals(now + 300, timer.deadline)
+        timer.fire()
+        assertEquals(initial, model.game)
+        assertEquals(1800L, timer.deadline)
+        model.pointerUp(100f, 200f, now)
+        assertEquals(initial, model.game)
+        model.pause()
+    }
 }
