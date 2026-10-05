@@ -34,7 +34,7 @@ class LineClearUiTest {
         // Тестовая Activity не скрывает системную навигацию: исключаем её из проверяемого Canvas.
         compose.setContent { Box(Modifier.safeDrawingPadding()) { model.game?.let { Board(it, model.clearElapsedMillis) } } }
         compose.runOnIdle {
-            model.command(GameCommand.TICK)
+            model.command(GameCommand.HARD_DROP)
             val locked = model.game
             assertEquals(listOf(BoardGeometry.row(19)), locked!!.clearingRows)
             now += 30
@@ -87,7 +87,7 @@ class LineClearUiTest {
         var now = 1000L
         val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), almostFull(), { now }, false)
         compose.runOnIdle {
-            model.command(GameCommand.TICK)
+            model.command(GameCommand.HARD_DROP)
             now += 100
             model.advanceFrame(now)
             model.newGame()

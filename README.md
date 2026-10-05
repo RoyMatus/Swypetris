@@ -112,3 +112,7 @@ Unit-тесты проверяют циклы победы, превышение
 Rotation uses SRS orientations 0, R, 2, L, with ordered wall/floor kicks. I has its own kick table; O changes orientation without moving its cells. Kicks and collisions also work in the hidden rows.
 
 The logical board has 20 hidden rows above the 10×20 visible field. Piece coordinates use y=0 for the first visible row; negative y positions are hidden. Collision, ghost, and line shifting use all 40 rows. A blocked spawn causes block-out; locking all four cells above the visible field causes lock-out. Partial hidden placement is allowed. Saved sessions use schema 2; incompatible schema-1 sessions are discarded without changing settings or result history.
+
+### Lock delay
+
+A grounded piece locks after 500 ms. A successful move or rotation from the ground resets this delay at most 15 times per piece. Airborne time freezes the remaining delay without restoring resets. Hard Drop locks immediately. Pausing, backgrounding, and session restoration preserve the remaining delay and reset counter.

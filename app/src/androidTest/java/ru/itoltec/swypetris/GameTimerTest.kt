@@ -130,4 +130,24 @@ class GameTimerTest {
         store.clear()
         assertNull(timer.action)
     }
+
+    @Test fun lockDeadlineFreezesOnBackgroundAndRestoresItsResetBudget() = main {
+        val initial = state().copy(active = Piece(Tetromino.O, y = 18), lockResets = 3)
+        val original = model(initial)
+        assertEquals(now + 500, timer.deadline)
+        now += 217
+        original.onBackground()
+        assertNull(timer.action)
+        assertEquals(283L, original.game!!.lockRemaining)
+        now += 10000
+        val restored = model()
+        assertEquals(283L, restored.game!!.lockRemaining)
+        assertEquals(3, restored.game!!.lockResets)
+        restored.resume()
+        assertEquals(now + 283, timer.deadline)
+        timer.fire()
+        assertEquals(1, restored.game!!.generation)
+        assertEquals(0, restored.game!!.lockResets)
+        restored.pause()
+    }
 }

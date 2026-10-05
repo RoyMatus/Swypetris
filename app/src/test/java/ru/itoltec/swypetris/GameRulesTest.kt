@@ -53,13 +53,13 @@ class GameRulesTest {
         val start = GameState(active = Piece(Tetromino.O, y = 17), next = Tetromino.T)
         val soft = engine.apply(start, GameCommand.SOFT_DROP)
         assertNull(feedbackEvent(start, soft, GameCommand.SOFT_DROP))
-        val landed = engine.apply(soft, GameCommand.TICK)
+        val landed = engine.advanceLock(soft, 500)
         assertEquals(FeedbackEvent.DROP, feedbackEvent(soft, landed, GameCommand.TICK))
         assertFalse(landed.accelerated)
         val board = soft.board.map { it.toMutableList() }
         for (x in 0..9) if (x !in 4..5) board[BoardGeometry.row(19)][x] = Tetromino.J
         val before = soft.copy(board = board)
-        val clearing = engine.apply(before, GameCommand.TICK)
+        val clearing = engine.advanceLock(before, 500)
         assertEquals(FeedbackEvent.CLEAR, feedbackEvent(before, clearing, GameCommand.TICK))
         val finished = engine.finishClear(clearing)
         assertFalse(finished.accelerated)

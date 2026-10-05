@@ -40,7 +40,7 @@ class ResultsIntegrationTest {
             autofillTree = LocalAutofillTree.current
             SwypetrisApp(model) {}
         }
-        compose.runOnIdle { model.command(GameCommand.TICK) }
+        compose.runOnIdle { model.command(GameCommand.HARD_DROP) }
         compose.runOnIdle {
             val nameNode = autofillTree.children.values.single { AutofillType.PersonFullName in it.autofillTypes }
             nameNode.onFill?.invoke("Мария")
@@ -52,7 +52,7 @@ class ResultsIntegrationTest {
 
         compose.runOnIdle {
             model = GameViewModel(application, recordState(20000), { 2000L }, false)
-            model.command(GameCommand.TICK)
+            model.command(GameCommand.HARD_DROP)
         }
         compose.onNodeWithTag("recordName").assertTextContains("Мария")
         compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("skipRecord"))
@@ -91,12 +91,12 @@ class ResultsIntegrationTest {
                 now += 5000
                 model.resume()
                 now += 200
-                model.command(GameCommand.TICK)
+                model.command(GameCommand.HARD_DROP)
                 assertEquals(GameScreen.RECORD, model.screen)
                 assertEquals(1, model.results.size)
                 assertEquals(300L, model.results.single().durationMillis)
                 assertTrue(model.requestRecordName)
-                model.command(GameCommand.TICK)
+                model.command(GameCommand.HARD_DROP)
                 assertEquals(1, model.results.size)
             }
             compose.onNodeWithTag("recordPage").assertIsDisplayed()

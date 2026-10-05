@@ -186,7 +186,7 @@ class SessionLifecycleTest {
         val board = state().board.map { it.toMutableList() }
         board[BoardGeometry.row(0)][4] = Tetromino.Z
         val losing = model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18), score = 50))
-        losing.command(GameCommand.TICK)
+        losing.command(GameCommand.HARD_DROP)
         assertTrue(losing.game!!.gameOver)
         val restored = model()
         restored.resume()
@@ -200,7 +200,7 @@ class SessionLifecycleTest {
             val board = state().board.map { it.toMutableList() }
             board[BoardGeometry.row(0)][4] = Tetromino.Z
             return model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
-                score = score, difficulty = difficulty)).also { it.command(GameCommand.TICK) }
+                score = score, difficulty = difficulty)).also { it.command(GameCommand.HARD_DROP) }
         }
         assertEquals(1, finish(100, Difficulty.EASY).results.size)
         assertEquals(1, finish(100, Difficulty.EASY).results.size)
