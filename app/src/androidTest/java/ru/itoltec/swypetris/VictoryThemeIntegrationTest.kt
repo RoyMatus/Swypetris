@@ -44,7 +44,7 @@ class VictoryThemeIntegrationTest {
             { now }, false, musicPlayback = music)
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
-        compose.runOnIdle { now += 100; model.command(GameCommand.TICK) }
+        compose.runOnIdle { now += 100; model.command(GameCommand.SOFT_DROP) }
         compose.mainClock.advanceTimeBy(2200)
         compose.onNodeWithTag("victoryPage").assertIsDisplayed()
         compose.onNodeWithTag("board").assertDoesNotExist()
@@ -123,7 +123,7 @@ class VictoryThemeIntegrationTest {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999), { 1000L }, false)
         model.setPalette("solarized_light")
-        model.command(GameCommand.TICK)
+        model.command(GameCommand.SOFT_DROP)
         compose.mainClock.autoAdvance = false
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {

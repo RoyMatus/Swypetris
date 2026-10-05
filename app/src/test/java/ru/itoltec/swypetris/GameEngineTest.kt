@@ -61,7 +61,7 @@ class GameEngineTest {
         val ghost = engine.ghost(start)
         val result = engine.apply(start, GameCommand.HARD_DROP)
         assertEquals(18, ghost.y)
-        assertEquals(18, result.score)
+        assertEquals(36, result.score)
         assertEquals(1, result.generation)
         ghost.cells().forEach { assertEquals(Tetromino.O, result.board[BoardGeometry.row(it.y)][it.x]) }
     }
@@ -87,10 +87,10 @@ class GameEngineTest {
         assertEquals(0, soft.generation)
         assertEquals(0, engine.apply(soft, GameCommand.TICK).generation)
         assertEquals(1, engine.advanceLock(soft, 500).generation)
-        assertEquals(1, engine.apply(start, GameCommand.TICK).score)
+        assertEquals(0, engine.apply(start, GameCommand.TICK).score)
     }
 
-    /** Одновременное удаление 1–4 строк не зависит от уровня и сохраняет верхние блоки. */
+    /** Одновременное удаление 1–4 строк начисляет базовую награду и сохраняет верхние блоки. */
     @Test fun clearsLinesAndUpdatesLevel() {
         for (count in 1..4) {
             val start = state(Piece(Tetromino.I, x = 2, y = 16, rotation = 1))
@@ -109,8 +109,8 @@ class GameEngineTest {
             assertEquals(1, result.generation)
             assertEquals(result, engine.finishClear(result))
             assertEquals(9 + count, result.lines)
-            assertEquals(listOf(0, 100, 300, 700, 1500)[count], result.score)
-            assertEquals(if (count == 4) 2 else 1, result.level)
+            assertEquals(listOf(0, 100, 300, 500, 800)[count], result.score)
+            assertEquals(1, result.level)
             assertEquals(Tetromino.L, result.board[BoardGeometry.row(10 + count)][0])
         }
     }

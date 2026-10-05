@@ -179,7 +179,7 @@ class GameEngine(private val random: Random = Random.Default) {
             }
             GameCommand.TICK, GameCommand.SOFT_DROP -> {
                 val moved = piece.copy(y = piece.y + 1)
-                if (fits(state, moved)) state.copy(active = moved, score = GameRules.add(state.score, 1),
+                if (fits(state, moved)) state.copy(active = moved, score = GameRules.add(state.score, GameRules.dropScore(command, 1)),
                     accelerated = state.accelerated || command == GameCommand.SOFT_DROP,
                     lastRotationKick = -1,
                     softDropCells = state.softDropCells + if (command == GameCommand.SOFT_DROP) 1 else 0)
@@ -188,7 +188,7 @@ class GameEngine(private val random: Random = Random.Default) {
             GameCommand.HARD_DROP -> {
                 val landed = ghost(state)
                 val distance = landed.y - piece.y
-                lock(state.copy(active = landed, score = GameRules.add(state.score, distance),
+                lock(state.copy(active = landed, score = GameRules.add(state.score, GameRules.dropScore(command, distance)),
                     hardDropCells = distance, lastRotationKick = if (distance == 0) state.lastRotationKick else -1))
             }
             GameCommand.HOLD -> {
@@ -220,7 +220,8 @@ class GameEngine(private val random: Random = Random.Default) {
         val event = PlacementResult(rows.size, spin, difficult && state.backToBack, combo,
             softDropCells = state.softDropCells, hardDropCells = state.hardDropCells, level = state.level)
         val locked = state.copy(board = board, clearingRows = rows, combo = combo, placement = event,
-            backToBack = if (rows.isEmpty()) state.backToBack else difficult)
+            backToBack = if (rows.isEmpty()) state.backToBack else difficult,
+            score = if (rows.isEmpty()) GameRules.add(state.score, GameRules.placementScore(event)) else state.score)
         return if (rows.isEmpty()) spawnNext(locked) else locked
     }
 
@@ -230,9 +231,11 @@ class GameEngine(private val random: Random = Random.Default) {
         val cleared = state.clearingRows.size
         val remaining = state.board.filterIndexed { index, _ -> index !in state.clearingRows }
         val board = List(cleared) { List<Tetromino?>(10) { null } } + remaining
+        val event = (state.placement ?: PlacementResult(cleared, Spin.NONE, false, state.combo, level = state.level))
+            .copy(perfectClear = board.all { row -> row.all { it == null } })
         return checkVictory(spawnNext(state.copy(
-            board = board, placement = state.placement?.copy(perfectClear = board.all { row -> row.all { it == null } }),
-            score = GameRules.add(state.score, GameRules.lineScore(cleared)),
+            board = board, placement = event,
+            score = GameRules.add(state.score, GameRules.placementScore(event)),
             lines = state.lines + cleared, clearingRows = emptyList(), completedClears = state.completedClears + 1
         )))
     }

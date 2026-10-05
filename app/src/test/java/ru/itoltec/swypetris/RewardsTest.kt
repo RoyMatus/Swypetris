@@ -18,11 +18,11 @@ class RewardsTest {
         }
     }
 
-    /** Четыре строки дают 1500 на любом уровне; награда не зависит от числа ранее удалённых строк. */
-    @Test fun scoreDoesNotMultiplyAtHighLevel() {
+    /** A Perfect Clear adds its bonus to the base award at the captured level. */
+    @Test fun scoreUsesCapturedLevelAndPerfectClearBonus() {
         val engine = GameEngine()
         val state = engine.newGame().copy(lines = 100, clearingRows = listOf(16, 17, 18, 19).map(BoardGeometry::row))
-        assertEquals(1500, engine.finishClear(state).score)
+        assertEquals(2800, engine.finishClear(state).score)
     }
 
     /** Cell width controls movement, and holding never creates repeated actions. */

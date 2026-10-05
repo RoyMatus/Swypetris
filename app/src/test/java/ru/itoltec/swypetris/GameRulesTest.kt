@@ -22,9 +22,9 @@ class GameRulesTest {
         val clearing = GameState(active = Piece(Tetromino.I), next = Tetromino.T,
             score = 799, clearingRows = listOf(16, 17, 18, 19).map(BoardGeometry::row))
         val crossed = GameEngine().finishClear(clearing)
-        assertEquals(2299, crossed.score)
+        assertEquals(3599, crossed.score)
         assertEquals(3, crossed.level)
-        assertEquals("2299", GameRules.displayScore(crossed.score))
+        assertEquals("3599", GameRules.displayScore(crossed.score))
     }
 
     /** Разные способы спуска суммарно оплачивают пройденное расстояние ровно один раз. */
@@ -32,13 +32,13 @@ class GameRulesTest {
         val engine = GameEngine()
         var state = GameState(active = Piece(Tetromino.O), next = Tetromino.T)
         state = engine.apply(state, GameCommand.TICK)
-        assertEquals(1, state.score)
+        assertEquals(0, state.score)
         assertFalse(state.accelerated)
         state = engine.apply(state, GameCommand.SOFT_DROP)
-        assertEquals(2, state.score)
+        assertEquals(1, state.score)
         assertTrue(state.accelerated)
         state = engine.apply(state, GameCommand.HARD_DROP)
-        assertEquals(18, state.score)
+        assertEquals(33, state.score)
         assertFalse(state.accelerated)
         val floor = GameState(active = Piece(Tetromino.O, y = 18), next = Tetromino.T, score = 18)
         for (command in listOf(GameCommand.TICK, GameCommand.SOFT_DROP, GameCommand.HARD_DROP)) {
