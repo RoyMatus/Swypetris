@@ -82,19 +82,24 @@ class HoldIntegrationTest {
         model.pause()
     }
 
-    @Test fun previewIsVisibleButNeverCoversSettledCells() {
-        val board = BoardGeometry.empty().map { it.toMutableList() }
-        board[BoardGeometry.row(2)][1] = Tetromino.J
-        var state by mutableStateOf(GameState(board = board, active = Piece(Tetromino.T, y = 10), next = Tetromino.I))
-        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
-        val before = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        compose.runOnIdle { state = state.copy(held = Tetromino.O) }
-        val after = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        fun pixel(image: androidx.compose.ui.graphics.PixelMap, x: Float, visualRow: Float) =
-            image[(image.width * x / BoardGeometry.WIDTH).toInt(),
-                (image.height * visualRow / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)).toInt()]
-        assertNotEquals(pixel(before, .6f, 1.7f), pixel(after, .6f, 1.7f))
-        assertEquals(pixel(before, 1.2f, 2.3f + SPAWN_DISPLAY_ROWS),
-            pixel(after, 1.2f, 2.3f + SPAWN_DISPLAY_ROWS))
+    @Test fun holdPreviewLivesInUpperRightHudAndReflectsAvailability() {
+        var state by mutableStateOf(GameState(active = Piece(Tetromino.T, y = 10), next = Tetromino.I,
+            held = Tetromino.O, score = 30000))
+        compose.setContent { Box(Modifier.size(320.dp, 640.dp)) { Board(state); GameHud(state) } }
+
+        val hold = compose.onNodeWithTag("holdPreview").assertIsDisplayed()
+            .assertContentDescriptionContains("Запас: O", substring = true)
+            .assertContentDescriptionContains("обмен доступен", substring = true)
+        val score = compose.onNodeWithTag("score").assertTextEquals("30000")
+        val fruits = compose.onNodeWithTag("earnedFruits").assertIsDisplayed()
+        val holdBounds = hold.getUnclippedBoundsInRoot()
+        val scoreBounds = score.getUnclippedBoundsInRoot()
+        val fruitBounds = fruits.getUnclippedBoundsInRoot()
+        assertTrue(holdBounds.left > scoreBounds.right)
+        assertTrue(fruitBounds.top >= holdBounds.bottom)
+
+        compose.runOnIdle { state = state.copy(holdUsed = true) }
+        compose.onNodeWithTag("holdPreview")
+            .assertContentDescriptionContains("обмен недоступен", substring = true)
     }
 }
