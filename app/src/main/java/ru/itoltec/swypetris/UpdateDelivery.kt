@@ -57,9 +57,9 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
         operation = activity.lifecycleScope.launch {
             var failureMessage: String? = null
             val restored = withContext(Dispatchers.IO) {
-                directory.listFiles()?.filter { it.extension == "part" }?.forEach(File::delete)
+                directory.listFiles()?.filter { it.extension == "part" }?.forEach(::removeUpdateFile)
                 val json = preferences.getString("ready", null) ?: run {
-                    apk().delete()
+                    removeUpdateFile(apk())
                     return@withContext null
                 }
                 try {
@@ -104,7 +104,7 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
     private fun apk() = File(directory, "ready.apk")
 
     private fun forgetReady() {
-        apk().delete()
+        removeUpdateFile(apk())
         preferences.edit().remove("ready").remove("saved_at").commit()
     }
 
@@ -157,7 +157,7 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
                             throw IOException("Cannot save update metadata")
                     } finally {
                         connection.disconnect()
-                        temporary.delete()
+                        removeUpdateFile(temporary)
                     }
                 }
                 operation = null
@@ -264,7 +264,7 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
                     else DeliveryNotice.Failed("Android не предоставил окно подтверждения. Повторите установку.")
             }
             PackageInstaller.STATUS_SUCCESS -> {
-                apk().delete()
+                removeUpdateFile(apk())
                 preferences.edit().remove("ready").apply()
                 ready = null
                 notice = null

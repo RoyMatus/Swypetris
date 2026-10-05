@@ -6,8 +6,12 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayInputStream
 import java.io.IOException
+import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.CancellationException
+import java.util.logging.Handler
+import java.util.logging.LogRecord
+import java.util.logging.Logger
 
 class UpdateDownloadTest {
     @get:Rule val folder = TemporaryFolder()
@@ -51,5 +55,26 @@ class UpdateDownloadTest {
             "https://example.com/Swypetris.apk", "https://user@github.com/Swypetris.apk")) {
             assertThrows(IOException::class.java) { openUpdateConnection(address) }
         }
+    }
+
+    @Test fun failedCleanupReportsWarningWithoutReplacingCancellation() {
+        val file = object : File(folder.newFile().absolutePath) {
+            override fun delete() = false
+        }
+        val warnings = mutableListOf<String>()
+        val handler = object : Handler() {
+            override fun publish(record: LogRecord) { warnings.add(record.message) }
+            override fun flush() = Unit
+            override fun close() = Unit
+        }
+        val logger = Logger.getLogger("SwypetrisUpdates")
+        logger.addHandler(handler)
+        try {
+            assertThrows(CancellationException::class.java) {
+                copyUpdate(ByteArrayInputStream(bytes), file, bytes.size.toLong(), hash,
+                    { throw CancellationException() }, {})
+            }
+            assertEquals(listOf("Cannot remove update file: ${file.name}"), warnings)
+        } finally { logger.removeHandler(handler) }
     }
 }

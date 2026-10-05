@@ -21,7 +21,7 @@ class UpdateInstallReceiver : BroadcastReceiver() {
         // The durable result is also useful when the Activity is absent or the process is replaced.
         preferences.edit().putInt("status", status).commit()
         if (status == PackageInstaller.STATUS_SUCCESS) {
-            File(context.noBackupFilesDir, "updates/ready.apk").delete()
+            removeUpdateFile(File(context.noBackupFilesDir, "updates/ready.apk"))
             context.getSharedPreferences("app_update_download", Context.MODE_PRIVATE).edit()
                 .remove("ready").remove("saved_at").putBoolean("interrupted", false).commit()
         }

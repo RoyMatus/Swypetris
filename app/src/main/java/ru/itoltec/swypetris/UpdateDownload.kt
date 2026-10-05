@@ -6,9 +6,16 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.logging.Logger
 
 internal const val MAX_UPDATE_BYTES = 256L * 1024 * 1024
 internal class UpdateRateLimitException : IOException("GitHub request limit reached")
+
+/** Report failed cleanup without masking a download failure or cancellation. Recovery retries it. */
+internal fun removeUpdateFile(file: File) {
+    if (file.exists() && !file.delete())
+        Logger.getLogger("SwypetrisUpdates").warning("Cannot remove update file: ${file.name}")
+}
 
 /** A partial or mismatched download is never exposed as an installable APK. */
 internal fun copyUpdate(input: InputStream, destination: File, expectedSize: Long,
@@ -37,7 +44,7 @@ internal fun copyUpdate(input: InputStream, destination: File, expectedSize: Lon
             output.fd.sync()
         }
     } catch (failure: Throwable) {
-        destination.delete()
+        removeUpdateFile(destination)
         throw failure
     }
 }
