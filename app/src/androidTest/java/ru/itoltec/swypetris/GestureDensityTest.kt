@@ -18,6 +18,27 @@ class GestureDensityTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
+    @Test fun diagonalControlsUseSrsWallAndFloorKicks() {
+        val application = ApplicationProvider.getApplicationContext<android.app.Application>()
+        var model by mutableStateOf(GameViewModel(application,
+            GameState(active = Piece(Tetromino.T, x = -1, y = 5, rotation = 1), next = Tetromino.O), { 1000L }, false))
+        compose.setContent { SwypetrisApp(model) {} }
+        val scale = application.resources.displayMetrics.density
+        val distance = maxOf(24f, android.view.ViewConfiguration.get(application).scaledTouchSlop / scale * 2) + 4
+        for (piece in listOf(Piece(Tetromino.T, x = -1, y = 5, rotation = 1), Piece(Tetromino.I, y = 18))) {
+            for ((sign, command) in listOf(-1 to GameCommand.COUNTERCLOCKWISE, 1 to GameCommand.CLOCKWISE)) {
+                val state = GameState(active = piece, next = Tetromino.O)
+                val expected = GameEngine().apply(state, command).active
+                assertNotEquals(piece.copy(rotation = expected.rotation), expected)
+                compose.runOnIdle { model = GameViewModel(application, state, { 1000L }, false) }
+                compose.onNodeWithTag("gameArea").performTouchInput {
+                    swipe(center, center + Offset(sign * distance * scale, -distance * scale), 100)
+                }
+                compose.runOnIdle { assertEquals(expected, model.game!!.active) }
+            }
+        }
+    }
+
     @Test fun composePointerSurvivesNaturalPieceSpawn() {
         var now = 1000L
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
@@ -72,6 +93,14 @@ class GestureDensityTest {
                 moveBy(Offset(0f, (maxOf(12f, slop) + 2) * scale))
                 moveBy(Offset(0f, -rotateDistance * scale))
                 up()
+            }
+            compose.runOnIdle { assertEquals(3, model.game!!.active.rotation) }
+            compose.onNodeWithTag("gameArea").performTouchInput {
+                swipe(center, center - Offset(rotateDistance * scale, rotateDistance * scale), 100)
+            }
+            compose.runOnIdle { assertEquals(2, model.game!!.active.rotation) }
+            compose.onNodeWithTag("gameArea").performTouchInput {
+                swipe(center, center + Offset(rotateDistance * scale, -rotateDistance * scale), 100)
             }
             compose.runOnIdle { assertEquals(3, model.game!!.active.rotation) }
             compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center + Offset(48 * scale, 48 * scale), 100) }

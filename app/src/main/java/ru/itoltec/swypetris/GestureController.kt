@@ -109,7 +109,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
     }
 
     /**
-     * Interprets pointer movement as horizontal steps, an upward rotation, or a downward hard drop.
+     * Up-left rotates counterclockwise; up/up-right rotate clockwise. Downward strokes hard drop.
      * Reversals and piece changes reset anchors so previous motion cannot trigger the next piece.
      * Holding still never repeats a command.
      */
@@ -176,13 +176,18 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         val dx = x - anchorX
         val dy = y - anchorY
         val rotationDy = rotationY - y
+        val rotationDx = x - rotationX
+        // Reserve upward diagonals before the rotation threshold, including a disarmed stroke.
+        val upwardStroke = rotationDy > 0 && rotationDy >= abs(rotationDx) / config.directionRatio &&
+            -eventDy >= abs(eventDx) / config.directionRatio
         val horizontalThreshold = if (horizontalDirection == 0)
             maxOf(config.horizontalStartDistance, config.tapSlop) else config.horizontalStepDistance
         val action = when {
             dropArmed && dy >= maxOf(config.dropDistance, config.tapSlop * 4) && dy >= abs(dx) * config.dropRatio -> GameCommand.HARD_DROP
             rotationArmed && rotationDy >= maxOf(config.rotationDistance, config.tapSlop * 2) &&
-                rotationDy >= abs(x - rotationX) * config.directionRatio -> GameCommand.CLOCKWISE
-            abs(dx) >= horizontalThreshold && abs(dx) >= abs(dy) * config.directionRatio ->
+                upwardStroke -> if (rotationDx <= -maxOf(config.rotationRearmDistance, config.tapSlop))
+                    GameCommand.COUNTERCLOCKWISE else GameCommand.CLOCKWISE
+            !upwardStroke && abs(dx) >= horizontalThreshold && abs(dx) >= abs(dy) * config.directionRatio ->
                 if (dx < 0) GameCommand.LEFT else GameCommand.RIGHT
             else -> return
         }
@@ -190,6 +195,7 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         holdCandidate = false
         holdReady = false
         val horizontal = action == GameCommand.LEFT || action == GameCommand.RIGHT
+        val rotation = action == GameCommand.CLOCKWISE || action == GameCommand.COUNTERCLOCKWISE
         val sign = if (dx < 0) -1 else 1
         val steps = if (horizontal) {
             1 + ((abs(dx) - horizontalThreshold) / config.horizontalStepDistance).toInt().coerceIn(0, 9)
@@ -201,11 +207,11 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
             rotationX = x
             rotationY = y
         } else rebase()
-        if (action == GameCommand.CLOCKWISE) rotationArmed = false
+        if (rotation) rotationArmed = false
         if (action == GameCommand.HARD_DROP) {
             dropArmed = false
             dropBottom = y
-        } else if (horizontal || action == GameCommand.CLOCKWISE) dropArmed = true
+        } else if (horizontal || rotation) dropArmed = true
         val before = epoch
         repeat(steps) {
             emit(action)

@@ -143,13 +143,42 @@ class GestureControllerTest {
         assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.RIGHT), commands)
     }
 
-    @Test fun diagonalDoesNotRotateOrDrop() {
-        for (sign in listOf(-1, 1)) {
-            gestures.down(100f, 100f, 0)
-            gestures.move(160f, 100f + sign * 60, 50)
-            gestures.up(160f, 100f + sign * 60, 100)
-        }
+    @Test fun downwardDiagonalDoesNotRotateOrDrop() {
+        gestures.down(100f, 100f, 0)
+        gestures.move(160f, 160f, 50)
+        gestures.up(160f, 160f, 100)
         assertTrue(commands.isEmpty())
+    }
+
+    @Test fun upwardDiagonalsReserveMotionAndChooseDirectionOnce() {
+        for ((sign, command) in listOf(-1 to GameCommand.COUNTERCLOCKWISE, 1 to GameCommand.CLOCKWISE)) {
+            commands.clear()
+            gestures.down(100f, 200f, 0)
+            gestures.move(100f + sign * 16, 184f, 20)
+            assertTrue(commands.isEmpty())
+            gestures.move(100f + sign * 24, 176f, 40)
+            gestures.move(100f + sign * 80, 120f, 60)
+            gestures.onPieceChanged()
+            gestures.move(100f + sign * 100, 100f, 80)
+            gestures.up(100f + sign * 100, 100f, 100)
+            assertEquals(listOf(command), commands)
+        }
+    }
+
+    @Test fun leftJitterRemainsClockwiseAndConeBoundaryRotates() {
+        gestures.down(100f, 200f, 0)
+        gestures.up(89f, 176f, 50)
+        gestures.down(100f, 200f, 100)
+        gestures.up(64f, 176f, 150)
+        assertEquals(listOf(GameCommand.CLOCKWISE, GameCommand.COUNTERCLOCKWISE), commands)
+    }
+
+    @Test fun counterclockwiseRearmsOnlyAfterReversal() {
+        gestures.down(100f, 200f, 0)
+        gestures.move(76f, 176f, 20)
+        gestures.move(76f, 188f, 40)
+        gestures.move(52f, 164f, 60)
+        assertEquals(listOf(GameCommand.COUNTERCLOCKWISE, GameCommand.COUNTERCLOCKWISE), commands)
     }
 
     @Test fun horizontalDriftNeverAccumulatesIntoDrop() {

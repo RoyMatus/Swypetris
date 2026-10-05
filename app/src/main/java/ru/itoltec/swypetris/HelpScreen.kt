@@ -18,7 +18,8 @@ import androidx.compose.ui.unit.dp
 fun HelpScreen(model: GameViewModel) {
     val controls = listOf(
         Triple("← →", "Двигайте фигуру", Tetromino.I),
-        Triple("↑", "Свайп вверх — один поворот", Tetromino.T),
+        Triple("↑ ↗", "Вверх или вверх-вправо — поворот по часовой", Tetromino.T),
+        Triple("↖", "Вверх-влево — поворот против часовой", Tetromino.Z),
         Triple("● ↑", "Подержите палец 300 мс и проведите вверх — запас", Tetromino.L),
         Triple("↓", "Длинный жест вниз — бросок", Tetromino.J),
         Triple("●", "Короткий тап — клетка вниз", Tetromino.S)
