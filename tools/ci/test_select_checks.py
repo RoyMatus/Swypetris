@@ -32,6 +32,12 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual("full", workflow["mode"])
         self.assertEqual("true", workflow["ci_scripts"])
 
+    def test_digital_score_runs_layout_and_pixel_checks(self):
+        result = select(["app/src/main/java/ru/itoltec/swypetris/DigitalScore.kt"])
+        self.assertEqual("selected", result["mode"])
+        for name in ("BorderlessHudTest", "HudLayeringTest", "GameUiTest", "SmokeTest"):
+            self.assertIn("ru.itoltec.swypetris." + name, result["android"].split(","))
+
     def test_tools_use_own_checks(self):
         result = select(["tools/GitHub-Api.psm1", "tools/Sync-IssueProject.ps1", "tools/release/Build-Release.ps1", "tools/ci/select_checks.py"])
         self.assertEqual("none", result["mode"])

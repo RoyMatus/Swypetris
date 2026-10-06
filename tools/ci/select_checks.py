@@ -17,6 +17,7 @@ SOURCE_GROUPS = {
     "AppUpdates.kt": ("updates",),
     "ContactsScreen.kt": ("navigation", "legal"),
     "Difficulty.kt": ("engine", "settings"),
+    "DigitalScore.kt": ("score",),
     "GameArt.kt": ("visual",),
     "GameBrand.kt": ("visual", "navigation"),
     "GameEngine.kt": ("engine", "line_clear"),
@@ -62,6 +63,7 @@ FULL_SOURCES = {
 }
 
 GROUP_TESTS = {
+    "score": ((), ("BorderlessHudTest", "HudLayeringTest", "GameUiTest")),
     "updates": ((), ("AppUpdatesTest",)),
     "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
                ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictoryThemeIntegrationTest")),
