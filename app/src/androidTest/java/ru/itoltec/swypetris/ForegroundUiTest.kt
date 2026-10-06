@@ -187,7 +187,7 @@ class ForegroundUiTest {
             insets.isVisible(WindowInsetsCompat.Type.statusBars()) &&
                 kotlin.math.abs(area.top - safe.top) <= 1f &&
                 score.top >= area.top &&
-                kotlin.math.abs(score.left - safe.left - 20 * density) <= 1f
+                kotlin.math.abs(score.right - (area.right - 20 * density)) <= 1f
         }
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
         assertTrue(area.top > 0f)
