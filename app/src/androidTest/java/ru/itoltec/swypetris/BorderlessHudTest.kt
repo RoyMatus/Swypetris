@@ -32,7 +32,7 @@ class BorderlessHudTest {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale),
                 LocalGamePalette provides palette) {
                 val state = GameState(active = Piece(Tetromino.S, y = 8), next = next,
-                    held = Tetromino.L, score = Int.MAX_VALUE, fruitCounts = List(Fruit.entries.size) { 1 })
+                    held = Tetromino.L, score = Int.MAX_VALUE)
                 Box(Modifier.size(width.dp, height.dp)) {
                     val header = height.dp / 22 * SPAWN_DISPLAY_ROWS
                     Board(state)
