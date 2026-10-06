@@ -75,19 +75,16 @@ class BorderlessHudTest {
     @Test fun nextHasQuietFillAndReadableOutlinesInDarkAndLightThemes() {
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var next by mutableStateOf(Tetromino.I)
-        var visible by mutableStateOf(false)
         compose.setContent {
             CompositionLocalProvider(LocalGamePalette provides palette) {
                 Box(Modifier.size(220.dp, 484.dp)) {
-                    Board(GameState(active = Piece(Tetromino.O, x = 0, y = if (visible) 8 else -1), next = next))
+                    Board(GameState(active = Piece(Tetromino.O, x = 0, y = -1), next = next))
                 }
             }
         }
         for (theme in listOf("classic", "solarized_light", "github_light")) {
             for (piece in Tetromino.entries) {
-                compose.runOnIdle { palette = GamePalettes.find(theme); next = piece; visible = false }
-                val hidden = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-                compose.runOnIdle { visible = true }
+                compose.runOnIdle { palette = GamePalettes.find(theme); next = piece }
                 val preview = compose.onNodeWithTag("board").captureToImage().toPixelMap()
                 val cellWidth = preview.width / 10f
                 val cellHeight = preview.height / 22f
@@ -96,8 +93,9 @@ class BorderlessHudTest {
                     val y = ((cell.y + SPAWN_DISPLAY_ROWS + .5f) * cellHeight).toInt()
                     val centerX = ((cell.x + .5f) * cellWidth).toInt()
                     val edgeX = (cell.x * cellWidth + gap).toInt()
-                    val fill = difference(preview[centerX, y], hidden[centerX, y])
-                    val edge = difference(preview[edgeX, y], hidden[edgeX, y])
+                    val background = preview[(preview.width * .95f).toInt(), y]
+                    val fill = difference(preview[centerX, y], background)
+                    val edge = difference(preview[edgeX, y], background)
                     assertTrue("Next needs a faint fill: $theme/$piece", fill > .001f && fill < .2f)
                     assertTrue("Next outline must dominate the fill: $theme/$piece", edge > fill * 3)
                 }

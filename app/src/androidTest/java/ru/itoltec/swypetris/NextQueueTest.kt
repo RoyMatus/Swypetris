@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
@@ -20,25 +21,85 @@ class NextQueueTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    @Test fun previewAppearsOnlyAfterActiveLeavesOneEmptyRow() {
+    @Test fun previewAppearsAtSpawnWhileLabelKeepsItsExistingClearance() {
         var state by mutableStateOf(GameState(active = Piece(Tetromino.O, x = 0, y = -1), next = Tetromino.I))
         compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state); NextSpawnLabel(state, 44.dp) } }
         fun previewPixel(): androidx.compose.ui.graphics.Color {
             val image = compose.onNodeWithTag("board").captureToImage().toPixelMap()
             return image[(image.width * .35f).toInt(), (image.height * 1.5f / 22).toInt()]
         }
-        val hidden = previewPixel()
+        val immediate = previewPixel()
+        val image = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+        assertNotEquals("Preview must be visible at spawn", image[(image.width * .95f).toInt(),
+            (image.height * 1.5f / 22).toInt()], immediate)
         compose.onNodeWithTag("nextLabel").assertDoesNotExist()
-        compose.runOnIdle { state = state.copy(active = state.active.copy(y = 0)) }
-        assertEquals("An adjacent active piece must still hide the preview", hidden, previewPixel())
-        compose.onNodeWithTag("nextLabel").assertDoesNotExist()
-        compose.runOnIdle { state = state.copy(active = state.active.copy(y = 1)) }
-        assertNotEquals("One empty row must reveal the preview", hidden, previewPixel())
-        compose.onNodeWithTag("nextLabel").assertIsDisplayed().assertTextEquals("ДАЛЕЕ")
-        compose.runOnIdle { state = state.copy(active = spawnPiece(Tetromino.O).copy(x = 0)) }
-        assertEquals("A replacement spawn must hide the preview again", hidden, previewPixel())
-        compose.onNodeWithTag("nextLabel").assertDoesNotExist()
+        for (y in listOf(0, 1, 8, -1)) {
+            compose.runOnIdle { state = state.copy(active = state.active.copy(y = y)) }
+            assertEquals("Descent must not change the spawn preview", immediate, previewPixel())
+            if (y >= 1) compose.onNodeWithTag("nextLabel").assertIsDisplayed().assertTextEquals("ДАЛЕЕ")
+            else compose.onNodeWithTag("nextLabel").assertDoesNotExist()
+        }
     }
+
+    /** Non-overlapping preview cells retain their faint fill for every shape and rotation. */
+    @Test fun previewIsIndependentOfActiveShapeRotationAndHeight() {
+        var state by mutableStateOf(GameState(active = spawnPiece(Tetromino.O), next = Tetromino.I))
+        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
+        for (next in Tetromino.entries) for (active in Tetromino.entries) for (rotation in 0..3) {
+            compose.runOnIdle { state = state.copy(next = next, active = Piece(active, y = 8, rotation = rotation)) }
+            val descended = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+            for (y in listOf(-2, -1, 0, 1)) {
+                compose.runOnIdle { state = state.copy(active = state.active.copy(y = y)) }
+                val spawned = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+                for (cell in spawnPiece(next).cells().filterNot { it in state.active.cells() }) {
+                    assertNotEquals("Missing preview $next behind $active/$rotation at $y",
+                        descended.colorAt(Cell(9, cell.y)), descended.colorAt(cell))
+                    assertEquals("Preview moved or disappeared for $next/$active/$rotation at $y",
+                        descended.colorAt(cell), spawned.colorAt(cell))
+                }
+            }
+        }
+    }
+
+    /** The active blocks cover the preview, which updates without a movement or gravity frame. */
+    @Test fun activeRemainsOnTopAndPreviewUpdatesAfterLockAndBothHoldPaths() {
+        val engine = GameEngine(kotlin.random.Random(42))
+        var state by mutableStateOf(engine.newGame())
+        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
+        fun checkRenderedState() {
+            val current = state
+            val image = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+            compose.runOnIdle { state = current.copy(active = current.active.copy(x = 0, y = 8)) }
+            val unobscured = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+            for (cell in spawnPiece(current.next).cells().filterNot { it in current.active.cells() }) {
+                assertNotEquals("Upcoming ${current.next} missing", image.colorAt(Cell(9, cell.y)), image.colorAt(cell))
+                assertEquals(unobscured.colorAt(cell), image.colorAt(cell))
+            }
+            val alternate = Tetromino.entries.first { it != current.next }
+            compose.runOnIdle { state = current.copy(next = alternate) }
+            val otherPreview = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+            for (cell in current.active.cells().filter { it.y >= -SPAWN_DISPLAY_ROWS }) {
+                assertEquals("Active block must cover both preview colors", image.colorAt(cell), otherPreview.colorAt(cell))
+            }
+            compose.runOnIdle { state = current }
+        }
+        checkRenderedState()
+        compose.runOnIdle { state = engine.apply(state, GameCommand.HOLD) }
+        assertTrue(state.holdUsed)
+        checkRenderedState()
+        compose.runOnIdle { state = engine.apply(state, GameCommand.HARD_DROP) }
+        assertFalse(state.holdUsed)
+        checkRenderedState()
+        val beforeSwap = state
+        compose.runOnIdle { state = engine.apply(state, GameCommand.HOLD) }
+        assertEquals(beforeSwap.held, state.active.type)
+        assertEquals(beforeSwap.next, state.next)
+        checkRenderedState()
+    }
+
+    private fun PixelMap.colorAt(cell: Cell) = this[
+        ((cell.x + .5f) * width / BoardGeometry.WIDTH).toInt(),
+        ((cell.y + SPAWN_DISPLAY_ROWS + .5f) * height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)).toInt()]
 
     @Test fun nextUsesFullScreenSpawnGridWithEitherGhostSetting() {
         val app = ApplicationProvider.getApplicationContext<Application>()
