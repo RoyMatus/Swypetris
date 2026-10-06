@@ -56,7 +56,7 @@ internal fun LaunchIntroClock(model: GameViewModel) {
 internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier: Modifier = Modifier) {
     val logo = ImageBitmap.imageResource(R.drawable.swypetris_logo)
     val wordmarkOnly = true
-    val filter = null
+    val palette = LocalGamePalette.current
     Canvas(modifier.testTag("launchIntro").semantics {
         contentDescription = "Заставка SWYPETRIS. Коснитесь, чтобы пропустить"
         onClick("Пропустить заставку") { model.finishLaunchIntro(); true }
@@ -80,9 +80,14 @@ internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier
                     translate(origin.x + sourceX * scale, origin.y + sourceY * scale)
                     scale(scale, scale, Offset.Zero)
                 }) {
-                    drawImage(logo, srcOffset = IntOffset(sourceX, sourceY),
-                        srcSize = IntSize(revealWidth, height), dstOffset = IntOffset.Zero,
-                        dstSize = IntSize(revealWidth, height), colorFilter = filter)
+                    drawWordmarkSliceWithOutline(
+                        logo = logo,
+                        srcOffset = IntOffset(sourceX, sourceY),
+                        srcSize = IntSize(revealWidth, height),
+                        dstOffset = IntOffset.Zero,
+                        dstSize = IntSize(revealWidth, height),
+                        palette = palette
+                    )
                 }
             }
             return@Canvas
@@ -117,8 +122,7 @@ internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier
                 withTransform({ translate(position.x, position.y); scale(scale, scale, Offset.Zero) }) {
                     drawImage(logo, srcOffset = IntOffset(piece.x, piece.y),
                         srcSize = IntSize(piece.width, piece.height),
-                        dstOffset = IntOffset.Zero, dstSize = IntSize(piece.width, piece.height),
-                        colorFilter = filter)
+                        dstOffset = IntOffset.Zero, dstSize = IntSize(piece.width, piece.height))
                 }
             }
         }
