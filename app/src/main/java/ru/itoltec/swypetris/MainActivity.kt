@@ -480,7 +480,7 @@ private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: 
     }
 }
 
-/** The score and whole fruit pairs use the left lane; Hold keeps its compact right lane. */
+/** Hold uses the left lane; the right-aligned score and fruit collection share the right lane. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
@@ -506,31 +506,39 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
-        val leftMargin = GAMEPLAY_HUD_MARGIN.dp + horizontalInsets.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
-        val rightMargin = GAMEPLAY_HUD_MARGIN.dp + horizontalInsets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
-        val sideWidth = (maxWidth * .3f - rightMargin - 4.dp).coerceAtLeast(1.dp)
-        val hintLeft = maxWidth / BoardGeometry.WIDTH * spawnPiece(state.next).cells().minOf { it.x }
-        val leftWidth = (hintLeft - leftMargin - 4.dp).coerceAtLeast(1.dp)
-        val holdWidth = minOf((maxWidth * .22f).coerceIn(48.dp, 88.dp), sideWidth)
+        val leftMargin = GAMEPLAY_HUD_MARGIN.dp +
+            horizontalInsets.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+        val rightMargin = GAMEPLAY_HUD_MARGIN.dp +
+            horizontalInsets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+        val cellWidth = maxWidth / BoardGeometry.WIDTH
+        val nextCells = spawnPiece(state.next).cells()
+        val hintLeft = cellWidth * nextCells.minOf { it.x }
+        val hintRight = cellWidth * (nextCells.maxOf { it.x } + 1)
+        val leftLaneWidth = (hintLeft - leftMargin - 4.dp).coerceAtLeast(1.dp)
+        val rightLaneWidth = (maxWidth - rightMargin - hintRight - 4.dp).coerceAtLeast(1.dp)
+        val holdWidth = minOf((maxWidth * .22f).coerceIn(48.dp, 88.dp), leftLaneWidth)
         val holdHeight = minOf((headerHeight * .7f).coerceIn(28.dp, 48.dp), headerHeight)
-        // The widest spawn occupies columns 3 through 6; keep the score left of that lane.
-        val scoreTop = minOf(maxWidth / BoardGeometry.WIDTH, headerHeight / SPAWN_DISPLAY_ROWS) * .07f
-        val scoreHeight = minOf(((maxHeight - bottomInset) / 32).coerceIn(16.dp, 28.dp) * density.fontScale,
-            leftWidth / digitalScoreAspect(displayed.length) / SCORE_MAX_SCALE,
-            (headerHeight - scoreTop).coerceAtLeast(1.dp) / SCORE_MAX_SCALE)
+        val scoreTop = minOf(cellWidth, headerHeight / SPAWN_DISPLAY_ROWS) * .07f
+        val scoreHeight = minOf(
+            ((maxHeight - bottomInset) / 32).coerceIn(16.dp, 28.dp) * density.fontScale,
+            rightLaneWidth / digitalScoreAspect(displayed.length) / SCORE_MAX_SCALE,
+            (headerHeight - scoreTop).coerceAtLeast(1.dp) / SCORE_MAX_SCALE
+        )
+        val scoreWidth = scoreHeight * digitalScoreAspect(displayed.length)
 
-        EarnedFruits(state, leftWidth, Modifier.align(Alignment.TopStart)
-                .offset(x = leftMargin, y = scoreTop + scoreHeight * SCORE_MAX_SCALE + FRUIT_GAP.dp)
-                .width(leftWidth).testTag("earnedFruits"))
+        EarnedFruits(state, scoreWidth, Modifier.align(Alignment.TopEnd)
+            .offset(x = -rightMargin, y = scoreTop + scoreHeight * SCORE_MAX_SCALE + FRUIT_GAP.dp)
+            .width(scoreWidth).testTag("earnedFruits"))
 
         // Only the falling piece crosses over fruit pixels; score and Hold stay in front.
         pieceOverlay()
         DigitalScore(displayed, scoreHeight,
-                modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = leftMargin, y = scoreTop)
+            modifier = Modifier.align(Alignment.TopEnd)
+                .offset(x = -rightMargin, y = scoreTop)
                 .graphicsLayer {
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
-                    scaleX = scale.value; scaleY = scale.value
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f)
+                    scaleX = scale.value
+                    scaleY = scale.value
                 }
                 .semantics {
                     this[ScorePulseScale] = scale.value
@@ -539,11 +547,10 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
                 .testTag("score"))
 
         Column(
-            modifier = Modifier.align(Alignment.TopEnd)
-                .offset(y = scoreTop)
-                .padding(end = rightMargin)
+            modifier = Modifier.align(Alignment.TopStart)
+                .offset(x = leftMargin, y = scoreTop)
                 .width(holdWidth),
-            horizontalAlignment = Alignment.End
+            horizontalAlignment = Alignment.Start
         ) {
             HoldPreview(state.held, state.holdUsed,
                 Modifier.width(holdWidth).height(holdHeight).testTag("holdPreview"))
@@ -557,29 +564,35 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
     }
 }
 
-/** Flow measures each quantity and icon together, so pairs cannot split or enter the hint lane. */
-@OptIn(ExperimentalLayoutApi::class)
+/** Keeps up to three complete fruit/quantity pairs evenly distributed inside the score width. */
 @Composable
 private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
     val fruits = Fruit.entries.zip(state.fruitCounts).filter { it.second > 0 }
     if (fruits.isEmpty()) return
-    val iconSize = minOf(FRUIT_SIZE.dp, width)
-    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp),
-        verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
-        fruits.forEach { (fruit, count) ->
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                modifier = Modifier.testTag("earnedFruit_${fruit.name}")) {
-                if (count > 1) {
-                    val label = "$count ×"
-                    val font = fittedHudFont(label, 10.sp, (width - iconSize - 2.dp).coerceAtLeast(1.dp))
-                    Text(label, maxLines = 1, softWrap = false,
-                        style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
-                            platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                        color = LocalGamePalette.current.text,
-                        modifier = Modifier.testTag("earnedFruitCount_${fruit.name}"))
+    val itemWidth = ((width - FRUIT_GAP.dp * 2) / 3).coerceAtLeast(1.dp)
+    val iconSize = minOf(FRUIT_SIZE.dp, itemWidth * .55f).coerceAtLeast(1.dp)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
+        fruits.chunked(3).forEach { row ->
+            Row(Modifier.fillMaxWidth(),
+                horizontalArrangement = if (row.size == 1) Arrangement.Center else Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                row.forEach { (fruit, count) ->
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.widthIn(max = itemWidth).testTag("earnedFruit_${fruit.name}")) {
+                        if (count > 1) {
+                            val label = "$count ×"
+                            val font = fittedHudFont(label, 10.sp,
+                                (itemWidth - iconSize - 2.dp).coerceAtLeast(1.dp))
+                            Text(label, maxLines = 1, softWrap = false,
+                                style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
+                                    platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                                color = LocalGamePalette.current.text,
+                                modifier = Modifier.testTag("earnedFruitCount_${fruit.name}"))
+                        }
+                        FruitIcon(fruit, Modifier.size(iconSize))
+                    }
                 }
-                FruitIcon(fruit, Modifier.size(iconSize))
             }
         }
     }
