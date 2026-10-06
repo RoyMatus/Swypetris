@@ -27,8 +27,10 @@ class ForegroundUiTest {
     }
 
     @Test fun navigationRemainsVisibleTransparentAndOutsideGameplay() {
-        for (screen in listOf(GameScreen.MENU, GameScreen.PLAYING, GameScreen.SETTINGS, GameScreen.HELP)) {
+        for (theme in listOf("classic", "github_light"))
+            for (screen in listOf(GameScreen.MENU, GameScreen.PLAYING, GameScreen.SETTINGS, GameScreen.HELP)) {
             compose.runOnIdle {
+                model().setPalette(theme)
                 model().finishLaunchIntro()
                 when (screen) {
                     GameScreen.PLAYING -> model().newGame()
@@ -46,6 +48,11 @@ class ForegroundUiTest {
                 assertEquals(android.graphics.Color.TRANSPARENT, compose.activity.window.navigationBarColor)
                 if (android.os.Build.VERSION.SDK_INT >= 29)
                     assertFalse(compose.activity.window.isNavigationBarContrastEnforced)
+                val controller = androidx.core.view.WindowCompat.getInsetsController(
+                    compose.activity.window, compose.activity.window.decorView)
+                assertEquals(GamePalettes.find(theme).light, controller.isAppearanceLightStatusBars)
+                if (android.os.Build.VERSION.SDK_INT >= 26)
+                    assertEquals(GamePalettes.find(theme).light, controller.isAppearanceLightNavigationBars)
             }
             if (screen == GameScreen.PLAYING) {
                 val safe = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!

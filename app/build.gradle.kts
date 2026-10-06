@@ -45,7 +45,7 @@ android {
         applicationId = "ru.itoltec.swypetris"
         minSdk = 24
         targetSdk = 36
-        versionCode = 16
+        versionCode = 17
         versionName = providers.gradleProperty("swypetrisVersion").get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
