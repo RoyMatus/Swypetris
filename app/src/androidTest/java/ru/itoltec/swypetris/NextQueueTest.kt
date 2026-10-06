@@ -21,7 +21,7 @@ class NextQueueTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    @Test fun previewAndLabelAppearAtSpawnWithoutWaitingForDescent() {
+    @Test fun previewAppearsAtSpawnWhileLabelKeepsItsExistingClearance() {
         var state by mutableStateOf(GameState(active = Piece(Tetromino.O, x = 0, y = -1), next = Tetromino.I))
         compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state); NextSpawnLabel(state, 44.dp) } }
         fun previewPixel(): androidx.compose.ui.graphics.Color {
@@ -32,11 +32,12 @@ class NextQueueTest {
         val image = compose.onNodeWithTag("board").captureToImage().toPixelMap()
         assertNotEquals("Preview must be visible at spawn", image[(image.width * .95f).toInt(),
             (image.height * 1.5f / 22).toInt()], immediate)
-        compose.onNodeWithTag("nextLabel").assertIsDisplayed().assertTextEquals("ДАЛЕЕ")
+        compose.onNodeWithTag("nextLabel").assertDoesNotExist()
         for (y in listOf(0, 1, 8, -1)) {
             compose.runOnIdle { state = state.copy(active = state.active.copy(y = y)) }
             assertEquals("Descent must not change the spawn preview", immediate, previewPixel())
-            compose.onNodeWithTag("nextLabel").assertIsDisplayed()
+            if (y >= 1) compose.onNodeWithTag("nextLabel").assertIsDisplayed().assertTextEquals("ДАЛЕЕ")
+            else compose.onNodeWithTag("nextLabel").assertDoesNotExist()
         }
     }
 

@@ -483,13 +483,14 @@ private fun HudLabel(text: String, width: Dp, height: Dp, modifier: Modifier = M
         modifier = modifier.width(width))
 }
 
-/** Labels the real spawn preview, using the empty row above it or below a display cutout. */
+/** Labels the spawn preview once the active piece clears it, preserving the existing HUD spacing. */
 @Composable
 internal fun NextSpawnLabel(state: GameState, headerHeight: Dp) {
+    val cells = spawnPiece(state.next).cells()
+    if (state.active.cells().minOf { it.y } < cells.maxOf { it.y } + 2) return
     val density = LocalDensity.current
     val safeTop = with(density) { WindowInsets.safeDrawing.getTop(density).toDp() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val cells = spawnPiece(state.next).cells()
         val rowHeight = headerHeight / SPAWN_DISPLAY_ROWS
         val aboveFits = rowHeight - safeTop - 6.dp >= 10.dp
         val gapTop = rowHeight * (SPAWN_DISPLAY_ROWS + cells.maxOf { it.y } + 1)
