@@ -21,26 +21,28 @@ import kotlin.math.abs
 class BorderlessHudTest {
     @get:Rule val compose = createComposeRule()
 
-    /** Actual spawn-cell bounds determine alignment, including the single-row I hint. */
-    @Test fun scoreAndHoldShareHintCenterWithoutLabels() {
+    /** Fixed band center and safe side lanes work for every Next/Hold shape and score length. */
+    @Test fun scoreAndHoldShareFixedBandCenterWithoutLabels() {
         var width by mutableIntStateOf(240)
         var height by mutableIntStateOf(400)
         var fontScale by mutableFloatStateOf(2f)
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var next by mutableStateOf(Tetromino.I)
         var held by mutableStateOf<Tetromino?>(null)
+        var scoreValue by mutableIntStateOf(Int.MAX_VALUE)
         var pixelsPerDp = 1f
         compose.setContent {
             pixelsPerDp = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale),
                 LocalGamePalette provides palette) {
                 val state = GameState(active = Piece(Tetromino.S, y = 8), next = next,
-                    held = held, score = Int.MAX_VALUE)
+                    held = held, score = scoreValue)
                 Box(Modifier.size(width.dp, height.dp).windowInsetsPadding(
                     WindowInsets(left = 12.dp, top = 52.dp, right = 8.dp, bottom = 0.dp))) {
                     BoxWithConstraints(Modifier.fillMaxSize()) {
-                        val header = maxHeight / 22 * SPAWN_DISPLAY_ROWS
-                        Board(state)
+                        val geometry = gameplayGeometry(with(LocalDensity.current) { maxHeight.toPx() }, 0f)
+                        val header = with(LocalDensity.current) { (geometry.cellHeight * 2).toDp() }
+                        Board(state, geometry = geometry)
                         GameHud(state, header)
                     }
                 }
@@ -50,33 +52,35 @@ class BorderlessHudTest {
             for (theme in listOf("classic", "solarized_light", "github_light")) {
                 for (piece in Tetromino.entries) {
                     for (holdPiece in listOf(null, piece)) {
-                        compose.runOnIdle {
-                            width = w; height = h; fontScale = scale
-                            palette = GamePalettes.find(theme); next = piece; held = holdPiece
+                        for (value in listOf(0, 138, 999999, Int.MAX_VALUE)) {
+                            compose.runOnIdle {
+                                width = w; height = h; fontScale = scale
+                                palette = GamePalettes.find(theme); next = piece; held = holdPiece; scoreValue = value
+                            }
+                            val score = compose.onNodeWithTag("score").assertTextEquals(value.toString())
+                                .fetchSemanticsNode().boundsInRoot
+                            val hold = compose.onNodeWithTag("holdPreview").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+                            val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
+                            val cells = spawnPiece(piece).cells()
+                            val rowHeight = board.height / 21
+                            val center = board.top + rowHeight
+                            assertEquals("Score center $w/$piece", center, score.center.y, 1f)
+                            assertEquals("Hold center $w/$piece", center, hold.center.y, 1f)
+                            assertTrue(score.top >= board.top && hold.top >= board.top)
+                            val hintLeft = board.left + cells.minOf { it.x } * board.width / 10
+                            val hintRight = board.left + (cells.maxOf { it.x } + 1) * board.width / 10
+                            assertTrue(score.right <= hintLeft)
+                            assertTrue(hold.left >= hintRight)
+                            assertEquals(board.left + 20 * pixelsPerDp, score.left, 1f)
+                            assertEquals(board.right - 20 * pixelsPerDp, hold.right, 1f)
+                            if (value >= GameRules.FRUIT_STEP)
+                                assertTrue(compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot.top >= hold.bottom)
+                            for (tag in listOf("scoreLabel", "nextLabel", "holdLabel"))
+                                compose.onNodeWithTag(tag).assertDoesNotExist()
+                            val layouts = mutableListOf<TextLayoutResult>()
+                            compose.onNodeWithTag("score").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                            assertFalse("Clipped score $w/$scale/$piece", layouts.single().hasVisualOverflow)
                         }
-                        val score = compose.onNodeWithTag("score").assertTextEquals(Int.MAX_VALUE.toString())
-                            .fetchSemanticsNode().boundsInRoot
-                        val hold = compose.onNodeWithTag("holdPreview").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-                        val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
-                        val cells = spawnPiece(piece).cells()
-                        val rowHeight = board.height / 22
-                        val center = board.top + rowHeight * (SPAWN_DISPLAY_ROWS +
-                            (cells.minOf { it.y } + cells.maxOf { it.y } + 1) / 2f)
-                        assertEquals("Score center $w/$piece", center, score.center.y, 1f)
-                        assertEquals("Hold center $w/$piece", center, hold.center.y, 1f)
-                        assertTrue(score.top >= board.top && hold.top >= board.top)
-                        val hintLeft = board.left + cells.minOf { it.x } * board.width / 10
-                        val hintRight = board.left + (cells.maxOf { it.x } + 1) * board.width / 10
-                        assertTrue(score.right <= hintLeft)
-                        assertTrue(hold.left >= hintRight)
-                        assertEquals(board.left + 4 * pixelsPerDp, score.left, 1f)
-                        assertEquals(board.right - 4 * pixelsPerDp, hold.right, 1f)
-                        assertTrue(compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot.top >= hold.bottom)
-                        for (tag in listOf("scoreLabel", "nextLabel", "holdLabel"))
-                            compose.onNodeWithTag(tag).assertDoesNotExist()
-                        val layouts = mutableListOf<TextLayoutResult>()
-                        compose.onNodeWithTag("score").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-                        assertFalse("Clipped score $w/$scale/$piece", layouts.single().hasVisualOverflow)
                     }
                 }
             }

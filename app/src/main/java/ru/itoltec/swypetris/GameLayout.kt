@@ -5,7 +5,19 @@ import androidx.compose.ui.geometry.Rect
 internal const val FRUIT_SIZE = 20f
 internal const val FRUIT_GAP = 4f
 internal const val HUD_HORIZONTAL_MARGIN = 4f
+internal const val GAMEPLAY_HUD_MARGIN = 20f
 private const val PREVIEW_GAP = 8f
+
+/** Pixel geometry shared by the grid, board and HUD; one spawn row sits under the status bar. */
+internal data class GameplayGeometry(val safeTop: Float, val cellHeight: Float) {
+    val gridTop: Float get() = safeTop - cellHeight
+}
+
+internal fun gameplayGeometry(height: Float, safeTop: Float): GameplayGeometry {
+    val top = safeTop.coerceIn(0f, height.coerceAtLeast(0f))
+    return GameplayGeometry(top, (height - top).coerceAtLeast(0f) /
+        (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS - 1))
+}
 
 /** Shared preview width for rendering and fruit collision avoidance, in dp. */
 internal fun nextPreviewWidth(width: Float): Float = (width * .18f).coerceIn(40f, 72f)

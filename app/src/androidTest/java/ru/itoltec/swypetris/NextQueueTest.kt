@@ -125,7 +125,8 @@ class NextQueueTest {
 
                 assertEquals(boardBounds.left.value, previewBounds.left.value, 0.5f)
                 assertEquals(boardBounds.right.value, previewBounds.right.value, 0.5f)
-                assertEquals(boardBounds.top.value, previewBounds.top.value, 0.5f)
+                val area = compose.onNodeWithTag("gameArea").getUnclippedBoundsInRoot()
+                assertEquals(area.top.value, previewBounds.top.value, 0.5f)
                 assertTrue(previewBounds.bottom < boardBounds.bottom)
                 val boardWidth = boardBounds.right - boardBounds.left
                 val boardHeight = boardBounds.bottom - boardBounds.top
@@ -133,9 +134,11 @@ class NextQueueTest {
                 val gridHeight = gridBounds.bottom - gridBounds.top
                 assertEquals(gridWidth.value, boardWidth.value, 0.5f)
                 assertEquals(gridHeight.value, boardHeight.value, 0.5f)
-                val area = compose.onNodeWithTag("gameArea").getUnclippedBoundsInRoot()
-                assertEquals(area, boardBounds)
-                assertEquals(area, gridBounds)
+                assertEquals(boardBounds, gridBounds)
+                assertEquals(boardBounds.left, area.left)
+                assertEquals(boardBounds.right, area.right)
+                assertEquals(boardBounds.bottom, area.bottom)
+                assertTrue(area.top >= boardBounds.top)
 
                 compose.runOnIdle {
                     assertEquals(state, model.game)
