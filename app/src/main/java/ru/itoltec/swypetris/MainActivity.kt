@@ -81,7 +81,7 @@ class MainActivity : ComponentActivity() {
     private val appUpdates by lazy { AppUpdates(this) }
     private var windowFocused by mutableStateOf(false)
 
-    /** Draw edge-to-edge and hide system bars while the game is playing. */
+    /** Keep status information visible while content respects the window's safe upper edge. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -111,10 +111,11 @@ class MainActivity : ComponentActivity() {
                     if (windowFocused) {
                         val controller = WindowCompat.getInsetsController(window, window.decorView)
                         if (gameModel.screen == GameScreen.PLAYING) {
-                            controller.hide(WindowInsetsCompat.Type.systemBars())
+                            controller.hide(WindowInsetsCompat.Type.navigationBars())
                         } else {
                             controller.show(WindowInsetsCompat.Type.systemBars())
                         }
+                        controller.show(WindowInsetsCompat.Type.statusBars())
                     }
                 }
                 SwypetrisApp(gameModel, appUpdates, onExit = { gameModel.pause(); finishAndRemoveTask() })
@@ -193,7 +194,8 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
     CompositionLocalProvider(LocalGamePalette provides palette) {
     MaterialTheme(colorScheme = palette.scheme(), typography = MaterialTheme.typography) {
     Surface(color = palette.background, contentColor = palette.text, modifier = Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().windowInsetsPadding(
+            WindowInsets.statusBars.union(WindowInsets.displayCutout))) {
             if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
                 LaunchIntroMotion.approachProgress(model.launchIntroMillis))
             key(model.screen) {
@@ -382,7 +384,7 @@ private fun GameGridBackground() {
     }
 }
 
-/** The board fills every screen edge; only the HUD respects display cutouts and transient bars. */
+/** Board and gestures fill the shared content area below the visible status bar and cutout. */
 @Composable
 private fun GameContent(model: GameViewModel, state: GameState) {
     val localDensity = LocalDensity.current
@@ -405,13 +407,12 @@ private fun GameContent(model: GameViewModel, state: GameState) {
                     Box(Modifier.fillMaxWidth().height(spawnBandHeight)
                         .semantics { contentDescription = "Следующая фигура ${state.next.name}" }
                         .testTag("nextPreview"))
-                    NextSpawnLabel(state, spawnBandHeight)
                 }
                 Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, spawnBandHeight) }
             }
         }
 
-        // Use the same full-screen coordinates for drawing and gameplay gestures.
+        // Use the same content-local coordinates for drawing and gameplay gestures.
         Box(Modifier.fillMaxSize()
             .testTag("gameArea").pointerInput(model, playing, density) {
         if (!playing) return@pointerInput
@@ -471,42 +472,7 @@ private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: 
     }
 }
 
-/** A small non-interactive label, bounded by its own HUD region. */
-@Composable
-private fun HudLabel(text: String, width: Dp, height: Dp, modifier: Modifier = Modifier,
-    alignment: TextAlign = TextAlign.Center) {
-    val font = fittedHudFont(text, 10.sp, width, height)
-    Text(text, color = LocalGamePalette.current.muted,
-        style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
-            platformStyle = PlatformTextStyle(includeFontPadding = false)),
-        maxLines = 1, softWrap = false, textAlign = alignment,
-        modifier = modifier.width(width))
-}
-
-/** Labels the spawn preview once the active piece clears it, preserving the existing HUD spacing. */
-@Composable
-internal fun NextSpawnLabel(state: GameState, headerHeight: Dp) {
-    val cells = spawnPiece(state.next).cells()
-    if (state.active.cells().minOf { it.y } < cells.maxOf { it.y } + 2) return
-    val density = LocalDensity.current
-    val safeTop = with(density) { WindowInsets.safeDrawing.getTop(density).toDp() }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val rowHeight = headerHeight / SPAWN_DISPLAY_ROWS
-        val aboveFits = rowHeight - safeTop - 6.dp >= 10.dp
-        val gapTop = rowHeight * (SPAWN_DISPLAY_ROWS + cells.maxOf { it.y } + 1)
-        val top = if (aboveFits) safeTop + 3.dp else maxOf(safeTop, gapTop) + 3.dp
-        val bottom = if (aboveFits) rowHeight else gapTop + rowHeight
-        val labelHeight = bottom - top - 3.dp
-        if (labelHeight <= 0.dp) return@BoxWithConstraints
-        val columnWidth = maxWidth / BoardGeometry.WIDTH
-        val left = columnWidth * cells.minOf { it.x }
-        val width = columnWidth * (cells.maxOf { it.x } - cells.minOf { it.x } + 1)
-        HudLabel("ДАЛЕЕ", width, labelHeight,
-            Modifier.offset(x = left, y = top).testTag("nextLabel"))
-    }
-}
-
-/** Labeled score and Hold, leaving the fullscreen spawn lane free of panels and cards. */
+/** Score and Hold share the actual spawn hint's centerline, without visible labels. */
 @Composable
 internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
     val displayed = GameRules.displayScore(state.score)
@@ -537,20 +503,22 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
         val holdHeight = (headerHeight * .7f).coerceIn(28.dp, 48.dp)
         // The widest spawn occupies columns 3 through 6; keep the score left of that lane.
         val scoreWidth = (maxWidth * .28f - HUD_HORIZONTAL_MARGIN.dp * 2).coerceAtLeast(1.dp)
-        val labelHeight = (headerHeight / SPAWN_DISPLAY_ROWS - 6.dp).coerceAtLeast(1.dp)
-        val scoreFont = fittedHudFont(displayed, textSize, scoreWidth / 1.08f)
+        val cells = spawnPiece(state.next).cells()
+        val rowHeight = headerHeight / SPAWN_DISPLAY_ROWS
+        val previewCenter = rowHeight * (SPAWN_DISPLAY_ROWS +
+            (cells.minOf { it.y } + cells.maxOf { it.y } + 1) / 2f)
+        val scoreFont = fittedHudFont(displayed, textSize, scoreWidth / 1.08f,
+            previewCenter * 2 / 1.08f)
 
-        Column(Modifier.align(Alignment.TopStart)
-                .padding(start = HUD_HORIZONTAL_MARGIN.dp, top = 3.dp)
-                .width(scoreWidth)) {
-            HudLabel("СЧЁТ", scoreWidth, labelHeight, Modifier.testTag("scoreLabel"), TextAlign.Start)
-            Spacer(Modifier.height(3.dp))
+        Box(Modifier.align(Alignment.TopStart)
+                .padding(start = HUD_HORIZONTAL_MARGIN.dp)
+                .width(scoreWidth).height(previewCenter * 2), contentAlignment = Alignment.CenterStart) {
             Text(displayed, color = color, maxLines = 1, softWrap = false,
                 style = TextStyle(fontSize = scoreFont, lineHeight = scoreFont * 1.2f, letterSpacing = 0.sp,
                     platformStyle = PlatformTextStyle(includeFontPadding = false)),
                 modifier = Modifier.width(scoreWidth / 1.08f)
                 .graphicsLayer {
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
                     scaleX = scale.value; scaleY = scale.value
                 }
                 .semantics {
@@ -562,12 +530,11 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
 
         Column(
             modifier = Modifier.align(Alignment.TopEnd)
-                .padding(end = HUD_HORIZONTAL_MARGIN.dp, top = 3.dp)
+                .offset(y = previewCenter - holdHeight / 2)
+                .padding(end = HUD_HORIZONTAL_MARGIN.dp)
                 .width(holdWidth),
             horizontalAlignment = Alignment.End
         ) {
-            HudLabel("ЗАПАС", holdWidth, labelHeight, Modifier.testTag("holdLabel"))
-            Spacer(Modifier.height(3.dp))
             HoldPreview(state.held, state.holdUsed,
                 Modifier.width(holdWidth).height(holdHeight).testTag("holdPreview"))
             if (state.fruitCounts.any { it > 0 }) {

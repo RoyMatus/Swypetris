@@ -25,12 +25,12 @@ class ForegroundUiTest {
         }
     }
 
-    @Test fun immersiveGameplayAndNotificationShadePausesWithoutAutoResume() {
+    @Test fun visibleStatusBarAndNotificationShadePausesWithoutAutoResume() {
         compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
         compose.onNodeWithTag("board").assertIsDisplayed()
         compose.waitUntil(5000) {
             ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
-                ?.isVisible(WindowInsetsCompat.Type.systemBars()) == false
+                ?.isVisible(WindowInsetsCompat.Type.statusBars()) == true
         }
         try {
             shell("cmd statusbar expand-notifications")
@@ -72,18 +72,18 @@ class ForegroundUiTest {
         }
     }
 
-    @Test fun focusLossKeepsImmersiveOverlayOpenUntilFocusReturns() {
+    @Test fun focusLossKeepsStatusBarVisibleAndRequiresContinue() {
         compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
         compose.waitUntil(5000) {
             ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
-                ?.isVisible(WindowInsetsCompat.Type.systemBars()) == false
+                ?.isVisible(WindowInsetsCompat.Type.statusBars()) == true
         }
         compose.runOnIdle { compose.activity.onWindowFocusChanged(false) }
         compose.onNodeWithTag("resumeGame").assertIsDisplayed()
         val saved = model().game
         compose.runOnIdle {
-            assertFalse(ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-                .isVisible(WindowInsetsCompat.Type.systemBars()))
+            assertTrue(ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+                .isVisible(WindowInsetsCompat.Type.statusBars()))
             assertEquals(GameScreen.MENU, model().screen)
         }
         compose.runOnIdle { compose.activity.onWindowFocusChanged(true) }
@@ -106,14 +106,14 @@ class ForegroundUiTest {
             val safe = insets?.getInsets(WindowInsetsCompat.Type.systemBars() or
                 WindowInsetsCompat.Type.displayCutout()) ?: return@waitUntil false
             val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
-            val label = compose.onNodeWithTag("scoreLabel").fetchSemanticsNode().boundsInRoot
-            !insets.isVisible(WindowInsetsCompat.Type.systemBars()) &&
-                kotlin.math.abs(label.top - safe.top - 3 * density) <= 1f &&
-                score.top >= label.bottom &&
+            val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
+            insets.isVisible(WindowInsetsCompat.Type.statusBars()) &&
+                kotlin.math.abs(board.top - safe.top) <= 1f &&
+                score.top >= board.top &&
                 kotlin.math.abs(score.left - safe.left - 4 * density) <= 1f
         }
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
-        assertEquals(0f, area.top, 1f)
+        assertTrue(area.top > 0f)
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         val saved = model().game
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
