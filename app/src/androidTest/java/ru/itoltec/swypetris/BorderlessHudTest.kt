@@ -22,7 +22,7 @@ import kotlin.math.abs
 class BorderlessHudTest {
     @get:Rule val compose = createComposeRule()
 
-    /** Visible digit tops align with spawn outlines; score pulses and fruits stay in the left lane. */
+    /** Visible digit tops align with spawn outlines; Hold stays left and score/fruits stay right. */
     @Test fun digitalScoreAlignsWithHintAndFruitsStayInLeftLane() {
         var width by mutableIntStateOf(240)
         var height by mutableIntStateOf(400)
