@@ -3,14 +3,55 @@ package ru.itoltec.swypetris
 import org.junit.Assert.*
 import org.junit.Test
 
-/** Проверяет последовательность удаления и чередование направлений без реальных задержек. */
+/** Presentation never changes canonical clear timing or the source board. */
 class LineClearAnimationTest {
-    /** Каждые 60 мс исчезает ровно одна дополнительная клетка с нужного края. */
-    @Test fun columnsDisappearInBothDirections() {
-        for (event in 0..3) for (step in 0..10) {
-            val removed = (0..9).filter { LineClearAnimation.isRemoved(it, step * 60L, event) }
-            assertEquals(if (event % 2 == 0) (0 until step).toList() else (10 - step..9).toList(), removed)
-            if (step > 0) assertEquals(step - 1, (0..9).count { LineClearAnimation.isRemoved(it, step * 60L - 1, event) })
+    @Test fun phasesStayWithinSixHundredMilliseconds() {
+        assertEquals(600L, LineClearAnimation.TOTAL_MILLIS)
+        assertFalse(LineClearAnimation.isRemoved(79))
+        assertTrue(LineClearAnimation.isRemoved(80))
+        assertTrue(LineClearAnimation.highlight(40) > 0f)
+        assertEquals(0f, LineClearAnimation.highlight(80), 0f)
+        assertTrue(LineClearAnimation.shardAlpha(80) > 0f)
+        assertEquals(0f, LineClearAnimation.shardAlpha(360), 0f)
+        for (elapsed in -100L..800L) {
+            assertTrue(LineClearAnimation.burstProgress(elapsed) in 0f..1f)
+            assertTrue(LineClearAnimation.settleProgress(elapsed) in 0f..1f)
+            assertTrue(LineClearAnimation.shardAlpha(elapsed) in 0f..1f)
+        }
+        assertEquals(0f, LineClearAnimation.settleProgress(360), 0f)
+        assertEquals(.5f, LineClearAnimation.settleProgress(480), .001f)
+        assertEquals(1f, LineClearAnimation.settleProgress(600), 0f)
+    }
+
+    @Test fun shardsAreBoundedDeterministicAndUseOnlySourceCells() {
+        for (rows in listOf(listOf(19), listOf(18, 19), listOf(17, 18, 19),
+            listOf(16, 17, 18, 19), listOf(3, 17, 19))) {
+            val cleared = rows.map(BoardGeometry::row)
+            val board = BoardGeometry.empty().mapIndexed { row, cells ->
+                if (row in cleared) List(10) { Tetromino.entries[it % 7] } else cells
+            }
+            val state = GameState(board = board, active = Piece(Tetromino.O), next = Tetromino.T,
+                clearingRows = cleared, completedClears = 3)
+            val shards = LineClearAnimation.shards(state)
+            assertEquals(rows.size * 40, shards.size)
+            assertTrue(shards.size <= 160)
+            assertEquals(shards, LineClearAnimation.shards(state.copy()))
+            shards.forEach {
+                assertTrue(it.row in cleared)
+                assertEquals(board[it.row][it.column], it.type)
+                assertTrue(it.velocityY < 0f)
+            }
+            assertEquals(board, state.board)
+        }
+    }
+
+    @Test fun nonAdjacentRowsAndHiddenCellsSettleToTheCanonicalResult() {
+        val rows = listOf(3, 17, 19).map(BoardGeometry::row)
+        for (row in 0 until BoardGeometry.TOTAL_ROWS) {
+            val targetShift = rows.count { it > row }.toFloat()
+            assertEquals(targetShift, LineClearAnimation.rowShift(row, rows, 600, false), 0f)
+            assertEquals(targetShift / 2, LineClearAnimation.rowShift(row, rows, 480, false), .001f)
+            assertEquals(0f, LineClearAnimation.rowShift(row, rows, 599, true), 0f)
         }
     }
 
@@ -27,4 +68,3 @@ class LineClearAnimationTest {
         assertEquals(0, engine.newGame().completedClears)
     }
 }
-

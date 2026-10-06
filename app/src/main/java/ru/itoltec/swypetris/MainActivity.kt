@@ -616,8 +616,10 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
 /** Draws the logical board, spawn preview, active piece, and optional landing ghost. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
-    clearTime: () -> Long = { clearElapsedMillis }, geometry: GameplayGeometry? = null, drawActive: Boolean = true) {
+    clearTime: () -> Long = { clearElapsedMillis }, geometry: GameplayGeometry? = null, drawActive: Boolean = true,
+    reducedMotion: Boolean = Build.VERSION.SDK_INT >= 26 && !android.animation.ValueAnimator.areAnimatorsEnabled()) {
     val palette = LocalGamePalette.current
+    val shards = remember(state.board, state.clearingRows, state.completedClears) { LineClearAnimation.shards(state) }
     Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
         " Следующая фигура ${state.next.name}" +
         " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }.testTag("board")) {
@@ -640,14 +642,20 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
                         style = Stroke(1.dp.toPx()))
                 }
 
-            state.board.forEachIndexed { rowIndex, row -> row.forEachIndexed { x, type ->
+            state.board.forEachIndexed { rowIndex, row ->
                 val logicalY = rowIndex - BoardGeometry.HIDDEN_ROWS
-                if (logicalY >= firstVisibleSpawnRow && type != null &&
-                    !(rowIndex in state.clearingRows &&
-                        LineClearAnimation.isRemoved(x, elapsed, state.completedClears))) {
-                    block(Cell(x, logicalY), palette.piece(type), palette.finish, palette.texture, origin, cell)
+                val shift = LineClearAnimation.rowShift(rowIndex, state.clearingRows, elapsed, reducedMotion)
+                if (logicalY + shift + 1 > firstVisibleSpawnRow &&
+                    !(rowIndex in state.clearingRows && LineClearAnimation.isRemoved(elapsed))) {
+                    row.forEachIndexed { x, type ->
+                        if (type != null) block(Cell(x, logicalY), palette.piece(type), palette.finish,
+                            palette.texture, origin + Offset(0f, shift * cell.height), cell)
+                    }
                 }
-            } }
+            }
+            if (state.clearingRows.isNotEmpty()) clipRect(top = origin.y) {
+                lineClearEffects(shards, state.clearingRows, palette, origin, cell, elapsed, reducedMotion)
+            }
 
             if (!state.gameOver && state.clearingRows.isEmpty()) {
                 landingHint?.let { hint ->
