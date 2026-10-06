@@ -5,6 +5,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import androidx.test.espresso.Espresso
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -137,8 +138,9 @@ class GameUiTest {
         compose.onNodeWithContentDescription("SWYPETRIS").assertIsDisplayed()
         var saved: GameState? = null
         compose.runOnIdle { saved = model().game }
-        compose.onNodeWithText("Продолжить").performClick()
-        compose.runOnIdle {
+        // Check the button's result in the same UI event, before the real game timer can tick.
+        compose.onNodeWithText("Продолжить").performSemanticsAction(SemanticsActions.OnClick) { resume ->
+            assertTrue(resume())
             assertEquals(GameScreen.PLAYING, model().screen)
             assertEquals(saved, model().game)
         }
