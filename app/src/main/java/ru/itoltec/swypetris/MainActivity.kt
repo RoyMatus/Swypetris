@@ -364,12 +364,6 @@ internal fun MenuTile(label: String, accent: Color, tag: String,
 internal const val SPAWN_DISPLAY_ROWS = 2
 private const val GAME_GRID_ROWS = BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS
 
-/** Wait for a full empty row between the next preview and the active piece. */
-internal fun nextSpawnPreviewVisible(state: GameState): Boolean {
-    val previewBottom = spawnPiece(state.next).cells().maxOf { it.y }
-    return state.active.cells().minOf { it.y } >= previewBottom + 2
-}
-
 /** Draws the grid across the entire gameplay surface without outer gutters. */
 @Composable
 private fun GameGridBackground() {
@@ -492,7 +486,6 @@ private fun HudLabel(text: String, width: Dp, height: Dp, modifier: Modifier = M
 /** Labels the real spawn preview, using the empty row above it or below a display cutout. */
 @Composable
 internal fun NextSpawnLabel(state: GameState, headerHeight: Dp) {
-    if (!nextSpawnPreviewVisible(state)) return
     val density = LocalDensity.current
     val safeTop = with(density) { WindowInsets.safeDrawing.getTop(density).toDp() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -662,7 +655,7 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         val firstVisibleSpawnRow = -SPAWN_DISPLAY_ROWS
 
         // The outline uses engine spawn cells; its faint flat fill cannot look like an active block.
-        if (nextSpawnPreviewVisible(state)) spawnPiece(state.next).cells()
+        spawnPiece(state.next).cells()
             .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
             .forEach {
                 val gap = minOf(cell.width, cell.height) * .07f
