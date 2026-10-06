@@ -24,6 +24,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
+private const val WORDMARK_OUTLINE_PX = 3
+
 /** Renders the shared logo at a size that leaves room for buttons on short screens. */
 @Composable
 internal fun GameTitle(imageModifier: Modifier = Modifier, wordmarkOnly: Boolean = false,
@@ -49,11 +51,49 @@ internal fun DrawScope.drawBrandLogo(logo: ImageBitmap, bounds: Rect, palette: G
     withTransform({ translate(origin.x, origin.y); scale(scale, scale, Offset.Zero) }) {
         if (wordmarkOnly) {
             val top = (logo.height * .69f).toInt()
-            drawImage(logo, srcOffset = IntOffset(0, top),
-                srcSize = IntSize(logo.width, logo.height - top), dstOffset = IntOffset(0, top),
-                dstSize = IntSize(logo.width, logo.height - top))
+            drawWordmarkSliceWithOutline(
+                logo = logo,
+                srcOffset = IntOffset(0, top),
+                srcSize = IntSize(logo.width, logo.height - top),
+                dstOffset = IntOffset(0, top),
+                dstSize = IntSize(logo.width, logo.height - top),
+                palette = palette
+            )
         } else drawImage(logo, colorFilter = brandColorFilter(palette))
     }
+}
+
+/** Draws the actual wordmark plus a theme-contrasting contour that follows its alpha silhouette. */
+internal fun DrawScope.drawWordmarkSliceWithOutline(
+    logo: ImageBitmap,
+    srcOffset: IntOffset,
+    srcSize: IntSize,
+    dstOffset: IntOffset,
+    dstSize: IntSize,
+    palette: GamePalette
+) {
+    val outline = if (palette.light) Color.Black.copy(alpha = .72f) else Color.White.copy(alpha = .72f)
+    val filter = ColorFilter.tint(outline)
+    val offsets = arrayOf(
+        IntOffset(-WORDMARK_OUTLINE_PX, 0), IntOffset(WORDMARK_OUTLINE_PX, 0),
+        IntOffset(0, -WORDMARK_OUTLINE_PX), IntOffset(0, WORDMARK_OUTLINE_PX),
+        IntOffset(-WORDMARK_OUTLINE_PX, -WORDMARK_OUTLINE_PX),
+        IntOffset(WORDMARK_OUTLINE_PX, -WORDMARK_OUTLINE_PX),
+        IntOffset(-WORDMARK_OUTLINE_PX, WORDMARK_OUTLINE_PX),
+        IntOffset(WORDMARK_OUTLINE_PX, WORDMARK_OUTLINE_PX)
+    )
+    offsets.forEach { offset ->
+        drawImage(
+            logo,
+            srcOffset = srcOffset,
+            srcSize = srcSize,
+            dstOffset = IntOffset(dstOffset.x + offset.x, dstOffset.y + offset.y),
+            dstSize = dstSize,
+            colorFilter = filter
+        )
+    }
+    drawImage(logo, srcOffset = srcOffset, srcSize = srcSize,
+        dstOffset = dstOffset, dstSize = dstSize)
 }
 
 /** Maps the original RGB logo channels to theme colors and makes its black matte transparent. */
