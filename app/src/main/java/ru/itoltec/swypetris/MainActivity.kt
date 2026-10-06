@@ -454,11 +454,12 @@ private fun GameContent(model: GameViewModel, state: GameState) {
 private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: Dp? = null): TextUnit {
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
-    val style = LocalTextStyle.current.merge(TextStyle(fontSize = preferred,
+    val style = TextStyle(fontSize = preferred,
         lineHeight = preferred * 1.2f, letterSpacing = 0.sp,
-        platformStyle = PlatformTextStyle(includeFontPadding = false)))
+        platformStyle = PlatformTextStyle(includeFontPadding = false))
     return remember(text, preferred, width, height, density, style, measurer) {
-        val bounds = Constraints(maxWidth = with(density) { width.toPx().toInt() }.coerceAtLeast(1),
+        val widthPx = with(density) { width.roundToPx() }.coerceAtLeast(1)
+        val bounds = Constraints(minWidth = widthPx, maxWidth = widthPx,
             maxHeight = height?.let { with(density) { it.toPx().toInt() }.coerceAtLeast(1) } ?: Constraints.Infinity)
         fun fits(font: TextUnit): Boolean = !measurer.measure(text,
             style = style.copy(fontSize = font, lineHeight = font * 1.2f),
@@ -553,7 +554,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
             Text(displayed, color = color, maxLines = 1, softWrap = false,
                 style = TextStyle(fontSize = scoreFont, lineHeight = scoreFont * 1.2f, letterSpacing = 0.sp,
                     platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                modifier = Modifier.widthIn(max = scoreWidth / 1.08f)
+                modifier = Modifier.width(scoreWidth / 1.08f)
                 .graphicsLayer {
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
                     scaleX = scale.value; scaleY = scale.value
