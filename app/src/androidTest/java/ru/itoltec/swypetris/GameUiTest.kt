@@ -237,19 +237,22 @@ class GameUiTest {
         val preview = compose.onNodeWithTag("nextPreview").fetchSemanticsNode().boundsInRoot
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         assertEquals(board, grid)
-        assertEquals(board, area)
         val insets = androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
             .getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars() or
                 androidx.core.view.WindowInsetsCompat.Type.displayCutout())
-        assertEquals(root.top + insets.top, board.top, 1f)
+        assertEquals(root.top, board.top, 1f)
+        assertEquals(root.top + insets.top, area.top, 1f)
+        assertEquals(board.left, area.left, 1f)
+        assertEquals(board.right, area.right, 1f)
+        assertEquals(board.bottom, area.bottom, 1f)
         assertEquals(root.left + insets.left, board.left, 1f)
         assertEquals(root.right - insets.right, board.right, 1f)
         assertEquals(root.bottom - insets.bottom, board.bottom, 1f)
-        val cellHeight = board.height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
+        val cellHeight = area.height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS - 1)
         assertEquals(board.left, preview.left, 1f)
         assertEquals(board.right, preview.right, 1f)
-        assertEquals(board.top, preview.top, 1f)
-        assertEquals(board.top + cellHeight * SPAWN_DISPLAY_ROWS, preview.bottom, 1f)
+        assertEquals(area.top, preview.top, 1f)
+        assertEquals(area.top + cellHeight * 2, preview.bottom, 1f)
         compose.onNodeWithTag("score").assertIsDisplayed()
         Espresso.pressBack()
         compose.onNodeWithTag("mainMenu").assertIsDisplayed()
