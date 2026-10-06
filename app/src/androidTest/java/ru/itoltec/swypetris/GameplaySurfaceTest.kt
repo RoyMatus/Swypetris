@@ -40,6 +40,13 @@ class GameplaySurfaceTest {
             assertTrue("Grid must be visible behind status icons", (-1..1).any {
                 before[columnX + it, sampleY] != before[(before.width * .15f).toInt(), sampleY]
             })
+            val edgeY = (inset * pixelsPerDp).toInt()
+            val middleX = (before.width * .05f).toInt()
+            val edge = before[middleX, edgeY]
+            val above = before[middleX, edgeY - 3]
+            assertTrue("No horizontal strip at the status boundary",
+                kotlin.math.abs(edge.red - above.red) + kotlin.math.abs(edge.green - above.green) +
+                    kotlin.math.abs(edge.blue - above.blue) < .02f)
             compose.runOnIdle {
                 val hidden = BoardGeometry.empty().toMutableList()
                 hidden[BoardGeometry.row(-2)] = List(10) { Tetromino.L }

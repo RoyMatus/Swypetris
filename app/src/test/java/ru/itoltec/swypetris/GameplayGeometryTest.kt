@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GameplayGeometryTest {
-    @Test fun spawnRowIsUnderSafeTopAndBottomVisibleRowStaysAtBottom() {
+    @Test fun visibleSpawnRowStartsAtSafeTopAndBottomVisibleRowStaysAtBottom() {
         for (height in listOf(400f, 640f, 900f)) for (top in listOf(0f, 24f, 52f, 90f)) {
             val geometry = gameplayGeometry(height, top)
             assertEquals(top, geometry.gridTop + geometry.cellHeight, .001f)
