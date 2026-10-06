@@ -6,10 +6,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.*
@@ -21,8 +19,8 @@ import kotlin.math.abs
 class BorderlessHudTest {
     @get:Rule val compose = createComposeRule()
 
-    /** Fixed band center and safe side lanes work for every Next/Hold shape and score length. */
-    @Test fun scoreAndHoldShareFixedBandCenterWithoutLabels() {
+    /** Visible digit tops align with spawn outlines; score pulses and fruits stay in the left lane. */
+    @Test fun digitalScoreAlignsWithHintAndFruitsStayInLeftLane() {
         var width by mutableIntStateOf(240)
         var height by mutableIntStateOf(400)
         var fontScale by mutableFloatStateOf(2f)
@@ -64,7 +62,8 @@ class BorderlessHudTest {
                             val cells = spawnPiece(piece).cells()
                             val rowHeight = board.height / 21
                             val center = board.top + rowHeight
-                            assertEquals("Score center $w/$piece", center, score.center.y, 1f)
+                            val gap = minOf(board.width / 10, rowHeight) * .07f
+                            assertEquals("Score top $w/$piece", board.top + gap, score.top, 1f)
                             assertEquals("Hold center $w/$piece", center, hold.center.y, 1f)
                             assertTrue(score.top >= board.top && hold.top >= board.top)
                             val hintLeft = board.left + cells.minOf { it.x } * board.width / 10
@@ -73,19 +72,37 @@ class BorderlessHudTest {
                             assertTrue(hold.left >= hintRight)
                             assertEquals(board.left + 20 * pixelsPerDp, score.left, 1f)
                             assertEquals(board.right - 20 * pixelsPerDp, hold.right, 1f)
-                            if (value >= GameRules.FRUIT_STEP)
-                                assertTrue(compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot.top >= hold.bottom)
+                            if (value >= GameRules.FRUIT_STEP) {
+                                val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
+                                assertTrue(fruits.top >= score.bottom)
+                                assertEquals(score.left, fruits.left, 1f)
+                                assertTrue(fruits.right <= hintLeft)
+                                val items = Fruit.entries.zip(stateFruitCounts(value)).filter { it.second > 0 }
+                                var previous: androidx.compose.ui.geometry.Rect? = null
+                                items.forEach { (fruit, count) ->
+                                    val item = compose.onNodeWithTag("earnedFruit_${fruit.name}").fetchSemanticsNode().boundsInRoot
+                                    assertTrue(item.left >= fruits.left && item.right <= fruits.right + 1f)
+                                    previous?.let {
+                                        if (item.top >= it.bottom) assertEquals(score.left, item.left, 1f)
+                                        else assertTrue(item.left >= it.right)
+                                    }
+                                    if (count > 1) {
+                                        val label = compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
+                                            .assertTextEquals("$count ×").fetchSemanticsNode().boundsInRoot
+                                        assertTrue(label.left >= item.left && label.right <= item.right)
+                                    }
+                                    previous = item
+                                }
+                            }
                             for (tag in listOf("scoreLabel", "nextLabel", "holdLabel"))
                                 compose.onNodeWithTag(tag).assertDoesNotExist()
-                            val layouts = mutableListOf<TextLayoutResult>()
-                            compose.onNodeWithTag("score").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-                            assertFalse("Clipped score $w/$scale/$piece", layouts.single().hasVisualOverflow)
                         }
                     }
                 }
             }
         }
     }
+    private fun stateFruitCounts(score: Int) = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = score).fruitCounts
     /** Every Next shape uses its spawn cells and an outline stronger than its faint flat fill. */
     @Test fun nextHasQuietFillAndReadableOutlinesInDarkAndLightThemes() {
         var palette by mutableStateOf(GamePalettes.find("classic"))

@@ -2,7 +2,6 @@ package ru.itoltec.swypetris
 
 import android.os.Build
 import android.os.Bundle
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
@@ -402,14 +401,17 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
 
                 GameGridBackground(geometry)
                 Box(Modifier.fillMaxSize()) {
-                    Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis }, geometry = geometry)
+                    Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis }, geometry = geometry,
+                        drawActive = false)
                     Box(Modifier.offset(y = safeTop).fillMaxWidth().height(spawnBandHeight)
                         .semantics { contentDescription = "Следующая фигура ${state.next.name}" }
                         .testTag("nextPreview"))
                 }
                 Box(Modifier.fillMaxSize().padding(top = safeTop)
                     .consumeWindowInsets(PaddingValues(top = safeTop)).safeDrawingPadding()) {
-                    GameHud(state, spawnBandHeight)
+                    GameHud(state, spawnBandHeight) {
+                        ActivePiece(state, geometry.copy(safeTop = 0f))
+                    }
                 }
             }
         }
@@ -474,16 +476,14 @@ private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: 
     }
 }
 
-/** Score and Hold share a fixed hint-band centerline, independent of the Next shape. */
+/** The score and whole fruit pairs use the left lane; Hold keeps its compact right lane. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
+internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp, pieceOverlay: @Composable () -> Unit = {}) {
     val displayed = GameRules.displayScore(state.score)
     val currentLines by rememberUpdatedState(state.lines)
     val nearing by rememberUpdatedState(GameRules.nearingLevel(state.lines, state.startingLevel))
     val scale = remember { Animatable(1f) }
-    val color by animateColorAsState(
-        if (GameRules.nearingLevel(state.lines, state.startingLevel)) LocalGamePalette.current.gold else LocalGamePalette.current.text,
-        tween(220), label = "scoreColor")
     LaunchedEffect(Unit) {
         var pulsing = false
         snapshotFlow { currentLines }.drop(1).collect {
@@ -491,7 +491,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
                 pulsing = true
                 launch {
                     try {
-                        scale.animateTo(1.08f, tween(110))
+                        scale.animateTo(SCORE_MAX_SCALE, tween(110))
                         scale.animateTo(1f, tween(110))
                     } finally { pulsing = false }
                 }
@@ -500,25 +500,29 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
-        val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
         val sideWidth = (maxWidth * .3f - GAMEPLAY_HUD_MARGIN.dp - 4.dp).coerceAtLeast(1.dp)
+        val hintLeft = maxWidth / BoardGeometry.WIDTH * spawnPiece(state.next).cells().minOf { it.x }
+        val leftWidth = (hintLeft - GAMEPLAY_HUD_MARGIN.dp - 4.dp).coerceAtLeast(1.dp)
         val holdWidth = minOf((maxWidth * .22f).coerceIn(48.dp, 88.dp), sideWidth)
         val holdHeight = minOf((headerHeight * .7f).coerceIn(28.dp, 48.dp), headerHeight)
         // The widest spawn occupies columns 3 through 6; keep the score left of that lane.
-        val scoreWidth = sideWidth
         val previewCenter = headerHeight / 2
-        val scoreFont = fittedHudFont(displayed, textSize, scoreWidth / 1.08f,
-            previewCenter * 2 / 1.08f)
+        val scoreTop = minOf(maxWidth / BoardGeometry.WIDTH, headerHeight / SPAWN_DISPLAY_ROWS) * .07f
+        val scoreHeight = minOf((maxHeight / 32).coerceIn(16.dp, 28.dp) * density.fontScale,
+            leftWidth / digitalScoreAspect(displayed.length) / SCORE_MAX_SCALE,
+            (headerHeight - scoreTop).coerceAtLeast(1.dp) / SCORE_MAX_SCALE)
 
-        Box(Modifier.align(Alignment.TopStart)
-                .padding(start = GAMEPLAY_HUD_MARGIN.dp)
-                .width(scoreWidth).height(previewCenter * 2), contentAlignment = Alignment.CenterStart) {
-            Text(displayed, color = color, maxLines = 1, softWrap = false,
-                style = TextStyle(fontSize = scoreFont, lineHeight = scoreFont * 1.2f, letterSpacing = 0.sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                modifier = Modifier.width(scoreWidth / 1.08f)
+        EarnedFruits(state, leftWidth, Modifier.align(Alignment.TopStart)
+                .offset(x = GAMEPLAY_HUD_MARGIN.dp, y = scoreTop + scoreHeight * SCORE_MAX_SCALE + FRUIT_GAP.dp)
+                .width(leftWidth).testTag("earnedFruits"))
+
+        // Only the falling piece crosses over fruit pixels; score and Hold stay in front.
+        pieceOverlay()
+        DigitalScore(displayed, scoreHeight,
+                modifier = Modifier.align(Alignment.TopStart)
+                .offset(x = GAMEPLAY_HUD_MARGIN.dp, y = scoreTop)
                 .graphicsLayer {
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f)
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
                     scaleX = scale.value; scaleY = scale.value
                 }
                 .semantics {
@@ -526,7 +530,6 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
                     contentDescription = "Очки $displayed"
                 }
                 .testTag("score"))
-        }
 
         Column(
             modifier = Modifier.align(Alignment.TopEnd)
@@ -537,36 +540,33 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
         ) {
             HoldPreview(state.held, state.holdUsed,
                 Modifier.width(holdWidth).height(holdHeight).testTag("holdPreview"))
-            if (state.fruitCounts.any { it > 0 }) {
-                val iconSize = minOf(FRUIT_SIZE.dp, (holdWidth - FRUIT_GAP.dp) / 2)
-                    .coerceAtLeast(16.dp)
-                val fruits = Fruit.entries.zip(state.fruitCounts).filter { it.second > 0 }
-                Column(
-                    modifier = Modifier.padding(top = FRUIT_GAP.dp).testTag("earnedFruits"),
-                    verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    fruits.chunked(2).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
-                            row.forEach { (fruit, count) ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                    modifier = Modifier.testTag("earnedFruit_${fruit.name}")
-                                ) {
-                                    if (count > 1) Text(
-                                        "${count} ×",
-                                        fontSize = 10.sp,
-                                        maxLines = 1,
-                                        color = LocalGamePalette.current.text,
-                                        modifier = Modifier.testTag("earnedFruitCount_${fruit.name}")
-                                    )
-                                    FruitIcon(fruit, Modifier.size(iconSize))
-                                }
-                            }
-                        }
-                    }
+        }
+    }
+}
+
+/** Flow measures each quantity and icon together, so pairs cannot split or enter the hint lane. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
+    val fruits = Fruit.entries.zip(state.fruitCounts).filter { it.second > 0 }
+    if (fruits.isEmpty()) return
+    val iconSize = minOf(FRUIT_SIZE.dp, width)
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp),
+        verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
+        fruits.forEach { (fruit, count) ->
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.testTag("earnedFruit_${fruit.name}")) {
+                if (count > 1) {
+                    val label = "$count ×"
+                    val font = fittedHudFont(label, 10.sp, (width - iconSize - 2.dp).coerceAtLeast(1.dp))
+                    Text(label, maxLines = 1, softWrap = false,
+                        style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
+                            platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                        color = LocalGamePalette.current.text,
+                        modifier = Modifier.testTag("earnedFruitCount_${fruit.name}"))
                 }
+                FruitIcon(fruit, Modifier.size(iconSize))
             }
         }
     }
@@ -612,7 +612,7 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
 /** Draws the logical board, spawn preview, active piece, and optional landing ghost. */
 @Composable
 internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
-    clearTime: () -> Long = { clearElapsedMillis }, geometry: GameplayGeometry? = null) {
+    clearTime: () -> Long = { clearElapsedMillis }, geometry: GameplayGeometry? = null, drawActive: Boolean = true) {
     val palette = LocalGamePalette.current
     Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
         " Следующая фигура ${state.next.name}" +
@@ -652,12 +652,27 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
                             alpha = palette.ghostAlpha, outline = true)
                     }
                 }
-                state.active.cells()
-                    .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
-                    .forEach {
-                        block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell)
-                    }
+                if (drawActive) fallingPiece(state, palette, origin, cell)
             }
+        }
+    }
+}
+
+/** Dedicated falling-piece layer between fruits and the other HUD indicators. */
+@Composable
+private fun ActivePiece(state: GameState, geometry: GameplayGeometry) {
+    val palette = LocalGamePalette.current
+    Canvas(Modifier.fillMaxSize().testTag("activePiece")) {
+        val cell = Size(size.width / BoardGeometry.WIDTH, geometry.cellHeight)
+        val origin = Offset(0f, geometry.gridTop + SPAWN_DISPLAY_ROWS * cell.height)
+        clipRect(top = geometry.safeTop) { fallingPiece(state, palette, origin, cell) }
+    }
+}
+
+private fun DrawScope.fallingPiece(state: GameState, palette: GamePalette, origin: Offset, cell: Size) {
+    if (!state.gameOver && state.clearingRows.isEmpty()) {
+        state.active.cells().filter { it.y in -SPAWN_DISPLAY_ROWS until BoardGeometry.VISIBLE_ROWS }.forEach {
+            block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell)
         }
     }
 }
