@@ -22,18 +22,22 @@ class NextQueueTest {
 
     @Test fun previewAppearsOnlyAfterActiveLeavesOneEmptyRow() {
         var state by mutableStateOf(GameState(active = Piece(Tetromino.O, x = 0, y = -1), next = Tetromino.I))
-        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
+        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state); NextSpawnLabel(state, 44.dp) } }
         fun previewPixel(): androidx.compose.ui.graphics.Color {
             val image = compose.onNodeWithTag("board").captureToImage().toPixelMap()
             return image[(image.width * .35f).toInt(), (image.height * 1.5f / 22).toInt()]
         }
         val hidden = previewPixel()
+        compose.onNodeWithTag("nextLabel").assertDoesNotExist()
         compose.runOnIdle { state = state.copy(active = state.active.copy(y = 0)) }
         assertEquals("An adjacent active piece must still hide the preview", hidden, previewPixel())
+        compose.onNodeWithTag("nextLabel").assertDoesNotExist()
         compose.runOnIdle { state = state.copy(active = state.active.copy(y = 1)) }
         assertNotEquals("One empty row must reveal the preview", hidden, previewPixel())
+        compose.onNodeWithTag("nextLabel").assertIsDisplayed().assertTextEquals("ДАЛЕЕ")
         compose.runOnIdle { state = state.copy(active = spawnPiece(Tetromino.O).copy(x = 0)) }
         assertEquals("A replacement spawn must hide the preview again", hidden, previewPixel())
+        compose.onNodeWithTag("nextLabel").assertDoesNotExist()
     }
 
     @Test fun nextUsesFullScreenSpawnGridWithEitherGhostSetting() {
