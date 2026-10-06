@@ -220,7 +220,7 @@ class GameUiTest {
     }
 
     /** Поле, сетка и жесты используют одну область ниже строки состояния. */
-    @Test fun boardFillsSafePortraitContent() {
+    @Test fun boardFillsPortraitWindowUnderNavigation() {
         compose.onNodeWithTag("newGame").performClick()
         compose.runOnIdle {
             assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, compose.activity.requestedOrientation)
@@ -245,9 +245,11 @@ class GameUiTest {
         assertEquals(board.left, area.left, 1f)
         assertEquals(board.right, area.right, 1f)
         assertEquals(board.bottom, area.bottom, 1f)
-        assertEquals(root.left + insets.left, board.left, 1f)
-        assertEquals(root.right - insets.right, board.right, 1f)
-        assertEquals(root.bottom - insets.bottom, board.bottom, 1f)
+        val cutout = androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+            .getInsets(androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+        assertEquals(root.left + cutout.left, board.left, 1f)
+        assertEquals(root.right - cutout.right, board.right, 1f)
+        assertEquals(root.bottom, board.bottom, 1f)
         val cellHeight = area.height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS - 1)
         assertEquals(board.left, preview.left, 1f)
         assertEquals(board.right, preview.right, 1f)
