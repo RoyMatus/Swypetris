@@ -20,7 +20,6 @@ import ru.rustore.sdk.appupdate.model.UpdateAvailability
 
 internal const val GITHUB_RELEASE_API = "https://api.github.com/repos/RoyMatus/Swypetris/releases/latest"
 private const val RUSTORE_INSTALLER = "ru.vk.store"
-private const val AUTO_CHECK_INTERVAL_MS = 6L * 60 * 60 * 1000
 private const val REMIND_INTERVAL_MS = 24L * 60 * 60 * 1000
 
 internal data class AvailableUpdate(val versionCode: Long, val versionName: String,
@@ -33,7 +32,7 @@ internal sealed interface UpdateNotice {
     data object StoreInstalling : UpdateNotice
     data object Current : UpdateNotice
     data object Failed : UpdateNotice
-    data object RateLimited : UpdateNotice
+    data class RateLimited(val retryAtMillis: Long) : UpdateNotice
 }
 
 internal fun newerVersion(available: Long, installed: Long): Boolean = available > installed
@@ -76,9 +75,11 @@ internal fun isRuStoreInstall(context: Context): Boolean {
 }
 
 /** Owns update checks for the Activity; gameplay state remains in GameViewModel. */
-internal class AppUpdates(private val activity: ComponentActivity) {
+internal class AppUpdates(private val activity: ComponentActivity,
+    private val preferences: android.content.SharedPreferences = activity.getSharedPreferences("app_updates", Context.MODE_PRIVATE),
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val githubUpdate: () -> AvailableUpdate? = ::fetchGitHubUpdate) {
     val delivery = UpdateDelivery(activity)
-    private val preferences = activity.getSharedPreferences("app_updates", Context.MODE_PRIVATE)
     private val storeManager by lazy { RuStoreAppUpdateManagerFactory.create(activity) }
     private var checking = false
     private var manualRequested = false
@@ -96,11 +97,28 @@ internal class AppUpdates(private val activity: ComponentActivity) {
             if (manual) manualRequested = true
             return
         }
-        val now = System.currentTimeMillis()
+        val now = clock()
+        val fromStore = isRuStoreInstall(activity)
+        if (!fromStore && !allowGitHubCheck(manual, now)) return
         checking = true
         manualRequested = manual
-        if (isRuStoreInstall(activity)) checkRuStore(now)
+        if (fromStore) checkRuStore(now)
         else checkGitHub(now)
+    }
+
+    private fun allowGitHubCheck(manual: Boolean, now: Long): Boolean {
+        val retryAt = preferences.getLong("retry_at", Long.MIN_VALUE)
+        if (now < retryAt) {
+            if (manual) notice = UpdateNotice.RateLimited(retryAt)
+            return false
+        }
+        if (manual) return true
+        val last = if (preferences.contains("last_check")) preferences.getLong("last_check", 0) else null
+        val rebased = last?.coerceAtMost(now)
+        if (last != rebased && !preferences.edit().putLong("last_check", rebased!!).commit()) return false
+        if (!automaticCheckDue(now, rebased)) return false
+        // Persist before requesting so Activity/process death or an HTTP failure cannot cause a launch storm.
+        return preferences.edit().putLong("last_check", now).commit()
     }
 
     private fun checkRuStore(now: Long) {
@@ -129,17 +147,19 @@ internal class AppUpdates(private val activity: ComponentActivity) {
 
     private fun checkGitHub(now: Long) {
         activity.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { runCatching { fetchGitHubUpdate() } }
+            val result = withContext(Dispatchers.IO) { runCatching { githubUpdate() } }
             val update = result.getOrNull()
             checking = false
             val manual = manualRequested
             manualRequested = false
             if (update == null) {
-                if (manual) notice = if (result.exceptionOrNull() is UpdateRateLimitException)
-                    UpdateNotice.RateLimited else UpdateNotice.Failed
+                val failure = result.exceptionOrNull() as? UpdateRateLimitException
+                val persisted = failure == null || preferences.edit().putLong("retry_at", failure.retryAtMillis).commit()
+                if (manual) notice = if (persisted && failure != null) UpdateNotice.RateLimited(failure.retryAtMillis)
+                    else UpdateNotice.Failed
                 return@launch
             }
-            preferences.edit().putLong("last_check", now).apply()
+            preferences.edit().putLong("last_check", now).remove("retry_at").apply()
             if (newerVersion(update.versionCode, installedVersionCode())) showAvailable(update, manual)
             else if (manual) notice = UpdateNotice.Current
         }
@@ -298,16 +318,5 @@ private fun readJson(url: String): JSONObject {
         return JSONObject(data.toString(Charsets.UTF_8).removePrefix("\uFEFF"))
     } finally {
         connection.disconnect()
-    }
-}
-
-private fun java.io.InputStream.readBytesLimited(limit: Int): ByteArray {
-    val output = java.io.ByteArrayOutputStream()
-    val buffer = ByteArray(8192)
-    while (true) {
-        val count = read(buffer)
-        if (count < 0) return output.toByteArray()
-        if (output.size() + count > limit) throw java.io.IOException("Update metadata is too large")
-        output.write(buffer, 0, count)
     }
 }
