@@ -116,9 +116,9 @@ class GameViewModel internal constructor(
     private fun syncOrdinaryMusic() {
         val next = when {
             !musicEnabled || !activeForeground -> MusicMode.SILENT
-            screen in listOf(GameScreen.MENU, GameScreen.HELP, GameScreen.CONTACTS,
+            screen in listOf(GameScreen.MENU, GameScreen.SETTINGS, GameScreen.HELP, GameScreen.CONTACTS,
                 GameScreen.PRIVACY, GameScreen.LEGAL, GameScreen.RESULTS) -> MusicMode.MENU
-            screen in listOf(GameScreen.PLAYING, GameScreen.SETTINGS) -> MusicMode.GAME
+            screen == GameScreen.PLAYING -> MusicMode.GAME
             else -> MusicMode.SILENT
         }
         music?.setMode(next)
@@ -484,7 +484,7 @@ class GameViewModel internal constructor(
         }
     }
 
-    /** Persists the music selection and starts it immediately in game or settings. */
+    /** Persists the selection; ordinary menus retain their theme and gameplay uses the playlist. */
     fun chooseMusic(selection: MusicSelection) {
         if (selection == musicSelection) return
         musicSelection = selection

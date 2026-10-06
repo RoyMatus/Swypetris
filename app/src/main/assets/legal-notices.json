@@ -2,10 +2,10 @@
   "sections": [
     {
       "title": "Музыка",
-      "introduction": "Звучат собственные синтезированные записи и аранжировки, созданные для Swypetris. Сторонние аудиозаписи в приложение не включены. Ниже указаны источники нот и авторы произведений там, где они известны.",
+      "introduction": "Игровая музыка — собственные синтезированные записи и аранжировки Swypetris. В меню звучит предоставленная пользователем запись Menu Melody, созданная с помощью Suno. Ниже указаны сведения о записях, источники нот и известные авторы произведений.",
       "items": [
         {"title": "Коробейники", "credit": "Русская народная мелодия; текст Николая Некрасова. Использован нотный источник с редакцией M. Thienel, Wikimedia Commons.", "source": "https://commons.wikimedia.org/wiki/File:Korobeiniki.svg"},
-        {"title": "Тема главного меню Swypetris", "credit": "Оригинальная синтезированная аранжировка Swypetris · © 2026 RoyMatus. Гармония, тембр, ритм и структура созданы для приложения; короткий мотив основан на народной мелодии «Коробейники». Сторонняя аудиозапись не используется.", "source": "https://commons.wikimedia.org/wiki/File:Korobeiniki.svg"},
+        {"title": "Menu Melody", "credit": "Предоставленная пользователем запись, созданная с помощью Suno. Для повторения подготовлен шов; исходная громкость сохранена.", "source": "https://github.com/RoyMatus/Swypetris/blob/main/publishing/assets/audio/menu-melody/processing-report.json"},
         {"title": "Калинка", "credit": "Музыка Ивана Ларионова. Нотный источник: Free Sheet Music.", "source": "https://www.freesheetmusic.net/music/worldfolk/russian/kalinka.pdf"},
         {"title": "Камаринская", "credit": "Русская народная мелодия. Нотный источник: Free Sheet Music.", "source": "https://www.freesheetmusic.net/music/worldfolk/russian/kamarynska.pdf"},
         {"title": "Барыня", "credit": "Русская народная мелодия. Нотный источник: Free Sheet Music.", "source": "https://www.freesheetmusic.net/music/worldfolk/russian/barinya.pdf"},

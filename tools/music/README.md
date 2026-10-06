@@ -1,6 +1,6 @@
 # Нотные источники и собственные записи
 
-В APK включены только собственные синтезированные Ogg Vorbis, а не чужие аудиозаписи.
+Gameplay recordings are locally synthesized Ogg Vorbis arrangements. The menu uses the user-supplied Suno recording Menu Melody; its prepared 24-bit WAV is packaged unchanged and converted exactly to a static stereo float PCM loop at gain 1.0. Preparation details and the audition sample are in `publishing/assets/audio/menu-melody`.
 Нотные данные и источники сохраняются рядом с генератором.
 
 | Трек | Источник нот | Использование |

@@ -1,105 +1,67 @@
 package ru.itoltec.swypetris
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import kotlin.math.PI
-import kotlin.math.sin
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
-/**
- * Original Swypetris main-menu arrangement.
- *
- * The sparse lead cell is derived from the public-domain Korobeiniki melody while the harmony,
- * voicing, pacing, synthesis, and arrangement are original to Swypetris. PCM is rendered locally
- * so the menu track is independent from every gameplay recording.
- */
+/** The prepared lossless stereo loop, without resampling, normalization or codec padding. */
 internal object MenuTheme {
-    const val SAMPLE_RATE = 16_000
-    const val DURATION_SECONDS = 72
-    const val FRAME_COUNT = SAMPLE_RATE * DURATION_SECONDS
+    const val SAMPLE_RATE = 48_000
+    const val FRAME_COUNT = 1_417_069
+    const val CHANNELS = 2
+    const val GAIN = 1f
+    private val pcmSubtype = byteArrayOf(1, 0, 0, 0, 0, 0, 16, 0, -128, 0, 0, -86, 0, 56, -101, 113)
 
-    private const val BPM = 80.0
-    private const val TABLE_SIZE = 4096
-    private val beatSeconds = 60.0 / BPM
-    private val sineTable = DoubleArray(TABLE_SIZE) { index ->
-        sin(2.0 * PI * index / TABLE_SIZE)
-    }
-    private val chords = arrayOf(
-        intArrayOf(52, 59, 64), // E3 B3 E4
-        intArrayOf(48, 55, 64), // C3 G3 E4
-        intArrayOf(43, 50, 59), // G2 D3 B3
-        intArrayOf(50, 57, 62)  // D3 A3 D4
-    )
-    private val motif = intArrayOf(76, 71, 72, 74, 72, 71, 69, 72)
+    fun render(context: Context): FloatArray =
+        context.resources.openRawResource(R.raw.menu_melody_loop).use { decode(it.readBytes()) }
 
-    /** Renders one exact 72-second loop at conservative amplitude. */
-    fun render(): ShortArray {
-        val output = ShortArray(FRAME_COUNT)
-        for (frame in output.indices) {
-            val seconds = frame.toDouble() / SAMPLE_RATE
-            val beat = seconds / beatSeconds
-            val bar = (beat / 4.0).toInt()
-            val chord = chords[bar % chords.size]
-
-            var sample = 0.0
-            chord.forEachIndexed { index, midi ->
-                val hz = midiToHz(midi)
-                val base = sine(hz, seconds)
-                val overtone = sine(hz * 2.0, seconds)
-                sample += base * if (index == 0) 0.075 else 0.052
-                sample += overtone * 0.012
-            }
-
-            // A quiet two-beat pulse keeps the menu alive without arcade-style percussion.
-            val beatPhase = beat - beat.toInt()
-            val beatInBar = beat.toInt() % 4
-            if ((beatInBar == 0 || beatInBar == 2) && beatPhase < 0.42) {
-                val fade = 1.0 - beatPhase / 0.42
-                sample += triangle(midiToHz(chord[0]), seconds) * 0.035 * fade
-            }
-
-            // One transformed Korobeiniki-derived cell every eight bars.
-            val barInCycle = bar % 8
-            if (barInCycle == 2) {
-                val localBeat = beat - bar * 4.0
-                val noteIndex = (localBeat / 0.5).toInt()
-                if (noteIndex in motif.indices) {
-                    val notePhase = (localBeat - noteIndex * 0.5) / 0.5
-                    val envelope = 1.0 - kotlin.math.abs(notePhase * 2.0 - 1.0)
-                    sample += triangle(midiToHz(motif[noteIndex]), seconds) * 0.075 * envelope
+    /** All signed 24-bit PCM values are represented exactly by a normalized float. */
+    internal fun decode(wave: ByteArray): FloatArray {
+        val bytes = ByteBuffer.wrap(wave).order(ByteOrder.LITTLE_ENDIAN)
+        require(wave.size >= 12 && tag(wave, 0) == "RIFF" && tag(wave, 8) == "WAVE")
+        require(bytes.getInt(4).toLong() + 8 == wave.size.toLong())
+        var cursor = 12
+        var formatFound = false
+        while (cursor + 8 <= wave.size) {
+            val size = bytes.getInt(cursor + 4)
+            val start = cursor + 8
+            require(size >= 0 && size <= wave.size - start)
+            when (tag(wave, cursor)) {
+                "fmt " -> {
+                    validateFormat(bytes, wave, start, size)
+                    formatFound = true
+                }
+                "data" -> {
+                    require(formatFound && size == FRAME_COUNT * CHANNELS * 3)
+                    return FloatArray(size / 3) { index ->
+                        val offset = start + index * 3
+                        val sample = (wave[offset].toInt() and 255) or
+                            ((wave[offset + 1].toInt() and 255) shl 8) or (wave[offset + 2].toInt() shl 16)
+                        sample / 8_388_608f
+                    }
                 }
             }
-
-            // Slow amplitude movement replaces drums and keeps the loop unobtrusive.
-            sample *= 0.90 + 0.10 * sine(1.0 / 18.0, seconds)
-            output[frame] = (sample.coerceIn(-0.82, 0.82) * Short.MAX_VALUE).toInt().toShort()
+            cursor = start + size + size % 2
         }
-
-        // A short zero-crossing envelope removes clicks without a perceptible restart.
-        val edgeFrames = SAMPLE_RATE / 20
-        for (i in 0 until edgeFrames) {
-            val gain = i.toDouble() / edgeFrames
-            output[i] = (output[i] * gain).toInt().toShort()
-            val tail = output.lastIndex - i
-            output[tail] = (output[tail] * gain).toInt().toShort()
-        }
-        return output
+        error("Missing menu music PCM data")
     }
 
-    private fun midiToHz(note: Int): Double = 440.0 * Math.pow(2.0, (note - 69) / 12.0)
+    private fun tag(wave: ByteArray, offset: Int) = String(wave, offset, 4, Charsets.US_ASCII)
 
-    private fun sine(hz: Double, seconds: Double): Double {
-        val phase = (hz * seconds) % 1.0
-        return sineTable[(phase * TABLE_SIZE).toInt().coerceIn(0, TABLE_SIZE - 1)]
-    }
-
-    private fun triangle(hz: Double, seconds: Double): Double {
-        val phase = (hz * seconds) % 1.0
-        return 1.0 - 4.0 * kotlin.math.abs(phase - 0.5)
+    private fun validateFormat(bytes: ByteBuffer, wave: ByteArray, start: Int, size: Int) {
+        require(size >= 40 && (bytes.getShort(start).toInt() and 65535) == 65534)
+        require(bytes.getShort(start + 2).toInt() == CHANNELS && bytes.getInt(start + 4) == SAMPLE_RATE)
+        require(bytes.getInt(start + 8) == SAMPLE_RATE * CHANNELS * 3 && bytes.getShort(start + 12).toInt() == 6)
+        require(bytes.getShort(start + 14).toInt() == 24 && bytes.getShort(start + 16).toInt() >= 22)
+        require(bytes.getShort(start + 18).toInt() == 24 && bytes.getInt(start + 20) == 3)
+        require(wave.copyOfRange(start + 24, start + 40).contentEquals(pcmSubtype))
     }
 }
 
-/** Static PCM loop owned by [GameMusic]; it never acquires audio focus on its own. */
+/** Static PCM loop owned by GameMusic; pause/play retain the current loop position. */
 internal class MenuThemePlayer private constructor(private val track: AudioTrack) {
     fun play() {
         if (track.playState != AudioTrack.PLAYSTATE_PLAYING) track.play()
@@ -112,24 +74,23 @@ internal class MenuThemePlayer private constructor(private val track: AudioTrack
     fun release() = track.release()
 
     companion object {
-        fun create(attributes: AudioAttributes): MenuThemePlayer {
-            val samples = MenuTheme.render()
-            val format = AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(MenuTheme.SAMPLE_RATE)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build()
-            val track = AudioTrack.Builder()
-                .setAudioAttributes(attributes)
-                .setAudioFormat(format)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .setBufferSizeInBytes(samples.size * Short.SIZE_BYTES)
-                .build()
-            val written = track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-            check(written == samples.size) { "Unable to initialize the menu music buffer" }
-            track.setLoopPoints(0, samples.size, -1)
-            track.setVolume(.32f)
-            return MenuThemePlayer(track)
+        fun create(context: Context, attributes: AudioAttributes): MenuThemePlayer {
+            val samples = MenuTheme.render(context)
+            val format = AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                .setSampleRate(MenuTheme.SAMPLE_RATE).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build()
+            val track = AudioTrack.Builder().setAudioAttributes(attributes).setAudioFormat(format)
+                .setTransferMode(AudioTrack.MODE_STATIC).setBufferSizeInBytes(samples.size * Float.SIZE_BYTES).build()
+            try {
+                check(track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING) == samples.size) {
+                    "Unable to initialize the menu music buffer"
+                }
+                check(track.setLoopPoints(0, samples.size / MenuTheme.CHANNELS, -1) == AudioTrack.SUCCESS)
+                check(track.setVolume(MenuTheme.GAIN) == AudioTrack.SUCCESS)
+                return MenuThemePlayer(track)
+            } catch (failure: Throwable) {
+                track.release()
+                throw failure
+            }
         }
     }
 }

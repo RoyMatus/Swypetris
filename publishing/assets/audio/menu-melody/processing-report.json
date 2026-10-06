@@ -1,0 +1,48 @@
+{
+  "source_name": "Menu Melody.mp3",
+  "source_sha256": "6390ddb7c4b74ff0ff6c5ad7df43c2ea90415c605e6a1a1cc0b6ed788c37db81",
+  "sample_rate": 48000,
+  "channels": 2,
+  "decoded_source_seconds": 29.9735,
+  "detected_trailing_silence_seconds": 0.172458,
+  "detected_leading_silence_seconds": 0.135313,
+  "silence_detection_threshold_db": -50,
+  "trim_start_seconds": 0.15877083333333333,
+  "trim_end_seconds": 29.801041666666666,
+  "crossfade_seconds": 0.12,
+  "crossfade_curve": "complementary linear",
+  "loop_seconds": 29.522270833333334,
+  "gain": 1.0,
+  "normalization_or_compression": false,
+  "unmodified_interior_exact_match": true,
+  "source_peak": 0.9030584096908569,
+  "loop_peak": 0.9030584096908569,
+  "source_rms_dbfs": -16.933112095706107,
+  "loop_rms_dbfs": -16.892328345957566,
+  "boundary_sample_jump": 0.0076654888689517975,
+  "original_boundary_sample_jump": 0.010888352990150452,
+  "seam_rms_dbfs": -20.070069887167584,
+  "longest_sub_minus50db_run_at_seam_ms": 0,
+  "files": {
+    "loop_seam_preview.wav": {
+      "bytes": 1152078,
+      "sha256": "fc3867d92a38ac624fb22d62068ab03aba5d6a35c7492e54a770aa797d9d2dba"
+    },
+    "menu_melody_loop.ogg": {
+      "bytes": 576377,
+      "sha256": "528adb432e9ec3f725a93e3287a9e1b5c0cd2905b1546389dd7e19c0ca20cafc"
+    },
+    "menu_melody_loop.wav": {
+      "bytes": 8502516,
+      "sha256": "2ac09325859bba039003f69737e7a882d883936a6481c29940cd9aa3a46ca56f"
+    }
+  },
+  "auditory_validation": "Not performed; user can audition loop_seam_preview.wav.",
+  "vorbis_validation": {
+    "seconds": 29.522270833333334,
+    "peak": 0.9050795435905457,
+    "rms_dbfs": -16.85702042870464,
+    "seam_sample_jump": 0.008968595415353775,
+    "clipped_samples": 0
+  }
+}
