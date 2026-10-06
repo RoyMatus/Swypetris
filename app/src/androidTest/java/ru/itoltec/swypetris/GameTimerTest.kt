@@ -77,20 +77,20 @@ class GameTimerTest {
         model.pause()
     }
 
-    @Test fun clearOnlySchedulesVisibleStepsAndRestoresFractionalProgress() = main {
+    @Test fun clearSchedulesAnimationFramesAndRestoresFractionalProgress() = main {
         val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(19) && x < 8) Tetromino.J else null } }
         val model = model(state().copy(board = board, active = Piece(Tetromino.O, x = 8, y = 18)))
         model.command(GameCommand.HARD_DROP)
-        assertEquals(now + 60, timer.deadline)
+        assertEquals(now + 16, timer.deadline)
         repeat(3) { timer.fire() }
-        assertEquals(180L, model.clearElapsedMillis)
+        assertEquals(48L, model.clearElapsedMillis)
         now += 37
         model.pause()
-        assertEquals(217L, model.clearElapsedMillis)
+        assertEquals(85L, model.clearElapsedMillis)
         now += 10000
         model.resume()
-        assertEquals(now + 23, timer.deadline)
-        repeat(7) { timer.fire() }
+        assertEquals(now + 11, timer.deadline)
+        finishClear(model)
         assertTrue(model.game!!.clearingRows.isEmpty())
         assertEquals(1, model.game!!.generation)
         assertEquals(now + model.game!!.gravityMillis, timer.deadline)
@@ -112,7 +112,7 @@ class GameTimerTest {
         for (x in 0..7) board[BoardGeometry.row(19)][x] = Tetromino.J
         val model = model(state().copy(board = board, active = Piece(Tetromino.O,x=8,y=18), lines = 9))
         model.command(GameCommand.HARD_DROP)
-        repeat(10) { timer.fire() }
+        finishClear(model)
         assertEquals(10, model.game!!.lines)
         assertEquals(2, model.game!!.level)
         assertEquals(100, model.game!!.score)
@@ -122,6 +122,12 @@ class GameTimerTest {
         assertEquals(model.game, restored.game)
         assertEquals(2, restored.game!!.level)
         assertEquals(928L, restored.game!!.gravityMillis)
+    }
+
+    private fun finishClear(model: GameViewModel) {
+        repeat((LineClearAnimation.TOTAL_MILLIS / LineClearAnimation.STEP_MILLIS + 1).toInt()) {
+            if (model.game!!.clearingRows.isNotEmpty()) timer.fire()
+        }
     }
 
     @Test fun terminalStatesCancelTimerAndNextRoundSchedulesAgain() = main {

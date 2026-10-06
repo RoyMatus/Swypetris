@@ -36,6 +36,7 @@ SOURCE_GROUPS = {
     "LaunchIntroMotion.kt": ("intro",),
     "LegalScreen.kt": ("legal",),
     "LineClearAnimation.kt": ("line_clear",),
+    "LineClearEffects.kt": ("line_clear",),
     "LogoPieces.kt": ("intro", "visual"),
     "MusicPicker.kt": ("music", "settings"),
     "MusicSelection.kt": ("music", "settings"),
