@@ -60,7 +60,11 @@ class BorderlessHudTest {
                         compose.onNodeWithTag(tag).assertIsDisplayed()
                             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
                         assertEquals(1, layouts.size)
-                        assertFalse("Clipped $tag at $w/$scale/$theme", layouts.single().hasVisualOverflow)
+                        val layout = layouts.single()
+                        assertFalse("Clipped $tag at $w/$scale/$theme: size=${layout.size}, " +
+                            "width=${layout.didOverflowWidth}, height=${layout.didOverflowHeight}, " +
+                            "font=${layout.layoutInput.style.fontSize}, constraints=${layout.layoutInput.constraints}",
+                            layout.hasVisualOverflow)
                     }
                 }
             }

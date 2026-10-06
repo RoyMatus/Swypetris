@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -453,12 +454,26 @@ private fun GameContent(model: GameViewModel, state: GameState) {
 private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: Dp? = null): TextUnit {
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
-    val measured = measurer.measure(text, style = LocalTextStyle.current.merge(TextStyle(fontSize = preferred,
+    val style = LocalTextStyle.current.merge(TextStyle(fontSize = preferred,
         lineHeight = preferred * 1.2f, letterSpacing = 0.sp,
-        platformStyle = PlatformTextStyle(includeFontPadding = false))), softWrap = false, maxLines = 1)
-    val widthScale = with(density) { width.toPx() } / measured.size.width.coerceAtLeast(1)
-    val heightScale = height?.let { with(density) { it.toPx() } / measured.size.height.coerceAtLeast(1) } ?: 1f
-    return (preferred.value * minOf(1f, widthScale, heightScale) * .98f).sp
+        platformStyle = PlatformTextStyle(includeFontPadding = false)))
+    return remember(text, preferred, width, height, density, style, measurer) {
+        val bounds = Constraints(maxWidth = with(density) { width.toPx().toInt() }.coerceAtLeast(1),
+            maxHeight = height?.let { with(density) { it.toPx().toInt() }.coerceAtLeast(1) } ?: Constraints.Infinity)
+        fun fits(font: TextUnit): Boolean = !measurer.measure(text,
+            style = style.copy(fontSize = font, lineHeight = font * 1.2f),
+            constraints = bounds, softWrap = false, maxLines = 1).hasVisualOverflow
+        if (fits(preferred)) preferred else {
+            // Measure the actual constrained paragraph rather than assuming proportional glyph widths.
+            var low = .1f
+            var high = preferred.value
+            repeat(12) {
+                val middle = (low + high) / 2
+                if (fits(middle.sp)) low = middle else high = middle
+            }
+            low.sp
+        }
+    }
 }
 
 /** A small non-interactive label, bounded by its own HUD region. */

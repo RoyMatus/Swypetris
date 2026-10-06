@@ -108,8 +108,8 @@ class BrandNavigationTest {
             5 to "Свайп вниз — бросок",
             6 to "Удержать и вверх — Hold",
             7 to "Заполняйте горизонтальные строки",
-            8 to "Hold справа сверху",
-            9 to "Следующая фигура полупрозрачно показана",
+            8 to "«Запас» справа сверху",
+            9 to "Следующая фигура показана спокойным контуром",
             10 to "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт"
         )) {
             compose.onNodeWithTag("helpPage").performScrollToIndex(item)

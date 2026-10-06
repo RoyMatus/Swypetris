@@ -106,8 +106,10 @@ class ForegroundUiTest {
             val safe = insets?.getInsets(WindowInsetsCompat.Type.systemBars() or
                 WindowInsetsCompat.Type.displayCutout()) ?: return@waitUntil false
             val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
+            val label = compose.onNodeWithTag("scoreLabel").fetchSemanticsNode().boundsInRoot
             !insets.isVisible(WindowInsetsCompat.Type.systemBars()) &&
-                kotlin.math.abs(score.top - safe.top - 3 * density) <= 1f &&
+                kotlin.math.abs(label.top - safe.top - 3 * density) <= 1f &&
+                score.top >= label.bottom &&
                 kotlin.math.abs(score.left - safe.left - 4 * density) <= 1f
         }
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
