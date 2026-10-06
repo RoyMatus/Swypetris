@@ -386,7 +386,7 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
     val palette = LocalGamePalette.current
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.glass,
         lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
-        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+        .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))) {
         val hints = model.hintsEnabled
         val landing = remember(state.board, state.active, state.clearingRows, hints) {
             if (hints && state.clearingRows.isEmpty()) model.engine.ghost(state) else null
@@ -408,8 +408,10 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
                         .testTag("nextPreview"))
                 }
                 Box(Modifier.fillMaxSize().padding(top = safeTop)
-                    .consumeWindowInsets(PaddingValues(top = safeTop)).safeDrawingPadding()) {
-                    GameHud(state, spawnBandHeight) {
+                    .consumeWindowInsets(PaddingValues(top = safeTop))) {
+                    GameHud(state, spawnBandHeight,
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues(),
+                        with(localDensity) { WindowInsets.safeDrawing.getBottom(this).toDp() }) {
                         ActivePiece(state, geometry.copy(safeTop = 0f))
                     }
                 }
@@ -479,7 +481,9 @@ private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: 
 /** The score and whole fruit pairs use the left lane; Hold keeps its compact right lane. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp, pieceOverlay: @Composable () -> Unit = {}) {
+internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
+    horizontalInsets: PaddingValues = PaddingValues(0.dp), bottomInset: Dp = 0.dp,
+    pieceOverlay: @Composable () -> Unit = {}) {
     val displayed = GameRules.displayScore(state.score)
     val currentLines by rememberUpdatedState(state.lines)
     val nearing by rememberUpdatedState(GameRules.nearingLevel(state.lines, state.startingLevel))
@@ -500,27 +504,28 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp, pieceOverlay: @
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
-        val sideWidth = (maxWidth * .3f - GAMEPLAY_HUD_MARGIN.dp - 4.dp).coerceAtLeast(1.dp)
+        val leftMargin = GAMEPLAY_HUD_MARGIN.dp + horizontalInsets.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+        val rightMargin = GAMEPLAY_HUD_MARGIN.dp + horizontalInsets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+        val sideWidth = (maxWidth * .3f - rightMargin - 4.dp).coerceAtLeast(1.dp)
         val hintLeft = maxWidth / BoardGeometry.WIDTH * spawnPiece(state.next).cells().minOf { it.x }
-        val leftWidth = (hintLeft - GAMEPLAY_HUD_MARGIN.dp - 4.dp).coerceAtLeast(1.dp)
+        val leftWidth = (hintLeft - leftMargin - 4.dp).coerceAtLeast(1.dp)
         val holdWidth = minOf((maxWidth * .22f).coerceIn(48.dp, 88.dp), sideWidth)
         val holdHeight = minOf((headerHeight * .7f).coerceIn(28.dp, 48.dp), headerHeight)
         // The widest spawn occupies columns 3 through 6; keep the score left of that lane.
-        val previewCenter = headerHeight / 2
         val scoreTop = minOf(maxWidth / BoardGeometry.WIDTH, headerHeight / SPAWN_DISPLAY_ROWS) * .07f
-        val scoreHeight = minOf((maxHeight / 32).coerceIn(16.dp, 28.dp) * density.fontScale,
+        val scoreHeight = minOf(((maxHeight - bottomInset) / 32).coerceIn(16.dp, 28.dp) * density.fontScale,
             leftWidth / digitalScoreAspect(displayed.length) / SCORE_MAX_SCALE,
             (headerHeight - scoreTop).coerceAtLeast(1.dp) / SCORE_MAX_SCALE)
 
         EarnedFruits(state, leftWidth, Modifier.align(Alignment.TopStart)
-                .offset(x = GAMEPLAY_HUD_MARGIN.dp, y = scoreTop + scoreHeight * SCORE_MAX_SCALE + FRUIT_GAP.dp)
+                .offset(x = leftMargin, y = scoreTop + scoreHeight * SCORE_MAX_SCALE + FRUIT_GAP.dp)
                 .width(leftWidth).testTag("earnedFruits"))
 
         // Only the falling piece crosses over fruit pixels; score and Hold stay in front.
         pieceOverlay()
         DigitalScore(displayed, scoreHeight,
                 modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = GAMEPLAY_HUD_MARGIN.dp, y = scoreTop)
+                .offset(x = leftMargin, y = scoreTop)
                 .graphicsLayer {
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
                     scaleX = scale.value; scaleY = scale.value
@@ -533,8 +538,8 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp, pieceOverlay: @
 
         Column(
             modifier = Modifier.align(Alignment.TopEnd)
-                .offset(y = previewCenter - holdHeight / 2)
-                .padding(end = GAMEPLAY_HUD_MARGIN.dp)
+                .offset(y = scoreTop)
+                .padding(end = rightMargin)
                 .width(holdWidth),
             horizontalAlignment = Alignment.End
         ) {
@@ -596,10 +601,14 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
         val rows = cells.maxOf { it.y } - firstRow + 1
         val padding = 4.dp.toPx()
         val step = minOf((size.width - padding * 2) / columns, (size.height - padding * 2) / rows)
-        val origin = Offset((size.width - columns * step) / 2, (size.height - rows * step) / 2)
-        cells.forEach {
-            block(Cell(it.x, it.y - firstRow), palette.piece(held), palette.finish,
-                palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f)
+        // Keep the existing cell size and horizontal centering; block() adds its own gap.
+        // Cancel that gap vertically so the actual painted top equals the score's top.
+        val origin = Offset((size.width - columns * step) / 2, -step * .07f)
+        clipRect {
+            cells.forEach {
+                block(Cell(it.x, it.y - firstRow), palette.piece(held), palette.finish,
+                    palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f)
+            }
         }
     }
 }

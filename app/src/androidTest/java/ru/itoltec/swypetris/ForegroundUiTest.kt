@@ -26,7 +26,41 @@ class ForegroundUiTest {
         }
     }
 
-    @Test fun navigationRemainsVisibleTransparentAndOutsideGameplay() {
+    @Test fun boardReachesWindowEdgesInPortraitAndLandscape() {
+        try {
+            for (orientation in listOf(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)) {
+                compose.activityRule.scenario.onActivity { it.requestedOrientation = orientation }
+                compose.waitUntil(5000) {
+                    compose.activity.resources.configuration.orientation ==
+                        if (orientation == android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+                            android.content.res.Configuration.ORIENTATION_PORTRAIT
+                        else android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                }
+                compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
+                compose.waitForIdle()
+                val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+                val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
+                val cutout = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+                    .getInsets(WindowInsetsCompat.Type.displayCutout())
+                assertEquals(root.bottom, board.bottom, 1f)
+                assertEquals(root.left + cutout.left, board.left, 1f)
+                assertEquals(root.right - cutout.right, board.right, 1f)
+                val safe = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+                    .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
+                val hold = compose.onNodeWithTag("holdPreview").fetchSemanticsNode().boundsInRoot
+                assertTrue(score.left >= root.left + safe.left)
+                assertTrue(hold.right <= root.right - safe.right)
+            }
+        } finally {
+            compose.activityRule.scenario.onActivity {
+                it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+        }
+    }
+
+    @Test fun navigationRemainsVisibleTransparentAndOverlaysGameplay() {
         for (theme in listOf("classic", "github_light"))
             for (screen in listOf(GameScreen.MENU, GameScreen.PLAYING, GameScreen.SETTINGS, GameScreen.HELP)) {
             compose.runOnIdle {
@@ -55,12 +89,15 @@ class ForegroundUiTest {
                     assertEquals(GamePalettes.find(theme).light, controller.isAppearanceLightNavigationBars)
             }
             if (screen == GameScreen.PLAYING) {
-                val safe = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-                    .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                 val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
                 val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
-                assertTrue(area.left >= safe.left && area.right <= root.right - safe.right)
-                assertEquals(root.bottom - safe.bottom, area.bottom, 1f)
+                val cutout = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+                    .getInsets(WindowInsetsCompat.Type.displayCutout())
+                assertEquals(root.left + cutout.left, area.left, 1f)
+                assertEquals(root.right - cutout.right, area.right, 1f)
+                assertEquals(root.bottom, area.bottom, 1f)
+                val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
+                assertEquals(root.bottom, board.bottom, 1f)
             }
         }
     }

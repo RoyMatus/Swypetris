@@ -64,10 +64,9 @@ class BorderlessHudTest {
                             val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
                             val cells = spawnPiece(piece).cells()
                             val rowHeight = board.height / 21
-                            val center = board.top + rowHeight
                             val gap = minOf(board.width / 10, rowHeight) * .07f
                             assertEquals("Score top $w/$piece", board.top + gap, score.top, 1f)
-                            assertEquals("Hold center $w/$piece", center, hold.center.y, 1f)
+                            assertEquals("Hold top $w/$piece", score.top, hold.top, 1f)
                             assertTrue(score.top >= board.top && hold.top >= board.top)
                             val hintLeft = board.left + cells.minOf { it.x } * board.width / 10
                             val hintRight = board.left + (cells.maxOf { it.x } + 1) * board.width / 10
@@ -132,6 +131,10 @@ class BorderlessHudTest {
             compose.runOnIdle { held = piece }
             val available = compose.onNodeWithTag("holdPreview")
                 .assertContentDescriptionEquals("Запас ${piece.name}, обмен доступен").captureToImage().toPixelMap()
+            val paintedTop = (0 until available.height).first { y ->
+                (0 until available.width).any { x -> difference(available[x, y], empty[x, y]) > .001f }
+            }
+            assertTrue("Painted Hold must start at the score top: $theme/$piece", paintedTop <= 1)
             compose.runOnIdle { used = true }
             val unavailable = compose.onNodeWithTag("holdPreview")
                 .assertContentDescriptionEquals("Запас ${piece.name}, обмен недоступен").captureToImage().toPixelMap()
