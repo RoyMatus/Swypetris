@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +54,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -407,6 +410,7 @@ private fun GameContent(model: GameViewModel, state: GameState) {
                     Box(Modifier.fillMaxWidth().height(spawnBandHeight)
                         .semantics { contentDescription = "Следующая фигура ${state.next.name}" }
                         .testTag("nextPreview"))
+                    NextSpawnLabel(state, spawnBandHeight)
                 }
                 Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, spawnBandHeight) }
             }
@@ -444,7 +448,55 @@ private fun GameContent(model: GameViewModel, state: GameState) {
     }
 }
 
-/** Score-only HUD with Hold and earned fruits kept clear of the spawn preview. */
+/** Fits one HUD line without clipping its text at large font scales or long scores. */
+@Composable
+private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: Dp? = null): TextUnit {
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val measured = measurer.measure(text, style = LocalTextStyle.current.merge(TextStyle(fontSize = preferred,
+        lineHeight = preferred * 1.2f, letterSpacing = 0.sp,
+        platformStyle = PlatformTextStyle(includeFontPadding = false))), softWrap = false, maxLines = 1)
+    val widthScale = with(density) { width.toPx() } / measured.size.width.coerceAtLeast(1)
+    val heightScale = height?.let { with(density) { it.toPx() } / measured.size.height.coerceAtLeast(1) } ?: 1f
+    return (preferred.value * minOf(1f, widthScale, heightScale) * .98f).sp
+}
+
+/** A small non-interactive label, bounded by its own HUD region. */
+@Composable
+private fun HudLabel(text: String, width: Dp, height: Dp, modifier: Modifier = Modifier,
+    alignment: TextAlign = TextAlign.Center) {
+    val font = fittedHudFont(text, 10.sp, width, height)
+    Text(text, color = LocalGamePalette.current.muted,
+        style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
+            platformStyle = PlatformTextStyle(includeFontPadding = false)),
+        maxLines = 1, softWrap = false, textAlign = alignment,
+        modifier = modifier.width(width))
+}
+
+/** Labels the real spawn preview, using the empty row above it or below a display cutout. */
+@Composable
+internal fun NextSpawnLabel(state: GameState, headerHeight: Dp) {
+    if (!nextSpawnPreviewVisible(state)) return
+    val density = LocalDensity.current
+    val safeTop = with(density) { WindowInsets.safeDrawing.getTop(density).toDp() }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val cells = spawnPiece(state.next).cells()
+        val rowHeight = headerHeight / SPAWN_DISPLAY_ROWS
+        val aboveFits = rowHeight - safeTop - 6.dp >= 10.dp
+        val gapTop = rowHeight * (SPAWN_DISPLAY_ROWS + cells.maxOf { it.y } + 1)
+        val top = if (aboveFits) safeTop + 3.dp else maxOf(safeTop, gapTop) + 3.dp
+        val bottom = if (aboveFits) rowHeight else gapTop + rowHeight
+        val labelHeight = bottom - top - 3.dp
+        if (labelHeight <= 0.dp) return@BoxWithConstraints
+        val columnWidth = maxWidth / BoardGeometry.WIDTH
+        val left = columnWidth * cells.minOf { it.x }
+        val width = columnWidth * (cells.maxOf { it.x } - cells.minOf { it.x } + 1)
+        HudLabel("ДАЛЕЕ", width, labelHeight,
+            Modifier.offset(x = left, y = top).testTag("nextLabel"))
+    }
+}
+
+/** Labeled score and Hold, leaving the fullscreen spawn lane free of panels and cards. */
 @Composable
 internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
     val displayed = GameRules.displayScore(state.score)
@@ -473,14 +525,20 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
         val textSize = maxOf(12f, with(density) { (maxHeight / 40).toSp() }.value).sp
         val holdWidth = (maxWidth * .22f).coerceIn(48.dp, 88.dp)
         val holdHeight = (headerHeight * .7f).coerceIn(28.dp, 48.dp)
-        val reservedRight = holdWidth + HUD_HORIZONTAL_MARGIN.dp * 2
-        val scoreWidth = (maxWidth - reservedRight).coerceAtLeast(0.dp)
+        // The widest spawn occupies columns 3 through 6; keep the score left of that lane.
+        val scoreWidth = (maxWidth * .28f - HUD_HORIZONTAL_MARGIN.dp * 2).coerceAtLeast(1.dp)
+        val labelHeight = (headerHeight / SPAWN_DISPLAY_ROWS - 6.dp).coerceAtLeast(1.dp)
+        val scoreFont = fittedHudFont(displayed, textSize, scoreWidth / 1.08f)
 
-        Text(displayed, color = color, maxLines = 1,
-            style = TextStyle(fontSize = textSize, platformStyle = PlatformTextStyle(includeFontPadding = false)),
-            modifier = Modifier.align(Alignment.TopStart)
+        Column(Modifier.align(Alignment.TopStart)
                 .padding(start = HUD_HORIZONTAL_MARGIN.dp, top = 3.dp)
-                .widthIn(max = scoreWidth)
+                .width(scoreWidth)) {
+            HudLabel("СЧЁТ", scoreWidth, labelHeight, Modifier.testTag("scoreLabel"), TextAlign.Start)
+            Spacer(Modifier.height(3.dp))
+            Text(displayed, color = color, maxLines = 1, softWrap = false,
+                style = TextStyle(fontSize = scoreFont, lineHeight = scoreFont * 1.2f, letterSpacing = 0.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                modifier = Modifier.widthIn(max = scoreWidth / 1.08f)
                 .graphicsLayer {
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
                     scaleX = scale.value; scaleY = scale.value
@@ -490,6 +548,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
                     contentDescription = "Очки $displayed"
                 }
                 .testTag("score"))
+        }
 
         Column(
             modifier = Modifier.align(Alignment.TopEnd)
@@ -497,8 +556,10 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp) {
                 .width(holdWidth),
             horizontalAlignment = Alignment.End
         ) {
+            HudLabel("ЗАПАС", holdWidth, labelHeight, Modifier.testTag("holdLabel"))
+            Spacer(Modifier.height(3.dp))
             HoldPreview(state.held, state.holdUsed,
-                Modifier.width(holdWidth * .75f).height(holdHeight).testTag("holdPreview"))
+                Modifier.width(holdWidth).height(holdHeight).testTag("holdPreview"))
             if (state.fruitCounts.any { it > 0 }) {
                 val iconSize = minOf(FRUIT_SIZE.dp, (holdWidth - FRUIT_GAP.dp) / 2)
                     .coerceAtLeast(16.dp)
@@ -546,11 +607,23 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
         }
     }) {
         if (held == null) return@Canvas
+        val inset = 1.dp.toPx()
+        val corner = minOf(size.width, size.height) * .18f
+        val bracket = palette.muted.copy(alpha = if (used) .3f else .6f)
+        for (x in listOf(inset, size.width - inset)) {
+            for (y in listOf(inset, size.height - inset)) {
+                val dx = if (x == inset) corner else -corner
+                val dy = if (y == inset) corner else -corner
+                drawLine(bracket, Offset(x, y), Offset(x + dx, y), 1.dp.toPx())
+                drawLine(bracket, Offset(x, y), Offset(x, y + dy), 1.dp.toPx())
+            }
+        }
         val cells = held.shape
         val columns = cells.maxOf { it.x } + 1
         val firstRow = cells.minOf { it.y }
         val rows = cells.maxOf { it.y } - firstRow + 1
-        val step = minOf(size.width / columns, size.height / rows)
+        val padding = 4.dp.toPx()
+        val step = minOf((size.width - padding * 2) / columns, (size.height - padding * 2) / rows)
         val origin = Offset((size.width - columns * step) / 2, (size.height - rows * step) / 2)
         cells.forEach {
             block(Cell(it.x, it.y - firstRow), palette.piece(held), palette.finish,
@@ -572,12 +645,17 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         val origin = Offset(0f, SPAWN_DISPLAY_ROWS * cell.height)
         val firstVisibleSpawnRow = -SPAWN_DISPLAY_ROWS
 
-        // The upcoming piece uses the exact engine spawn geometry and remains translucent behind gameplay.
+        // The outline uses engine spawn cells; its faint flat fill cannot look like an active block.
         if (nextSpawnPreviewVisible(state)) spawnPiece(state.next).cells()
             .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
             .forEach {
-                block(it, palette.piece(state.next), palette.finish, palette.texture, origin, cell,
-                    alpha = .12f)
+                val gap = minOf(cell.width, cell.height) * .07f
+                val at = origin + Offset(it.x * cell.width + gap, it.y * cell.height + gap)
+                val bounds = Size(cell.width - gap * 2, cell.height - gap * 2)
+                val previewColor = lerp(palette.piece(state.next), palette.text, if (palette.light) .35f else .1f)
+                drawRect(previewColor.copy(alpha = .055f), at, bounds)
+                drawRect(previewColor.copy(alpha = if (palette.light) .7f else .6f), at, bounds,
+                    style = Stroke(1.dp.toPx()))
             }
 
         state.board.forEachIndexed { rowIndex, row -> row.forEachIndexed { x, type ->
