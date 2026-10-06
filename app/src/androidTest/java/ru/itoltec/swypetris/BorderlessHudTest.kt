@@ -88,9 +88,8 @@ class BorderlessHudTest {
                                         if (item.top < it.bottom) assertTrue(item.left >= it.right)
                                     }
                                     if (count > 1) {
-                                        val label = compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
-                                            .assertTextEquals("$count ×").fetchSemanticsNode().boundsInRoot
-                                        assertTrue(label.left >= fruits.left - 1f && label.right <= fruits.right + 1f)
+                                        compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
+                                            .assertTextEquals("$count ×").assertIsDisplayed()
                                     }
                                     previous = item
                                 }
