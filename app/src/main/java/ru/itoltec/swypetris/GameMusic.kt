@@ -87,19 +87,20 @@ class GameMusic(private val context: Context) : MusicPlayback {
     /** Entering record-fanfare mode once does not reset the game's playlist position. */
     @Suppress("DEPRECATION")
     override fun setMode(next: MusicMode) {
-        if (released || next == mode) return
+        val target = if (selection == MusicSelection.Off) MusicMode.SILENT else next
+        if (released || target == mode) return
         playlist.setActive(false)
         menuPlayer?.pause()
         gamePlayer?.pause()
         recordPlayer?.pause()
-        mode = next
-        if (next == MusicMode.SILENT) {
+        mode = target
+        if (target == MusicMode.SILENT) {
             hasFocus = false
             if (Build.VERSION.SDK_INT >= 26) focusRequest?.let(audio::abandonAudioFocusRequest)
             else audio.abandonAudioFocus(listener)
         } else {
             blockedByHeadphones = false
-            if (next == MusicMode.RECORD) {
+            if (target == MusicMode.RECORD) {
                 if (recordPlayer == null) recordPlayer = createPlayer(R.raw.record_fanfare)?.apply {
                     setOnCompletionListener { if (mode == MusicMode.RECORD) setMode(MusicMode.SILENT) }
                 }
@@ -116,7 +117,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
     private fun synchronizePlayback() {
         if (released) return
         handler.removeCallbacks(timer)
-        val allowed = hasFocus && !blockedByHeadphones
+        val allowed = hasFocus && !blockedByHeadphones && selection != MusicSelection.Off
         playlist.setActive(allowed && mode == MusicMode.GAME)
         playlist.advance()
         if (mode != MusicMode.MENU || !allowed) menuPlayer?.pause()
@@ -124,7 +125,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
         if (mode != MusicMode.RECORD || !allowed) recordPlayer?.pause()
         if (!allowed) return
         if (mode == MusicMode.MENU) {
-            if (menuPlayer == null) menuPlayer = MenuThemePlayer.create(attributes)
+            if (menuPlayer == null) menuPlayer = MenuThemePlayer.create(context, attributes)
             menuPlayer?.play()
             return
         }
