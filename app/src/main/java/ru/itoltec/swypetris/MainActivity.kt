@@ -540,6 +540,12 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp, pieceOverlay: @
         ) {
             HoldPreview(state.held, state.holdUsed,
                 Modifier.width(holdWidth).height(holdHeight).testTag("holdPreview"))
+            val labelFont = fittedHudFont("Запас", 10.sp, holdWidth)
+            Text("Запас", color = LocalGamePalette.current.muted, maxLines = 1, softWrap = false,
+                textAlign = TextAlign.Center,
+                style = TextStyle(fontSize = labelFont, lineHeight = labelFont * 1.2f, letterSpacing = 0.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                modifier = Modifier.fillMaxWidth().testTag("holdLabel"))
         }
     }
 }
@@ -584,17 +590,6 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
         }
     }) {
         if (held == null) return@Canvas
-        val inset = 1.dp.toPx()
-        val corner = minOf(size.width, size.height) * .18f
-        val bracket = palette.muted.copy(alpha = if (used) .3f else .6f)
-        for (x in listOf(inset, size.width - inset)) {
-            for (y in listOf(inset, size.height - inset)) {
-                val dx = if (x == inset) corner else -corner
-                val dy = if (y == inset) corner else -corner
-                drawLine(bracket, Offset(x, y), Offset(x + dx, y), 1.dp.toPx())
-                drawLine(bracket, Offset(x, y), Offset(x, y + dy), 1.dp.toPx())
-            }
-        }
         val cells = held.shape
         val columns = cells.maxOf { it.x } + 1
         val firstRow = cells.minOf { it.y }
@@ -604,7 +599,7 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
         val origin = Offset((size.width - columns * step) / 2, (size.height - rows * step) / 2)
         cells.forEach {
             block(Cell(it.x, it.y - firstRow), palette.piece(held), palette.finish,
-                palette.texture, origin, Size(step, step), alpha = if (used) .24f else .72f)
+                palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f)
         }
     }
 }
@@ -631,8 +626,8 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
                     val at = origin + Offset(it.x * cell.width + gap, it.y * cell.height + gap)
                     val bounds = Size(cell.width - gap * 2, cell.height - gap * 2)
                     val previewColor = lerp(palette.piece(state.next), palette.text, if (palette.light) .35f else .1f)
-                    drawRect(previewColor.copy(alpha = .055f), at, bounds)
-                    drawRect(previewColor.copy(alpha = if (palette.light) .7f else .6f), at, bounds,
+                    drawRect(previewColor.copy(alpha = .0275f), at, bounds)
+                    drawRect(previewColor.copy(alpha = if (palette.light) .35f else .30f), at, bounds,
                         style = Stroke(1.dp.toPx()))
                 }
 

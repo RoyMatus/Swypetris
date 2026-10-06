@@ -1,11 +1,14 @@
 package ru.itoltec.swypetris
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
@@ -94,7 +97,13 @@ class BorderlessHudTest {
                                     previous = item
                                 }
                             }
-                            for (tag in listOf("scoreLabel", "nextLabel", "holdLabel"))
+                            val label = compose.onNodeWithTag("holdLabel").assertTextEquals("Запас")
+                                .fetchSemanticsNode().boundsInRoot
+                            assertTrue(label.top >= hold.bottom && label.left >= hold.left && label.right <= hold.right + 1f)
+                            val layouts = mutableListOf<TextLayoutResult>()
+                            compose.onNodeWithTag("holdLabel").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                            assertFalse("Hold label must fit", layouts.single().hasVisualOverflow)
+                            for (tag in listOf("scoreLabel", "nextLabel"))
                                 compose.onNodeWithTag(tag).assertDoesNotExist()
                         }
                     }
@@ -103,6 +112,44 @@ class BorderlessHudTest {
         }
     }
     private fun stateFruitCounts(score: Int) = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = score).fruitCounts
+
+    @Test fun framelessHoldIsExtraFaintAndUsedStateIsStillDistinct() {
+        var palette by mutableStateOf(GamePalettes.find("classic"))
+        var held by mutableStateOf<Tetromino?>(null)
+        var used by mutableStateOf(false)
+        var density = 1f
+        compose.setContent {
+            density = LocalDensity.current.density
+            CompositionLocalProvider(LocalGamePalette provides palette) {
+                Box(Modifier.size(320.dp, 480.dp).background(palette.background)) {
+                    GameHud(GameState(active = Piece(Tetromino.O), next = Tetromino.T, held = held, holdUsed = used))
+                }
+            }
+        }
+        for (theme in listOf("classic", "solarized_light", "github_light")) for (piece in Tetromino.entries) {
+            compose.runOnIdle { palette = GamePalettes.find(theme); held = null; used = false }
+            val empty = compose.onNodeWithTag("holdPreview").captureToImage().toPixelMap()
+            compose.runOnIdle { held = piece }
+            val available = compose.onNodeWithTag("holdPreview")
+                .assertContentDescriptionEquals("Запас ${piece.name}, обмен доступен").captureToImage().toPixelMap()
+            compose.runOnIdle { used = true }
+            val unavailable = compose.onNodeWithTag("holdPreview")
+                .assertContentDescriptionEquals("Запас ${piece.name}, обмен недоступен").captureToImage().toPixelMap()
+            var availableDifference = 0f
+            var usedDifference = 0f
+            for (y in 0 until empty.height) for (x in 0 until empty.width) {
+                availableDifference += difference(available[x, y], empty[x, y])
+                usedDifference += difference(unavailable[x, y], empty[x, y])
+            }
+            availableDifference /= empty.width * empty.height
+            usedDifference /= empty.width * empty.height
+            assertTrue("Recognizable but extra faint: $theme/$piece", availableDifference > .005f && availableDifference < .25f)
+            assertTrue("Used Hold remains distinct: $theme/$piece", usedDifference > .001f && availableDifference > usedDifference * 1.5f)
+            val corner = (density * 1).toInt()
+            for (x in listOf(corner, empty.width - 1 - corner)) for (y in listOf(corner, empty.height - 1 - corner))
+                assertEquals("Hold must have no outer brackets", empty[x, y], available[x, y])
+        }
+    }
     /** Every Next shape uses its spawn cells and an outline stronger than its faint flat fill. */
     @Test fun nextHasQuietFillAndReadableOutlinesInDarkAndLightThemes() {
         var palette by mutableStateOf(GamePalettes.find("classic"))
