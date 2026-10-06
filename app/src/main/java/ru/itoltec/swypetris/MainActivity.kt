@@ -218,7 +218,9 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
                 UpdateNotice.StoreInstalling -> "Сохраняем партию. RuStore устанавливает обновление."
                 UpdateNotice.Current -> "Установлена актуальная версия ${BuildConfig.VERSION_NAME}."
                 UpdateNotice.Failed -> "Не удалось завершить обновление. Проверьте подключение и повторите проверку позже."
-                UpdateNotice.RateLimited -> "GitHub временно ограничил запросы с вашей сети. Попробуйте позже. Игру можно продолжить."
+                is UpdateNotice.RateLimited -> "GitHub временно ограничил проверку обновлений. Повторить можно после " +
+                    java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.MEDIUM)
+                        .format(java.util.Date(notice.retryAtMillis)) + " (время устройства). Игру можно продолжить."
             }) },
             confirmButton = {
                 if (notice is UpdateNotice.Available) TextButton(onClick = { updates.open(notice.update) },

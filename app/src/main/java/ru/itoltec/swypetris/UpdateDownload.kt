@@ -9,7 +9,7 @@ import java.security.MessageDigest
 import java.util.logging.Logger
 
 internal const val MAX_UPDATE_BYTES = 256L * 1024 * 1024
-internal class UpdateRateLimitException : IOException("GitHub request limit reached")
+internal class UpdateRateLimitException(val retryAtMillis: Long) : IOException("GitHub request limit reached")
 
 /** Report failed cleanup without masking a download failure or cancellation. Recovery retries it. */
 internal fun removeUpdateFile(file: File) {
@@ -50,13 +50,15 @@ internal fun copyUpdate(input: InputStream, destination: File, expectedSize: Lon
 }
 
 /** GitHub assets redirect to its asset CDN; every hop must remain HTTPS. */
-internal fun openUpdateConnection(address: String, accept: String = "application/octet-stream"): HttpURLConnection {
+internal fun openUpdateConnection(address: String, accept: String = "application/octet-stream",
+    connectionFactory: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
+    clock: () -> Long = System::currentTimeMillis): HttpURLConnection {
     var url = URL(address)
     repeat(6) {
         if (url.protocol != "https" || url.userInfo != null ||
             url.host !in setOf("github.com", "api.github.com", "release-assets.githubusercontent.com",
                 "objects.githubusercontent.com")) throw IOException("Unexpected update download address")
-        val connection = url.openConnection() as HttpURLConnection
+        val connection = connectionFactory(url)
         connection.instanceFollowRedirects = false
         connection.connectTimeout = 10_000
         connection.readTimeout = 10_000
@@ -73,10 +75,29 @@ internal fun openUpdateConnection(address: String, accept: String = "application
             if (location == null) throw IOException("Missing update redirect address")
             url = URL(url, location)
         } else {
-            connection.disconnect()
-            if (status == 403 || status == 429) throw UpdateRateLimitException()
-            throw IOException("Update server returned HTTP $status")
+            try {
+                val message = readUpdateError(connection)
+                throw githubRateLimit(status, connection.getHeaderField("x-ratelimit-remaining"),
+                    connection.getHeaderField("Retry-After"), connection.getHeaderField("x-ratelimit-reset"),
+                    message, clock()) ?: IOException("Update server returned HTTP $status")
+            } finally { connection.disconnect() }
         }
     }
     throw IOException("Too many update download redirects")
+}
+
+/** Error details are diagnostic only; a missing/oversized body must not override response headers. */
+private fun readUpdateError(connection: HttpURLConnection): String = try {
+    connection.errorStream?.use { it.readBytesLimited(16 * 1024).toString(Charsets.UTF_8) } ?: ""
+} catch (_: IOException) { "" }
+
+internal fun InputStream.readBytesLimited(limit: Int): ByteArray {
+    val output = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(8192)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) return output.toByteArray()
+        if (output.size() + count > limit) throw IOException("Update metadata is too large")
+        output.write(buffer, 0, count)
+    }
 }

@@ -50,6 +50,7 @@ SOURCE_GROUPS = {
     "SettingsScreen.kt": ("settings",),
     "ShareAppDialog.kt": ("legal", "navigation"),
     "Srs.kt": ("engine",),
+    "UpdateCheckPolicy.kt": ("updates",),
     "Placement.kt": ("engine",),
     "VictoryScreen.kt": ("results", "visual"),
     "ui/theme/Color.kt": ("visual",),
@@ -65,7 +66,7 @@ FULL_SOURCES = {
 
 GROUP_TESTS = {
     "score": ((), ("BorderlessHudTest", "HudLayeringTest", "GameUiTest")),
-    "updates": ((), ("AppUpdatesTest",)),
+    "updates": (("UpdateCheckPolicyTest", "UpdateDownloadTest"), ("AppUpdatesTest", "UpdateCheckTest")),
     "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
                ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictoryThemeIntegrationTest")),
     "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
