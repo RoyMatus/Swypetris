@@ -19,7 +19,6 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 class HudLayeringTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
