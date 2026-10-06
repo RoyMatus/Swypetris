@@ -19,7 +19,6 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 class HudLayeringTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
@@ -41,9 +40,7 @@ class HudLayeringTest {
             val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
             val pairs = Fruit.entries.map { compose.onNodeWithTag("earnedFruit_${it.name}").fetchSemanticsNode().boundsInRoot }
             val firstRow = pairs.count { abs(it.top - pairs.first().top) < 1f }
-            val spacing = (FRUIT_GAP * density).roundToInt()
-            val capacity = ((fruits.width + spacing) / (pairs.first().width + spacing)).toInt().coerceAtMost(pairs.size)
-            assertEquals("Wrap according to measured width, not requested width or a fixed item count", capacity, firstRow)
+            assertEquals("Fruit rows use at most three evenly distributed items", minOf(3, pairs.size), firstRow)
             save("hud-$w-ordinary.png")
             val unobscured = compose.onRoot().captureToImage().toPixelMap()
             val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
@@ -54,7 +51,7 @@ class HudLayeringTest {
             var coveredIcons = 0
             var coveredLabels = 0
             for (row in 0..5) {
-                compose.runOnIdle { state = state.copy(active = Piece(Tetromino.I, x = 0, y = row - 2)) }
+                compose.runOnIdle { state = state.copy(active = Piece(Tetromino.I, x = 6, y = row - 2)) }
                 val covered = compose.onRoot().captureToImage().toPixelMap()
                 if (row == 2) save("hud-$w-overlap.png")
                 val labels = Fruit.entries.map {
@@ -71,7 +68,7 @@ class HudLayeringTest {
                         val local = x + root.left - area.left
                         val column = (local / cellWidth).toInt()
                         val inCell = local - column * cellWidth
-                        if (column !in 0..3 || inCell < gap + 2 || inCell > cellWidth - gap - 2) continue
+                        if (column !in 6..9 || inCell < gap + 2 || inCell > cellWidth - gap - 2) continue
                         assertEquals("Fruit drawn over active piece at $w/$row/$x/$y", cleanPiece[x, y], covered[x, y])
                         if (unobscured[x, y] != cleanPiece[x, y]) {
                             if (labels.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left, y + root.top)) }) coveredLabels++
@@ -84,7 +81,7 @@ class HudLayeringTest {
             }
             assertTrue("Must exercise icon overlap $w", coveredIcons > 0)
             assertTrue("Must exercise quantity overlap $w", coveredLabels > 0)
-            assertEquals(20 * density, fruits.left - area.left, 1f)
+            assertEquals(20 * density, area.right - fruits.right, 1f)
         }
     }
 

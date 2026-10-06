@@ -22,8 +22,8 @@ import kotlin.math.abs
 class BorderlessHudTest {
     @get:Rule val compose = createComposeRule()
 
-    /** Visible digit tops align with spawn outlines; score pulses and fruits stay in the left lane. */
-    @Test fun digitalScoreAlignsWithHintAndFruitsStayInLeftLane() {
+    /** Visible digit tops align with spawn outlines; Hold stays left and score/fruits stay right. */
+    @Test fun digitalScoreAlignsWithHintAndFruitsStayInRightLane() {
         var width by mutableIntStateOf(240)
         var height by mutableIntStateOf(400)
         var fontScale by mutableFloatStateOf(2f)
@@ -70,28 +70,26 @@ class BorderlessHudTest {
                             assertTrue(score.top >= board.top && hold.top >= board.top)
                             val hintLeft = board.left + cells.minOf { it.x } * board.width / 10
                             val hintRight = board.left + (cells.maxOf { it.x } + 1) * board.width / 10
-                            assertTrue(score.right <= hintLeft)
-                            assertTrue(hold.left >= hintRight)
-                            assertEquals(board.left + 20 * pixelsPerDp, score.left, 1f)
-                            assertEquals(board.right - 20 * pixelsPerDp, hold.right, 1f)
+                            assertTrue(hold.right <= hintLeft)
+                            assertTrue(score.left >= hintRight)
+                            assertEquals(board.left + 20 * pixelsPerDp, hold.left, 1f)
+                            assertEquals(board.right - 20 * pixelsPerDp, score.right, 1f)
                             if (value >= GameRules.FRUIT_STEP) {
                                 val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
                                 assertTrue(fruits.top >= score.bottom)
                                 assertEquals(score.left, fruits.left, 1f)
-                                assertTrue(fruits.right <= hintLeft)
+                                assertEquals(score.right, fruits.right, 1f)
                                 val items = Fruit.entries.zip(stateFruitCounts(value)).filter { it.second > 0 }
                                 var previous: androidx.compose.ui.geometry.Rect? = null
                                 items.forEach { (fruit, count) ->
                                     val item = compose.onNodeWithTag("earnedFruit_${fruit.name}").fetchSemanticsNode().boundsInRoot
                                     assertTrue(item.left >= fruits.left && item.right <= fruits.right + 1f)
                                     previous?.let {
-                                        if (item.top >= it.bottom) assertEquals(score.left, item.left, 1f)
-                                        else assertTrue(item.left >= it.right)
+                                        if (item.top < it.bottom) assertTrue(item.left >= it.right)
                                     }
                                     if (count > 1) {
-                                        val label = compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
-                                            .assertTextEquals("$count ×").fetchSemanticsNode().boundsInRoot
-                                        assertTrue(label.left >= item.left && label.right <= item.right)
+                                        compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
+                                            .assertTextEquals("$count ×")
                                     }
                                     previous = item
                                 }

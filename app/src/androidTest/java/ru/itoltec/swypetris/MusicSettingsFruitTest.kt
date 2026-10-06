@@ -89,7 +89,7 @@ class MusicSettingsFruitTest {
         }
     }
 
-    /** Earned fruits wrap compactly below the score, left of the spawn/preview area. */
+    /** Earned fruits stay below the right-aligned score and away from the spawn/preview area. */
     @Test fun earnedFruitsHaveNoPlaceholdersAndAvoidPreview() {
         var count by mutableIntStateOf(0)
         compose.setContent {
@@ -109,7 +109,7 @@ class MusicSettingsFruitTest {
                     node.assertIsDisplayed()
                     val bounds=node.fetchSemanticsNode().boundsInRoot
                     assertTrue(bounds.left >= root.left)
-                    assertTrue(bounds.right < root.left + root.width * .4f)
+                    assertTrue(bounds.left > root.left + root.width * .6f)
                     previous?.let { assertTrue(bounds.top >= it.bottom || bounds.left >= it.right) }
                     previous = bounds
                 } else node.assertDoesNotExist()
@@ -126,8 +126,8 @@ class MusicSettingsFruitTest {
                 val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
                 assertTrue(fruits.top >= score.bottom)
                 assertEquals(score.left, fruits.left, 1f)
-                assertTrue(fruits.right < root.left + root.width * .4f)
-                assertTrue(score.right <= hold.left + 1f)
+                assertEquals(score.right, fruits.right, 1f)
+                assertTrue(hold.right <= score.left + 1f)
                 screenshot("fruits-row-$n.png")
             }
         }

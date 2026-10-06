@@ -50,8 +50,8 @@ class ForegroundUiTest {
                     .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                 val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
                 val hold = compose.onNodeWithTag("holdPreview").fetchSemanticsNode().boundsInRoot
-                assertTrue(score.left >= root.left + safe.left)
-                assertTrue(hold.right <= root.right - safe.right)
+                assertTrue(hold.left >= root.left + safe.left)
+                assertTrue(score.right <= root.right - safe.right)
             }
         } finally {
             compose.activityRule.scenario.onActivity {
@@ -187,7 +187,7 @@ class ForegroundUiTest {
             insets.isVisible(WindowInsetsCompat.Type.statusBars()) &&
                 kotlin.math.abs(area.top - safe.top) <= 1f &&
                 score.top >= area.top &&
-                kotlin.math.abs(score.left - safe.left - 20 * density) <= 1f
+                kotlin.math.abs(score.right - (area.right - 20 * density)) <= 1f
         }
         val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
         assertTrue(area.top > 0f)
