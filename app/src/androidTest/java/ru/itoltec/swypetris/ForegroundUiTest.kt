@@ -50,8 +50,8 @@ class ForegroundUiTest {
                     .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                 val score = compose.onNodeWithTag("score").fetchSemanticsNode().boundsInRoot
                 val hold = compose.onNodeWithTag("holdPreview").fetchSemanticsNode().boundsInRoot
-                assertTrue(score.left >= root.left + safe.left)
-                assertTrue(hold.right <= root.right - safe.right)
+                assertTrue(hold.left >= root.left + safe.left)
+                assertTrue(score.right <= root.right - safe.right)
             }
         } finally {
             compose.activityRule.scenario.onActivity {
