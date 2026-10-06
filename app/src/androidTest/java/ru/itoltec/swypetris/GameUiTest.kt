@@ -219,8 +219,8 @@ class GameUiTest {
         }
     }
 
-    /** Поле и область жестов доходят до всех краёв экрана. */
-    @Test fun boardFillsPortraitScreen() {
+    /** Поле, сетка и жесты используют одну область ниже строки состояния. */
+    @Test fun boardFillsSafePortraitContent() {
         compose.onNodeWithTag("newGame").performClick()
         compose.runOnIdle {
             assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, compose.activity.requestedOrientation)
@@ -228,7 +228,7 @@ class GameUiTest {
         }
         compose.waitUntil(5000) {
             androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
-                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.systemBars()) == false
+                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.statusBars()) == true
         }
         compose.runOnIdle { assertEquals(GameScreen.PLAYING, model().screen) }
         val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
@@ -236,9 +236,15 @@ class GameUiTest {
         val grid = compose.onNodeWithTag("gridBackground").fetchSemanticsNode().boundsInRoot
         val preview = compose.onNodeWithTag("nextPreview").fetchSemanticsNode().boundsInRoot
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
-        assertEquals(root, grid)
-        assertEquals(root, board)
-        assertEquals(root, area)
+        assertEquals(board, grid)
+        assertEquals(board, area)
+        val insets = androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+            .getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars() or
+                androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+        assertEquals(root.top + insets.top, board.top, 1f)
+        assertEquals(root.left + insets.left, board.left, 1f)
+        assertEquals(root.right - insets.right, board.right, 1f)
+        assertEquals(root.bottom - insets.bottom, board.bottom, 1f)
         val cellHeight = board.height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
         assertEquals(board.left, preview.left, 1f)
         assertEquals(board.right, preview.right, 1f)

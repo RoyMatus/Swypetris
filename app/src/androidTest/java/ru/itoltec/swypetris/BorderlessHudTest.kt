@@ -21,56 +21,67 @@ import kotlin.math.abs
 class BorderlessHudTest {
     @get:Rule val compose = createComposeRule()
 
-    /** Long scores and doubled fonts cannot enter the Next or Hold regions. */
-    @Test fun labelsAndLongScoreStayWithinTheirRegions() {
+    /** Actual spawn-cell bounds determine alignment, including the single-row I hint. */
+    @Test fun scoreAndHoldShareHintCenterWithoutLabels() {
         var width by mutableIntStateOf(240)
         var height by mutableIntStateOf(400)
         var fontScale by mutableFloatStateOf(2f)
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var next by mutableStateOf(Tetromino.I)
+        var held by mutableStateOf<Tetromino?>(null)
+        var pixelsPerDp = 1f
         compose.setContent {
+            pixelsPerDp = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale),
                 LocalGamePalette provides palette) {
                 val state = GameState(active = Piece(Tetromino.S, y = 8), next = next,
-                    held = Tetromino.L, score = Int.MAX_VALUE)
-                Box(Modifier.size(width.dp, height.dp)) {
-                    val header = height.dp / 22 * SPAWN_DISPLAY_ROWS
-                    Board(state)
-                    NextSpawnLabel(state, header)
-                    Box(Modifier.fillMaxSize().safeDrawingPadding()) { GameHud(state, header) }
+                    held = held, score = Int.MAX_VALUE)
+                Box(Modifier.size(width.dp, height.dp).windowInsetsPadding(
+                    WindowInsets(left = 12.dp, top = 52.dp, right = 8.dp, bottom = 0.dp))) {
+                    BoxWithConstraints(Modifier.fillMaxSize()) {
+                        val header = maxHeight / 22 * SPAWN_DISPLAY_ROWS
+                        Board(state)
+                        GameHud(state, header)
+                    }
                 }
             }
         }
         for ((w, h, scale) in listOf(Triple(240, 400, 2f), Triple(320, 640, 1f), Triple(600, 400, 2f))) {
             for (theme in listOf("classic", "solarized_light", "github_light")) {
-                for (piece in listOf(Tetromino.I, Tetromino.O, Tetromino.T)) {
-                    compose.runOnIdle { width = w; height = h; fontScale = scale; palette = GamePalettes.find(theme); next = piece }
-                    val score = compose.onNodeWithTag("score").assertTextEquals(Int.MAX_VALUE.toString())
-                        .fetchSemanticsNode().boundsInRoot
-                    val label = compose.onNodeWithTag("nextLabel").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-                    val hold = compose.onNodeWithTag("holdPreview").assertContentDescriptionEquals("Запас L, обмен доступен")
-                        .fetchSemanticsNode().boundsInRoot
-                    val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
-                    assertTrue("Score enters the spawn lane at $w/$theme/$piece", score.right <= label.left)
-                    assertTrue("Hold enters the spawn lane at $w/$theme/$piece", hold.left >= label.right)
-                    assertTrue(hold.right <= board.right)
-                    assertTrue(compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot.top >= hold.bottom)
-                    for (tag in listOf("score", "scoreLabel", "nextLabel", "holdLabel")) {
+                for (piece in Tetromino.entries) {
+                    for (holdPiece in listOf(null, piece)) {
+                        compose.runOnIdle {
+                            width = w; height = h; fontScale = scale
+                            palette = GamePalettes.find(theme); next = piece; held = holdPiece
+                        }
+                        val score = compose.onNodeWithTag("score").assertTextEquals(Int.MAX_VALUE.toString())
+                            .fetchSemanticsNode().boundsInRoot
+                        val hold = compose.onNodeWithTag("holdPreview").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+                        val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
+                        val cells = spawnPiece(piece).cells()
+                        val rowHeight = board.height / 22
+                        val center = board.top + rowHeight * (SPAWN_DISPLAY_ROWS +
+                            (cells.minOf { it.y } + cells.maxOf { it.y } + 1) / 2f)
+                        assertEquals("Score center $w/$piece", center, score.center.y, 1f)
+                        assertEquals("Hold center $w/$piece", center, hold.center.y, 1f)
+                        assertTrue(score.top >= board.top && hold.top >= board.top)
+                        val hintLeft = board.left + cells.minOf { it.x } * board.width / 10
+                        val hintRight = board.left + (cells.maxOf { it.x } + 1) * board.width / 10
+                        assertTrue(score.right <= hintLeft)
+                        assertTrue(hold.left >= hintRight)
+                        assertEquals(board.left + 4 * pixelsPerDp, score.left, 1f)
+                        assertEquals(board.right - 4 * pixelsPerDp, hold.right, 1f)
+                        assertTrue(compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot.top >= hold.bottom)
+                        for (tag in listOf("scoreLabel", "nextLabel", "holdLabel"))
+                            compose.onNodeWithTag(tag).assertDoesNotExist()
                         val layouts = mutableListOf<TextLayoutResult>()
-                        compose.onNodeWithTag(tag).assertIsDisplayed()
-                            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-                        assertEquals(1, layouts.size)
-                        val layout = layouts.single()
-                        assertFalse("Clipped $tag at $w/$scale/$theme: size=${layout.size}, " +
-                            "width=${layout.didOverflowWidth}, height=${layout.didOverflowHeight}, " +
-                            "font=${layout.layoutInput.style.fontSize}, constraints=${layout.layoutInput.constraints}",
-                            layout.hasVisualOverflow)
+                        compose.onNodeWithTag("score").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                        assertFalse("Clipped score $w/$scale/$piece", layouts.single().hasVisualOverflow)
                     }
                 }
             }
         }
     }
-
     /** Every Next shape uses its spawn cells and an outline stronger than its faint flat fill. */
     @Test fun nextHasQuietFillAndReadableOutlinesInDarkAndLightThemes() {
         var palette by mutableStateOf(GamePalettes.find("classic"))

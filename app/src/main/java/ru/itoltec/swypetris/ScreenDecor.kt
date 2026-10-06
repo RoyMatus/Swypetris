@@ -28,14 +28,13 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun ScreenArtHeader(title: String, subtitle: String, onBack: (() -> Unit)? = null) {
     val palette = LocalGamePalette.current
-    val statusHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val art = ImageBitmap.imageResource(if (palette.light) R.drawable.settings_day_header
         else R.drawable.settings_synthwave_header)
-    Box(Modifier.fillMaxWidth().heightIn(min = 90.dp + statusHeight)) {
+    Box(Modifier.fillMaxWidth().heightIn(min = 90.dp)) {
         Image(art, contentDescription = null, modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop)
         Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(
             palette.background.copy(alpha = if (palette.light) .16f else .34f), Color.Transparent))))
-        Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = statusHeight + 8.dp,
+        Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 8.dp,
             end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) {
                 OutlinedIconButton(onClick = onBack, modifier = Modifier.size(48.dp).testTag("settingsBack"),
