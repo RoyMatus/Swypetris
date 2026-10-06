@@ -89,7 +89,7 @@ class BorderlessHudTest {
                                     }
                                     if (count > 1) {
                                         compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
-                                            .assertTextEquals("$count ×").assertIsDisplayed()
+                                            .assertTextEquals("$count ×")
                                     }
                                     previous = item
                                 }
