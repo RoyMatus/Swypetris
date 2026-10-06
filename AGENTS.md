@@ -32,20 +32,23 @@ Project agents live in `.codex/agents/`, reusable workflows in `.agents/skills/`
 
 ## GitHub issue workflow
 
+- Complete code edits, review, verification, and commit/PR content locally before pushing or writing implementation updates to GitHub. Do not post intermediate local-work progress or repeatedly query unchanged GitHub statuses; batch necessary writes at delivery checkpoints and verify their results.
+- Before creating or changing tickets, epics, or related GitHub objects, prepare the complete bodies, acceptance criteria, metadata, dependencies, and planned updates locally. Review the prepared result before sending it through the API; do not use GitHub as a drafting workspace.
+- Inspect CI at meaningful, spaced checkpoints rather than in a tight polling loop. Recheck only when completion is expected or a changed state requires a decision.
 - Make issue, pull request, and GitHub Project updates through APIs or API-backed tools, not browser UI automation.
 - Use English for all GitHub-facing content, including issue and pull request titles, descriptions, comments, labels, milestones, project fields, commit messages, branch names, and release notes.
 - Use `tools/Update-Issue.ps1` for issue metadata, relationships, comments, linked branches, and the project's Status, Work Type, and Priority; preview changes with `-WhatIf`. Project field updates require a GitHub token with project read/write access.
 - For a specific issue, use `tools/Update-Issue.ps1 -Inspect -IncludeContent` to read its metadata, body, and comments together; request `-ListOptions` only when choosing labels or milestones. Prefer the project scripts to an unverified `gh` installation.
 - After `ProjectAccessError`, report the missing scope once and skip further Project reads until the credentials change.
 - Use `tools/Manage-PullRequest.ps1` to create a PR from a pushed branch, inspect its CI checks, and merge it after checks pass. Pass `-IssueNumber` only for issue-linked work; standalone maintenance PRs need no issue. Run creation, inspection, and merging as separate decisions; do not auto-merge after polling.
-- Follow this order for each issue: update its metadata and create its linked branch, verify the change, create the PR, inspect CI, merge, then close the issue with the PR URL. Check the actual result after every API write.
+- For each issue, prepare and verify the implementation locally first. Then update its metadata and link the implementation branch, push the verified branch, create the PR, inspect CI, merge, and close the issue with the PR URL. Check the actual result after every API write.
 - Record confirmed reusable API commands and workflow findings in the relevant script or project documentation as they are discovered. Never save access tokens or other secrets.
 - After a confirmed PR merge and closure of any linked issue, briefly review the work for repeated manual steps. Propose specific skill or script changes that would reduce future effort, and ask the user before adding new standing rules or implementing those follow-up changes.
 - When feature-issue preparation requires a distinct delegated subtask under the Delegation rule, assign it to `feature_manager`; otherwise prepare the scope, dependencies, order, and metadata directly. Explain the planned order and post a concrete plan in chat before starting each issue.
 - Implement issues sequentially, one at a time. Use a separate branch and pull request for each issue, verify it, merge it into `main`, and close the issue before starting the next one.
 - Keep GitHub Project Status aligned with the actual branch, pull request, and merge state. Create a separate linked branch for each issue.
 - When closing an issue, include the pull request URL in the closing issue comment.
-- Record the plan, verification, and pull request in issue comments.
+- Record the completed plan, actual verification, and pull request in one consolidated issue comment when the work is ready for GitHub delivery.
 
 ## Android / Code
 
