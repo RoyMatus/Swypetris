@@ -8,7 +8,7 @@ internal const val HUD_HORIZONTAL_MARGIN = 4f
 internal const val GAMEPLAY_HUD_MARGIN = 20f
 private const val PREVIEW_GAP = 8f
 
-/** Pixel geometry shared by the grid, board and HUD; one spawn row sits under the status bar. */
+/** Pixel geometry shared by board and HUD; the visible spawn row starts below system icons. */
 internal data class GameplayGeometry(val safeTop: Float, val cellHeight: Float) {
     val gridTop: Float get() = safeTop - cellHeight
 }

@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import android.view.ViewConfiguration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -18,6 +17,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
@@ -40,7 +40,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -97,26 +96,16 @@ class MainActivity : ComponentActivity() {
                     window.statusBarColor = android.graphics.Color.TRANSPARENT
                     if (Build.VERSION.SDK_INT >= 29) {
                         window.isNavigationBarContrastEnforced = false
-                        @Suppress("DEPRECATION")
-                        window.navigationBarColor = android.graphics.Color.TRANSPARENT
-                    } else if (Build.VERSION.SDK_INT >= 26 || !palette.light) {
-                        // Older three-button navigation still needs a legible matching background.
-                        @Suppress("DEPRECATION")
-                        window.navigationBarColor = palette.background.toArgb()
                     }
-                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    @Suppress("DEPRECATION")
+                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    controller.show(WindowInsetsCompat.Type.systemBars())
                     onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
                 }
                 LaunchedEffect(gameModel.screen, windowFocused) {
-                    // Keep Android's immersive confirmation open while it owns focus.
                     if (windowFocused) {
                         val controller = WindowCompat.getInsetsController(window, window.decorView)
-                        if (gameModel.screen == GameScreen.PLAYING) {
-                            controller.hide(WindowInsetsCompat.Type.navigationBars())
-                        } else {
-                            controller.show(WindowInsetsCompat.Type.systemBars())
-                        }
-                        controller.show(WindowInsetsCompat.Type.statusBars())
+                        controller.show(WindowInsetsCompat.Type.systemBars())
                     }
                 }
                 SwypetrisApp(gameModel, appUpdates, onExit = { gameModel.pause(); finishAndRemoveTask() })
@@ -195,10 +184,9 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
     CompositionLocalProvider(LocalGamePalette provides palette) {
     MaterialTheme(colorScheme = palette.scheme(), typography = MaterialTheme.typography) {
     Surface(color = palette.background, contentColor = palette.text, modifier = Modifier.fillMaxSize()) {
-        val safeInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout)
+        val safeInsets = WindowInsets.safeDrawing
         val gameVisible = model.screen == GameScreen.PLAYING
-        Box(Modifier.fillMaxSize().windowInsetsPadding(if (gameVisible)
-            safeInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom) else safeInsets)) {
+        Box(Modifier.fillMaxSize().then(if (gameVisible) Modifier else Modifier.windowInsetsPadding(safeInsets))) {
             if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
                 LaunchIntroMotion.approachProgress(model.launchIntroMillis))
             key(model.screen) {
@@ -374,13 +362,13 @@ private const val GAME_GRID_ROWS = BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_RO
 private fun GameGridBackground(geometry: GameplayGeometry) {
     val palette = LocalGamePalette.current
     Canvas(Modifier.fillMaxSize().testTag("gridBackground")) {
-        drawRect(brush = Brush.verticalGradient(listOf(palette.glass,
-            lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
         for (column in 0..BoardGeometry.WIDTH) {
             val x = column * size.width / BoardGeometry.WIDTH
             drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
         }
-        for (row in 0..GAME_GRID_ROWS) {
+        // Join the status area to the first complete row instead of drawing a cropped strip.
+        drawLine(palette.grid, Offset.Zero, Offset(size.width, 0f))
+        for (row in 2..GAME_GRID_ROWS) {
             val y = geometry.gridTop + row * geometry.cellHeight
             drawLine(palette.grid, Offset(0f, y), Offset(size.width, y))
         }
@@ -396,7 +384,10 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
     val safeTop = topInset ?: with(localDensity) {
         WindowInsets.statusBars.union(WindowInsets.displayCutout).getTop(this).toDp()
     }
-    Box(Modifier.fillMaxSize()) {
+    val palette = LocalGamePalette.current
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.glass,
+        lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
+        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
         val hints = model.hintsEnabled
         val landing = remember(state.board, state.active, state.clearingRows, hints) {
             if (hints && state.clearingRows.isEmpty()) model.engine.ghost(state) else null

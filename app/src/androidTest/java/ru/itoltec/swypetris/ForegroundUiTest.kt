@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -22,6 +23,38 @@ class ForegroundUiTest {
     private fun shell(command: String) {
         InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command).use {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes()
+        }
+    }
+
+    @Test fun navigationRemainsVisibleTransparentAndOutsideGameplay() {
+        for (screen in listOf(GameScreen.MENU, GameScreen.PLAYING, GameScreen.SETTINGS, GameScreen.HELP)) {
+            compose.runOnIdle {
+                model().finishLaunchIntro()
+                when (screen) {
+                    GameScreen.PLAYING -> model().newGame()
+                    GameScreen.SETTINGS -> model().settings()
+                    GameScreen.HELP -> model().help()
+                    else -> model().menu()
+                }
+            }
+            compose.waitUntil(5000) {
+                ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                    ?.isVisible(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars()) == true
+            }
+            compose.runOnIdle {
+                @Suppress("DEPRECATION")
+                assertEquals(android.graphics.Color.TRANSPARENT, compose.activity.window.navigationBarColor)
+                if (android.os.Build.VERSION.SDK_INT >= 29)
+                    assertFalse(compose.activity.window.isNavigationBarContrastEnforced)
+            }
+            if (screen == GameScreen.PLAYING) {
+                val safe = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
+                    .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
+                val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+                assertTrue(area.left >= safe.left && area.right <= root.right - safe.right)
+                assertEquals(root.bottom - safe.bottom, area.bottom, 1f)
+            }
         }
     }
 

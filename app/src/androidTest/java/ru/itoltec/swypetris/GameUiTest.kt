@@ -238,7 +238,7 @@ class GameUiTest {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         assertEquals(board, grid)
         val insets = androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)!!
-            .getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars() or
+            .getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars() or
                 androidx.core.view.WindowInsetsCompat.Type.displayCutout())
         assertEquals(root.top, board.top, 1f)
         assertEquals(root.top + insets.top, area.top, 1f)
