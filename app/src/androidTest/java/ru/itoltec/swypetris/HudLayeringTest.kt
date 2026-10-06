@@ -19,6 +19,7 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class HudLayeringTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
@@ -40,8 +41,9 @@ class HudLayeringTest {
             val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
             val pairs = Fruit.entries.map { compose.onNodeWithTag("earnedFruit_${it.name}").fetchSemanticsNode().boundsInRoot }
             val firstRow = pairs.count { abs(it.top - pairs.first().top) < 1f }
-            if (w == 240) assertEquals(1, firstRow)
-            if (w == 600) assertTrue("Wide collection must not be fixed to two items", firstRow > 2)
+            val spacing = (FRUIT_GAP * density).roundToInt()
+            val capacity = ((fruits.width + spacing) / (pairs.first().width + spacing)).toInt().coerceAtMost(pairs.size)
+            assertEquals("Wrap according to measured width, not requested width or a fixed item count", capacity, firstRow)
             save("hud-$w-ordinary.png")
             val unobscured = compose.onRoot().captureToImage().toPixelMap()
             val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
