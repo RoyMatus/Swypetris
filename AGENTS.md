@@ -43,7 +43,6 @@ Project agents live in `.codex/agents/`, reusable workflows in `.agents/skills/`
 - Use `tools/Manage-PullRequest.ps1` to create a PR from a pushed branch, inspect its CI checks, and merge it after checks pass. Pass `-IssueNumber` only for issue-linked work; standalone maintenance PRs need no issue. Run creation, inspection, and merging as separate decisions; do not auto-merge after polling.
 - For each issue, prepare and verify the implementation locally first. Then update its metadata and link the implementation branch, push the verified branch, create the PR, inspect CI, merge, and close the issue with the PR URL. Check the actual result after every API write.
 - Record confirmed reusable API commands and workflow findings in the relevant script or project documentation as they are discovered. Never save access tokens or other secrets.
-- After a confirmed PR merge and closure of any linked issue, briefly review the work for repeated manual steps. Propose specific skill or script changes that would reduce future effort, and ask the user before adding new standing rules or implementing those follow-up changes.
 - When feature-issue preparation requires a distinct delegated subtask under the Delegation rule, assign it to `feature_manager`; otherwise prepare the scope, dependencies, order, and metadata directly. Explain the planned order and post a concrete plan in chat before starting each issue.
 - Implement issues sequentially, one at a time. Use a separate branch and pull request for each issue, verify it, merge it into `main`, and close the issue before starting the next one.
 - Keep GitHub Project Status aligned with the actual branch, pull request, and merge state. Create a separate linked branch for each issue.
@@ -62,6 +61,8 @@ Project agents live in `.codex/agents/`, reusable workflows in `.agents/skills/`
 
 ## Scope and safety
 
+- Treat the existing layout and graphic design as protected requirements. Change only visual elements directly required by the current ticket or explicitly requested task; preserve all other positioning, spacing, sizes, proportions, colors, typography, icons, textures, animations, and visual hierarchy.
+- Do not redesign, restyle, or "improve" adjacent elements while implementing a ticket. If completing the ticket requires a visual change outside its scope, explain the dependency and obtain explicit user approval before making that change.
 - Keep diffs focused and reviewable.
 - Do not rename unrelated symbols or reorganize packages without need.
 - Do not touch unrelated gameplay values, screens, or UI.
