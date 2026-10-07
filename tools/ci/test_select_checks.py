@@ -45,6 +45,19 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual("true", result["release_scripts"])
         self.assertEqual("true", result["ci_scripts"])
 
+    def test_menu_sky_changes_run_motion_and_artwork_checks(self):
+        for path in (
+            "app/src/main/java/ru/itoltec/swypetris/MenuSkyMotion.kt",
+            "app/src/main/java/ru/itoltec/swypetris/GameArt.kt",
+            "app/src/main/res/drawable-nodpi/menu_cloud_day_0.png",
+            "app/src/main/res/raw/menu_sky_registration.json",
+        ):
+            with self.subTest(path=path):
+                result = select([path])
+                self.assertEqual("selected", result["mode"])
+                self.assertIn("ru.itoltec.swypetris.MenuSkyMotionTest", result["jvm"].split(","))
+                self.assertIn("ru.itoltec.swypetris.MenuSkyTest", result["android"].split(","))
+
     def test_test_change_runs_itself_and_smoke(self):
         result = select(["app/src/test/java/ru/itoltec/swypetris/RewardsTest.kt"])
         self.assertEqual("selected", result["mode"])

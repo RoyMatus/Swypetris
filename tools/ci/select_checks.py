@@ -41,6 +41,7 @@ SOURCE_GROUPS = {
     "MusicPicker.kt": ("music", "settings"),
     "MusicSelection.kt": ("music", "settings"),
     "MenuTheme.kt": ("music",),
+    "MenuSkyMotion.kt": ("visual",),
     "PixelFruit.kt": ("visual", "engine"),
     "PlaylistClock.kt": ("music",),
     "PrivacyScreen.kt": ("legal",),
@@ -78,7 +79,7 @@ GROUP_TESTS = {
     "lifecycle": (("SessionQueueBehaviorSpec",), ("ForegroundUiTest", "SessionLifecycleTest", "GameUiTest")),
     "navigation": ((), ("BrandNavigationTest", "GameUiTest", "ForegroundUiTest")),
     "intro": (("LaunchIntroMotionTest",), ("LaunchIntroTest", "LaunchIntroRecreationTest")),
-    "visual": (("GameLayoutTest",), ("HelpHudTest", "GameUiTest", "VictoryThemeIntegrationTest")),
+    "visual": (("GameLayoutTest", "MenuSkyMotionTest"), ("HelpHudTest", "GameUiTest", "VictoryThemeIntegrationTest", "MenuSkyTest")),
     "settings": (("DifficultyTest", "PlaylistClockTest"), ("GameUiTest", "MusicSettingsFruitTest", "StatisticsResetTest")),
     "legal": ((), ("LegalScreenTest", "PublicationTest", "ShareAppTest")),
     "results": (("RecordHistoryTest", "VictoryRulesTest"), ("ResultsIntegrationTest", "VictoryThemeIntegrationTest")),
@@ -160,7 +161,8 @@ def select(paths: list[str]) -> dict[str, str]:
             continue
         if path.startswith("app/src/main/res/raw/"):
             app = True
-            unit, device = GROUP_TESTS["music" if name.endswith(".ogg") else "feedback"]
+            group = "visual" if name == "menu_sky_registration.json" else "music" if name.endswith(".ogg") else "feedback"
+            unit, device = GROUP_TESTS[group]
             jvm.update(unit)
             android.update(device)
             continue
