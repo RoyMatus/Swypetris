@@ -97,7 +97,10 @@ After changes:
 
 ### Android test devices
 
+- Before Android device verification, check `adb devices -l` for physical phones connected through Wi-Fi debugging or USB. Identify each connected target by its serial and model; connection availability alone is not a reason to use a physical phone.
 - Run instrumentation tests on an isolated emulator first. Use the connected Pixel 7 only when device-specific behavior makes a real-device check necessary.
+- Use an isolated emulator by default. Use a connected physical phone when the required verification needs real-device behavior, and explain that need before testing on it.
+- Start emulators with `-no-window` by default. Open an emulator window only when visual observation or manual interaction is necessary for the required verification; use adb, instrumentation, screenshots, and recordings without a visible window otherwise.
 - The user authorizes uninstalling the old Swypetris application, including its local data, from the Pixel 7 for necessary tests. Do not uninstall unrelated applications.
 - Always select the target device explicitly by its adb serial; never run against an unspecified connected device.
 - Leave the tested application installed on the Pixel 7 when verification is complete.

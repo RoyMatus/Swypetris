@@ -78,7 +78,8 @@ class LaunchIntroTest {
         model.setPalette("github_light")
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f),
+                LocalMenuSkyAnimations provides false) {
                 Box(Modifier.size(320.dp, 480.dp)) { SwypetrisApp(model) {} }
             }
         }
