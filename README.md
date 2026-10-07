@@ -1,128 +1,375 @@
 # Swypetris
 
-Тетрис для Android 7.0+ на Kotlin и Jetpack Compose, управляемый одним пальцем.
+[English](#english) · [Русский](#русский) · [Download APK / Скачать APK](https://github.com/RoyMatus/Swypetris/releases/latest)
 
-## Управление
+## English
+
+Swypetris is a free Android falling-block puzzle controlled with one finger. It combines a ten-column playfield, swipe-based movement and rotation, a gesture-operated Hold slot, Marathon progression, and an eight-fruit collection that leads to repeatable victory rounds.
+
+The game supports **Android 7.0 and later** (API 24+). The application interface is currently **in Russian**; this README provides English and Russian documentation. Gameplay works offline, without advertising, purchases, registration, or an online leaderboard.
+
+### Download and start playing
+
+1. Open [GitHub Releases](https://github.com/RoyMatus/Swypetris/releases/latest) and download `Swypetris.apk` from the release assets.
+2. Install the APK. Android may ask you to allow installation from the application used to open it.
+3. Open Swypetris and choose **Новая игра** (New game). **Как играть** (How to play) contains an illustrated guide inside the app.
+
+The skippable launch introduction assembles the logo from blocks. The main menu has an animated illustrated sky, the Swypetris wordmark, and New game, Continue, Settings, How to play, Results, Contacts, and Exit buttons. Continue is available for an unfinished game. The menu's version number also opens an update check.
+
+### One-finger controls
+
+Use the playfield as the touch surface; there are no separate movement, rotation, drop, or Hold buttons.
+
+| Gesture | Action |
+| --- | --- |
+| Move left or right | Move horizontally; continuing the movement advances the piece in steps. |
+| Swipe up or diagonally up-right | Rotate clockwise. |
+| Swipe diagonally up-left | Rotate counterclockwise. |
+| Short tap | Move down one cell: manual Soft Drop. |
+| Deliberate, predominantly vertical swipe down | Hard Drop to the lowest reachable position and lock immediately. |
+| Hold almost still for 300 ms, then swipe up | Store the active piece in Hold, or exchange it with the stored piece. |
+| Android Back during play | Pause into the main menu; use Continue to resume. |
+
+Hold is available once until a piece locks. Held pieces return in their initial orientation at the spawn position. Release your finger after a Hold exchange before controlling the replacement. Holding still does not accelerate gravity; releasing a prepared Hold without swiping up cancels it without a Soft Drop. The readiness pulse respects the vibration setting.
+
+Gesture distances use density-independent units and account for Android touch slop. Default thresholds start at 12 dp for horizontal movement, 24 dp for rotation, and 48 dp for Hard Drop. A downward drop needs at least twice as much vertical as horizontal movement. A second finger cancels the gesture. Piece changes reset motion anchors so old movement does not accidentally control the replacement.
+
+### Playfield and rules
+
+- The visible field is **10 columns × 20 rows**, with two additional spawn-display rows at the top. The engine maintains 20 hidden rows above the visible field.
+- All seven tetrominoes come from shuffled **seven-bags**, each containing one of every piece type.
+- Rotations use **SRS** wall kicks, with separate transition tables for I and for J, L, S, T, Z.
+- Grounded pieces have a **500 ms lock delay**. Successful movement or rotation from the ground can reset it at most **15 times per piece**. Hard Drop locks immediately.
+- A blocked spawn ends the game. Locking a piece entirely above the visible field also ends it; partly hidden placement is allowed.
+- Completed rows disappear column by column over **600 ms**, alternating left-to-right and right-to-left between clear events. Multiple rows clear together. Gravity and piece commands wait until the effect finishes; then the board collapses, points are awarded, and the next piece spawns.
+
+The portrait gameplay surface adapts to available space; cells may be rectangular. In the current HUD, **Hold is at the upper-left**, **the digital score is at the upper-right**, and collected fruits are below the score. Next appears at the actual spawn position when the active piece leaves enough space beneath the preview. It is independent of the optional landing Ghost. Hold dims when unavailable. The score turns gold just before the next level and pulses on line changes.
+
+### Marathon levels and speed
+
+New games use one Marathon speed system. Settings offers a **starting level from 1 to 15**, default 1. Changing it affects the next new game; Continue keeps the current game's starting level.
+
+The scoring level depends on cumulative cleared lines:
+
+```text
+level = max(startingLevel, 1 + clearedLines / 10)
+```
+
+Here `/` means integer division. A level-1 start reaches level 2 after 10 lines. A level-5 start first advances to level 6 after 50 lines; a level-15 start reaches level 16 after 150 lines. Later levels advance every ten lines, with no level-15 cap. Drop points and fruit rewards do not increase the level.
+
+Gravity follows a Tetris Worlds-style Marathon curve, with progression **stretched by a factor of three after the selected starting level**:
+
+```text
+steps = startingLevel - 1 + (level - startingLevel) / 3.0
+secondsPerRow = (0.8 - steps × 0.007) ^ steps
+```
+
+Initial speed is approximately 1 second per row at starting level 1, 355 ms at starting level 5, 64 ms at starting level 10, and 7.06 ms at starting level 15. Gravity is capped at **20G** (1,200 rows per second), with a minimum interval of 833,334 ns. The 500 ms lock delay remains at high speed. Gravity, lock, and line-clear timing remainders survive pauses and restoration.
+
+### Scoring
+
+The current rules version is **6**. Placement awards use the level **before** the clear. A clear that increases the level does not retroactively receive the new multiplier.
+
+| Placement | Base points, multiplied by level |
+| --- | ---: |
+| Single / Double / Triple / Tetris | 100 / 300 / 500 / 800 |
+| T-Spin Mini without a clear / Single / Double | 100 / 200 / 400 |
+| Full T-Spin without a clear / Single / Double / Triple | 400 / 800 / 1,200 / 1,600 |
+
+- **Back-to-back:** eligible consecutive difficult clears receive 1.5× their base award.
+- **Combo:** consecutive line-clearing placements add `50 × combo count × level`; the first clear has count zero.
+- **Perfect Clear:** emptying the entire logical board adds 800 / 1,200 / 1,800 / 2,000 × level for one / two / three / four lines. A back-to-back four-line Perfect Clear adds 3,200 × level instead.
+- **Manual Soft Drop:** 1 point per cell. **Hard Drop:** 2 points per cell. These awards are not multiplied by level.
+- Automatic gravity gives no points. Score addition is capped safely at `Int.MAX_VALUE`.
+
+### Fruits and victory rounds
+
+Every **10,000 points** awards the next fruit:
+
+**Cherry → Banana → Grapes → Strawberry → Apple → Pear → Pineapple → Watermelon.**
+
+Collecting all eight completes a round: the first victory threshold is **80,000 points**. A dedicated victory screen shows a block-built trophy, the fruit collection, the completed round, and total score. Play waits for an explicit continuation action.
+
+The next round starts on an empty board while retaining **score, cleared lines, level, starting level, and speed**. Points above the threshold are retained. Each additional round requires another 80,000 cumulative points. Fruit quantities reflect total score, including awards that cross several thresholds at once.
+
+### Pause, autosave, and personal results
+
+Back pauses into the main menu. Backgrounding or losing window focus, including opening the notification shade, also stops play. Returning to the foreground does not resume gameplay automatically: choose Continue.
+
+Local autosave preserves the board, active and next pieces, remaining seven-bag queue, Hold state, score, lines, rounds, starting level, lock delay, and timing progress. Activity recreation restores a paused game; reopening the app offers Continue from the menu. New game replaces the active save. A lost game cannot be continued. Incompatible older active saves are rejected without deleting settings or historical results.
+
+Results shows the latest finished game's score, lines, level, active play time, and fruit collection, plus personal record history. Pauses are excluded from play time. A new personal best opens a record celebration and optional name entry. Current code persists new record-setting results; previously stored history remains available, and records from different rules versions are kept separate. Results are local, without a shared online ranking.
+
+**Reset statistics** asks for confirmation and removes stored history and records, including older ones. Settings and the current game are preserved.
+
+### Settings and appearance
+
+Selections persist between launches:
+
+| Setting | Choices / default |
+| --- | --- |
+| Starting level | 1–15; default 1; applies to new games. |
+| Landing Ghost | On or off; off by default. |
+| Sound effects | Independent switch; on by default. |
+| Vibration | Independent switch; on by default. |
+| Music | Off, shuffle all, or one of eight tracks; shuffle all by default. |
+| Color theme | Twelve themes; Classic by default. |
+| Automatic updates | Requires explicit consent; can be disabled. |
+
+Themes: **Classic, Monokai, Gruvbox Dark, VS Code Dark+, Dracula, Nord, Solarized Light, Solarized Dark, GitHub Light, Tokyo Night, Catppuccin Mocha, and SynthWave '84**. They affect piece and interface colors, block textures and finishes, and themed artwork. Solarized Light and GitHub Light use light backgrounds. The picker previews the blocks.
+
+### Music, sound, and vibration
+
+The gameplay playlist contains eight bundled electronic arrangements: **Korobeiniki, Kalinka, Kamarinskaya, Barynya, Svetit mesyats, Vo sadu li, v ogorode, Trepak, and Dance of the Sugar Plum Fairy**.
+
+One selected track repeats. Shuffle mode begins each cycle with Korobeiniki, then plays the other seven in random order without repeats. Tracks and repetitions have a 1.5-second gap. The gameplay playlist pauses when navigating away from play; ordinary menu pages, including Settings, use a separate menu theme. Victory and record celebrations use a one-shot fanfare. Music Off disables these musical modes too; effects and vibration remain independent.
+
+Effects use Android's media volume. Haptics accompany supported game events and Hold readiness; enabling vibration gives a test pulse. Devices without amplitude control use shorter fallback pulses. Pausing stops active feedback, while a paused line-clear response can preserve its remaining time. The app does not change system sound or vibration settings.
+
+### Updates, sharing, and privacy
+
+**RuStore installations use the RuStore update SDK; direct APK installations use GitHub Releases.** Checks are available from Settings and the menu version; launch checks follow the app's check policy. Playing does not require a successful network check.
+
+Automatic downloading and installation require explicit consent and run from the main menu after saving the game. The option can be disabled. Android may still require installation permission or confirmation. Direct APK updates are checked for download size, SHA-256, package identity, version, and signing compatibility before installation.
+
+Contacts offers developer links, APK download access, and a sharing dialog with a QR code and Android's share action. These actions open the selected external application; messages are not sent automatically.
+
+The app does not send player names, scores, or settings to the developer. Update requests go to GitHub or RuStore under those services' policies. Settings and historical results may participate in Android backup; active sessions and update files are excluded. See the bundled [privacy policy](app/src/main/assets/privacy.txt), its [HTML version](publishing/privacy.html), and **Contacts → Privacy** inside the app. Credits and bundled license notices are available through **Contacts → Licenses and rights** and [legal-notices.json](app/src/main/assets/legal-notices.json).
+
+### Build and verification
+
+The application uses **Kotlin, Jetpack Compose, and Material 3**. Use **JDK 21** to match CI, an Android SDK supporting the configured compile SDK **36.1**, and the checked-in Gradle wrapper. Configure the SDK path in `local.properties` or your SDK environment. The application ID is `ru.itoltec.swypetris`; release version information is in [gradle.properties](gradle.properties) and [app/build.gradle.kts](app/build.gradle.kts).
+
+Build a debug APK on Windows:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+Output: `app/build/outputs/apk/debug/app-debug.apk`. On Linux or macOS, use `./gradlew` instead of `gradlew.bat`.
+
+Standard local build, lint, JVM tests, and coverage:
+
+```powershell
+.\tools\Verify-Tests.ps1 -Suite Fast
+# If JAVA_HOME is not configured, add -JavaHome with your JDK 21 directory.
+```
+
+For narrower JVM checks, use `:app:testDebugUnitTest` with Gradle's `--tests` filter. Instrumentation requires a ready isolated emulator and an explicit serial:
+
+```powershell
+adb devices -l
+.\tools\Verify-Tests.ps1 -Suite Android -Serial emulator-5554
+```
+
+Replace the example serial with your emulator's actual serial. [TESTING.md](TESTING.md) documents verification and test inventory; [PERFORMANCE.md](PERFORMANCE.md) covers performance measurement. CI selects checks by changed files; documentation-only changes do not need Android regression runs. These commands describe available checks, not a claim that all have run for the current revision.
+
+API documentation: `:app:dokkaGenerate`. Signed distribution builds use [tools/release/Build-Release.ps1](tools/release/Build-Release.ps1), external signing credentials, and output under `dist/<version>/`. See [music generation](tools/music/README.md) and [theme provenance](tools/themes/README.md) for resource details.
+
+### Source layout
+
+Kotlin files below live under `app/src/main/java/ru/itoltec/swypetris/`:
+
+| Files | Responsibility |
+| --- | --- |
+| `GameEngine.kt` | Android-independent board, pieces, seven-bag, Hold, placement, victory, and loss. |
+| `GameRules.kt`, `Placement.kt`, `Srs.kt` | Scoring, progression, placement classification, and rotation kicks. |
+| `GameTimeline.kt`, `GameTimer.kt` | Gravity, lock, and line-clear timing. |
+| `GestureController.kt` | One-finger gesture recognition. |
+| `GameViewModel.kt` | Screen transitions, lifecycle, settings, and game coordination. |
+| `GameSession.kt`, `GameStorage.kt`, `GameResults.kt` | Autosave, storage, and personal results. |
+| `MainActivity.kt`, `GameLayout.kt`, screen files | Compose UI, Canvas playfield, HUD, and layout. |
+| `GamePalette.kt`, `GameArt.kt`, `MenuSkyMotion.kt` | Themes, artwork, and menu sky effects. |
+| `GameMusic.kt`, `PlaylistClock.kt`, `AndroidGameFeedback.kt` | Music, playlist timing, effects, and haptics. |
+| `AppUpdates.kt`, `Update*.kt` | Update checks, download validation, and installation. |
+
+JVM tests are in `app/src/test/`; Android integration/UI tests are in `app/src/androidTest/`. `tools/` and `.github/workflows/` contain build/release, media generation, verification, and repository automation.
+
+**Developer:** Roy Matus · [itoltec.ru](https://itoltec.ru/) · [Telegram](https://t.me/RoyMatus) · [Email](mailto:piligrim18@gmail.com)
+
+---
+
+## Русский
+
+Swypetris — бесплатная головоломка с падающими блоками для Android, управляемая одним пальцем. В игре сочетаются поле шириной десять клеток, перемещение и повороты жестами, «Запас» (Hold), развитие по правилам Marathon и коллекция из восьми фруктов, после сбора которой можно переходить к следующим победным кругам.
+
+Игра поддерживает **Android 7.0 и новее** (API 24+). Интерфейс приложения сейчас **на русском языке**. Играть можно без интернета; в приложении нет рекламы, покупок, регистрации и онлайн-таблицы лидеров.
+
+### Скачать и начать играть
+
+1. Откройте [GitHub Releases](https://github.com/RoyMatus/Swypetris/releases/latest) и скачайте `Swypetris.apk` из файлов выпуска.
+2. Установите APK. Android может попросить разрешить установку из приложения, в котором вы открыли файл.
+3. Запустите Swypetris и нажмите **«Новая игра»**. В разделе **«Как играть»** есть иллюстрированная инструкция.
+
+При запуске вступительная анимация собирает логотип из блоков; её можно пропустить. В главном меню расположены анимированное иллюстрированное небо, надпись Swypetris и кнопки «Новая игра», «Продолжить», «Настройки», «Как играть», «Результаты», «Контакты» и «Выход». «Продолжить» доступна для незавершённой партии. Нажатие на номер версии в меню позволяет проверить обновления.
+
+### Управление одним пальцем
+
+Жесты выполняются на игровом поле; отдельных кнопок перемещения, поворота, броска и «Запаса» нет.
 
 | Жест | Действие |
 | --- | --- |
-| Движение влево / вправо | Сдвиг фигуры; дальнейшие шаги связаны с шириной клетки |
-| Свайп вверх или вверх-вправо | Поворот по часовой стрелке |
-| Свайп вверх-влево | Поворот против часовой стрелки |
-| Длинный направленный жест вниз | Мгновенный бросок до упора |
-| Short tap | One manual cell downward; grounded pieces retain their lock delay |
-| Hold nearly still for 300 ms, then swipe up | Store or retrieve the held piece; once per lock, then release |
-| Неподвижное удержание | Не вызывает действий и не ускоряет гравитацию |
-| Системный «Назад» | Пауза и главное меню с Continue |
+| Движение влево или вправо | Сдвиг активной фигуры; дальнейшее движение перемещает её по шагам. |
+| Свайп вверх или вверх-вправо | Поворот по часовой стрелке. |
+| Свайп вверх-влево | Поворот против часовой стрелки. |
+| Короткий тап | Спуск на одну клетку: ручной Soft Drop. |
+| Выраженный преимущественно вертикальный свайп вниз | Мгновенный бросок до упора и немедленная фиксация: Hard Drop. |
+| Почти неподвижное удержание 300 мс, затем свайп вверх | Убрать активную фигуру в «Запас» или обменять её с сохранённой. |
+| Системная кнопка или жест «Назад» во время игры | Пауза и главное меню; возобновление кнопкой «Продолжить». |
 
-Пороги в dp: горизонталь — от 12, поворот — от 24, бросок — от 48; больший системный touch slop увеличивает пороги. Для поворота подъём должен быть не меньше горизонтального смещения, делённого на 1,5. Отклонение влево от 12 dp (или большего touch slop) выбирает поворот против часовой; почти вертикальный жест и правая диагональ — по часовой. Один штрих поворачивает только один раз. Для броска вертикальное смещение должно минимум вдвое превышать горизонтальное. Неопределённые диагонали вниз не вызывают действий. Второй палец отменяет жест. При смене фигуры палец остаётся активным, базовая точка обновляется; появление фигуры само по себе не вызывает движения или тапа. Во время удаления строк координаты продолжают отслеживаться без игровых команд.
+«Запас» доступен один раз до фиксации фигуры. Фигура из запаса появляется в исходном положении и ориентации. После обмена отпустите палец, прежде чем управлять заменой. Неподвижное удержание не ускоряет падение; отпускание после подготовки «Запаса» без свайпа вверх отменяет действие без спуска на клетку. Импульс готовности учитывает настройку вибрации.
 
-## Экран и меню
+Расстояния жестов задаются в независимых от плотности экрана единицах с учётом системного порога касания Android. Базовые пороги: 12 dp для горизонтального перемещения, 24 dp для поворота и 48 dp для броска. Для броска вертикальное смещение должно как минимум вдвое превышать горизонтальное. Второй палец отменяет жест. При смене фигуры опорные точки сбрасываются, чтобы предыдущее движение не вызвало случайную команду для новой фигуры.
 
-The 10-column grid fills the entire screen, including two spawn-display rows above the 20 visible gameplay rows; cells may be rectangular. The transparent borderless HUD labels the actual score at the upper-left, Next at the engine spawn position, and Hold at the upper-right. Next uses thin theme-aware outlines with a faint flat fill, at the same cell size as the board. Its label and preview appear only after the active piece leaves one empty row between itself and the preview, independently of the landing Ghost setting. Labels respect display cutouts, fit narrow screens and enlarged fonts, and a long score stays left of the spawn lane. Hold has subtle corner brackets and dims when unavailable; an empty Hold draws no placeholder. Earned fruits remain below Hold. The grid and gesture surface retain fullscreen bounds. At nine lines within a level, the score turns gold; a line change starts a single 220 ms pulse without score changes restarting it. System insets are respected by the corner HUD.
+### Поле и правила
 
-Вверху меню расположен новый логотип: полосатый силуэт собора Василия Блаженного и надпись из цветных блоков. Ниже — компактная сетка прямоугольных кнопок без прокрутки в порядке «Новая игра», «Продолжить» (для незавершённой партии), «Настройки», «Как играть», «Результаты», «Контакты», «Выход». Рекорды показаны только на странице результатов. Ориентация приложения на телефоне фиксирована: поворот устройства не переворачивает экран.
+- Видимое поле — **10 столбцов × 20 строк**, сверху отображаются ещё две строки для появления фигур. В логике игры над видимым полем предусмотрено 20 скрытых строк.
+- Семь видов тетромино поступают из перемешанных **мешков по семь фигур**, по одной фигуре каждого вида в мешке.
+- Повороты используют **SRS** со смещениями у стен и препятствий. Для I и для J, L, S, T, Z используются отдельные таблицы переходов.
+- После касания опоры действует **задержка фиксации 500 мс**. Успешное перемещение или поворот с опоры может сбросить её не более **15 раз для одной фигуры**. Мгновенный бросок фиксирует фигуру сразу.
+- Если новая фигура не помещается в месте появления, партия заканчивается. Полная фиксация выше видимого поля также означает проигрыш; частично скрытое размещение допускается.
+- Строки исчезают по столбцам за **600 мс**. Направление чередуется между событиями очистки: слева направо, затем справа налево. Несколько строк очищаются одновременно. До завершения эффекта падение и команды остановлены; затем блоки сдвигаются, начисляются очки и появляется следующая фигура.
 
-Новые партии используют единую скорость Marathon по кривой Tetris Worlds; выбор Лёгкая / Средняя / Сложная удалён. Начальный уровень 1–15 выбирается для новой партии; продолжение сохраняет уровень начатой партии. Также доступны независимые переключатели «Тень падения», «Звук», «Вибрация» и выпадающий список «Музыка». Звук, музыка и вибрация по умолчанию включены; тень падения выключена. Следующая фигура показана контуром в исходной ориентации прямо в месте появления и доступна экранному диктору; рядом с активной фигурой превью временно скрывается. Настройка «Тень падения» управляет только контуром места приземления. Выбор сохраняется между запусками. Ниже настроек — выпадающий список десяти расцветок и образец семи блоков. Классическая выбрана по умолчанию; Solarized Light и GitHub Light светлые. Все темы меняют фигуры и интерфейс. Цветная середина блоков дополнена светлой верхней/левой фаской и тёмной нижней/правой. На время очистки строк тень падения скрывается.
+Игровая поверхность в портретной ориентации подстраивается под доступное пространство; клетки могут быть прямоугольными. В текущем интерфейсе **«Запас» находится слева сверху**, **цифровой счёт — справа сверху**, фрукты — под счётом. Следующая фигура показывается в месте появления, когда активная фигура оставляет достаточно места под превью. Эта подсказка не зависит от «Тени падения». Недоступный запас отображается приглушённо. Перед следующим уровнем счёт становится золотым; изменение числа линий запускает пульсацию.
 
-## Правила
+### Уровни и скорость Marathon
 
-Pieces use shuffled seven-bags and SRS rotations with separate I and JLSTZ transition tables. The full board contains 20 hidden spawn rows and 20 visible rows. Grounded pieces have a 500 ms lock delay with at most 15 successful grounded move/rotation resets. Hard Drop locks immediately.
+Для новых партий используется единая система скорости Marathon. В настройках выбирается **начальный уровень от 1 до 15**, по умолчанию — 1. Изменение применяется к следующей новой партии; продолжение сохраняет начальный уровень текущей игры.
 
-Заполненные строки исчезают по клетке каждые 60 мс, всего 600 мс. Первая очистка идёт слева направо, следующая справа налево; события чередуются. Несколько строк очищаются одновременно по столбцам. До окончания эффекта игра и управление фигурами остановлены. После него блоки сверху сдвигаются, начисляются очки и появляется следующая фигура.
+Уровень для начисления очков определяется общим числом очищенных линий:
 
-Rules version 6 uses level-scaled Guideline-style awards: Single/Double/Triple/Tetris = 100/300/500/800 × level; T-Spin Mini Zero/Single/Double = 100/200/400 × level; Full Zero/Single/Double/Triple = 400/800/1200/1600 × level. Eligible consecutive difficult clears receive 1.5× base score. Combo adds 50 × combo count × level, starting at zero. Perfect Clear adds 800/1200/1800/2000 × level for 1–4 lines, or 3200 × level for a B2B Tetris. Automatic gravity gives no points; manual Soft Drop gives 1/cell and Hard Drop 2/cell, without level multiplication. Placement awards use the level captured before removal and saturate safely at Int.MAX_VALUE. Fruit thresholds remain 10,000 and 80,000 per round. Starting level (1–15, default 1) is selected in Settings and applies only to new games. Level is max(starting level, 1 + cleared lines / 10), independent of drop points and fruit rewards. A level-5 start first advances at 50 lines; a level-15 start advances to 16 at 150 lines, then every ten lines without a level-15 cap. Sessions and subsequent fruit rounds retain the chosen start. Incompatible older active sessions are discarded; historical results are unchanged. A threshold-crossing clear is scored at the pre-clear level; the next piece uses the new level. HUD always shows actual score and cues the final line before the next level. Gravity follows the single Marathon curve in `GameRules.kt`, with nanosecond timing in `GameTimeline.kt`.
-
-Пауза, главное меню и уход в фон сохраняют прогресс удаления. Пересоздание Activity сохраняет партию на паузе. Новая игра сбрасывает анимацию и направление. Партия автоматически сохраняется локально, включая очередь фигур, уровень, прогресс удаления и остаток интервала гравитации. После полного закрытия приложение открывает меню с «Продолжить». Проигранную партию продолжить нельзя. Новая игра заменяет автосохранение. Потеря фокуса окна (в том числе шторка уведомлений) или уход в фон немедленно останавливает игру без автоматического возобновления. MainActivity использует singleTask для повторного запуска из launcher.
-
-## Устройство кода и проверки
-
-- `GameEngine.kt`: фигуры, состояния и правила без Android.
-- `GestureController.kt`: распознавание жестов; пороги в `GestureConfig`.
-- `GameViewModel.kt`: игровые часы, меню, настройка подсказок и рекорд.
-- `LineClearAnimation.kt`: порядок исчезновения столбцов.
-- `MainActivity.kt`: Compose-интерфейс и Canvas.
-
-Классы и методы основного кода снабжены английскими KDoc-комментариями. Для сборки нужны JDK 17+ и Android SDK, путь к которому задан в `local.properties`.
-
-```powershell
-.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
-.\gradlew.bat :app:assembleDebugAndroidTest
-# Для инструментальных тестов сначала используйте изолированный эмулятор и явно задайте ANDROID_SERIAL:
-.\gradlew.bat :app:connectedDebugAndroidTest
-.\gradlew.bat :app:dokkaGenerate
+```text
+уровень = max(начальный уровень, 1 + очищенные линии / 10)
 ```
 
-APK: `app/build/outputs/apk/debug/app-debug.apk`. Unit-тесты проверяют правила, жесты и последовательность удаления; UI-тесты — экраны и анимацию с управляемым временем. На устройстве также проверяются читаемость, бледность подсказок и компоновка на узком экране с крупным шрифтом и фиксация портретной ориентации.
+Здесь `/` означает целочисленное деление. При старте с уровня 1 переход на уровень 2 происходит после 10 линий. При старте с уровня 5 первый переход на уровень 6 — после 50 линий; при старте с уровня 15 переход на уровень 16 — после 150 линий. Далее уровень повышается через каждые десять линий, без ограничения уровнем 15. Очки за спуск и награды-фрукты уровень не повышают.
 
-Инвентаризация тестов, уровни проверок и результаты аудита описаны в [TESTING.md](TESTING.md).
+Скорость основана на кривой Marathon в стиле Tetris Worlds, но её развитие **растянуто втрое после выбранного начального уровня**:
 
-`dokkaGenerate` создаёт HTML API-справочник в `app/build/dokka/html/index.html` и документацию в формате Javadoc в `app/build/dokka/javadoc/index.html`.
+```text
+steps = начальный уровень - 1 + (уровень - начальный уровень) / 3.0
+секундыНаСтроку = (0.8 - steps × 0.007) ^ steps
+```
 
-## Звук и вибрация
+Начальная скорость — примерно 1 секунда на строку для уровня 1, 355 мс для уровня 5, 64 мс для уровня 10 и 7,06 мс для уровня 15. Максимум — **20G**, то есть 1 200 строк в секунду; минимальный интервал — 833 334 нс. Задержка фиксации 500 мс сохраняется и на высокой скорости. При паузе и восстановлении сохраняются остатки интервалов падения, фиксации и очистки строк.
 
-Переключатели независимы. На моторе с управлением амплитудой бросок и приземление после ускорения дают импульс 70 мс / 64, очистка строк — 600 мс / 64. Обычное автоматическое приземление тихое. Включение галки «Вибрация» даёт один проверочный импульс 100 мс / 110, без звука. Выключение останавливает только вибрацию; пауза сохраняет оставшуюся часть отклика очистки. Без управления амплитудой используется стандартная сила мотора: бросок длится 18 мс, очистка строк — 150 мс, проверочный импульс — 50 мс.
+### Начисление очков
 
-На Android 13+ используется категория `VibrationAttributes.USAGE_MEDIA`, на старых версиях — игровые `AudioAttributes`. Поэтому отключённая системная вибрация касаний не блокирует игровые эффекты; ограничения соответствующей категории Android сохраняются. Системные настройки приложение не меняет.
+Текущая версия правил — **6**. Награда за размещение рассчитывается по уровню **до** удаления строк: очистка, повысившая уровень, не пересчитывается с новым множителем.
 
-Собственные звуковые эффекты синтезируются `tools/Generate-Sounds.ps1`. `AndroidGameFeedback` использует SoundPool и медиагромкость.
+| Размещение | Базовые очки, умножаемые на уровень |
+| --- | ---: |
+| Одна / две / три / четыре строки | 100 / 300 / 500 / 800 |
+| T-Spin Mini без очистки / с одной / с двумя строками | 100 / 200 / 400 |
+| Полный T-Spin без очистки / с одной / с двумя / с тремя строками | 400 / 800 / 1 200 / 1 600 |
 
-## Музыка, победа и результаты
+- **Back-to-back:** последовательные подходящие сложные очистки получают 1,5× базовой награды.
+- **Комбо:** последовательные размещения с очисткой добавляют `50 × номер комбо × уровень`; у первой очистки номер равен нулю.
+- **Perfect Clear:** полное опустошение логического поля добавляет 800 / 1 200 / 1 800 / 2 000 × уровень за одну / две / три / четыре строки. Для back-to-back Perfect Clear на четыре строки добавляется 3 200 × уровень вместо 2 000.
+- **Ручной спуск:** 1 очко за клетку. **Мгновенный бросок:** 2 очка за клетку. Эти награды не умножаются на уровень.
+- Автоматическое падение очков не даёт. Счёт защищён от переполнения и ограничен значением `Int.MAX_VALUE`.
 
-Музыка выбирается из десяти пунктов: «Выключена», «Все песни — случайный порядок» и восемь названий. Каталог: «Коробейники», «Калинка», «Камаринская», «Барыня», «Светит месяц», «Во саду ли, в огороде», «Трепак», «Танец Феи Драже». Одна песня повторяется; в общем режиме каждый круг обязательно начинают «Коробейники», затем остальные семь проигрываются в случайном порядке без повторов. Следующий круг снова начинается с «Коробейников». Между записями и повторами — 1,5 секунды тишины.
+### Фрукты и победные круги
 
-Оба режима сразу звучат в настройках. Новый выбор начинает запись сначала; повторный выбор ничего не сбрасывает. Меню, другие страницы, пауза игры и фон замораживают позицию или остаток межтрековой паузы. Возврат в настройки автоматически продолжает прослушивание; игру продолжают кнопкой. Выбор сохраняется в `music_selection`; прежняя галка `music=false` означает тишину, `true` — случайный плейлист. После перезапуска приложения очередь создаётся заново. Фанфары остаются однократными и не накладываются на песни; «Выключена» отключает и их.
+Каждые **10 000 очков** дают следующий фрукт:
 
-Все записи переработаны в насыщенном стиле Sega: отдельные FM-инструменты, ответные фразы, подвижный бас, короткие аккорды и разнообразная перкуссия. Народные темы полностью проведены в собственных вариациях длительностью около трёх минут. Пьесы Чайковского сохраняют все разделы и нотные повторы: «Трепак» около 72 секунд, «Фея Драже» около 114 секунд. Полные нотные данные, происхождение редакций, источники и закреплённые зависимости описаны в [tools/music/README.md](tools/music/README.md). Готовые чужие записи и игровые семплы не используются. В APK включены Ogg Vorbis; генератор создаёт WAV и 30-секундные образцы.
+**Вишня → Банан → Виноград → Клубника → Яблоко → Груша → Ананас → Арбуз.**
 
-Фрукты выдаются за каждые 10 000 очков: вишня, банан, виноград, клубника, яблоко, груша, ананас, арбуз. На поле только заработанные фрукты текущего круга: горизонтальные ряды, без теней будущих наград и без чисел. Значки 20 dp, промежутки 4 dp. Предпочтительное положение — относительно центра поля, со смещением вправо от области появления любой фигуры и превью следующей фигуры на 8 dp. Доступная ширина определяет перенос строк. Коллекция не перехватывает жесты и очищается при начале следующего круга. Полный набор при 80 000 очков открывает отдельное поздравление с кубком, фанфарами и восьмисекундным пиксельным салютом. До нажатия «Следующий круг» партия остановлена. Starting the next round clears the board and fruit display, draws fresh pieces, and retains score, line-derived level, gravity, cleared lines and active time. При превышении порога остаток очков сохраняется: после победы на 80 500 следующая вишня выдаётся при 90 000. Следующая победа — при 160 000.
+Сбор всех восьми завершает круг: первая победа наступает при **80 000 очков**. Отдельный экран победы показывает кубок из блоков, коллекцию фруктов, пройденный круг и общий счёт. Продолжение требует явного нажатия кнопки.
 
-Возврат через меню сохраняет ожидающее поздравление и не повторяет фанфары или салют. Победа имеет приоритет перед невозможностью появления следующей фигуры. Время поздравления в игровое время не входит; таблица получает один итог после проигрыша только при новом рекорде текущей версии правил, с числом завершённых кругов.
+Следующий круг начинается на пустом поле, сохраняя **очки, очищенные линии, уровень, начальный уровень и скорость**. Очки сверх порога сохраняются. Каждый следующий круг требует ещё 80 000 очков в общем счёте. Количество фруктов определяется суммарными очками, включая награды, пересекающие сразу несколько порогов.
 
-Рекорды содержат дату, имя, версию правил, очки, строки, уровень, время, круги и фрукты без множителей. Равные и меньшие результаты показываются только на экране окончания партии. Старая история не удаляется: таблица отображает последовательные рекорды отдельно для каждой версии правил; прежние записи сохраняют историческую сложность и версию правил. Новый рекорд открывает отдельный экран ввода имени; «Сохранить», «Пропустить» и системный «Назад» ведут к итогам. Новая игра до проигрыша не записывает незавершённую партию.
+### Пауза, автосохранение и личные результаты
 
-### Миграция и проверки
+«Назад» ставит игру на паузу и возвращает в главное меню. Уход в фон или потеря фокуса окна, включая открытие шторки уведомлений, также останавливают игру. Возврат в приложение не возобновляет её автоматически: нужно нажать «Продолжить».
 
-Прежние ключи (`record_v4`, `rules_4_migrated`, `difficulty` и другие) не удаляются. Новые рекорды вычисляются из `results_v2` отдельно для `rulesVersion: 6`, без сложности; старые записи и их метаданные сохраняются. `hints` по умолчанию false. Active sessions use schema 4 and rules version 6, with gravity and fractional lock/clear timing stored in nanoseconds. Incompatible active sessions are discarded while settings and result history remain intact. Снимок партии хранится отдельно в `swypetris_session`; завершённый снимок позволяет восстановить запись рекорда по стабильному ID без дубликатов. Автосохранение остаётся локальным и не входит в системный backup настроек и истории.
+Локальное автосохранение включает поле, активную и следующую фигуры, остаток мешка, состояние запаса, очки, линии, круги, начальный уровень, задержку фиксации и прогресс таймеров. При пересоздании Activity партия восстанавливается на паузе; после повторного запуска меню предлагает продолжить игру. Новая партия заменяет активное сохранение. Проигранную партию продолжить нельзя. Несовместимые старые активные сохранения отклоняются без удаления настроек и прежних результатов.
 
-Unit-тесты проверяют циклы победы, превышение порога, порядок плейлиста и заморозку паузы. Инструментальные тесты проверяют переходы экранов, сохранение партии и тем, контур Next, его подпись и независимость от тени падения, вибрацию включения и декодирование всех восьми записей. Они используют `IsolatedStorageRule` и запускаются сначала на изолированном эмуляторе. Подключённый Pixel 7 используется только при необходимости проверить поведение реального устройства; serial всегда выбирается явно. Визуальные проверки включают ширину 320 dp и двойной шрифт. `tools/Check-Music.ps1` проверяет длительность, полную форму, контрольные суммы, клиппинг и плавные окончания декодированного Vorbis.
+Результаты показывают очки, линии, уровень, активное время и фрукты последней завершённой партии, а также историю личных рекордов. Паузы не входят в игровое время. Новый рекорд открывает поздравление и необязательный ввод имени. Текущий код сохраняет новые рекордные результаты; прежняя история остаётся доступной, а рекорды разных версий правил учитываются отдельно. Результаты локальные, общей онлайн-таблицы нет.
 
-Обновление телефона: `adb -s <Wi-Fi serial> install -r app/build/outputs/apk/debug/app-debug.apk`, без удаления приложения и очистки данных. Лицензии и источники палитр и музыки включены в `app/src/main/assets`.
+**«Сбросить статистику»** требует подтверждения и удаляет сохранённую историю и рекорды, включая старые. Настройки и текущая партия сохраняются.
 
-### Обновление оформления и навигации
+### Настройки и оформление
 
-Общий логотип заменён в меню, справке, результатах, поздравлении и контактах; иконка приложения использует компактный собор с цветными блоками. Изображения созданы imagegen, выбранные промпты и пути сохранены в `tools/branding/README.md`.
+Выбранные параметры сохраняются между запусками:
 
-Справка содержит четыре короткие карточки жестов, основные правила и информацию о сохранении партии. Экраны результатов и окончания партии не содержат кнопок «Новая игра» и «В меню»: системная кнопка или жест «Назад» возвращают в главное меню.
+| Настройка | Варианты / значение по умолчанию |
+| --- | --- |
+| Начальный уровень | 1–15; по умолчанию 1; для новых партий. |
+| Тень падения | Включена или выключена; по умолчанию выключена. |
+| Звуковые эффекты | Независимый переключатель; по умолчанию включены. |
+| Вибрация | Независимый переключатель; по умолчанию включена. |
+| Музыка | Выключена, случайный порядок или одна из восьми композиций; по умолчанию случайный порядок. |
+| Цветовая тема | Двенадцать тем; по умолчанию классическая. |
+| Автоматические обновления | После явного согласия; можно отключить. |
 
-Контакты: `piligrim18@gmail.com`, Telegram `@RoyMatus`, сайт `https://itoltec.ru/`. Карточки позволяют открыть нужное приложение или скопировать адрес; отсутствие приложения не вызывает сбоя.
+Темы: **Классическая, Monokai, Gruvbox Dark, VS Code Dark+, Dracula, Nord, Solarized Light, Solarized Dark, GitHub Light, Tokyo Night, Catppuccin Mocha и SynthWave '84**. Они меняют цвета фигур и интерфейса, текстуры и обработку блоков, тематическое оформление иллюстраций. Solarized Light и GitHub Light используют светлый фон. В настройках есть предварительный просмотр блоков.
 
-Фанфары рекорда зависят от переключателя «Музыка», а не «Звук». При выключенной музыке поздравление остаётся тихим. `MusicPlayback` позволяет проверить этот выбор и однократный запуск без использования динамика. Фон и закрытие поздравления останавливают фанфары.
+### Музыка, звуки и вибрация
 
-Направленный бросок распознаётся по расстоянию и преобладанию вертикальной оси, без требования определённой скорости пальца. После броска следующая фигура реагирует только на новое движение; отпускание старого касания не считается тапом.
+Игровой плейлист содержит восемь встроенных электронных аранжировок: **«Коробейники», «Калинка», «Камаринская», «Барыня», «Светит месяц», «Во саду ли, в огороде», «Трепак» и «Танец Феи Драже»**.
 
-## Заставка запуска
+Выбранная композиция повторяется. В случайном режиме каждый цикл начинается с «Коробейников», затем остальные семь звучат в случайном порядке без повторов. Между записями и повторами — 1,5 секунды тишины. При выходе из игры плейлист приостанавливается; обычные страницы меню, включая настройки, используют отдельную мелодию меню. Для победы и рекорда предусмотрены однократные фанфары. Выбор «Выключена» отключает и эти музыкальные режимы; эффекты и вибрация управляются независимо.
 
-При новом запуске 24 полосы собора выезжают с чередующихся сторон за 0–1100 мс. С 450 до 2650 мс 87 кубиков надписи падают из-за верхнего края с разными задержками и небольшим наклоном. Затем кнопки появляются за 2700–3000 мс со сдвигом 12 dp. Последний кадр и обычное меню используют общий Canvas-рендерер PNG, без смены геометрии.
+Эффекты используют медиагромкость Android. Вибрация сопровождает предусмотренные игровые события и готовность запаса; включение переключателя даёт проверочный импульс. На устройствах без управления амплитудой используются более короткие импульсы. Пауза останавливает активный отклик, при этом остаток отклика очистки строк может сохраняться. Приложение не меняет системные настройки звука и вибрации.
 
-Касание или системный «Назад» только завершают заставку. В фоне часы заморожены; ViewModel сохраняет прогресс при пересоздании Activity. Возврат из игры, меню и фона не повторяет завершённую заставку. При нулевой системной длительности анимации сразу доступно меню. Звука и вибрации у заставки нет.
+### Обновления, обмен ссылкой и конфиденциальность
 
-Прозрачные логотип и рисунок значка, промпты и воспроизводимая разметка частей описаны в [tools/branding/README.md](tools/branding/README.md).
+**Для установки из RuStore используется SDK обновлений RuStore; для прямой установки APK — GitHub Releases.** Проверка доступна в настройках и по нажатию на версию в меню; проверки при запуске выполняются по правилам приложения. Успешное подключение к сети для игры не требуется.
 
-### Hidden spawn buffer
+Автоматическая загрузка и установка требуют явного согласия и выполняются из главного меню после сохранения партии. Режим можно отключить. Android при необходимости запрашивает разрешение или подтверждение установки. Для прямых APK проверяются размер загрузки, SHA-256, имя пакета, версия и совместимость подписи.
 
-Rotation uses SRS orientations 0, R, 2, L, with ordered wall/floor kicks. I has its own kick table; O changes orientation without moving its cells. Kicks and collisions also work in the hidden rows.
+В контактах есть ссылки разработчика, доступ к скачиванию APK и диалог обмена ссылкой с QR-кодом и системной функцией «Поделиться». Эти действия открывают выбранное внешнее приложение; сообщения не отправляются автоматически.
 
-The logical board has 20 hidden rows above the 10×20 visible field. Piece coordinates use y=0 for the first visible row; negative y positions are hidden. Collision, ghost, and line shifting use all 40 rows. A blocked spawn causes block-out; locking all four cells above the visible field causes lock-out. Partial hidden placement is allowed. Saved sessions use schema 3 and rules version 5; incompatible older sessions are discarded without changing settings or result history.
+Игра не передаёт разработчику имя игрока, результаты или настройки. Запросы обновлений обрабатываются GitHub или RuStore по правилам этих сервисов. Настройки и история могут включаться в резервные копии Android; активная партия и файлы обновлений исключены. Подробности — во встроенной [политике конфиденциальности](app/src/main/assets/privacy.txt), её [HTML-версии](publishing/privacy.html) и на странице **«Контакты → Конфиденциальность»**. Сведения об источниках и сторонних лицензиях доступны в **«Контакты → Лицензии и права»** и [legal-notices.json](app/src/main/assets/legal-notices.json).
 
-### Lock delay
+### Сборка и проверки
 
-A grounded piece locks after 500 ms. A successful move or rotation from the ground resets this delay at most 15 times per piece. Airborne time freezes the remaining delay without restoring resets. Hard Drop locks immediately. Pausing, backgrounding, and session restoration preserve the remaining delay and reset counter.
+Приложение написано на **Kotlin с Jetpack Compose и Material 3**. Используйте **JDK 21**, как в CI, Android SDK с поддержкой настроенного compile SDK **36.1** и Gradle wrapper из репозитория. Укажите путь к SDK в `local.properties` или настройте окружение SDK. Идентификатор приложения — `ru.itoltec.swypetris`; версия задаётся в [gradle.properties](gradle.properties) и [app/build.gradle.kts](app/build.gradle.kts).
 
-### One-finger Hold
+Сборка отладочного APK в Windows:
 
-Hold nearly still for 300 ms, then swipe upward to store the active piece. A short readiness pulse respects the vibration setting. The same gesture retrieves the held piece by swapping it with the active one. Hold is available once until a piece locks; held pieces return at spawn position/orientation. Release without swiping to cancel without Soft Drop. Release after Hold before controlling the replacement. The upper-right preview under the localized Hold label shows the held piece inside subtle corner brackets; a dimmer preview means Hold is unavailable. No Hold button is used. Hold and availability persist with the game.
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
 
-### Marathon gravity (rules 6)
+Результат: `app/build/outputs/apk/debug/app-debug.apk`. В Linux и macOS используйте `./gradlew` вместо `gradlew.bat`.
 
-Seconds per row are `(0.8 - (level - 1) * 0.007) ^ (level - 1)`. Level 1 takes 1 second per row; levels 5, 10 and 15 take approximately 355.197 ms, 64.152 ms and 7.059 ms. At level 19 and above gravity is capped at 20G (1200 rows/second at 60 Hz), represented by an interval of 833,334 ns rounded upward. Lock delay remains 500 ms with at most 15 move/rotation resets; no decreasing post-20G lock curve is applied. The simulation consumes elapsed time in chronological order, preserving gravity, lock and clear remainders across late callbacks, pause and restoration. It avoids empty gravity callbacks while grounded. New games apply the chosen starting level immediately.
+Стандартные локальные проверки сборки, lint, JVM-тестов и покрытия:
+
+```powershell
+.\tools\Verify-Tests.ps1 -Suite Fast
+# Если JAVA_HOME не настроен, добавьте -JavaHome с путём к каталогу JDK 21.
+```
+
+Для узких JVM-проверок используйте `:app:testDebugUnitTest` с фильтром Gradle `--tests`. Инструментальные тесты требуют готового изолированного эмулятора и явного серийного номера:
+
+```powershell
+adb devices -l
+.\tools\Verify-Tests.ps1 -Suite Android -Serial emulator-5554
+```
+
+Замените пример фактическим номером своего эмулятора. Порядок проверок и перечень тестов описаны в [TESTING.md](TESTING.md), измерения производительности — в [PERFORMANCE.md](PERFORMANCE.md). CI выбирает проверки по изменённым файлам; для изменений только документации Android-регрессия не требуется. Эти команды описывают доступные проверки и не означают, что все они выполнены для текущей ревизии.
+
+API-документация: `:app:dokkaGenerate`. Подписанные сборки выпускает [tools/release/Build-Release.ps1](tools/release/Build-Release.ps1), используя учётные данные подписи вне репозитория; результат помещается в `dist/<версия>/`. Подробности ресурсов: [генерация музыки](tools/music/README.md) и [происхождение тем](tools/themes/README.md).
+
+### Структура кода
+
+Kotlin-файлы ниже находятся в `app/src/main/java/ru/itoltec/swypetris/`:
+
+| Файлы | Назначение |
+| --- | --- |
+| `GameEngine.kt` | Поле, фигуры, мешок, запас, размещение, победа и проигрыш без зависимости от Android. |
+| `GameRules.kt`, `Placement.kt`, `Srs.kt` | Очки, уровни, классификация размещений и смещения поворотов. |
+| `GameTimeline.kt`, `GameTimer.kt` | Таймеры падения, фиксации и очистки строк. |
+| `GestureController.kt` | Распознавание жестов одним пальцем. |
+| `GameViewModel.kt` | Переходы экранов, жизненный цикл, настройки и координация игры. |
+| `GameSession.kt`, `GameStorage.kt`, `GameResults.kt` | Автосохранение, хранилище и личные результаты. |
+| `MainActivity.kt`, `GameLayout.kt`, файлы экранов | Compose-интерфейс, поле на Canvas, индикаторы и компоновка. |
+| `GamePalette.kt`, `GameArt.kt`, `MenuSkyMotion.kt` | Темы, иллюстрации и эффекты неба в меню. |
+| `GameMusic.kt`, `PlaylistClock.kt`, `AndroidGameFeedback.kt` | Музыка, таймер плейлиста, эффекты и вибрация. |
+| `AppUpdates.kt`, `Update*.kt` | Проверка обновлений, проверка загрузок и установка. |
+
+JVM-тесты находятся в `app/src/test/`, Android-тесты интеграции и интерфейса — в `app/src/androidTest/`. `tools/` и `.github/workflows/` содержат сборку и выпуск, генерацию ресурсов, проверки и автоматизацию репозитория.
+
+**Разработчик:** Roy Matus · [itoltec.ru](https://itoltec.ru/) · [Telegram](https://t.me/RoyMatus) · [Email](mailto:piligrim18@gmail.com)
