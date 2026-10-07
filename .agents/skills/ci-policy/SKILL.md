@@ -10,9 +10,9 @@ Use this skill for changes to `.github/workflows/ci.yml`, `release-check.yml`, o
 ## Preserve the actual check matrix
 
 - Pull requests and pushes to `main` select mapped JVM and Android tests plus an API 35 emulator smoke test for changed app components. Cross-cutting or unknown inputs run full regression.
-- Documentation and isolated AI instruction/script changes run no app tests. GitHub API, release, and CI scripts receive their own focused checks.
+- Documentation and isolated AI instruction/script changes run no app tests, Java/Gradle setup, or Sonar analysis. GitHub API, release, and CI scripts receive their own focused checks.
 - A `v*` tag or manual dispatch runs the separate full release workflow: all JVM and Android correctness tests, debug/release lint, coverage, Sonar, smoke, signed APK/AAB builds, and artifact signature/archive checks.
-- Keep SonarQube Cloud analysis governed by its own configured variables, token availability, and fork restriction. Preserve an established required Quality Gate check; Android test skipping does not imply Sonar is disabled.
+- Keep `android` from GitHub Actions as the stable required check. App changes require trusted-branch Sonar analysis with valid configuration and `sonar.qualitygate.wait=true`; failed or unavailable Quality Gate results must fail that job. Do not require the separate SonarCloud check for documentation-only changes.
 
 `tools/ci/select_checks.py` owns path classification and the source-to-test map. If the base commit cannot be resolved or the diff fails, it deliberately runs full regression. Keep that conservative fallback. Do not select an empty test suite for app behavior changes. Workflow and build configuration changes run full regression.
 
