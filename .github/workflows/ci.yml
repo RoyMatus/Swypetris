@@ -48,12 +48,12 @@ jobs:
         if: steps.changes.outputs.ci_scripts == 'true'
         run: python3 -m unittest discover -s tools/ci -p 'test_*.py'
       - uses: actions/setup-java@v4
-        if: steps.changes.outputs.mode != 'none' || (vars.SONAR_ORGANIZATION != '' && vars.SONAR_PROJECT_KEY != '')
+        if: steps.changes.outputs.mode != 'none'
         with:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-        if: steps.changes.outputs.mode != 'none' || (vars.SONAR_ORGANIZATION != '' && vars.SONAR_PROJECT_KEY != '')
+        if: steps.changes.outputs.mode != 'none'
       - name: Build and lint app
         if: steps.changes.outputs.mode != 'none'
         run: bash ./gradlew :app:assembleDebug :app:lintDebug --console=plain
@@ -101,18 +101,20 @@ jobs:
             app/build/outputs/androidTest-results/
           if-no-files-found: warn
       - name: SonarQube Cloud analysis
-        if: >-
-          vars.SONAR_ORGANIZATION != '' &&
-          vars.SONAR_PROJECT_KEY != '' &&
-          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: steps.changes.outputs.mode != 'none'
         env:
+          TRUSTED_CONTEXT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
           SONAR_REGION: ${{ vars.SONAR_REGION }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          if [ -z "$SONAR_TOKEN" ]; then
-            echo 'SONAR_TOKEN is missing. Add it as a repository Actions secret.' >&2
+          if [ "$TRUSTED_CONTEXT" != 'true' ]; then
+            echo 'App changes require a trusted branch for token-based Sonar analysis.' >&2
             exit 1
           fi
-          bash ./gradlew sonar --console=plain
+          if [ -z "$SONAR_ORGANIZATION" ] || [ -z "$SONAR_PROJECT_KEY" ] || [ -z "$SONAR_TOKEN" ]; then
+            echo 'App changes require SONAR_ORGANIZATION, SONAR_PROJECT_KEY, and SONAR_TOKEN.' >&2
+            exit 1
+          fi
+          bash ./gradlew sonar -Dsonar.qualitygate.wait=true --console=plain
