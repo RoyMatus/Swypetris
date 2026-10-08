@@ -1,9 +1,12 @@
 param(
     [Parameter(Mandatory)][ValidateSet('selected', 'full')][string]$CheckMode,
-    [Parameter(Mandatory)][string]$AndroidClasses
+    [Parameter(Mandatory)][AllowEmptyString()][string]$AndroidClasses
 )
 
 $ErrorActionPreference = 'Stop'
+if ($CheckMode -eq 'selected' -and [string]::IsNullOrWhiteSpace($AndroidClasses)) {
+    throw 'Selected Android checks require at least one test class.'
+}
 $serial = 'emulator-5556'
 $avd = 'SwypetrisCI35'
 $sdk = $env:ANDROID_HOME
