@@ -1,4 +1,4 @@
-# Extend all default rules. Legacy baseline is frozen; no rule or threshold relaxation.
+# Extend all default rules. No baseline, exclusions, or threshold relaxation.
 config:
   validation: true
   warningsAsErrors: true
