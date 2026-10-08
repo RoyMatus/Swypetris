@@ -90,3 +90,63 @@ Describe 'Get-GitHubPullRequestBlockers' {
         $blockers[0] | Should -Match 'closed'
     }
 }
+
+Describe 'Get-GitHubRequiredChecks' {
+    BeforeEach {
+        Mock Invoke-GitHubRestPaged -ModuleName GitHub-Api {
+            @([pscustomobject]@{ type = 'required_status_checks'; parameters = [pscustomobject]@{
+                required_status_checks = @([pscustomobject]@{ context = 'android'; integration_id = 15368 })
+            } })
+        }
+        Mock Invoke-GitHubRest -ModuleName GitHub-Api {
+            [pscustomobject]@{ required_status_checks = [pscustomobject]@{
+                checks = @([pscustomobject]@{ context = 'android'; app_id = 15368 }); contexts = @('android', 'legacy')
+            } }
+        }
+    }
+    It 'unions classic and effective ruleset checks without duplicate sources' {
+        $checks = @(Get-GitHubRequiredChecks -Client @{} -Branch main)
+        $checks.Count | Should -Be 2
+        ($checks | Where-Object context -eq android).app_id | Should -Be 15368
+        ($checks | Where-Object context -eq legacy).app_id | Should -BeNullOrEmpty
+    }
+    It 'supports ruleset-only protection after a genuine classic 404' {
+        Mock Invoke-GitHubRest -ModuleName GitHub-Api {
+            $ex = [Exception]::new('Not Found')
+            $ex | Add-Member -NotePropertyName Response -NotePropertyValue ([pscustomobject]@{ StatusCode = 404 })
+            throw $ex
+        }
+        $checks = @(Get-GitHubRequiredChecks -Client @{} -Branch main)
+        $checks.Count | Should -Be 1
+        $checks[0].app_id | Should -Be 15368
+    }
+    It 'fails closed on an unavailable classic protection API' {
+        Mock Invoke-GitHubRest -ModuleName GitHub-Api { throw 'Service unavailable' }
+        { Get-GitHubRequiredChecks -Client @{} -Branch main } | Should -Throw '*Service unavailable*'
+    }
+    It 'fails closed on an unavailable effective rules API' {
+        Mock Invoke-GitHubRestPaged -ModuleName GitHub-Api { throw 'Forbidden' }
+        { Get-GitHubRequiredChecks -Client @{} -Branch main } | Should -Throw '*Forbidden*'
+    }
+}
+
+Describe 'Mandatory CI evidence' {
+    It 'rejects a skipped or neutral mandatory check' -ForEach @('skipped', 'neutral') {
+        $checks = @([pscustomobject]@{ name='android'; status='completed'; conclusion=$_; app=[pscustomobject]@{ id=15368 } })
+        $required = @([pscustomobject]@{context='android';app_id=15368})
+        { Assert-GitHubPullRequestReady -PullRequest (New-ReadyPullRequest) -Checks $checks -RequiredChecks $required } | Should -Throw '*no successful result*'
+    }
+    It 'retains different required sources for the same context' {
+        Mock Invoke-GitHubRestPaged -ModuleName GitHub-Api {
+            @([pscustomobject]@{type='required_status_checks';parameters=[pscustomobject]@{
+                required_status_checks=@([pscustomobject]@{context='android';integration_id=15368})
+            }})
+        }
+        Mock Invoke-GitHubRest -ModuleName GitHub-Api {
+            [pscustomobject]@{required_status_checks=[pscustomobject]@{
+                checks=@([pscustomobject]@{context='android';app_id=42});contexts=@('android')
+            }}
+        }
+        @(Get-GitHubRequiredChecks -Client @{} -Branch main).Count | Should -Be 2
+    }
+}

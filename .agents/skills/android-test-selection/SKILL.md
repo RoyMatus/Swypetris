@@ -3,18 +3,10 @@ name: android-test-selection
 description: Select proportionate local Android build, JVM, instrumentation, and release checks for a Swypetris code change.
 ---
 
-# Swypetris Android test selection
+# Android test selection
 
-Choose verification from the changed behavior and plausible failure modes. See [publishing/CI.md](../../../publishing/CI.md) for the canonical commands and [TESTING.md](../../../TESTING.md) for the test inventory.
+Use [publishing/CI.md](../../../publishing/CI.md) for commands and CI scope, `tools/ci/select_checks.py` for path mappings, and [TESTING.md](../../../TESTING.md) for the inventory. Do not copy their matrices here.
 
-## Choose the smallest check that covers the risk
+Choose local checks from changed behavior and plausible failure modes: focused JVM tests for logic; explicit-device instrumentation for UI, lifecycle or platform integration; relevant size/font-scale inspection for visuals; broader regression only for cross-system risk or unresolved failures. Instruction-only edits need review, not Android builds. A release candidate needs the documented release scope and signing checks.
 
-- For a narrow resource, documentation, or agent-instruction edit, use review or a focused resource check as relevant; do not run Android suites when no Android behavior or build input changed.
-- For a localized JVM gameplay rule or utility, run its focused unit tests when available. For broader production code changes, use the PR check set: `:app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:jacocoDebugUnitTestReport`.
-- For variant-dependent logic, cross-cutting gameplay interactions, or a main-branch equivalent check, include `:app:test` to cover all JVM test variants.
-- Run `:app:connectedDebugAndroidTest` on an explicitly selected isolated emulator when the change can affect Android/Compose UI, lifecycle, platform integration, or behavior covered only by instrumentation. A build/install result alone is not a completed instrumentation test.
-- For a release candidate or release-workflow gate, run the full release verification scope: API 35 emulator instrumentation and launcher smoke test, signed release APK and AAB builds, `lintRelease`, and signature/archive checks. Release verification does not publish the release.
-
-On Windows, use `tools/Verify-Tests.ps1` for its supported standard suites and pass `-JavaHome` or an explicit `-Serial` when required. For a narrower check, use direct Gradle/adb commands and always select the target device explicitly. Follow the repository device policy: use an isolated emulator first; use Pixel 7 only for necessary device-specific behavior and leave Swypetris installed afterward.
-
-Report the command or task actually run, result, and any device/API level or environmental limitation. Distinguish compile/install success from a test that exercised the target behavior. Preserve complete failure output in ignored build output when a runner fails.
+Use `tools/Verify-Tests.ps1` for supported standard suites (JavaHome and explicit Serial as needed); direct Gradle/adb is appropriate for narrower checks. Follow AGENTS.md device policy. Retain the runner's completed result and reports, and distinguish build/install success from exercised behavior. Report actual checks and limitations.
