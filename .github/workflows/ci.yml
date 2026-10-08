@@ -119,7 +119,7 @@ jobs:
           if (-not $env:SONAR_ORGANIZATION -or -not $env:SONAR_PROJECT_KEY -or -not $env:SONAR_TOKEN) {
             throw 'App changes require SONAR_ORGANIZATION, SONAR_PROJECT_KEY, and SONAR_TOKEN.'
           }
-          ./gradlew.bat sonar -Dsonar.qualitygate.wait=true --console=plain
+          ./gradlew.bat sonar '-Dsonar.qualitygate.wait=true' --console=plain
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify required checks executed
         if: always()
