@@ -61,7 +61,17 @@ class HudLayeringTest {
             val pairs = Fruit.entries.map { compose.onNodeWithTag("earnedFruit_${it.name}")
                 .fetchSemanticsNode().boundsInRoot }
             val firstRow = pairs.count { abs(it.top - pairs.first().top) < 1f }
-            assertEquals("Fruit rows use at most three evenly distributed items", minOf(3, pairs.size), firstRow)
+            assertEquals("Fruit rows use two evenly distributed items", minOf(2, pairs.size), firstRow)
+            pairs.chunked(2).forEach { row ->
+                row.forEach { assertEquals(row.first().top, it.top, 1f) }
+            }
+            pairs.chunked(2).zipWithNext().forEach { (above, below) ->
+                assertTrue(below.first().top >= above.maxOf { it.bottom })
+            }
+            Fruit.entries.forEach { fruit ->
+                val icon = compose.onNodeWithTag("earnedFruitIcon_${fruit.name}").fetchSemanticsNode().boundsInRoot
+                assertTrue("Fruit icons must remain visibly larger", icon.width >= 16 * density)
+            }
             save("hud-$w-ordinary.png")
             val unobscured = compose.onRoot().captureToImage().toPixelMap()
             val root = compose.onRoot().fetchSemanticsNode().boundsInRoot

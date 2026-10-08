@@ -119,7 +119,8 @@ import ru.itoltec.swypetris.ui.theme.SwypetrisTheme
 
 private const val SCORE_FONT_FIT_STEPS = 12
 private const val SCORE_PULSE_LEG_MILLIS = 110
-private const val FRUIT_COLUMNS = 3
+private const val FRUIT_COLUMNS = 2
+private const val MAX_HUD_FRUIT_SIZE_DP = 30f
 
 
 /** Current score scale exposed for testing a single pulse with a controlled Compose clock. */
@@ -345,13 +346,13 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
     }
 }
 
-/** Keeps up to three complete fruit/quantity pairs evenly distributed inside the score width. */
+/** Keeps two complete fruit/quantity pairs per row inside the score width. */
 @Composable
 private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
     val fruits = Fruit.entries.zip(state.fruitCounts).filter { it.second > 0 }
     if (fruits.isEmpty()) return
-    val itemWidth = ((width - FRUIT_GAP.dp * 2) / 3).coerceAtLeast(1.dp)
-    val iconSize = minOf(FRUIT_SIZE.dp, itemWidth * .55f).coerceAtLeast(1.dp)
+    val itemWidth = ((width - FRUIT_GAP.dp * (FRUIT_COLUMNS - 1)) / FRUIT_COLUMNS).coerceAtLeast(1.dp)
+    val iconSize = minOf(MAX_HUD_FRUIT_SIZE_DP.dp, itemWidth * .65f).coerceAtLeast(1.dp)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
         fruits.chunked(FRUIT_COLUMNS).forEach { row ->
             Row(Modifier.fillMaxWidth(),
@@ -371,7 +372,7 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
                                 color = LocalGamePalette.current.text,
                                 modifier = Modifier.testTag("earnedFruitCount_${fruit.name}"))
                         }
-                        FruitIcon(fruit, Modifier.size(iconSize))
+                        FruitIcon(fruit, Modifier.size(iconSize).testTag("earnedFruitIcon_${fruit.name}"))
                     }
                 }
             }
