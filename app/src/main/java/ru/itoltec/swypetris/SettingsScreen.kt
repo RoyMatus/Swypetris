@@ -3,7 +3,18 @@ package ru.itoltec.swypetris
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -13,7 +24,15 @@ import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,25 +64,27 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
     val appearance = lerp(palette.piece(Tetromino.T), palette.piece(Tetromino.Z), .35f)
     Column(Modifier.fillMaxSize().background(palette.background).navigationBarsPadding()
         .verticalScroll(rememberScrollState())) {
-        ScreenArtHeader("Настройки", "Настрой игру под себя", model::menu)
+        ScreenArtHeader("Настройки", "Настрой игру под себя", model.navigation::menu)
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SettingsPanel("ИГРОВОЙ ПРОЦЕСС", "Основные параметры игры", Icons.Outlined.SportsEsports, gameplay) {
                 SettingsDivider(gameplay)
                 StartingLevelSetting(model)
             }
-            SettingsPanel("ПОМОЩЬ В ИГРЕ", "Подсказки и дополнительная информация", Icons.Outlined.Lightbulb, assistance) {
+            SettingsPanel("ПОМОЩЬ В ИГРЕ", "Подсказки и дополнительная информация", Icons.Outlined.Lightbulb,
+                assistance) {
                 SettingsToggle("Тень падения", "Показывать место приземления", "hints",
-                    model.hintsEnabled, model::setHints)
+                    model.hintsEnabled, model.options::setHints)
             }
-            SettingsPanel("ЗВУК И ВИБРАЦИЯ", "Аудио и тактильная обратная связь", Icons.AutoMirrored.Outlined.VolumeUp, audio) {
+            SettingsPanel("ЗВУК И ВИБРАЦИЯ", "Аудио и тактильная обратная связь",
+                Icons.AutoMirrored.Outlined.VolumeUp, audio) {
                 MusicPicker(model)
                 SettingsDivider(audio)
                 SettingsToggle("Звуковые эффекты", "Звуки перемещения и линий", "sound",
-                    model.soundEnabled, model::setSound)
+                    model.soundEnabled, model.options::setSound)
                 SettingsDivider(audio)
                 SettingsToggle("Вибрация", "Тактильная обратная связь", "vibration",
-                    model.vibrationEnabled, model::setVibration)
+                    model.vibrationEnabled, model.options::setVibration)
             }
             SettingsPanel("ВНЕШНИЙ ВИД", "Цветовая тема и оформление", Icons.Outlined.Palette, appearance) {
                 PalettePicker(model)
@@ -85,22 +106,7 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
             Spacer(Modifier.height(12.dp))
         }
     }
-    if (confirmReset) AlertDialog(
-        onDismissRequest = { confirmReset = false },
-        title = { Text("Сбросить статистику?") },
-        text = { Text("Будут удалены вся история результатов и рекорды, включая старые. Настройки и текущая партия сохранятся.") },
-        confirmButton = {
-            TextButton(onClick = { model.resetStatistics(); confirmReset = false },
-                modifier = Modifier.testTag("confirmResetStatistics")) {
-                Text("Сбросить статистику", color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { confirmReset = false }, modifier = Modifier.testTag("cancelResetStatistics")) {
-                Text("Отмена")
-            }
-        }
-    )
+    if (confirmReset) ResetStatisticsDialog(model, onDismiss = { confirmReset = false })
 }
 
 @Composable
@@ -137,7 +143,7 @@ private fun StartingLevelSetting(model: GameViewModel) {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         SettingsLabel("Начальный уровень: ${model.startingLevel}", "Для новой партии. Скорость Marathon, максимум 20G.")
         Slider(value = model.startingLevel.toFloat(),
-            onValueChange = { model.chooseStartingLevel(it.roundToInt()) },
+            onValueChange = { model.options.chooseStartingLevel(it.roundToInt()) },
             valueRange = GameRules.MIN_STARTING_LEVEL.toFloat()..GameRules.MAX_STARTING_LEVEL.toFloat(),
             steps = GameRules.MAX_STARTING_LEVEL - GameRules.MIN_STARTING_LEVEL - 1,
             modifier = Modifier.fillMaxWidth().testTag("startingLevel"))
@@ -166,4 +172,26 @@ internal fun SettingsLabel(title: String, subtitle: String) {
         Text(subtitle, color = palette.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(),
             maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
+}
+
+@Composable
+private fun ResetStatisticsDialog(model: GameViewModel, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Сбросить статистику?") },
+        text =
+            { Text("Будут удалены вся история результатов и рекорды, включая старые. " +
+                "Настройки и текущая партия сохранятся.") },
+        confirmButton = {
+            TextButton(onClick = { model.statistics.resetStatistics(); onDismiss() },
+                modifier = Modifier.testTag("confirmResetStatistics")) {
+                Text("Сбросить статистику", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDismiss() }, modifier = Modifier.testTag("cancelResetStatistics")) {
+                Text("Отмена")
+            }
+        }
+    )
 }

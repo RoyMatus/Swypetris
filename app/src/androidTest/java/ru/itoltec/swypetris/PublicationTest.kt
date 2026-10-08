@@ -6,11 +6,21 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -23,43 +33,48 @@ class PublicationTest {
     /** Политика читается без сети, а оба способа возврата возвращают к контактам. */
     @Test fun privacyIsOfflineAndPreservesGame() {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        val model = GameViewModel(app, GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=1234), { 1000L }, false)
+        val model = GameViewModel(app, GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=1234), { 1000L },
+            false)
         val game = model.game
-        model.contacts()
+        model.navigation.contacts()
         compose.setContent { SwypetrisApp(model) {} }
         compose.onNodeWithTag("contactsPage").performScrollToNode(hasTestTag("privacy"))
         compose.onNodeWithTag("privacy").performClick()
         compose.onNodeWithTag("privacyPage").assertIsDisplayed()
         compose.onNodeWithText("Политика конфиденциальности Swypetris").assertIsDisplayed()
-        compose.onNodeWithTag("privacyPage").performScrollToNode(hasText("Системная", substring=true).or(hasText("Android может", substring=true)))
+        compose.onNodeWithTag("privacyPage").performScrollToNode(hasText("Системная",
+            substring=true).or(hasText("Android может", substring=true)))
         Espresso.pressBack()
         compose.onNodeWithTag("contactsPage").assertIsDisplayed()
         compose.onNodeWithTag("contactsBack").assertDoesNotExist()
-        compose.runOnIdle { model.privacy() }
+        compose.runOnIdle { model.navigation.privacy() }
         compose.onNodeWithTag("privacyBack").assertDoesNotExist()
         Espresso.pressBack()
-        compose.runOnIdle { assertEquals(game, model.game); assertEquals(GameScreen.CONTACTS,model.screen); assertTrue(model.results.isEmpty()) }
+        compose.runOnIdle { assertEquals(game, model.game); assertEquals(GameScreen.CONTACTS,model.screen);
+            assertTrue(model.results.isEmpty()) }
     }
 
     /** Скриншоты не используют сохранения телефона; демонстрационная партия никогда не попадает в историю. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun exportStoreMedia() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val heights = listOf(5,4,3,4,2,0,0,2,4,3)
         val board = List(BoardGeometry.TOTAL_ROWS) { y -> List(10) { x ->
             if (y >= BoardGeometry.TOTAL_ROWS - heights[x]) Tetromino.entries[(x / 2 + y / 2) % 7] else null
         } }
-        val model = GameViewModel(app, GameState(board=board,active=Piece(Tetromino.T,x=4,y=6),next=Tetromino.L,score=34620,lines=28), { 1000L }, false)
-        model.setHints(true); model.menu()
+        val model = GameViewModel(app, GameState(board=board,active=Piece(Tetromino.T,x=4,y=6),next=Tetromino.L,
+            score=34620,lines=28), { 1000L }, false)
+        model.options.setHints(true); model.navigation.menu()
         compose.setContent { SwypetrisApp(model) {} }
         compose.onNodeWithTag("newGame").assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "01-menu.png")
         compose.runOnIdle { model.resume() }
         compose.onNodeWithTag("board").assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "02-game-classic.png")
-        compose.runOnIdle { model.settings() }
+        compose.runOnIdle { model.navigation.settings() }
         compose.onNodeWithTag("musicPicker").performScrollTo().assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "03-settings.png")
-        compose.runOnIdle { model.setPalette("github_light"); model.resume() }
+        compose.runOnIdle { model.options.setPalette("github_light"); model.resume() }
         compose.onNodeWithTag("board").assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "04-game-light.png")
         assertTrue(model.results.isEmpty())
@@ -74,7 +89,11 @@ class PublicationTest {
         canvas.drawColor(android.graphics.Color.rgb(11,16,32))
         val logo = android.graphics.BitmapFactory.decodeResource(app.resources,R.drawable.swypetris_logo)
         canvas.drawBitmap(logo,null,Rect(50,25,650,425),Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color=android.graphics.Color.WHITE; textSize=31f; typeface=android.graphics.Typeface.create("sans-serif-medium",0) }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=android.graphics.Color.WHITE
+            textSize=31f
+            typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
+        }
         canvas.drawText("ИГРАЙТЕ ЖЕСТАМИ",655f,195f,paint)
         paint.textSize=25f; paint.color=android.graphics.Color.rgb(112,222,239)
         canvas.drawText("Ретро-музыка",655f,247f,paint)

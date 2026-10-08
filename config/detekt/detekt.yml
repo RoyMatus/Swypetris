@@ -1,0 +1,8 @@
+# Extend default rules without a baseline or threshold relaxation.
+config:
+  validation: true
+  warningsAsErrors: true
+naming:
+  FunctionNaming:
+    # Compose API guidelines prescribe PascalCase for Unit-returning UI functions.
+    ignoreAnnotated: ['Composable']

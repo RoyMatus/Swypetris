@@ -3,7 +3,9 @@ package ru.itoltec.swypetris
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -26,7 +28,8 @@ class UpdateDeliveryRecoveryTest {
             compose.runOnIdle { delivery.download(update) }
             compose.waitUntil(5000) { delivery.notice is DeliveryNotice.Failed }
             compose.runOnIdle {
-                assertEquals(UpdateFailureReason.NETWORK.userMessage, (delivery.notice as DeliveryNotice.Failed).message)
+                assertEquals(UpdateFailureReason.NETWORK.userMessage,
+                    (delivery.notice as DeliveryNotice.Failed).message)
                 assertFalse(delivery.showReady())
                 assertTrue(delivery.retry())
                 assertTrue(delivery.notice is DeliveryNotice.Downloading)

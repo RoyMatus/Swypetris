@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 
 /** Visual emphasis for a palette-colored action, independent of its size or destination. */
-internal enum class ActionStyle { PRIMARY, SECONDARY, TEXT }
 
 /** A palette tint with a readable label, shared by menu tiles and all other buttons. */
 @Composable

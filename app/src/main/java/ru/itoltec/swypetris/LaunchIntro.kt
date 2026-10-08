@@ -1,14 +1,18 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.provider.Settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -23,6 +27,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 
+
+
+private const val ASSEMBLED_LOGO_MILLIS = 2650L
+private const val WORDMARK_BANDS = 8
+
+
 /** Allows tests to simulate the system's disabled-animation setting without changing device settings. */
 internal val LocalLaunchIntroAnimations = staticCompositionLocalOf<Boolean?> { null }
 
@@ -36,15 +46,15 @@ internal fun LaunchIntroClock(model: GameViewModel) {
         Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
     }
     LaunchedEffect(model, owner, animate) {
-        if (!animate) model.finishLaunchIntro()
+        if (!animate) model.navigation.finishLaunchIntro()
         else owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = withFrameNanos { it }
             var remainder = 0L
             while (model.launchIntroPending) {
                 val now = withFrameNanos { it }
                 val elapsed = (now - last).coerceAtLeast(0) + remainder
-                model.advanceLaunchIntro(elapsed / 1_000_000L)
-                remainder = elapsed % 1_000_000L
+                model.advanceLaunchIntro(elapsed / GameRules.NANOS_PER_MILLI)
+                remainder = elapsed % GameRules.NANOS_PER_MILLI
                 last = now
             }
         }
@@ -55,75 +65,37 @@ internal fun LaunchIntroClock(model: GameViewModel) {
 @Composable
 internal fun LaunchIntroOverlay(model: GameViewModel, logoBounds: Rect, modifier: Modifier = Modifier) {
     val logo = ImageBitmap.imageResource(R.drawable.swypetris_logo)
-    val wordmarkOnly = true
     val palette = LocalGamePalette.current
     Canvas(modifier.testTag("launchIntro").semantics {
         contentDescription = "Заставка SWYPETRIS. Коснитесь, чтобы пропустить"
-        onClick("Пропустить заставку") { model.finishLaunchIntro(); true }
-    }.pointerInput(model) { detectTapGestures { model.finishLaunchIntro() } }) {
+        onClick("Пропустить заставку") { model.navigation.finishLaunchIntro(); true }
+    }.pointerInput(model) { detectTapGestures { model.navigation.finishLaunchIntro() } }) {
         val elapsed = model.launchIntroMillis
         if (logoBounds.isEmpty) return@Canvas
         val scale = minOf(logoBounds.width / logo.width, logoBounds.height / logo.height)
         val origin = logoBounds.center - Offset(logo.width * scale / 2, logo.height * scale / 2)
         // Once assembled, GameTitle draws the logo; the layer does not change as buttons appear.
-        if (elapsed >= 2650L) return@Canvas
-        if (wordmarkOnly) {
-            val revealWidth = (logo.width * LaunchIntroMotion.wordmarkReveal(elapsed)).toInt()
-            if (revealWidth == 0) return@Canvas
-            val top = (logo.height * .69f).toInt()
-            val bandHeight = (logo.height - top) / 8
-            repeat(8) { band ->
-                val sourceY = top + band * bandHeight
-                val height = if (band == 7) logo.height - sourceY else bandHeight
-                val sourceX = if (band % 2 == 0) 0 else logo.width - revealWidth
-                withTransform({
-                    translate(origin.x + sourceX * scale, origin.y + sourceY * scale)
-                    scale(scale, scale, Offset.Zero)
-                }) {
-                    drawWordmarkSliceWithOutline(
-                        logo = logo,
-                        srcOffset = IntOffset(sourceX, sourceY),
-                        srcSize = IntSize(revealWidth, height),
-                        dstOffset = IntOffset.Zero,
-                        dstSize = IntSize(revealWidth, height),
-                        palette = palette
-                    )
-                }
-            }
-            return@Canvas
-        }
-        LogoPieces.parts.forEachIndexed { index, piece ->
-            val target = origin + Offset(piece.x * scale, piece.y * scale)
-            val position: Offset
-            val pivot: Offset
-            val angle: Float
-            if (piece.stripe) {
-                val progress = LaunchIntroMotion.stripeProgress(elapsed, index, LogoPieces.stripeCount)
-                val startX = if (index % 2 == 0) -piece.width * scale - 1 else size.width + 1
-                position = Offset(startX + (target.x - startX) * progress, target.y)
-                pivot = position
-                angle = 0f
-            } else {
-                val cube = piece.cube
-                val anchor = LogoPieces.cubes[cube]
-                val destination = origin + Offset(anchor.x * scale, anchor.y * scale)
-                val progress = LaunchIntroMotion.cubeProgress(elapsed, cube)
-                val horizontal = LaunchIntroMotion.easeOut(progress)
-                val startX = (LaunchIntroMotion.seed(cube, 29) % 1001) / 1000f * size.width
-                val startY = -anchor.height * scale * 2 - size.height *
-                    (LaunchIntroMotion.seed(cube, 43) % 301) / 1000f
-                val movingAnchor = Offset(startX + (destination.x - startX) * horizontal,
-                    startY + (destination.y - startY) * LaunchIntroMotion.fallProgress(progress))
-                position = movingAnchor + Offset((piece.x - anchor.x) * scale, (piece.y - anchor.y) * scale)
-                pivot = movingAnchor + Offset(anchor.width * scale / 2, anchor.height * scale / 2)
-                angle = ((LaunchIntroMotion.seed(cube, 59) % 61) - 30) * (1f - horizontal)
-            }
-            rotate(angle, pivot) {
-                withTransform({ translate(position.x, position.y); scale(scale, scale, Offset.Zero) }) {
-                    drawImage(logo, srcOffset = IntOffset(piece.x, piece.y),
-                        srcSize = IntSize(piece.width, piece.height),
-                        dstOffset = IntOffset.Zero, dstSize = IntSize(piece.width, piece.height))
-                }
+        if (elapsed >= ASSEMBLED_LOGO_MILLIS) return@Canvas
+        val revealWidth = (logo.width * LaunchIntroMotion.wordmarkReveal(elapsed)).toInt()
+        if (revealWidth == 0) return@Canvas
+        val top = (logo.height * .69f).toInt()
+        val bandHeight = (logo.height - top) / 8
+        repeat(WORDMARK_BANDS) { band ->
+            val sourceY = top + band * bandHeight
+            val height = if (band == 7) logo.height - sourceY else bandHeight
+            val sourceX = if (band % 2 == 0) 0 else logo.width - revealWidth
+            withTransform({
+                translate(origin.x + sourceX * scale, origin.y + sourceY * scale)
+                scale(scale, scale, Offset.Zero)
+            }) {
+                drawWordmarkSliceWithOutline(
+                    logo = logo,
+                    srcOffset = IntOffset(sourceX, sourceY),
+                    srcSize = IntSize(revealWidth, height),
+                    dstOffset = IntOffset.Zero,
+                    dstSize = IntSize(revealWidth, height),
+                    palette = palette
+                )
             }
         }
     }

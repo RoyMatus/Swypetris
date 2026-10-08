@@ -1,19 +1,46 @@
 package ru.itoltec.swypetris
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.background
-import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.centerX
+import androidx.compose.ui.test.filter
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import kotlin.math.abs
@@ -52,64 +79,20 @@ class BorderlessHudTest {
         for ((w, h, scale) in listOf(Triple(240, 400, 2f), Triple(320, 640, 1f), Triple(600, 400, 2f))) {
             for (theme in listOf("classic", "solarized_light", "github_light")) {
                 for (piece in Tetromino.entries) {
-                    for (holdPiece in listOf(null, piece)) {
-                        for (value in listOf(0, 138, 999999, Int.MAX_VALUE)) {
-                            compose.runOnIdle {
-                                width = w; height = h; fontScale = scale
-                                palette = GamePalettes.find(theme); next = piece; held = holdPiece; scoreValue = value
-                            }
-                            val score = compose.onNodeWithTag("score").assertTextEquals(value.toString())
-                                .fetchSemanticsNode().boundsInRoot
-                            val hold = compose.onNodeWithTag("holdPreview").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-                            val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
-                            val cells = spawnPiece(piece).cells()
-                            val rowHeight = board.height / 21
-                            val gap = minOf(board.width / 10, rowHeight) * .07f
-                            assertEquals("Score top $w/$piece", board.top + gap, score.top, 1f)
-                            assertEquals("Hold top $w/$piece", score.top, hold.top, 1f)
-                            assertTrue(score.top >= board.top && hold.top >= board.top)
-                            val hintLeft = board.left + cells.minOf { it.x } * board.width / 10
-                            val hintRight = board.left + (cells.maxOf { it.x } + 1) * board.width / 10
-                            assertTrue(hold.right <= hintLeft)
-                            assertTrue(score.left >= hintRight)
-                            assertEquals(board.left + 20 * pixelsPerDp, hold.left, 1f)
-                            assertEquals(board.right - 20 * pixelsPerDp, score.right, 1f)
-                            if (value >= GameRules.FRUIT_STEP) {
-                                val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
-                                assertTrue(fruits.top >= score.bottom)
-                                assertEquals(score.left, fruits.left, 1f)
-                                assertEquals(score.right, fruits.right, 1f)
-                                val items = Fruit.entries.zip(stateFruitCounts(value)).filter { it.second > 0 }
-                                var previous: androidx.compose.ui.geometry.Rect? = null
-                                items.forEach { (fruit, count) ->
-                                    val item = compose.onNodeWithTag("earnedFruit_${fruit.name}").fetchSemanticsNode().boundsInRoot
-                                    assertTrue(item.left >= fruits.left && item.right <= fruits.right + 1f)
-                                    previous?.let {
-                                        if (item.top < it.bottom) assertTrue(item.left >= it.right)
-                                    }
-                                    if (count > 1) {
-                                        compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
-                                            .assertTextEquals("$count ×")
-                                    }
-                                    previous = item
-                                }
-                            }
-                            val label = compose.onNodeWithTag("holdLabel").assertTextEquals("Запас")
-                                .fetchSemanticsNode().boundsInRoot
-                            assertTrue(label.top >= hold.bottom && label.left >= hold.left && label.right <= hold.right + 1f)
-                            val layouts = mutableListOf<TextLayoutResult>()
-                            compose.onNodeWithTag("holdLabel").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-                            assertFalse("Hold label must fit", layouts.single().hasVisualOverflow)
-                            for (tag in listOf("scoreLabel", "nextLabel"))
-                                compose.onNodeWithTag(tag).assertDoesNotExist()
+                    assertHoldVariants(w, piece, pixelsPerDp) { holdPiece, value ->
+                        compose.runOnIdle {
+                            width = w; height = h; fontScale = scale
+                            palette = GamePalettes.find(theme); next = piece; held = holdPiece; scoreValue = value
                         }
                     }
                 }
             }
         }
     }
-    private fun stateFruitCounts(score: Int) = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = score).fruitCounts
+    private fun stateFruitCounts(score: Int) = GameState(active = Piece(Tetromino.O), next = Tetromino.T,
+        score = score).fruitCounts
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun framelessHoldIsExtraFaintAndUsedStateIsStillDistinct() {
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var held by mutableStateOf<Tetromino?>(null)
@@ -144,14 +127,17 @@ class BorderlessHudTest {
             }
             availableDifference /= empty.width * empty.height
             usedDifference /= empty.width * empty.height
-            assertTrue("Recognizable but extra faint: $theme/$piece", availableDifference > .005f && availableDifference < .25f)
-            assertTrue("Used Hold remains distinct: $theme/$piece", usedDifference > .001f && availableDifference > usedDifference * 1.5f)
+            assertTrue("Recognizable but extra faint: $theme/$piece", availableDifference > .005f &&
+                availableDifference < .25f)
+            assertTrue("Used Hold remains distinct: $theme/$piece", usedDifference > .001f &&
+                availableDifference > usedDifference * 1.5f)
             val corner = (density * 1).toInt()
             for (x in listOf(corner, empty.width - 1 - corner)) for (y in listOf(corner, empty.height - 1 - corner))
                 assertEquals("Hold must have no outer brackets", empty[x, y], available[x, y])
         }
     }
     /** Every Next shape uses its spawn cells and an outline stronger than its faint flat fill. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun nextHasQuietFillAndReadableOutlinesInDarkAndLightThemes() {
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var next by mutableStateOf(Tetromino.I)
@@ -186,4 +172,65 @@ class BorderlessHudTest {
     /** RGB distance from the unchanged board background at the same pixel. */
     private fun difference(first: Color, second: Color): Float =
         abs(first.red - second.red) + abs(first.green - second.green) + abs(first.blue - second.blue)
+
+    private fun assertHoldVariants(w: Int, piece: Tetromino, pixelsPerDp: Float,
+        configure: (Tetromino?, Int) -> Unit) {
+        for (holdPiece in listOf(null, piece)) for (value in listOf(0, 138, 999999, Int.MAX_VALUE)) {
+            configure(holdPiece, value)
+            assertHudAlignment(w, piece, value, pixelsPerDp)
+        }
+    }
+
+    private fun assertHudAlignment(w: Int, piece: Tetromino, value: Int, pixelsPerDp: Float) {
+        val score = compose.onNodeWithTag("score").assertTextEquals(value.toString())
+            .fetchSemanticsNode().boundsInRoot
+        val hold = compose.onNodeWithTag("holdPreview").assertIsDisplayed().fetchSemanticsNode()
+            .boundsInRoot
+        val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
+        val cells = spawnPiece(piece).cells()
+        val rowHeight = board.height / 21
+        val gap = minOf(board.width / 10, rowHeight) * .07f
+        assertEquals("Score top $w/$piece", board.top + gap, score.top, 1f)
+        assertEquals("Hold top $w/$piece", score.top, hold.top, 1f)
+        assertTrue(score.top >= board.top && hold.top >= board.top)
+        val hintLeft = board.left + cells.minOf { it.x } * board.width / 10
+        val hintRight = board.left + (cells.maxOf { it.x } + 1) * board.width / 10
+        assertTrue(hold.right <= hintLeft)
+        assertTrue(score.left >= hintRight)
+        assertEquals(board.left + 20 * pixelsPerDp, hold.left, 1f)
+        assertEquals(board.right - 20 * pixelsPerDp, score.right, 1f)
+        if (value >= GameRules.FRUIT_STEP) assertFruitLane(value, score)
+        val label = compose.onNodeWithTag("holdLabel").assertTextEquals("Запас")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(label.top >= hold.bottom && label.left >= hold.left &&
+            label.right <= hold.right + 1f)
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithTag("holdLabel")
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertFalse("Hold label must fit", layouts.single().hasVisualOverflow)
+        for (tag in listOf("scoreLabel", "nextLabel"))
+            compose.onNodeWithTag(tag).assertDoesNotExist()
+    }
+
+    private fun assertFruitLane(value: Int, score: androidx.compose.ui.geometry.Rect) {
+        val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
+        assertTrue(fruits.top >= score.bottom)
+        assertEquals(score.left, fruits.left, 1f)
+        assertEquals(score.right, fruits.right, 1f)
+        val items = Fruit.entries.zip(stateFruitCounts(value)).filter { it.second > 0 }
+        var previous: androidx.compose.ui.geometry.Rect? = null
+        items.forEach { (fruit, count) ->
+            val item = compose.onNodeWithTag("earnedFruit_${fruit.name}")
+                .fetchSemanticsNode().boundsInRoot
+            assertTrue(item.left >= fruits.left && item.right <= fruits.right + 1f)
+            previous?.let {
+                if (item.top < it.bottom) assertTrue(item.left >= it.right)
+            }
+            if (count > 1) {
+                compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
+                    .assertTextEquals("$count ×")
+            }
+            previous = item
+        }
+    }
 }

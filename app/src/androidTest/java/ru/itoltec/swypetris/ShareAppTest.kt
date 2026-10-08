@@ -38,7 +38,7 @@ class ShareAppTest {
 
     @Test fun contactsOpenShareDialogAndSystemShareIntent() {
         val model = ViewModelProvider(compose.activity)[GameViewModel::class.java]
-        compose.runOnIdle { model.finishLaunchIntro(); model.contacts() }
+        compose.runOnIdle { model.navigation.finishLaunchIntro(); model.navigation.contacts() }
         compose.onNodeWithTag("contactsPage").performScrollToNode(hasTestTag("shareApp"))
         compose.onNodeWithTag("shareApp").performClick()
         compose.onNodeWithTag("downloadQr").assertIsDisplayed()
@@ -61,7 +61,7 @@ class ShareAppTest {
     }
 
     @Test fun apkDialogUsesLatestReleaseForQrAndActions() {
-        val url = apkDownloadUrl()
+        val url = APK_DOWNLOAD_URL
         assertEquals(
             "https://github.com/RoyMatus/Swypetris/releases/latest/download/Swypetris.apk",
             url
@@ -74,7 +74,7 @@ class ShareAppTest {
         assertEquals(url, decoded.text)
 
         val model = ViewModelProvider(compose.activity)[GameViewModel::class.java]
-        compose.runOnIdle { model.finishLaunchIntro(); model.contacts() }
+        compose.runOnIdle { model.navigation.finishLaunchIntro(); model.navigation.contacts() }
         compose.onNodeWithTag("contactsPage").performScrollToNode(hasTestTag("downloadApk"))
         compose.onNodeWithTag("downloadApk").performClick()
         compose.onNodeWithTag("apkQr").assertIsDisplayed()

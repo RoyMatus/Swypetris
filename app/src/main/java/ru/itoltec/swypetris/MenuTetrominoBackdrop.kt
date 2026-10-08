@@ -17,6 +17,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 
+private const val DECORATIVE_CELL_FILL = .92f
+private const val I_LAST_COLUMN = 3
+
+
 /** Lightweight decorative tetromino layer used only while the main menu is in composition. */
 @Composable
 internal fun MenuTetrominoBackdrop(
@@ -68,7 +72,7 @@ internal fun MenuTetrominoBackdrop(
             cells.forEach { (column, row) ->
                 bevelBlock(
                     at = Offset(left + column * cell, top + row * cell),
-                    size = Size(cell * .92f, cell * .92f),
+                    size = Size(cell * DECORATIVE_CELL_FILL, cell * DECORATIVE_CELL_FILL),
                     color = color,
                     finish = palette.finish,
                     texture = palette.texture,
@@ -85,11 +89,11 @@ private enum class MenuPiece(
     val speed: Float,
     val cells: List<Pair<Int, Int>>
 ) {
-    I(.04f, .02f, .72f, listOf(0 to 1, 1 to 1, 2 to 1, 3 to 1)),
-    O(.72f, .19f, .84f, listOf(1 to 0, 2 to 0, 1 to 1, 2 to 1)),
-    T(.18f, .38f, .78f, listOf(0 to 0, 1 to 0, 2 to 0, 1 to 1)),
-    S(.83f, .55f, .91f, listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1)),
-    Z(.34f, .70f, .76f, listOf(0 to 0, 1 to 0, 1 to 1, 2 to 1)),
-    J(.61f, .84f, .88f, listOf(0 to 0, 0 to 1, 1 to 1, 2 to 1)),
-    L(.92f, .31f, .69f, listOf(2 to 0, 0 to 1, 1 to 1, 2 to 1))
+    I(xFraction = .04f, phase = .02f, speed = .72f, cells = listOf(0 to 1, 1 to 1, 2 to 1, I_LAST_COLUMN to 1)),
+    O(xFraction = .72f, phase = .19f, speed = .84f, cells = listOf(1 to 0, 2 to 0, 1 to 1, 2 to 1)),
+    T(xFraction = .18f, phase = .38f, speed = .78f, cells = listOf(0 to 0, 1 to 0, 2 to 0, 1 to 1)),
+    S(xFraction = .83f, phase = .55f, speed = .91f, cells = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1)),
+    Z(xFraction = .34f, phase = .70f, speed = .76f, cells = listOf(0 to 0, 1 to 0, 1 to 1, 2 to 1)),
+    J(xFraction = .61f, phase = .84f, speed = .88f, cells = listOf(0 to 0, 0 to 1, 1 to 1, 2 to 1)),
+    L(xFraction = .92f, phase = .31f, speed = .69f, cells = listOf(2 to 0, 0 to 1, 1 to 1, 2 to 1))
 }

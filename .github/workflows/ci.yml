@@ -26,6 +26,7 @@ jobs:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: python3 tools/ci/select_checks.py --base "$BASE_SHA" --output "$GITHUB_OUTPUT"
       - name: Check GitHub API scripts
+        id: github_scripts
         if: steps.changes.outputs.github_scripts == 'true'
         shell: pwsh
         run: |
@@ -35,6 +36,7 @@ jobs:
           $result = Invoke-Pester ./tools/tests/GitHub-Api.Tests.ps1 -PassThru
           if ($result.FailedCount -gt 0 -or $result.PassedCount -eq 0) { exit 1 }
       - name: Check release script syntax
+        id: release_scripts
         if: steps.changes.outputs.release_scripts == 'true'
         shell: pwsh
         run: |
@@ -45,38 +47,48 @@ jobs:
             if ($errors.Count -gt 0) { throw "$($_.Name): $($errors -join '; ')" }
           }
       - name: Check CI selection scripts
+        id: ci_scripts
         if: steps.changes.outputs.ci_scripts == 'true'
         run: python3 -m unittest discover -s tools/ci -p 'test_*.py'
       - uses: actions/setup-java@v4
-        if: steps.changes.outputs.mode != 'none'
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         with:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-        if: steps.changes.outputs.mode != 'none'
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+      - name: Analyze Kotlin
+        id: detekt
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        run: bash ./gradlew :app:detekt --console=plain
       - name: Build and lint app
-        if: steps.changes.outputs.mode != 'none'
+        id: build
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         run: bash ./gradlew :app:assembleDebug :app:lintDebug --console=plain
-      - name: Run selected JVM tests
-        if: steps.changes.outputs.mode == 'selected' && steps.changes.outputs.jvm != ''
+      - name: Run JVM tests and coverage
+        id: jvm
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         env:
-          JVM_CLASSES: ${{ steps.changes.outputs.jvm }}
+          CHECK_MODE: ${{ steps.changes.outputs.mode }}
         run: |
-          IFS=, read -ra classes <<< "$JVM_CLASSES"
-          filters=()
-          for class in "${classes[@]}"; do filters+=(--tests "$class"); done
-          bash ./gradlew :app:testDebugUnitTest "${filters[@]}" --console=plain
-      - name: Run full JVM regression and coverage
-        if: steps.changes.outputs.mode == 'full'
-        run: bash ./gradlew :app:test :app:jacocoDebugUnitTestReport --console=plain
+          if [ "$CHECK_MODE" = 'full' ]; then
+            bash ./gradlew :app:test :app:jacocoDebugUnitTestReport --console=plain
+          else
+            bash ./gradlew :app:jacocoDebugUnitTestReport --console=plain
+          fi
+      - name: Validate quality reports
+        id: quality_reports
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        run: python3 tools/ci/verify_quality_results.py
       - name: Enable KVM
-        if: steps.changes.outputs.mode != 'none'
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Run affected Android tests and smoke
-        if: steps.changes.outputs.mode != 'none'
+        id: device
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         env:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
@@ -97,11 +109,13 @@ jobs:
             app/build/test-results/
             app/build/reports/lint-results-*
             app/build/reports/jacoco/
+            app/build/reports/detekt/
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
           if-no-files-found: warn
       - name: SonarQube Cloud analysis
-        if: steps.changes.outputs.mode != 'none'
+        id: sonar
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         env:
           TRUSTED_CONTEXT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
@@ -118,3 +132,9 @@ jobs:
             exit 1
           fi
           bash ./gradlew sonar -Dsonar.qualitygate.wait=true --console=plain
+      - name: Verify required checks executed
+        if: always()
+        env:
+          CHECK_OUTPUTS: ${{ toJSON(steps.changes.outputs) }}
+          CHECK_STEPS: ${{ toJSON(steps) }}
+        run: python3 tools/ci/verify_quality_results.py --steps

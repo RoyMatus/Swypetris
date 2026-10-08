@@ -2,7 +2,7 @@ package ru.itoltec.swypetris
 
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
-import org.junit.Assert.*
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.File
 import java.io.IOException

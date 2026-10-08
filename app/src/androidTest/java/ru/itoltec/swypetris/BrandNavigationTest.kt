@@ -5,21 +5,46 @@ import android.content.ActivityNotFoundException
 import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Bitmap
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.filter
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import ru.itoltec.swypetris.ui.theme.SwypetrisTheme
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -29,6 +54,7 @@ class BrandNavigationTest {
     @get:Rule(order = 1) val compose = createComposeRule()
 
     /** Меню соблюдает порядок; результаты не содержат действий новой игры и возврата. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun menuOrderAndResultsBack() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
         compose.setContent { SwypetrisTheme(darkTheme = true, dynamicColor = false) { SwypetrisApp(model) {} } }
@@ -41,7 +67,7 @@ class BrandNavigationTest {
         assertEquals(expected, observed)
         expected.forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
         screenshot("menu-brand.png")
-        compose.runOnIdle { model.newGame(); model.menu() }
+        compose.runOnIdle { model.newGame(); model.navigation.menu() }
         compose.onNodeWithTag("resumeGame").assertIsDisplayed()
         val resume = compose.onNodeWithTag("resumeGame").fetchSemanticsNode().boundsInRoot
         val newGame = compose.onNodeWithTag("newGame").fetchSemanticsNode().boundsInRoot
@@ -51,7 +77,7 @@ class BrandNavigationTest {
         assertTrue(newGame.left < resume.left)
         assertTrue(kotlin.math.abs(resume.width - newGame.width) <= 1f)
         assertTrue(exit.width <= settings.width * 1.2f)
-        compose.runOnIdle { model.showResults() }
+        compose.runOnIdle { model.navigation.showResults() }
         compose.onNodeWithTag("newGame").assertDoesNotExist()
         compose.onNodeWithTag("toMenu").assertDoesNotExist()
         Espresso.pressBack()
@@ -60,9 +86,10 @@ class BrandNavigationTest {
     }
 
     /** Все семь кнопок целиком видны без прокрутки на экране 320 × 480 dp при двойном шрифте. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun compactMenuFitsSmallScreenWithLargeFont() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
-        model.newGame(); model.menu(); model.finishLaunchIntro()
+        model.newGame(); model.navigation.menu(); model.navigation.finishLaunchIntro()
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 SwypetrisTheme(darkTheme = true, dynamicColor = false) {
@@ -83,11 +110,13 @@ class BrandNavigationTest {
         val version = compose.onNodeWithTag("versionCheck").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         assertTrue(version.left >= viewport.left && version.right <= viewport.right)
         assertTrue(version.top >= viewport.top && version.bottom <= viewport.bottom)
-        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).assertCountEquals(0)
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+            .assertCountEquals(0)
         screenshot("menu-compact-large-font.png")
     }
 
     /** Все фрукты и контакты помещаются при ширине 320 dp и двойном размере шрифта. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun fruitsAndContactsAtLargeFont() {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val model = GameViewModel(application, null, { 1000L }, false)
@@ -99,7 +128,7 @@ class BrandNavigationTest {
                 }
             }
         }
-        compose.runOnIdle { model.help() }
+        compose.runOnIdle { model.navigation.help() }
         // Indexed lazy-list actions execute scrolling on the UI thread in Compose 1.7.
         for ((item, control) in listOf(
             2 to "Двигать фигуру",
@@ -118,16 +147,17 @@ class BrandNavigationTest {
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("helpPage").performScrollToIndex(0)
         screenshot("help-controls.png")
-        compose.runOnIdle { fontScale = 2f; model.contacts() }
+        compose.runOnIdle { fontScale = 2f; model.navigation.contacts() }
         for ((index, contact) in DeveloperContact.entries.withIndex()) {
             compose.onNodeWithTag("contactsPage").performScrollToIndex(index + 1)
             compose.onNodeWithText(contact.address).assertIsDisplayed()
         }
-        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+            .assertCountEquals(0)
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("contactsPage").performScrollToIndex(0)
         screenshot("contacts-brand.png")
-        compose.runOnIdle { model.setPalette("github_light") }
+        compose.runOnIdle { model.options.setPalette("github_light") }
         screenshot("contacts-light.png")
         Espresso.pressBack()
         compose.runOnIdle { assertEquals(GameScreen.MENU, model.screen) }
@@ -147,6 +177,7 @@ class BrandNavigationTest {
     }
 
     /** Сохраняет снимок для визуального контроля нового оформления. */
+    @androidx.annotation.RequiresApi(26)
     private fun screenshot(name: String) {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val file = java.io.File(application.getExternalFilesDir(null), name)

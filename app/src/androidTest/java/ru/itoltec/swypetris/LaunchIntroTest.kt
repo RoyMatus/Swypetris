@@ -9,13 +9,24 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -44,7 +55,7 @@ class LaunchIntroTest {
         compose.runOnIdle {
             assertNull(model.game)
             assertEquals(GameScreen.MENU, model.screen)
-            model.settings(); model.menu(); model.onBackground(); model.onForeground()
+            model.navigation.settings(); model.navigation.menu(); model.onBackground(); model.onForeground()
             assertFalse(model.launchIntroPending)
             assertTrue(model.results.isEmpty())
         }
@@ -73,9 +84,10 @@ class LaunchIntroTest {
     }
 
     /** Фон не расходует время; собранный PNG совпадает с меню без изменения размера или позиции. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun stagedAnimationHasNoFinalJumpAndFitsLightCompactScreen() {
         val model = model()
-        model.setPalette("github_light")
+        model.options.setPalette("github_light")
         compose.mainClock.autoAdvance = false
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f),
@@ -100,7 +112,7 @@ class LaunchIntroTest {
         val assembled = compose.onNodeWithTag("gameLogo").captureToImage().asAndroidBitmap()
         val assembledBounds = compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot
         save(assembled, "intro-logo-assembled.png")
-        compose.runOnIdle { model.finishLaunchIntro() }
+        compose.runOnIdle { model.navigation.finishLaunchIntro() }
         compose.mainClock.advanceTimeByFrame()
         screenshot("intro-menu-light.png")
         val menu = compose.onNodeWithTag("gameLogo").captureToImage().asAndroidBitmap()
@@ -132,14 +144,15 @@ class LaunchIntroTest {
         listOf("newGame", "settings", "help", "results", "contacts", "exitGame").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
-        compose.runOnIdle { model.setPalette("monokai") }
+        compose.runOnIdle { model.options.setPalette("monokai") }
         compose.mainClock.advanceTimeByFrame()
         screenshot("intro-menu-dark.png")
     }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun darkApproachEndsOnTheSameMenuComposition() {
         val model = model()
-        model.setPalette("synthwave_84")
+        model.options.setPalette("synthwave_84")
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
         compose.mainClock.advanceTimeByFrame()
@@ -150,7 +163,7 @@ class LaunchIntroTest {
         screenshot("approach-2000.png")
         advanceTo(model, 2650)
         val finalFrame = screenshot("approach-2650.png")
-        compose.runOnIdle { model.finishLaunchIntro() }
+        compose.runOnIdle { model.navigation.finishLaunchIntro() }
         compose.mainClock.advanceTimeByFrame()
         val menuFrame = screenshot("approach-menu.png")
         assertEquals(finalFrame.width, menuFrame.width)
@@ -160,6 +173,7 @@ class LaunchIntroTest {
     }
 
     /** Оба изображения имеют настоящую прозрачность, включая пространство между полосами. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun transparentAssetsAndAdaptiveIconMasks() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         for (resource in listOf(R.drawable.swypetris_logo, R.drawable.swypetris_mark)) {
@@ -227,11 +241,14 @@ class LaunchIntroTest {
     }
 
     /** Сохраняет реальный кадр Compose для визуального контроля. */
-    private fun screenshot(name: String): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap().also { save(it, name) }
+    @androidx.annotation.RequiresApi(26)
+    private fun screenshot(name: String): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        .also { save(it, name) }
 
     /** Записывает снимок в доступный adb каталог тестового приложения. */
     private fun save(bitmap: Bitmap, name: String) {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        File(app.getExternalFilesDir(null), name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        File(app.getExternalFilesDir(null), name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,
+            100, it) }
     }
 }

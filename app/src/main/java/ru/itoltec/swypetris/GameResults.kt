@@ -17,7 +17,8 @@ fun fruitCount(score: Int): Int = score.coerceAtLeast(0) / GameRules.FRUIT_STEP
 fun fruitQuantity(score: Int, fruit: Fruit): Int =
     (fruitCount(score) / Fruit.entries.size) + if (fruit.ordinal < fruitCount(score) % Fruit.entries.size) 1 else 0
 
-/** Final game result with a rules version; active play time excludes pauses, and old rules do not compete with new ones. */
+/** Final game result with a rules version; active play time excludes pauses,
+    and old rules do not compete with new ones. */
 data class GameResult(
     val id: String,
     val dateMillis: Long,
@@ -39,7 +40,8 @@ class ResultStore(private val preferences: SharedPreferences) {
         (0 until array.length()).mapNotNull { index -> runCatching {
             val row = array.getJSONObject(index)
             GameResult(row.getString("id"), row.getLong("date"), row.getString("name"),
-                row.getInt("score"), row.getInt("lines"), row.getInt("level"), row.getLong("duration"), row.optInt("rulesVersion", 2), row.optInt("completedRounds", 0),
+                row.getInt("score"), row.getInt("lines"), row.getInt("level"), row.getLong("duration"),
+                    row.optInt("rulesVersion", 2), row.optInt("completedRounds", 0),
                 Difficulty.find(row.optString("difficulty")))
         }.getOrNull() }
     }.getOrDefault(emptyList())
@@ -50,7 +52,8 @@ class ResultStore(private val preferences: SharedPreferences) {
         results.distinctBy { it.id }.forEach { result ->
             array.put(JSONObject().put("id", result.id).put("date", result.dateMillis)
                 .put("name", result.name).put("score", result.score).put("lines", result.lines)
-                .put("level", result.level).put("duration", result.durationMillis).put("rulesVersion", result.rulesVersion)
+                .put("level", result.level).put("duration", result.durationMillis).put("rulesVersion",
+                    result.rulesVersion)
                 .put("completedRounds", result.completedRounds).put("difficulty", result.difficulty?.id))
         }
         preferences.edit().putString("results_v2", array.toString()).apply()

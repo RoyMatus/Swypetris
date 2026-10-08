@@ -1,16 +1,25 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -18,18 +27,20 @@ class GameplaySurfaceTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun gridContinuesUnderStatusAreaWhileForegroundIsClipped() {
         var top by mutableIntStateOf(52)
         var state by mutableStateOf(GameState(active = Piece(Tetromino.T, y = 8), next = Tetromino.O))
         val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), state, { 1000L }, false)
-        model.setHints(false)
+        model.options.setHints(false)
         var pixelsPerDp = 1f
         compose.setContent {
             pixelsPerDp = LocalDensity.current.density
             Box(Modifier.size(320.dp, 640.dp)) { GameContent(model, state, top.dp) }
         }
         for (inset in listOf(24, 52, 90)) {
-            compose.runOnIdle { top = inset; state = state.copy(board = BoardGeometry.empty(), active = Piece(Tetromino.T, y = 8)) }
+            compose.runOnIdle { top = inset; state = state.copy(board = BoardGeometry.empty(),
+                active = Piece(Tetromino.T, y = 8)) }
             val before = compose.onNodeWithTag("gridBackground").captureToImage().toPixelMap()
             val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
             val preview = compose.onNodeWithTag("nextPreview").fetchSemanticsNode().boundsInRoot

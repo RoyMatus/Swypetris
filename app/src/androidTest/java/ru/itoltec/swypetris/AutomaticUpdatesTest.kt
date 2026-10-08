@@ -1,7 +1,12 @@
 package ru.itoltec.swypetris
 
 import android.content.Context
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
@@ -39,7 +44,8 @@ class AutomaticUpdatesTest {
 
     @Test fun automaticUpdatesRequireConsentAndSurviveActivityRecreation() {
         compose.activityRule.scenario.onActivity {
-            ViewModelProvider(it)[GameViewModel::class.java].apply { finishLaunchIntro(); settings() }
+            ViewModelProvider(it)[GameViewModel::class.java].apply { navigation.finishLaunchIntro();
+                navigation.settings() }
         }
         compose.onNodeWithTag("automaticUpdates").performScrollTo().assertIsOff().performClick()
         compose.onNodeWithTag("manualUpdatesOnly").assertIsDisplayed().performClick()

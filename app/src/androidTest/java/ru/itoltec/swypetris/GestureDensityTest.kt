@@ -2,15 +2,27 @@ package ru.itoltec.swypetris
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.down
+import androidx.compose.ui.test.moveBy
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.up
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -48,7 +60,7 @@ class GestureDensityTest {
         val density = context.resources.displayMetrics.density
         val step = maxOf(12 * density, android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()) + 2
         compose.onNodeWithTag("gameArea").performTouchInput { down(center) }
-        compose.runOnIdle { now += 800; model.advanceFrame(now) }
+        compose.runOnIdle { now += 800; model.simulation.advanceFrame(now) }
         val spawned = model.game!!
         assertEquals(1, spawned.generation)
         compose.onNodeWithTag("gameArea").performTouchInput { moveBy(Offset(step, 0f)); up() }
@@ -81,7 +93,8 @@ class GestureDensityTest {
             }
             compose.onNodeWithTag("gameArea").performTouchInput { click(center) }
             compose.runOnIdle { assertEquals(1, model.game!!.active.y); assertEquals(0, model.game!!.active.rotation) }
-            compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center - Offset(0f, rotateDistance * scale), 100) }
+            compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center - Offset(0f,
+                rotateDistance * scale), 100) }
             compose.runOnIdle { assertEquals(1, model.game!!.active.rotation) }
             compose.onNodeWithTag("gameArea").performTouchInput {
                 down(center)
@@ -103,9 +116,11 @@ class GestureDensityTest {
                 swipe(center, center + Offset(rotateDistance * scale, -rotateDistance * scale), 100)
             }
             compose.runOnIdle { assertEquals(3, model.game!!.active.rotation) }
-            compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center + Offset(48 * scale, 48 * scale), 100) }
+            compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center + Offset(48 * scale,
+                48 * scale), 100) }
             compose.runOnIdle { assertEquals(0, model.game!!.generation) }
-            compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center + Offset(0f, dropDistance * scale), 100) }
+            compose.onNodeWithTag("gameArea").performTouchInput { swipe(center, center + Offset(0f,
+                dropDistance * scale), 100) }
             compose.runOnIdle { assertEquals(1, model.game!!.generation) }
         }
     }

@@ -48,20 +48,19 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
 
     /** Previews vibration when its setting is enabled, without playing sound. */
     override fun previewVibration() = vibrate(HapticPulse.Preview, true)
-    override fun holdReady() = vibrate(HapticPulse(35L, 100, 20L), true)
+    override fun holdReady() = vibrate(HapticPulse.HoldReady, true)
 
     /** Chooses an amplitude supported by the device and respects system vibration settings. */
     @Suppress("DEPRECATION")
     private fun vibrate(pulse: HapticPulse, vibration: Boolean) {
         val motor = vibrator ?: return
-        if (pulse.duration <= 0) return
-        if (!vibration || !motor.hasVibrator()) return
+        if (pulse.duration <= 0 || !vibration || !motor.hasVibrator()) return
         val softened = pulse.softened()
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val amplitudeControl = motor.hasAmplitudeControl()
             val amplitude = if (amplitudeControl) softened.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
             val effect = VibrationEffect.createOneShot(softened.durationFor(amplitudeControl), amplitude)
-            if (Build.VERSION.SDK_INT >= 33) motor.vibrate(effect,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) motor.vibrate(effect,
                 VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_MEDIA).build())
             else motor.vibrate(effect, vibrationAttributes)
         } else {

@@ -13,6 +13,9 @@ import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 
+/** Score remains score; level progress has its own source of truth. */
+internal fun displayScore(score: Int): String = "$score"
+
 internal const val SCORE_MAX_SCALE = 1.08f
 private const val DIGIT_WIDTH = .48f
 private const val DIGIT_GAP = .14f
@@ -32,7 +35,8 @@ internal fun DigitalScore(value: String, height: Dp, modifier: Modifier = Modifi
             val segments = listOf(
                 RectSegment(Offset(x + thickness / 2, 0f), width - thickness, thickness),
                 RectSegment(Offset(x + width - thickness, thickness), thickness, middle - thickness * 1.5f),
-                RectSegment(Offset(x + width - thickness, middle + thickness / 2), thickness, middle - thickness * 1.5f),
+                RectSegment(Offset(x + width - thickness, middle + thickness / 2), thickness,
+                    middle - thickness * 1.5f),
                 RectSegment(Offset(x + thickness / 2, size.height - thickness), width - thickness, thickness),
                 RectSegment(Offset(x, middle + thickness / 2), thickness, middle - thickness * 1.5f),
                 RectSegment(Offset(x, thickness), thickness, middle - thickness * 1.5f),

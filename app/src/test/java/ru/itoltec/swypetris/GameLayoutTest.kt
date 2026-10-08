@@ -1,7 +1,9 @@
 package ru.itoltec.swypetris
 
 import androidx.compose.ui.geometry.Rect
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GameLayoutTest {
@@ -20,7 +22,8 @@ class GameLayoutTest {
                             assertTrue(fruit.top >= headerHeight)
                             assertFalse(fruit.overlaps(Rect(HUD_HORIZONTAL_MARGIN, 3f,
                                 width * .6f + HUD_HORIZONTAL_MARGIN, 43f)))
-                            Tetromino.entries.forEach { assertFalse(fruit.overlaps(pieceBounds(Piece(it), width, height))) }
+                            Tetromino.entries.forEach { assertFalse(fruit.overlaps(pieceBounds(Piece(it), width,
+                                height))) }
                         }
                     }
     }

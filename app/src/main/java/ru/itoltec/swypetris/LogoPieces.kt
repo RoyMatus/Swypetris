@@ -1,7 +1,8 @@
 ﻿package ru.itoltec.swypetris
 
 /** Region of the source PNG representing a stripe or a separate wordmark cube. */
-internal data class LogoPiece(val x: Int, val y: Int, val width: Int, val height: Int, val stripe: Boolean, val cube: Int)
+internal data class LogoPiece(val x: Int, val y: Int, val width: Int, val height: Int, val stripe: Boolean,
+    val cube: Int)
 
 /** Reference rectangle for a cube, including its small antialiased edges. */
 internal data class LogoCube(val x: Int, val y: Int, val width: Int, val height: Int)
