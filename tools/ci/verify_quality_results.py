@@ -18,7 +18,7 @@ def verify_steps(outputs: dict, steps: dict) -> None:
         if outputs[key] == "true":
             required.add(key)
     if mode != "none":
-        required.update({"detekt", "build", "jvm", "device", "sonar"})
+        required.update({"detekt", "build", "jvm", "quality_reports", "device", "sonar"})
     missing = sorted(key for key in required if steps.get(key, {}).get("outcome") != "success")
     if missing:
         raise ValueError(f"Required CI steps did not succeed: {', '.join(missing)}")

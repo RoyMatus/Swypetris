@@ -20,7 +20,7 @@ class RequiredStepTests(unittest.TestCase):
                 verify_steps(outputs, {"changes": {"outcome": "success"}})
 
     def test_skipped_missing_failed_or_masked_step_fails(self):
-        keys = ("changes", "detekt", "build", "jvm", "device", "sonar")
+        keys = ("changes", "detekt", "build", "jvm", "quality_reports", "device", "sonar")
         for mode in ("selected", "full"):
             for key in keys:
                 for outcome in ("skipped", "failure", "cancelled", None):
@@ -30,6 +30,39 @@ class RequiredStepTests(unittest.TestCase):
                         with self.assertRaises(ValueError):
                             verify_steps(self.outputs(mode), steps)
             verify_steps(self.outputs(mode), {k: {"outcome": "success"} for k in keys})
+
+    def test_report_step_must_be_present_for_app_checks(self):
+        steps = {key: {"outcome": "success"}
+                 for key in ("changes", "detekt", "build", "jvm", "device", "sonar")}
+        for mode in ("selected", "full"):
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "quality_reports"):
+                verify_steps(self.outputs(mode), steps)
+
+    def test_report_failure_preserves_successful_jvm_outcome(self):
+        steps = {key: {"outcome": "success"}
+                 for key in ("changes", "detekt", "build", "jvm", "device", "sonar")}
+        steps["quality_reports"] = {"outcome": "failure"}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            QualityReportTests().populate(root)
+            (root / "reports/lint-results-debug.xml").write_text(
+                '<issues><issue severity="Error"/></issues>')
+            with self.assertRaisesRegex(ValueError, "Lint XML contains errors"):
+                verify_reports(root)
+        self.assertEqual("success", steps["jvm"]["outcome"])
+        for mode in ("selected", "full"):
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "quality_reports"):
+                verify_steps(self.outputs(mode), steps)
+
+    def test_workflow_assigns_report_validation_to_its_own_step(self):
+        workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+        jvm = workflow.split("      - name: Run JVM tests and coverage\n", 1)[1].split("      - name:", 1)[0]
+        reports = workflow.split("      - name: Validate quality reports\n", 1)[1].split("      - name:", 1)[0]
+        self.assertNotIn("verify_quality_results.py", jvm)
+        self.assertIn("jacocoDebugUnitTestReport", jvm)
+        self.assertIn("id: quality_reports", reports)
+        self.assertIn("!cancelled()", reports)
+        self.assertIn("verify_quality_results.py", reports)
 
     def test_selected_script_check_must_execute(self):
         outputs = self.outputs("none")
