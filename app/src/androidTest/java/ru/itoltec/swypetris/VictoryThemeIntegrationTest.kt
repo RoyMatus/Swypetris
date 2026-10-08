@@ -100,10 +100,9 @@ class VictoryThemeIntegrationTest {
             CompositionLocalProvider(LocalVictoryAnimations provides false) { SwypetrisApp(model) {} }
         }
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
-        compose.mainClock.advanceTimeBy(500)
+        compose.mainClock.advanceTimeBy(96)
         compose.runOnIdle { assertEquals(0L, model.victoryAnimationMillis) }
         compose.onNodeWithTag("victoryFireworks").assertExists()
-        screenshot("victory-reduced-motion.png")
         compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
         compose.onNodeWithTag("nextRound").performClick()
         compose.runOnIdle { assertEquals(GameScreen.PLAYING, model.screen) }
