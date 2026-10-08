@@ -2,6 +2,7 @@
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
@@ -92,20 +93,31 @@ class VictoryThemeIntegrationTest {
     /** Disabled animations leave a still celebration while the next round stays operable. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun reducedMotionKeepsStaticCelebrationAndAction() {
+        Log.i("VictoryMotionCI", "start")
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
             { 1000L }, false)
+        Log.i("VictoryMotionCI", "model ready")
         compose.mainClock.autoAdvance = false
+        Log.i("VictoryMotionCI", "clock manual")
         compose.setContent {
             CompositionLocalProvider(LocalVictoryAnimations provides false) { SwypetrisApp(model) {} }
         }
+        Log.i("VictoryMotionCI", "content ready")
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
+        Log.i("VictoryMotionCI", "victory entered")
         compose.mainClock.advanceTimeBy(96)
+        Log.i("VictoryMotionCI", "clock advanced")
         compose.runOnIdle { assertEquals(0L, model.victoryAnimationMillis) }
+        Log.i("VictoryMotionCI", "static phase confirmed")
         compose.onNodeWithTag("victoryFireworks").assertExists()
+        Log.i("VictoryMotionCI", "fireworks found")
         compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
+        Log.i("VictoryMotionCI", "button reached")
         compose.onNodeWithTag("nextRound").performClick()
+        Log.i("VictoryMotionCI", "button clicked")
         compose.runOnIdle { assertEquals(GameScreen.PLAYING, model.screen) }
+        Log.i("VictoryMotionCI", "finished")
     }
 
     /** Portrait, narrow and landscape viewports keep the celebration content reachable. */
