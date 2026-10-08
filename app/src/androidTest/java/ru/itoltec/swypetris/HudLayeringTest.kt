@@ -24,6 +24,7 @@ class HudLayeringTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun activePieceCoversFruitIconsAndLabelsOnlyAtIntersectingPixels() {
         var width by mutableIntStateOf(240)
         var state by mutableStateOf(GameState(active = Piece(Tetromino.I, x = 6, y = 8), next = Tetromino.O,
@@ -85,6 +86,7 @@ class HudLayeringTest {
         }
     }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun whiteSegmentsAndInactiveSegmentsRemainVisible() {
         var value by mutableStateOf("1")
         compose.setContent { DigitalScore(value, 60.dp, Modifier.background(Color.Black).testTag("digits")) }
@@ -100,6 +102,7 @@ class HudLayeringTest {
         assertTrue(eight[x, y].red > one[x, y].red)
     }
 
+    @androidx.annotation.RequiresApi(26)
     private fun save(name: String) {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val file = java.io.File(app.getExternalFilesDir(null), name)

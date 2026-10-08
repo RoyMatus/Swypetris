@@ -149,7 +149,11 @@ class GameTimerTest {
     @Test fun clearingModelCancelsItsPendingCallback() = main {
         val model = model(state())
         val store = androidx.lifecycle.ViewModelStore()
-        store.put("game", model)
+        val factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
+                modelClass.cast(model)!!
+        }
+        androidx.lifecycle.ViewModelProvider(store, factory)["game", GameViewModel::class.java]
         assertNotNull(timer.action)
         store.clear()
         assertNull(timer.action)

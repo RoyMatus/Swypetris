@@ -24,7 +24,9 @@ jobs:
         id: changes
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-        run: python3 tools/ci/select_checks.py --base "$BASE_SHA" --output "$GITHUB_OUTPUT"
+        run: |
+          python3 tools/ci/verify_baseline.py --base "$BASE_SHA"
+          python3 tools/ci/select_checks.py --base "$BASE_SHA" --output "$GITHUB_OUTPUT"
       - name: Check GitHub API scripts
         id: github_scripts
         if: steps.changes.outputs.github_scripts == 'true'

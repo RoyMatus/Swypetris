@@ -12,6 +12,11 @@ detekt {
     buildUponDefaultConfig = true
     config.setFrom(rootProject.file("config/detekt/detekt.yml"))
     failOnSeverity.set(dev.detekt.gradle.extensions.FailOnSeverity.Warning)
+    baseline.set(rootProject.file("config/detekt/baseline.xml"))
+}
+
+tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach {
+    setSource(fileTree("src") { include("**/*.kt") })
 }
 
 tasks.named<dev.detekt.gradle.Detekt>("detekt") {

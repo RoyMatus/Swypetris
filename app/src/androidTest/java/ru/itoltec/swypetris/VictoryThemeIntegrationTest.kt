@@ -36,6 +36,7 @@ class VictoryThemeIntegrationTest {
     }
 
     /** Поздравление не тратит время, не пишет историю и не повторяет награды при возврате. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun victoryAndContinuationPreserveSession() {
         var now = 1000L
         val music = Music()
@@ -87,6 +88,7 @@ class VictoryThemeIntegrationTest {
     }
 
     /** Все темы сохраняются; Next доступен экранному диктору независимо от тени падения. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun palettesAndHintsPreserveBoard() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = GameViewModel(app, GameState(active = Piece(Tetromino.O), next = Tetromino.T), { 1000L }, false)
@@ -122,6 +124,7 @@ class VictoryThemeIntegrationTest {
     }
 
     /** Поздравление и кнопки доступны при ширине 320 dp и двойном шрифте. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun victoryAtLargeFontAndLightTheme() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999), { 1000L }, false)
@@ -143,6 +146,7 @@ class VictoryThemeIntegrationTest {
     }
 
     /** Все темы доступны без горизонтальной прокрутки при ширине 320 dp и двойном шрифте. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun palettePickerAtLargeFont() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
         model.setPalette("solarized_light")
@@ -199,6 +203,7 @@ class VictoryThemeIntegrationTest {
     }
 
     /** Сохраняет снимок интерфейса только в файлы тестового эмулятора. */
+    @androidx.annotation.RequiresApi(26)
     private fun screenshot(name: String) {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val file = java.io.File(app.getExternalFilesDir(null), name)

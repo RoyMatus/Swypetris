@@ -18,6 +18,7 @@ class GameplaySurfaceTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun gridContinuesUnderStatusAreaWhileForegroundIsClipped() {
         var top by mutableIntStateOf(52)
         var state by mutableStateOf(GameState(active = Piece(Tetromino.T, y = 8), next = Tetromino.O))

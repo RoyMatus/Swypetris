@@ -42,6 +42,7 @@ class PublicationTest {
     }
 
     /** Скриншоты не используют сохранения телефона; демонстрационная партия никогда не попадает в историю. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun exportStoreMedia() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val heights = listOf(5,4,3,4,2,0,0,2,4,3)
@@ -74,7 +75,11 @@ class PublicationTest {
         canvas.drawColor(android.graphics.Color.rgb(11,16,32))
         val logo = android.graphics.BitmapFactory.decodeResource(app.resources,R.drawable.swypetris_logo)
         canvas.drawBitmap(logo,null,Rect(50,25,650,425),Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color=android.graphics.Color.WHITE; textSize=31f; typeface=android.graphics.Typeface.create("sans-serif-medium",0) }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=android.graphics.Color.WHITE
+            textSize=31f
+            typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)
+        }
         canvas.drawText("ИГРАЙТЕ ЖЕСТАМИ",655f,195f,paint)
         paint.textSize=25f; paint.color=android.graphics.Color.rgb(112,222,239)
         canvas.drawText("Ретро-музыка",655f,247f,paint)

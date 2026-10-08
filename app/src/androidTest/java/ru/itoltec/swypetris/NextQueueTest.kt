@@ -21,6 +21,7 @@ class NextQueueTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun previewAppearsAtSpawnWithoutVisibleLabel() {
         var state by mutableStateOf(GameState(active = Piece(Tetromino.O, x = 0, y = -1), next = Tetromino.I))
         compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state); GameHud(state, 44.dp) } }
@@ -41,6 +42,7 @@ class NextQueueTest {
     }
 
     /** Non-overlapping preview cells retain their faint fill for every shape and rotation. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun previewIsIndependentOfActiveShapeRotationAndHeight() {
         var state by mutableStateOf(GameState(active = spawnPiece(Tetromino.O), next = Tetromino.I))
         compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
@@ -61,6 +63,7 @@ class NextQueueTest {
     }
 
     /** The active blocks cover the preview, which updates without a movement or gravity frame. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun activeRemainsOnTopAndPreviewUpdatesAfterLockAndBothHoldPaths() {
         val engine = GameEngine(kotlin.random.Random(42))
         var state by mutableStateOf(engine.newGame())
@@ -100,6 +103,7 @@ class NextQueueTest {
         ((cell.x + .5f) * width / BoardGeometry.WIDTH).toInt(),
         ((cell.y + SPAWN_DISPLAY_ROWS + .5f) * height / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)).toInt()]
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun nextUsesFullScreenSpawnGridWithEitherGhostSetting() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         var width by mutableIntStateOf(320)

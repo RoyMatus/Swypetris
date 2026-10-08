@@ -25,6 +25,7 @@ import java.io.File
 class MenuSkyTest {
     @get:Rule val compose = createComposeRule()
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun bothThemesKeepArchitectureAnchoredAcrossPhoneCropsAndCloudLoops() {
         var ratio by mutableStateOf(16.0)
         var theme by mutableStateOf("github_light")
@@ -79,6 +80,7 @@ class MenuSkyTest {
         compose.runOnIdle { assertEquals(active, time.value, .00001) }
     }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun landscapeCropDoesNotRelocateOffscreenStarsOrGlow() {
         var theme by mutableStateOf("github_light")
         var time by mutableStateOf(0.0)
@@ -102,6 +104,7 @@ class MenuSkyTest {
         }
     }
 
+    @androidx.annotation.RequiresApi(26)
     private fun capture(name: String): Bitmap = compose.onNodeWithTag("sky").captureToImage().asAndroidBitmap().also {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val directory = File(context.getExternalFilesDir(null), "issue-176").apply { mkdirs() }
