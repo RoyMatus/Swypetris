@@ -6,6 +6,8 @@ Project agents live in `.codex/agents/`, reusable workflows in `.agents/skills/`
 
 - Inspect the relevant existing code before editing.
 - Make the smallest change that solves the requested task.
+- Use a separate Git worktree for task changes and verification whenever practical. Keep the primary IDEA checkout clean and preserve any pre-existing local changes when creating, switching, or removing worktrees.
+- After completing a task, remove its merged local and remote branches and unneeded worktrees. Before deletion, verify that they are no longer needed by an open pull request, another active task, or unmerged work; preserve local changes and verification artifacts that are still needed.
 - Preserve existing architecture, naming, style, and behavior unless the task explicitly requires otherwise.
 - Do not perform unrelated refactoring, cleanup, or dependency/version upgrades.
 - Fix root causes; do not hide errors with arbitrary retries, delays, or broad exception handling.
