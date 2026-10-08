@@ -74,7 +74,7 @@ GROUP_TESTS = {
     "score": ((), ("BorderlessHudTest", "HudLayeringTest", "GameUiTest")),
     "updates": (("UpdateCheckPolicyTest", "UpdateDownloadTest"), ("AppUpdatesTest", "UpdateCheckTest")),
     "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
-               ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictoryThemeIntegrationTest")),
+               ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictorySessionIntegrationTest", "VictoryThemeIntegrationTest")),
     "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
     "line_clear": (("LineClearAnimationTest", "GameEngineTest", "GameRulesTest"), ("LineClearUiTest", "GameUiTest")),
     "feedback": (("GameFeedbackTest",), ("GameFeedbackIntegrationTest", "MusicIntegrationTest")),
@@ -89,7 +89,7 @@ GROUP_TESTS = {
     "settings": (("DifficultyTest", "PlaylistClockTest"), ("GameUiTest", "MusicSettingsFruitTest", "StatisticsResetTest")),
     "legal": ((), ("LegalScreenTest", "PublicationTest", "ShareAppTest")),
     "results": (("RecordHistoryTest", "VictoryRulesTest", "VictoryMotionTest"),
-                ("ResultsIntegrationTest", "VictoryThemeIntegrationTest")),
+                ("ResultsIntegrationTest", "VictorySessionIntegrationTest", "VictoryThemeIntegrationTest")),
 }
 
 

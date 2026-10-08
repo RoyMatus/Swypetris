@@ -53,17 +53,6 @@ class VictoryThemeIntegrationTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    /** Записывает фанфары без обращения к динамикам. */
-    private class Music : MusicPlayback {
-        val modes = mutableListOf<MusicMode>()
-        /** Преобразует разрешение музыки в режим. */
-        override fun setPlaying(enabled: Boolean) = setMode(if (enabled) MusicMode.GAME else MusicMode.SILENT)
-        /** Сохраняет запрос для проверки однократного запуска. */
-        override fun setMode(next: MusicMode) { modes += next }
-        /** Тестовая реализация не владеет аудиоресурсами. */
-        override fun release() = Unit
-    }
-
     /** Celebration continues past the former end time and stops while the app is hidden. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun victoryArtworkAndFireworksFillScreenAndPauseInBackground() {
@@ -151,58 +140,6 @@ class VictoryThemeIntegrationTest {
                 button.right <= scene.right && button.bottom <= scene.bottom)
             compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
                 .assertCountEquals(0)
-        }
-    }
-
-    /** Поздравление не тратит время, не пишет историю и не повторяет награды при возврате. */
-    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
-    @Test fun victoryAndContinuationPreserveSession() {
-        var now = 1000L
-        val music = Music()
-        val model = GameViewModel(ApplicationProvider.getApplicationContext(),
-            GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
-            { now }, false, musicPlayback = music)
-        val initialGravity = model.game!!.gravityMillis
-        compose.mainClock.autoAdvance = false
-        compose.setContent { SwypetrisApp(model) {} }
-        compose.runOnIdle { now += 100; model.input.command(GameCommand.SOFT_DROP) }
-        compose.mainClock.advanceTimeBy(2200)
-        compose.onNodeWithTag("victoryPage").assertIsDisplayed()
-        compose.onNodeWithTag("board").assertDoesNotExist()
-        screenshot("victory-classic.png")
-        compose.runOnIdle {
-            assertEquals(80000, model.game!!.score)
-            assertEquals(1, music.modes.count { it == MusicMode.RECORD })
-            assertTrue(model.results.isEmpty())
-            now += 30000
-            model.simulation.advanceFrame(now)
-            model.navigation.menu()
-            model.resume()
-            assertEquals(GameScreen.VICTORY, model.screen)
-            assertEquals(1, music.modes.count { it == MusicMode.RECORD })
-        }
-        compose.mainClock.advanceTimeBy(32)
-        compose.mainClock.autoAdvance = true
-        compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
-        compose.onNodeWithTag("nextRound").performClick()
-        compose.mainClock.advanceTimeBy(32)
-        compose.runOnIdle {
-            assertEquals(GameScreen.PLAYING, model.screen)
-            assertEquals(80000, model.game!!.score)
-            assertEquals(100, model.game!!.lines)
-            assertEquals(initialGravity, model.game!!.gravityMillis)
-            assertEquals(11, model.game!!.level)
-            assertEquals(1, model.game!!.completedRounds)
-            assertEquals(0, model.game!!.roundFruits)
-            assertTrue(model.game!!.board.flatten().all { it == null })
-            val state = model.game
-            model.nextRound()
-            assertEquals(state, model.game)
-            // Заканчиваем эту же партию на тестовом поле, не записывая время поздравления.
-            repeat(30) { model.input.command(GameCommand.HARD_DROP) }
-            assertEquals(1, model.results.size)
-            assertEquals(1, model.results.single().completedRounds)
-            assertEquals(100L, model.results.single().durationMillis)
         }
     }
 
