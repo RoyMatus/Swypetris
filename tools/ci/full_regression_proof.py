@@ -90,7 +90,9 @@ def validate_payload(proof: dict, payload: dict[str, bytes], root: Path) -> None
         raise ValueError("Evidence file hash mismatch")
     if json.loads(payload["configuration.json"]) != configuration(root):
         raise ValueError("Checked configuration differs from the release commit")
-    report = payload["instrumentation.txt"].decode("utf-8-sig")
+    # Keep/hash original bytes, but validate text with the same universal newline
+    # handling as Path.read_text in the existing Windows report checker.
+    report = "\n".join(payload["instrumentation.txt"].decode("utf-8-sig").splitlines())
     verify("full", "", report)
     verify_inventory(report, root)
     # SmokeTest must actually pass; opt-in test skips remain allowed by the existing policy.

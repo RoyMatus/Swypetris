@@ -73,6 +73,12 @@ class FullRegressionProofTests(unittest.TestCase):
     def test_complete_evidence_passes(self):
         self.assertEqual(2, self.validate()["attempt"])
 
+    def test_windows_crlf_report_passes_without_changing_hashed_bytes(self):
+        self.payload['instrumentation.txt'] = self.payload['instrumentation.txt'].replace(b'\n', b'\r\n')
+        self.validate()
+        self.assertEqual(proof.digest(self.payload['instrumentation.txt']),
+                         self.evidence['sha256']['instrumentation.txt'])
+
     def test_wrong_run_repository_sha_workflow_attempt_event_and_branch(self):
         for key, value in (('repository', 'other/repo'), ('sha', 'b' * 40),
                            ('workflow', '.github/workflows/other.yml'), ('run_id', 8),
