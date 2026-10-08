@@ -6,13 +6,31 @@ import android.content.res.Configuration
 import androidx.test.espresso.Espresso
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.top
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,7 +95,8 @@ class GameUiTest {
             compose.runOnIdle {
                 val store = ViewModelStore()
                 try {
-                    val factory = ViewModelProvider.AndroidViewModelFactory(ApplicationProvider.getApplicationContext<Application>())
+                    val factory = ViewModelProvider
+                        .AndroidViewModelFactory(ApplicationProvider.getApplicationContext<Application>())
                     val fresh = ViewModelProvider(store, factory)[GameViewModel::class.java]
                     assertEquals(!oldSound, fresh.soundEnabled)
                     assertEquals(!oldVibration, fresh.vibrationEnabled)
@@ -204,7 +223,8 @@ class GameUiTest {
             current.setHints(!originalHints)
             val store = ViewModelStore()
             try {
-                val factory = ViewModelProvider.AndroidViewModelFactory(ApplicationProvider.getApplicationContext<Application>())
+                val factory = ViewModelProvider
+                    .AndroidViewModelFactory(ApplicationProvider.getApplicationContext<Application>())
                 val fresh = ViewModelProvider(store, factory)[GameViewModel::class.java]
                 assertEquals(current.record, fresh.record)
                 assertEquals(!originalHints, fresh.hintsEnabled)

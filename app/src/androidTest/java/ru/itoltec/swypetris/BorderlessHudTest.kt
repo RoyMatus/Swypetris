@@ -1,19 +1,46 @@
 package ru.itoltec.swypetris
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.background
-import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.centerX
+import androidx.compose.ui.test.filter
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import kotlin.math.abs
@@ -60,7 +87,8 @@ class BorderlessHudTest {
                             }
                             val score = compose.onNodeWithTag("score").assertTextEquals(value.toString())
                                 .fetchSemanticsNode().boundsInRoot
-                            val hold = compose.onNodeWithTag("holdPreview").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+                            val hold = compose.onNodeWithTag("holdPreview").assertIsDisplayed().fetchSemanticsNode()
+                                .boundsInRoot
                             val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
                             val cells = spawnPiece(piece).cells()
                             val rowHeight = board.height / 21
@@ -82,7 +110,8 @@ class BorderlessHudTest {
                                 val items = Fruit.entries.zip(stateFruitCounts(value)).filter { it.second > 0 }
                                 var previous: androidx.compose.ui.geometry.Rect? = null
                                 items.forEach { (fruit, count) ->
-                                    val item = compose.onNodeWithTag("earnedFruit_${fruit.name}").fetchSemanticsNode().boundsInRoot
+                                    val item = compose.onNodeWithTag("earnedFruit_${fruit.name}")
+                                        .fetchSemanticsNode().boundsInRoot
                                     assertTrue(item.left >= fruits.left && item.right <= fruits.right + 1f)
                                     previous?.let {
                                         if (item.top < it.bottom) assertTrue(item.left >= it.right)
@@ -96,9 +125,11 @@ class BorderlessHudTest {
                             }
                             val label = compose.onNodeWithTag("holdLabel").assertTextEquals("Запас")
                                 .fetchSemanticsNode().boundsInRoot
-                            assertTrue(label.top >= hold.bottom && label.left >= hold.left && label.right <= hold.right + 1f)
+                            assertTrue(label.top >= hold.bottom && label.left >= hold.left &&
+                                label.right <= hold.right + 1f)
                             val layouts = mutableListOf<TextLayoutResult>()
-                            compose.onNodeWithTag("holdLabel").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                            compose.onNodeWithTag("holdLabel")
+                                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
                             assertFalse("Hold label must fit", layouts.single().hasVisualOverflow)
                             for (tag in listOf("scoreLabel", "nextLabel"))
                                 compose.onNodeWithTag(tag).assertDoesNotExist()
@@ -108,7 +139,8 @@ class BorderlessHudTest {
             }
         }
     }
-    private fun stateFruitCounts(score: Int) = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = score).fruitCounts
+    private fun stateFruitCounts(score: Int) = GameState(active = Piece(Tetromino.O), next = Tetromino.T,
+        score = score).fruitCounts
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun framelessHoldIsExtraFaintAndUsedStateIsStillDistinct() {
@@ -145,8 +177,10 @@ class BorderlessHudTest {
             }
             availableDifference /= empty.width * empty.height
             usedDifference /= empty.width * empty.height
-            assertTrue("Recognizable but extra faint: $theme/$piece", availableDifference > .005f && availableDifference < .25f)
-            assertTrue("Used Hold remains distinct: $theme/$piece", usedDifference > .001f && availableDifference > usedDifference * 1.5f)
+            assertTrue("Recognizable but extra faint: $theme/$piece", availableDifference > .005f &&
+                availableDifference < .25f)
+            assertTrue("Used Hold remains distinct: $theme/$piece", usedDifference > .001f &&
+                availableDifference > usedDifference * 1.5f)
             val corner = (density * 1).toInt()
             for (x in listOf(corner, empty.width - 1 - corner)) for (y in listOf(corner, empty.height - 1 - corner))
                 assertEquals("Hold must have no outer brackets", empty[x, y], available[x, y])

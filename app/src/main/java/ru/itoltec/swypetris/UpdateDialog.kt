@@ -26,10 +26,17 @@ internal fun UpdateDeliveryDialog(delivery: UpdateDelivery, model: GameViewModel
                     LinearProgressIndicator(progress = { notice.received.toFloat() / notice.total.coerceAtLeast(1) },
                         modifier = Modifier.fillMaxWidth().testTag("updateDownloadProgress"))
                 }
-                is DeliveryNotice.Ready -> Text("Версия ${notice.update.versionName} загружена и проверена. Партия и настройки сохранятся. Установка может закрыть приложение.")
-                DeliveryNotice.Permission -> Text("Для обновления разрешите Android установку из Swypetris. Это разрешение используется только для подписанных обновлений игры. Можно отказаться и продолжить игру.")
+                is DeliveryNotice.Ready -> Text(
+                    "Версия ${notice.update.versionName} загружена и проверена. Партия и " +
+                        "настройки сохранятся. Установка может закрыть приложение.")
+                DeliveryNotice.Permission -> Text(
+                    "Для обновления разрешите Android установку из Swypetris. Это " +
+                        "разрешение используется только для подписанных обновлений игры. " +
+                        "Можно отказаться и продолжить игру.")
                 DeliveryNotice.Installing -> Text("Сохраняем партию и устанавливаем обновление.")
-                DeliveryNotice.Confirmation -> Text("Android требует подтверждения установки. Откройте системное окно, чтобы подтвердить обновление или отменить его.")
+                DeliveryNotice.Confirmation -> Text(
+                    "Android требует подтверждения установки. Откройте системное окно, " +
+                        "чтобы подтвердить обновление или отменить его.")
                 is DeliveryNotice.Failed -> Text(notice.message)
             }
         }
@@ -59,7 +66,12 @@ internal fun UpdateDeliveryDialog(delivery: UpdateDelivery, model: GameViewModel
 internal fun AutomaticUpdateConsentDialog(updates: AppUpdates) {
     AlertDialog(onDismissRequest = updates::postponeConsent,
         title = { Text("Автоматические обновления") },
-        text = { Text("Разрешить автоматическую загрузку и установку новых версий Swypetris? Загрузка использует интернет. Установка начнётся только в главном меню после сохранения партии и может закрыть приложение. Android может запросить разрешение и подтверждение. Режим можно отключить в настройках.",
+        text =
+            { Text("Разрешить автоматическую загрузку и установку новых версий " +
+                "Swypetris? Загрузка использует интернет. Установка начнётся только в " +
+                "главном меню после сохранения партии и может закрыть приложение. " +
+                "Android может запросить разрешение и подтверждение. Режим можно " +
+                "отключить в настройках.",
             modifier = Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
             TextButton(onClick = { updates.answerConsent(true) },

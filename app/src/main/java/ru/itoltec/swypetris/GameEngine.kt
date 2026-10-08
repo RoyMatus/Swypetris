@@ -82,7 +82,8 @@ data class GameState(
 ) {
     init { require(startingLevel in GameRules.MIN_STARTING_LEVEL..GameRules.MAX_STARTING_LEVEL) }
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
-    val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * Fruit.entries.size).coerceIn(0, Fruit.entries.size)
+    val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * Fruit.entries.size).coerceIn(0,
+        Fruit.entries.size)
     /** Cumulative collected quantity for each fruit in display order across all completed/current rounds. */
     val fruitCounts: List<Int> get() {
         val awards = score / GameRules.FRUIT_STEP
@@ -191,7 +192,8 @@ class GameEngine(private val random: Random = Random.Default) {
             }
             GameCommand.TICK, GameCommand.SOFT_DROP -> {
                 val moved = piece.copy(y = piece.y + 1)
-                if (fits(state, moved)) state.copy(active = moved, score = GameRules.add(state.score, GameRules.dropScore(command, 1)),
+                if (fits(state, moved)) state.copy(active = moved, score = GameRules.add(state.score,
+                    GameRules.dropScore(command, 1)),
                     accelerated = state.accelerated || command == GameCommand.SOFT_DROP,
                     lastRotationKick = -1,
                     softDropCells = state.softDropCells + if (command == GameCommand.SOFT_DROP) 1 else 0)
@@ -200,7 +202,8 @@ class GameEngine(private val random: Random = Random.Default) {
             GameCommand.HARD_DROP -> {
                 val landed = ghost(state)
                 val distance = landed.y - piece.y
-                lock(state.copy(active = landed, score = GameRules.add(state.score, GameRules.dropScore(command, distance)),
+                lock(state.copy(active = landed, score = GameRules.add(state.score, GameRules.dropScore(command,
+                    distance)),
                     hardDropCells = distance, lastRotationKick = if (distance == 0) state.lastRotationKick else -1))
             }
             GameCommand.HOLD -> {
@@ -248,7 +251,8 @@ class GameEngine(private val random: Random = Random.Default) {
         return checkVictory(spawnNext(state.copy(
             board = board, placement = event,
             score = GameRules.add(state.score, GameRules.placementScore(event)),
-            lines = GameRules.add(state.lines, cleared), clearingRows = emptyList(), completedClears = state.completedClears + 1
+            lines = GameRules.add(state.lines, cleared), clearingRows = emptyList(),
+                completedClears = state.completedClears + 1
         )))
     }
 

@@ -6,11 +6,25 @@ import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.copy
+import androidx.compose.ui.graphics.scale
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -56,7 +70,8 @@ internal fun rememberMenuSkyTime(enabled: Boolean): State<Double> {
 /** Shared renderer also permits deterministic Android/reference frame comparisons. */
 @Composable
 internal fun MenuSkyArtwork(palette: GamePalette, approach: Float, seconds: () -> Double) {
-    val artwork = ImageBitmap.imageResource(if (palette.light) R.drawable.red_square_day else R.drawable.red_square_synthwave)
+    val artwork = ImageBitmap
+        .imageResource(if (palette.light) R.drawable.red_square_day else R.drawable.red_square_synthwave)
     val skyPatch = ImageBitmap.imageResource(if (palette.light) R.drawable.menu_sky_day else R.drawable.menu_sky_night)
     val sprites = if (palette.light) listOf(R.drawable.menu_cloud_day_0, R.drawable.menu_cloud_day_1,
         R.drawable.menu_cloud_day_2, R.drawable.menu_cloud_day_3) else listOf(R.drawable.menu_cloud_night_0,
@@ -64,14 +79,17 @@ internal fun MenuSkyArtwork(palette: GamePalette, approach: Float, seconds: () -
     val clouds = sprites.map { ImageBitmap.imageResource(it) }
     val resources = LocalContext.current.resources
     val registration = remember(resources) {
-        val json = resources.openRawResource(R.raw.menu_sky_registration).bufferedReader().use { JSONObject(it.readText()) }
+        val json = resources.openRawResource(R.raw.menu_sky_registration).bufferedReader().use { JSONObject(it
+            .readText()) }
         val path = registrationPath(json.getJSONArray("cloudRuns"))
         val sky = registrationPath(json.getJSONArray("skyRuns"))
         val stars = json.getJSONArray("stars")
-        Triple(path, sky, List(stars.length()) { i -> stars.getJSONArray(i).let { Offset(it.getDouble(0).toFloat(), it.getDouble(1).toFloat()) } })
+        Triple(path, sky, List(stars.length()) { i -> stars.getJSONArray(i).let { Offset(it.getDouble(0).toFloat(),
+            it.getDouble(1).toFloat()) } })
     }
     val filter = remember(palette) {
-        if (palette.light || palette.id == "classic" || palette.id == "synthwave_84") null else artworkColorFilter(palette)
+        if (palette.light || palette.id == "classic" ||
+            palette.id == "synthwave_84") null else artworkColorFilter(palette)
     }
     // Precompute radial gradients once; alpha alone changes during each frame.
     val halos = remember(palette.light) {
@@ -88,7 +106,8 @@ internal fun MenuSkyArtwork(palette: GamePalette, approach: Float, seconds: () -
             val scale = maxOf(size.width / MenuSkyMotion.WIDTH, size.height / MenuSkyMotion.HEIGHT)
             val time = seconds()
             withTransform({
-                translate((size.width - MenuSkyMotion.WIDTH * scale) / 2f, (size.height - MenuSkyMotion.HEIGHT * scale) / 2f)
+                translate((size.width - MenuSkyMotion.WIDTH * scale) / 2f,
+                    (size.height - MenuSkyMotion.HEIGHT * scale) / 2f)
                 scale(scale, scale, Offset.Zero)
             }) {
                 drawImage(artwork, colorFilter = filter)
@@ -97,7 +116,8 @@ internal fun MenuSkyArtwork(palette: GamePalette, approach: Float, seconds: () -
                     MenuSkyMotion.clouds.forEachIndexed { i, cloud ->
                         val image = clouds[i]
                         val spriteScale = cloud.width / image.width
-                        withTransform({ translate(cloud.x(time), cloud.y); scale(spriteScale, spriteScale, Offset.Zero) }) {
+                        withTransform({ translate(cloud.x(time), cloud.y); scale(spriteScale, spriteScale,
+                            Offset.Zero) }) {
                             drawImage(image, colorFilter = filter)
                         }
                     }
@@ -120,7 +140,8 @@ internal fun MenuSkyArtwork(palette: GamePalette, approach: Float, seconds: () -
                 for (line in 0..9) {
                     val depth = (line / 10f + approach * .75f) % 1f
                     val y = horizon + (size.height - horizon) * depth * depth
-                    drawLine(palette.accent.copy(alpha = travelAlpha * depth), Offset(0f, y), Offset(size.width, y), 1f + depth * 2f)
+                    drawLine(palette.accent.copy(alpha = travelAlpha * depth), Offset(0f, y), Offset(size.width,
+                        y), 1f + depth * 2f)
                 }
             }
             drawRect(Brush.verticalGradient(0f to Color.Transparent, .50f to Color.Transparent,

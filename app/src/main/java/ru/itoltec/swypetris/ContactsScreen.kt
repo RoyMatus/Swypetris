@@ -5,10 +5,28 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,13 +78,15 @@ fun ContactsScreen(model: GameViewModel) {
                 item {
                     val accent = listOf(palette.accent, palette.secondary, palette.gold)[index]
                     ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(contact.title.uppercase(), color = accent, fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                             SettingsDivider(accent)
                             Text(contact.address, color = palette.text, style = MaterialTheme.typography.bodyLarge)
                             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                AppActionButton("Открыть", ActionStyle.TEXT, Modifier.testTag("open${contact.name}"), accent) {
+                                AppActionButton("Открыть", ActionStyle.TEXT,
+                                    Modifier.testTag("open${contact.name}"), accent) {
                                     if (!openContact(context, contact)) scope.launch {
                                         messages.showSnackbar("Нет приложения для открытия. Скопируйте адрес.")
                                     }

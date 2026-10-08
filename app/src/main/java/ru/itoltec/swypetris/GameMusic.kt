@@ -70,7 +70,8 @@ class GameMusic(private val context: Context) : MusicPlayback {
     }
 
     /** Resumes the previous track or the remainder of an inter-track gap. */
-    override fun setPlaying(enabled: Boolean) = setMode(if (enabled && selection != MusicSelection.Off) MusicMode.GAME else MusicMode.SILENT)
+    override fun setPlaying(enabled: Boolean) = setMode(if (enabled &&
+        selection != MusicSelection.Off) MusicMode.GAME else MusicMode.SILENT)
 
     /** Releases the old player and starts the newly selected mode from the beginning. */
     override fun select(selection: MusicSelection) {

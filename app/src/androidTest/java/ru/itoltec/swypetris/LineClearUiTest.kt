@@ -5,19 +5,34 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
-import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,7 +54,8 @@ class LineClearUiTest {
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun clearPausesAndCompletesOnControlledClock() {
         var now = 1000L
-        val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), almostFull(), { now }, false)
+        val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), almostFull(), { now },
+            false)
         // Use the same 10 × 22 square-cell aspect ratio as the gameplay board including its spawn band.
         compose.setContent { Box(Modifier.size(220.dp, 484.dp)) {
             model.game?.let { Board(it, model.clearElapsedMillis) }
@@ -102,7 +118,8 @@ class LineClearUiTest {
     /** Новая партия сбрасывает ещё не завершённую очистку и не получает старые очки. */
     @Test fun newGameCancelsPendingClear() {
         var now = 1000L
-        val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), almostFull(), { now }, false)
+        val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), almostFull(), { now },
+            false)
         compose.runOnIdle {
             model.command(GameCommand.HARD_DROP)
             now += 100
@@ -176,7 +193,8 @@ class LineClearUiTest {
                 assertEquals("Shard outside board: $name at $x/$y", Color.Magenta, pixels[x, y])
         }
         saveArtifact(name) { file ->
-            file.outputStream().use { image.asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            file.outputStream().use { image.asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG,
+                100, it) }
         }
     }
 
@@ -268,7 +286,8 @@ class LineClearUiTest {
 
     private fun clearFixture(rows: List<Int>): GameState {
         val board = BoardGeometry.empty().map { it.toMutableList() }
-        rows.forEach { row -> repeat(10) { column -> board[BoardGeometry.row(row)][column] = Tetromino.entries[column % 7] } }
+        rows.forEach { row -> repeat(10) { column -> board[BoardGeometry
+            .row(row)][column] = Tetromino.entries[column % 7] } }
         board[BoardGeometry.row(rows.min() - 1)][1] = Tetromino.T
         board[BoardGeometry.row(-3)][1] = Tetromino.I
         return GameState(board = board, active = Piece(Tetromino.O), next = Tetromino.T,

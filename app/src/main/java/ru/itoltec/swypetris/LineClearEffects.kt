@@ -30,7 +30,8 @@ internal fun DrawScope.lineClearEffects(shards: List<ClearShard>, rows: List<Int
         val width = size.width * (.7f + .28f * wave)
         val height = cell.height * (1f + wave)
         drawOval(palette.text.copy(alpha = .10f * (1f - wave)),
-            Offset((size.width - width) / 2, origin.y + (row - BoardGeometry.HIDDEN_ROWS + .5f) * cell.height - height / 2),
+            Offset((size.width - width) / 2,
+                origin.y + (row - BoardGeometry.HIDDEN_ROWS + .5f) * cell.height - height / 2),
             Size(width, height), style = Stroke(1.dp.toPx()))
     }
     val side = minOf(cell.width, cell.height) * .38f

@@ -1,6 +1,7 @@
 package ru.itoltec.swypetris
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SrsTest {
@@ -37,10 +38,12 @@ class SrsTest {
     @Test fun floorKicksMoveUpwardAndUseSeparateIAndJlstzOffsets() {
         val t = state(Piece(Tetromino.T, x = 3, y = 18))
         assertEquals(Piece(Tetromino.T, x = 2, y = 17, rotation = 1), engine.apply(t, GameCommand.CLOCKWISE).active)
-        assertEquals(Piece(Tetromino.T, x = 4, y = 17, rotation = 3), engine.apply(t, GameCommand.COUNTERCLOCKWISE).active)
+        assertEquals(Piece(Tetromino.T, x = 4, y = 17, rotation = 3), engine.apply(t,
+            GameCommand.COUNTERCLOCKWISE).active)
         val i = state(Piece(Tetromino.I, x = 3, y = 18))
         assertEquals(Piece(Tetromino.I, x = 4, y = 16, rotation = 1), engine.apply(i, GameCommand.CLOCKWISE).active)
-        assertEquals(Piece(Tetromino.I, x = 2, y = 16, rotation = 3), engine.apply(i, GameCommand.COUNTERCLOCKWISE).active)
+        assertEquals(Piece(Tetromino.I, x = 2, y = 16, rotation = 3), engine.apply(i,
+            GameCommand.COUNTERCLOCKWISE).active)
     }
 
     @Test fun rotationWorksInHiddenRowsAndBlockedCandidatesLeaveStateUntouched() {

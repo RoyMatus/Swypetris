@@ -4,10 +4,24 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
@@ -76,29 +90,40 @@ object GamePalettes {
             if (light) colors[5] else colors[0], colors[2], if (light) c(0x8A5700) else colors[1], finish, texture)
     }
     val all = listOf(
-        p("classic", "Классическая", false, 0x0B1020, 0x131D32, 0xEAF0FF, 0xB8C9E4, 0x283850, BlockFinish.BEVEL, BlockTexture.CLASSIC,
+        p("classic", "Классическая", false, 0x0B1020, 0x131D32, 0xEAF0FF, 0xB8C9E4, 0x283850, BlockFinish.BEVEL,
+            BlockTexture.CLASSIC,
             0x00D9EF, 0xFFE040, 0xAF55E8, 0x48D858, 0xEF4655, 0x3979ED, 0xFF982F),
-        p("monokai", "Monokai", false, 0x272822, 0x34352F, 0xF8F8F2, 0xC6C6B9, 0x494A41, BlockFinish.MATTE, BlockTexture.MONOKAI,
+        p("monokai", "Monokai", false, 0x272822, 0x34352F, 0xF8F8F2, 0xC6C6B9, 0x494A41, BlockFinish.MATTE,
+            BlockTexture.MONOKAI,
             0x66D9EF, 0xE6DB74, 0xAE81FF, 0xA6E22E, 0xF92672, 0x729CFF, 0xFD971F),
-        p("gruvbox", "Gruvbox Dark", false, 0x282828, 0x3C3836, 0xEBDBB2, 0xBDAE93, 0x504945, BlockFinish.RETRO, BlockTexture.GRUVBOX,
+        p("gruvbox", "Gruvbox Dark", false, 0x282828, 0x3C3836, 0xEBDBB2, 0xBDAE93, 0x504945, BlockFinish.RETRO,
+            BlockTexture.GRUVBOX,
             0x8EC07C, 0xFABD2F, 0xD3869B, 0xB8BB26, 0xFB4934, 0x83A598, 0xFE8019),
-        p("vscode", "VS Code Dark+", false, 0x1E1E1E, 0x252526, 0xD4D4D4, 0xADADAD, 0x414141, BlockFinish.MATTE, BlockTexture.VSCODE,
+        p("vscode", "VS Code Dark+", false, 0x1E1E1E, 0x252526, 0xD4D4D4, 0xADADAD, 0x414141, BlockFinish.MATTE,
+            BlockTexture.VSCODE,
             0x4EC9B0, 0xDCDCAA, 0xC586C0, 0x6A9955, 0xF44747, 0x569CD6, 0xCE9178),
-        p("dracula", "Dracula", false, 0x282A36, 0x343746, 0xF8F8F2, 0xB5BDDB, 0x44475A, BlockFinish.NEON, BlockTexture.DRACULA,
+        p("dracula", "Dracula", false, 0x282A36, 0x343746, 0xF8F8F2, 0xB5BDDB, 0x44475A, BlockFinish.NEON,
+            BlockTexture.DRACULA,
             0x8BE9FD, 0xF1FA8C, 0xBD93F9, 0x50FA7B, 0xFF5555, 0x809BFF, 0xFFB86C),
         p("nord", "Nord", false, 0x2E3440, 0x3B4252, 0xECEFF4, 0xD8DEE9, 0x4C566A, BlockFinish.FROST, BlockTexture.NORD,
             0x88C0D0, 0xEBCB8B, 0xB48EAD, 0xA3BE8C, 0xBF616A, 0x5E81AC, 0xD08770),
-        p("solarized_light", "Solarized Light", true, 0xFDF6E3, 0xEEE8D5, 0x073642, 0x586E75, 0xC6C3B1, BlockFinish.RETRO, BlockTexture.SOLARIZED_LIGHT,
+        p("solarized_light", "Solarized Light", true, 0xFDF6E3, 0xEEE8D5, 0x073642, 0x586E75, 0xC6C3B1,
+            BlockFinish.RETRO, BlockTexture.SOLARIZED_LIGHT,
             0x2AA198, 0xB58900, 0x6C71C4, 0x859900, 0xDC322F, 0x268BD2, 0xCB4B16),
-        p("solarized_dark", "Solarized Dark", false, 0x002B36, 0x073642, 0x93A1A1, 0x839496, 0x1A4A54, BlockFinish.RETRO, BlockTexture.SOLARIZED_DARK,
+        p("solarized_dark", "Solarized Dark", false, 0x002B36, 0x073642, 0x93A1A1, 0x839496, 0x1A4A54,
+            BlockFinish.RETRO, BlockTexture.SOLARIZED_DARK,
             0x2AA198, 0xB58900, 0x6C71C4, 0x859900, 0xDC322F, 0x268BD2, 0xCB4B16),
-        p("github_light", "GitHub Light", true, 0xFFFFFF, 0xF6F8FA, 0x1F2328, 0x59636E, 0xD1D9E0, BlockFinish.MATTE, BlockTexture.GITHUB_LIGHT,
+        p("github_light", "GitHub Light", true, 0xFFFFFF, 0xF6F8FA, 0x1F2328, 0x59636E, 0xD1D9E0,
+            BlockFinish.MATTE, BlockTexture.GITHUB_LIGHT,
             0x0598A4, 0xBF8700, 0x8250DF, 0x1A7F37, 0xCF222E, 0x0969DA, 0xBC4C00),
-        p("tokyo_night", "Tokyo Night", false, 0x1A1B26, 0x24283B, 0xC0CAF5, 0xA9B1D6, 0x414868, BlockFinish.NEON, BlockTexture.TOKYO_NIGHT,
+        p("tokyo_night", "Tokyo Night", false, 0x1A1B26, 0x24283B, 0xC0CAF5, 0xA9B1D6, 0x414868, BlockFinish.NEON,
+            BlockTexture.TOKYO_NIGHT,
             0x7DCFFF, 0xE0AF68, 0xBB9AF7, 0x9ECE6A, 0xF7768E, 0x7AA2F7, 0xFF9E64),
-        p("catppuccin", "Catppuccin Mocha", false, 0x1E1E2E, 0x313244, 0xCDD6F4, 0xBAC2DE, 0x45475A, BlockFinish.SATIN, BlockTexture.CATPPUCCIN,
+        p("catppuccin", "Catppuccin Mocha", false, 0x1E1E2E, 0x313244, 0xCDD6F4, 0xBAC2DE, 0x45475A,
+            BlockFinish.SATIN, BlockTexture.CATPPUCCIN,
             0x89DCEB, 0xF9E2AF, 0xCBA6F7, 0xA6E3A1, 0xF38BA8, 0x89B4FA, 0xFAB387),
-        p("synthwave_84", "SynthWave '84", false, 0x262335, 0x34294F, 0xFFFFFF, 0xC8BBDD, 0x495495, BlockFinish.NEON, BlockTexture.SYNTHWAVE,
+        p("synthwave_84", "SynthWave '84", false, 0x262335, 0x34294F, 0xFFFFFF, 0xC8BBDD, 0x495495,
+            BlockFinish.NEON, BlockTexture.SYNTHWAVE,
             0x03EDF9, 0xFEDE5D, 0xFF7EDB, 0x72F1B8, 0xFE4450, 0x8A9BFF, 0xF97E72)
     )
     /** Maps unknown or legacy IDs to the classic palette. */
@@ -175,14 +200,16 @@ internal fun DrawScope.bevelBlock(at: Offset, size: Size, color: Color, finish: 
         drawRect(lerp(color, Color.Black, .28f).copy(alpha = alpha), at, size, style = Stroke(1.dp.toPx()))
     } else if (finish == BlockFinish.SATIN || finish == BlockFinish.FROST) {
         drawRect(brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = .22f * alpha),
-            Color.Transparent, Color.Black.copy(alpha = .15f * alpha)), startY = y, endY = y + h), topLeft = at, size = size)
+            Color.Transparent, Color.Black.copy(alpha = .15f * alpha)), startY = y, endY = y + h), topLeft = at,
+                size = size)
         drawRect(lerp(color, if (finish == BlockFinish.FROST) Color.White else Color.Black, .36f)
             .copy(alpha = alpha), at, size, style = Stroke(1.dp.toPx()))
     } else {
         /** Draws a quadrilateral bevel with the block's effective transparency. */
         fun face(shade: Color, a: Offset, b: Offset, c: Offset, d: Offset) {
             val points = listOf(a, b, c, d)
-            val path = Path().apply { moveTo(points[0].x, points[0].y); points.drop(1).forEach { lineTo(it.x, it.y) }; close() }
+            val path = Path().apply { moveTo(points[0].x, points[0].y); points.drop(1).forEach { lineTo(it.x,
+                it.y) }; close() }
             drawPath(path, shade.copy(alpha = alpha))
         }
         face(lerp(color, Color.White, .50f), Offset(x,y), Offset(x+w,y), Offset(x+w-b,y+b), Offset(x+b,y+b))

@@ -1,16 +1,25 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -30,7 +39,8 @@ class GameplaySurfaceTest {
             Box(Modifier.size(320.dp, 640.dp)) { GameContent(model, state, top.dp) }
         }
         for (inset in listOf(24, 52, 90)) {
-            compose.runOnIdle { top = inset; state = state.copy(board = BoardGeometry.empty(), active = Piece(Tetromino.T, y = 8)) }
+            compose.runOnIdle { top = inset; state = state.copy(board = BoardGeometry.empty(),
+                active = Piece(Tetromino.T, y = 8)) }
             val before = compose.onNodeWithTag("gridBackground").captureToImage().toPixelMap()
             val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
             val preview = compose.onNodeWithTag("nextPreview").fetchSemanticsNode().boundsInRoot

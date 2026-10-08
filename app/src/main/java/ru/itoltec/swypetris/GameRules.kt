@@ -22,7 +22,8 @@ object GameRules {
     fun threshold(level: Int): Long = (level.coerceAtLeast(1).toLong() - 1) * LINES_PER_LEVEL
 
     /** A higher start waits for its cumulative goal before ten-line transitions begin. */
-    fun level(lines: Int, startingLevel: Int = 1): Int = maxOf(startingLevel, 1 + lines.coerceAtLeast(0) / LINES_PER_LEVEL)
+    fun level(lines: Int, startingLevel: Int = 1): Int = maxOf(startingLevel,
+        1 + lines.coerceAtLeast(0) / LINES_PER_LEVEL)
 
     fun nextThreshold(lines: Int, startingLevel: Int = 1): Long = threshold(level(lines, startingLevel) + 1)
 
@@ -40,7 +41,8 @@ object GameRules {
     fun displayScore(score: Int): String = "$score"
 
     /** Adds earned [points] to [score] without overflowing Int; negative awards are ignored. */
-    fun add(score: Int, points: Int): Int = (score.toLong() + points.coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    fun add(score: Int, points: Int): Int = (score.toLong() + points.coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE
+        .toLong()).toInt()
 
     /** Drop awards are independent of level; gravity never awards points. */
     fun dropScore(command: GameCommand, cells: Int): Int {

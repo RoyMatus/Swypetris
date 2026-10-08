@@ -15,7 +15,8 @@ internal fun packageVersionCode(info: PackageInfo): Long =
 /** Check the downloaded package before giving it to Android's final signature verifier. */
 @Suppress("DEPRECATION")
 internal fun validateUpdateApk(context: Context, file: File, update: AvailableUpdate) {
-    if (file.length() != update.sizeBytes) throw UpdateFailure(UpdateFailureReason.INTEGRITY, "Downloaded APK size does not match")
+    if (file.length() != update.sizeBytes) throw UpdateFailure(
+        UpdateFailureReason.INTEGRITY, "Downloaded APK size does not match")
     val hash = MessageDigest.getInstance("SHA-256")
     file.inputStream().use { input ->
         val buffer = ByteArray(64 * 1024)
@@ -38,7 +39,8 @@ internal fun validateUpdateApk(context: Context, file: File, update: AvailableUp
         !newerVersion(update.versionCode, packageVersionCode(installed)))
         throw UpdateFailure(UpdateFailureReason.PACKAGE, "APK package or version does not match the expected update")
     val compatible = if (Build.VERSION.SDK_INT >= 28) {
-        val current = installed.signingInfo ?: throw UpdateFailure(UpdateFailureReason.SIGNER, "Installed signer is unavailable")
+        val current = installed.signingInfo ?:
+            throw UpdateFailure(UpdateFailureReason.SIGNER, "Installed signer is unavailable")
         val next = candidate.signingInfo ?: throw UpdateFailure(UpdateFailureReason.SIGNER, "APK signer is unavailable")
         if (current.hasMultipleSigners() || next.hasMultipleSigners()) {
             current.apkContentsSigners.toSet() == next.apkContentsSigners.toSet()

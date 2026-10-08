@@ -42,7 +42,8 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
     private var holdCandidate = false
     private var holdReady = false
     var onHoldReady: () -> Unit = {}
-    val holdDeadline: Long? get() = if (down && enabled && holdCandidate && !holdReady) downTime + config.holdMillis else null
+    val holdDeadline: Long? get() = if (down && enabled && holdCandidate &&
+        !holdReady) downTime + config.holdMillis else null
 
     /** Readiness itself never moves a piece and emits at most one feedback pulse. */
     fun advanceTime(time: Long) {
@@ -183,7 +184,8 @@ class GestureController(private val config: GestureConfig, private val emit: (Ga
         val horizontalThreshold = if (horizontalDirection == 0)
             maxOf(config.horizontalStartDistance, config.tapSlop) else config.horizontalStepDistance
         val action = when {
-            dropArmed && dy >= maxOf(config.dropDistance, config.tapSlop * 4) && dy >= abs(dx) * config.dropRatio -> GameCommand.HARD_DROP
+            dropArmed && dy >= maxOf(config.dropDistance, config.tapSlop * 4) &&
+                dy >= abs(dx) * config.dropRatio -> GameCommand.HARD_DROP
             rotationArmed && rotationDy >= maxOf(config.rotationDistance, config.tapSlop * 2) &&
                 upwardStroke -> if (rotationDx <= -maxOf(config.rotationRearmDistance, config.tapSlop))
                     GameCommand.COUNTERCLOCKWISE else GameCommand.CLOCKWISE

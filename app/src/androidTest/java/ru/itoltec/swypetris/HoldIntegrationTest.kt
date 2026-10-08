@@ -9,13 +9,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -33,7 +43,8 @@ class HoldIntegrationTest {
             override fun release() = Unit
         }
         val app = ApplicationProvider.getApplicationContext<Application>()
-        val model = GameViewModel(app, GameState(active = Piece(Tetromino.T), next = Tetromino.I), { now }, false, feedback)
+        val model = GameViewModel(app, GameState(active = Piece(Tetromino.T), next = Tetromino.I), { now }, false,
+            feedback)
         model.pointerDown(100f, 200f, now)
         now += 300
         model.advanceFrame(now)
@@ -65,7 +76,8 @@ class HoldIntegrationTest {
             override fun stop() = Unit
             override fun release() = Unit
         }
-        val model = GameViewModel(ApplicationProvider.getApplicationContext(), GameState(active = Piece(Tetromino.T), next = Tetromino.O), { now }, false, feedback)
+        val model = GameViewModel(ApplicationProvider.getApplicationContext(),
+            GameState(active = Piece(Tetromino.T), next = Tetromino.O), { now }, false, feedback)
         model.setVibration(false)
         model.pointerDown(100f, 200f, now)
         now += 300

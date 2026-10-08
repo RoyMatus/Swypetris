@@ -2,7 +2,10 @@ package ru.itoltec.swypetris
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -150,7 +153,8 @@ class SessionLifecycleTest {
     }
 
     private fun clearingStart(): GameState {
-        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(19) && x < 8) Tetromino.J else null } }
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry
+            .row(19) && x < 8) Tetromino.J else null } }
         return state().copy(board = board, active = Piece(Tetromino.O, x = 8, y = 18))
     }
 

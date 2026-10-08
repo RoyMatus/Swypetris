@@ -2,7 +2,11 @@ package ru.itoltec.swypetris
 
 import android.app.Application
 import android.graphics.Bitmap
-import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
@@ -11,12 +15,30 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.autofill.AutofillTree
 import androidx.compose.ui.autofill.AutofillType
 import androidx.compose.ui.platform.LocalAutofillTree
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.right
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import ru.itoltec.swypetris.ui.theme.SwypetrisTheme
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,7 +53,8 @@ class ResultsIntegrationTest {
     @Test fun savedNamePrefillsNextRecordAndSkippingKeepsIt() {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val preferences = GameStorage.preferences(application)
-        val board = List(BoardGeometry.TOTAL_ROWS) { MutableList<Tetromino?>(10) { null } }.also { it[BoardGeometry.row(0)][4] = Tetromino.Z }
+        val board = List(BoardGeometry.TOTAL_ROWS) { MutableList<Tetromino?>(10) { null } }.also { it[BoardGeometry
+            .row(0)][4] = Tetromino.Z }
         fun recordState(score: Int) = GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
             next = Tetromino.O, score = score)
         var model by mutableStateOf(GameViewModel(application, recordState(10000), { 1000L }, false))
@@ -71,7 +94,8 @@ class ResultsIntegrationTest {
         val preferences = GameStorage.preferences(application)
         val backup = preferences.all.toMap()
         try {
-            preferences.edit().remove("rules_4_migrated").remove("record_v4").remove("record_v2").putInt("record", 4321).remove("results_v2").commit()
+            preferences.edit().remove("rules_4_migrated").remove("record_v4").remove("record_v2").putInt("record",
+                4321).remove("results_v2").commit()
             val board = List(BoardGeometry.TOTAL_ROWS) { MutableList<Tetromino?>(10) { null } }
             board[BoardGeometry.row(0)][4] = Tetromino.Z
             var now = 1000L
@@ -130,7 +154,8 @@ class ResultsIntegrationTest {
             // Узкий экран с крупным шрифтом и планшетная логическая ширина на том же устройстве.
             for ((density, label) in listOf(Density(3.375f, 1.5f) to "narrow", Density(1.35f, 1.2f) to "tablet")) {
                 compose.runOnIdle { testDensity = density }
-                compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
+                compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+                    .assertCountEquals(0)
                 compose.onNodeWithTag("resultsPage").performScrollToNode(hasText("Алексей"))
                 val bounds = compose.onNodeWithText("Алексей").fetchSemanticsNode().boundsInRoot
                 val root = compose.onRoot().fetchSemanticsNode().boundsInRoot

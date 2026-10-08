@@ -1,10 +1,14 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -16,7 +20,8 @@ class StatisticsResetTest {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val preferences = GameStorage.preferences(app)
         preferences.edit().putString("palette", "github_light").putString("difficulty", Difficulty.HARD.id)
-            .putBoolean("sound", false).putInt("record", 4321).putInt("record_v4", 5678).putInt("record_v5", 6789).commit()
+            .putBoolean("sound", false).putInt("record", 4321).putInt("record_v4", 5678).putInt("record_v5",
+                6789).commit()
         ResultStore(preferences).write(listOf(GameResult("old", 1L, "Player", 9000, 2, 1, 1200)))
         val state = GameState(active = Piece(Tetromino.T), next = Tetromino.O, score = 123)
         val model = GameViewModel(app, state, { 1000L }, false)

@@ -9,13 +9,24 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -231,11 +242,13 @@ class LaunchIntroTest {
 
     /** Сохраняет реальный кадр Compose для визуального контроля. */
     @androidx.annotation.RequiresApi(26)
-    private fun screenshot(name: String): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap().also { save(it, name) }
+    private fun screenshot(name: String): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        .also { save(it, name) }
 
     /** Записывает снимок в доступный adb каталог тестового приложения. */
     private fun save(bitmap: Bitmap, name: String) {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        File(app.getExternalFilesDir(null), name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        File(app.getExternalFilesDir(null), name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,
+            100, it) }
     }
 }

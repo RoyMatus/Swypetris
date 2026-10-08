@@ -82,7 +82,8 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
                 } catch (failure: Exception) {
                     Log.e("SwypetrisUpdates", "Saved update validation failed", failure)
                     forgetReady()
-                    failureMessage = "Сохранённый APK устарел или не прошёл проверку. Проверьте обновления и загрузите файл заново."
+                    failureMessage =
+                        "Сохранённый APK устарел или не прошёл проверку. Проверьте обновления и загрузите файл заново."
                     null
                 }
             }
@@ -164,11 +165,13 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
                         validateUpdateApk(activity, temporary, update)
                         context.ensureActive()
                         stage = UpdateStage.SAVE
-                        if (!temporary.renameTo(apk())) throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot save downloaded APK")
+                        if (!temporary.renameTo(apk())) throw UpdateFailure(
+                            UpdateFailureReason.PERSISTENCE, "Cannot save downloaded APK")
                         val metadata = JSONObject().put("code", update.versionCode).put("name", update.versionName)
                             .put("url", update.apkUrl).put("hash", update.sha256).put("size", update.sizeBytes)
                         if (!preferences.edit().putString("ready", metadata.toString())
-                                .putLong("saved_at", System.currentTimeMillis()).putBoolean("interrupted", false).commit())
+                                .putLong("saved_at", System.currentTimeMillis()).putBoolean("interrupted",
+                                    false).commit())
                             throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot save update metadata")
                     } finally {
                         connection.disconnect()
@@ -238,7 +241,9 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
             activity.startActivity(intent)
             notice = ready?.let(DeliveryNotice::Ready)
         } catch (_: Exception) {
-            notice = DeliveryNotice.Failed("Не удалось открыть разрешение установки. Откройте настройки Android и разрешите установку из Swypetris.")
+            notice = DeliveryNotice.Failed(
+                "Не удалось открыть разрешение установки. Откройте настройки Android " +
+                    "и разрешите установку из Swypetris.")
         }
     }
 
@@ -298,7 +303,8 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
                     PackageInstaller.STATUS_FAILURE_STORAGE -> "Недостаточно места для установки."
                     PackageInstaller.STATUS_FAILURE_BLOCKED -> "Android запретил установку. Проверьте разрешения."
                     PackageInstaller.STATUS_FAILURE_ABORTED -> "Установка отменена."
-                    PackageInstaller.STATUS_FAILURE_CONFLICT -> "Версия или подпись APK несовместима с установленным приложением."
+                    PackageInstaller.STATUS_FAILURE_CONFLICT ->
+                        "Версия или подпись APK несовместима с установленным приложением."
                     PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> "Обновление несовместимо с этим устройством."
                     else -> "Android не смог установить обновление."
                 }

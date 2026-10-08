@@ -1,6 +1,8 @@
 package ru.itoltec.swypetris
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlacementTest {
@@ -19,8 +21,10 @@ class PlacementTest {
         assertEquals(0, rotated.lastRotationKick)
         assertEquals(Spin.FULL, engine.apply(rotated, GameCommand.HARD_DROP).placement!!.spin)
         assertEquals(rotated, engine.apply(rotated, GameCommand.LEFT))
-        assertEquals(Spin.FULL, engine.apply(engine.apply(rotated, GameCommand.LEFT), GameCommand.HARD_DROP).placement!!.spin)
-        assertEquals(Spin.NONE, engine.apply(rotated.copy(lastRotationKick = -1), GameCommand.HARD_DROP).placement!!.spin)
+        assertEquals(Spin.FULL, engine.apply(engine.apply(rotated, GameCommand.LEFT),
+            GameCommand.HARD_DROP).placement!!.spin)
+        assertEquals(Spin.NONE, engine.apply(rotated.copy(lastRotationKick = -1),
+            GameCommand.HARD_DROP).placement!!.spin)
         val open = GameState(active = Piece(Tetromino.T, y = 5), next = Tetromino.O)
         val qualified = engine.apply(open, GameCommand.CLOCKWISE)
         for (command in listOf(GameCommand.LEFT, GameCommand.RIGHT, GameCommand.SOFT_DROP, GameCommand.TICK))
@@ -51,7 +55,8 @@ class PlacementTest {
             assertEquals(count, result.placement!!.lines)
             assertEquals(Spin.FULL, result.placement.spin)
         }
-        val cells = (16..18).flatMap { y -> (0..9).filter { x -> x != 4 && !(y == 17 && x == 5) }.map { Cell(it,y) } } + Cell(4,19)
+        val cells = (16..18).flatMap { y -> (0..9).filter { x -> x != 4 && !(y == 17 && x == 5) }.map { Cell(it,
+            y) } } + Cell(4,19)
         val triple = state(Piece(Tetromino.T, x = 3, y = 16, rotation = 1), cells).copy(lastRotationKick = 0)
         val result = engine.apply(triple, GameCommand.HARD_DROP)
         assertEquals(3, result.placement!!.lines)
@@ -65,7 +70,8 @@ class PlacementTest {
         assertTrue(first.backToBack)
         assertFalse(first.placement!!.backToBack)
         assertEquals(0, first.combo)
-        val second = engine.finishClear(engine.apply(tetris().copy(backToBack = first.backToBack, combo = first.combo), GameCommand.HARD_DROP))
+        val second = engine.finishClear(engine.apply(tetris().copy(backToBack = first.backToBack,
+            combo = first.combo), GameCommand.HARD_DROP))
         assertTrue(second.placement!!.backToBack)
         assertEquals(1, second.combo)
         val noClear = engine.apply(spinStart().copy(backToBack = true, combo = 1), GameCommand.HARD_DROP)
@@ -76,7 +82,8 @@ class PlacementTest {
         assertFalse(broken.backToBack)
         assertFalse(broken.placement!!.backToBack)
         assertEquals(2, broken.combo)
-        val zeroSpin = engine.apply(engine.apply(spinStart().copy(backToBack = true), GameCommand.CLOCKWISE), GameCommand.HARD_DROP)
+        val zeroSpin = engine.apply(engine.apply(spinStart().copy(backToBack = true), GameCommand.CLOCKWISE),
+            GameCommand.HARD_DROP)
         assertTrue(zeroSpin.backToBack)
     }
 

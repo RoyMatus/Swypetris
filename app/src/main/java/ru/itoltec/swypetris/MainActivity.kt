@@ -19,10 +19,44 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.ExitToApp
@@ -30,7 +64,18 @@ import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -213,11 +258,14 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
         AlertDialog(onDismissRequest = { if (notice != UpdateNotice.StoreInstalling) updates.dismiss() },
             title = { Text(if (notice is UpdateNotice.Available) "Доступно обновление" else "Проверка обновлений") },
             text = { Text(when (notice) {
-                is UpdateNotice.Available -> "Установлена версия ${BuildConfig.VERSION_NAME}. Доступна ${notice.update.versionName}."
-                is UpdateNotice.StoreReady -> "RuStore загрузил версию ${notice.update.versionName}. Установка сохранит партию и перезапустит приложение."
+                is UpdateNotice.Available -> "Установлена версия ${BuildConfig.VERSION_NAME}. Доступна " +
+                    "${notice.update.versionName}."
+                is UpdateNotice.StoreReady -> "RuStore загрузил версию ${notice.update.versionName}. Установка " +
+                    "сохранит партию и перезапустит приложение."
                 UpdateNotice.StoreInstalling -> "Сохраняем партию. RuStore устанавливает обновление."
                 UpdateNotice.Current -> "Установлена актуальная версия ${BuildConfig.VERSION_NAME}."
-                UpdateNotice.Failed -> "Не удалось завершить обновление. Проверьте подключение и повторите проверку позже."
+                UpdateNotice.Failed -> "Не удалось завершить обновление. Проверьте подключение и повторите " +
+                    "проверку позже."
                 is UpdateNotice.RateLimited -> "GitHub временно ограничил проверку обновлений. Повторить можно после " +
                     java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.MEDIUM)
                         .format(java.util.Date(notice.retryAtMillis)) + " (время устройства). Игру можно продолжить."
@@ -225,8 +273,10 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
             confirmButton = {
                 if (notice is UpdateNotice.Available) TextButton(onClick = { updates.open(notice.update) },
                     modifier = Modifier.testTag("confirmUpdate")) { Text("Обновить") }
-                else if (notice is UpdateNotice.StoreReady) TextButton(onClick = { updates.installStore(model) }) { Text("Установить") }
-                else if (notice != UpdateNotice.StoreInstalling) TextButton(onClick = updates::dismiss) { Text("Понятно") }
+                else if (notice is UpdateNotice.StoreReady) TextButton(onClick = { updates
+                    .installStore(model) }) { Text("Установить") }
+                else if (notice != UpdateNotice.StoreInstalling) TextButton(onClick = updates::dismiss) {
+                    Text("Понятно") }
             },
             dismissButton = if (notice is UpdateNotice.Available || notice is UpdateNotice.StoreReady) ({
                 TextButton(onClick = updates::dismiss, modifier = Modifier.testTag("laterUpdate")) { Text("Позже") }
@@ -262,7 +312,8 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: (
     )
     Box(Modifier.fillMaxSize().onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
     MenuTetrominoBackdrop(logoBounds, Modifier.matchParentSize())
-    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
+    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
+        contentAlignment = Alignment.BottomCenter) {
         val gap = (maxHeight * .01f).coerceIn(3.dp, 8.dp)
         val primaryHeight = (maxHeight * .11f).coerceIn(48.dp, 64.dp)
         val secondaryHeight = (maxHeight * .10f).coerceIn(48.dp, 56.dp)
@@ -281,7 +332,8 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: (
             verticalArrangement = Arrangement.spacedBy(gap)) {
             Box(Modifier.fillMaxWidth().height(logoHeight), contentAlignment = Alignment.Center) {
                 GameTitle(Modifier.onGloballyPositioned {
-                    logoBounds = Rect(it.positionInRoot() - menuOrigin, Size(it.size.width.toFloat(), it.size.height.toFloat()))
+                    logoBounds = Rect(it.positionInRoot() - menuOrigin, Size(it.size.width.toFloat(),
+                        it.size.height.toFloat()))
                 }.graphicsLayer { alpha = if (model.launchLogoAssembled) 1f else 0f }
                     .then(if (intro) Modifier.clearAndSetSemantics {} else Modifier),
                     wordmarkOnly = true, heightLimit = logoHeight)
@@ -300,7 +352,8 @@ private fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: (
                     horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEach { item ->
                         Box(Modifier.weight(1f)) {
-                            MenuTile(item.label, item.color, item.tag, item.icon, ActionStyle.SECONDARY, secondaryHeight,
+                            MenuTile(item.label, item.color, item.tag, item.icon, ActionStyle.SECONDARY,
+                                secondaryHeight,
                                 enabled = !intro, onClick = item.action)
                         }
                     }
@@ -439,8 +492,10 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
                     }
                     val change = event.changes.firstOrNull { it.id == id }
                     if (!canceled && change != null) {
-                        if (change.pressed) model.pointerMove(change.position.x / density, change.position.y / density, change.uptimeMillis)
-                        else model.pointerUp(change.position.x / density, change.position.y / density, change.uptimeMillis)
+                        if (change.pressed) model.pointerMove(change.position.x / density,
+                            change.position.y / density, change.uptimeMillis)
+                        else model.pointerUp(change.position.x / density, change.position.y / density,
+                            change.uptimeMillis)
                     }
                     event.changes.forEach { it.consume() }
                 } while (event.changes.any { it.pressed })
@@ -635,9 +690,11 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
     reducedMotion: Boolean = Build.VERSION.SDK_INT >= 26 && !android.animation.ValueAnimator.areAnimatorsEnabled()) {
     val palette = LocalGamePalette.current
     val shards = remember(state.board, state.clearingRows, state.completedClears) { LineClearAnimation.shards(state) }
-    Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
+    Canvas(Modifier.fillMaxSize()
+        .semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
         " Следующая фигура ${state.next.name}" +
-        " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }.testTag("board")) {
+        " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }
+            .testTag("board")) {
         val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
         val cell = Size(size.width / BoardGeometry.WIDTH, geometry?.cellHeight ?: (size.height / GAME_GRID_ROWS))
         val origin = Offset(0f, (geometry?.gridTop ?: 0f) + SPAWN_DISPLAY_ROWS * cell.height)
@@ -705,7 +762,8 @@ private fun DrawScope.fallingPiece(state: GameState, palette: GamePalette, origi
 }
 
 /** Draws a colored cell with spacing using independent width and height. */
-private fun DrawScope.block(cell: Cell, color: Color, finish: BlockFinish, texture: BlockTexture, origin: Offset, step: Size,
+private fun DrawScope.block(cell: Cell, color: Color, finish: BlockFinish, texture: BlockTexture, origin: Offset,
+    step: Size,
     alpha: Float = 1f, outline: Boolean = false) {
     val gap = minOf(step.width, step.height) * 0.07f
     val topLeft = origin + Offset(cell.x * step.width + gap, cell.y * step.height + gap)

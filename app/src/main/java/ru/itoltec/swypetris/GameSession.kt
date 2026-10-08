@@ -71,11 +71,13 @@ internal class SessionStore(private val preferences: SharedPreferences) {
         /** Combines session metadata with a previously encoded board to avoid redundant work. */
         private fun encode(session: GameSession, board: String): String {
             val s = session.state
-            return JSONObject().put("version", 4).put("rulesVersion", GameRules.VERSION).put("topOut", s.topOut?.name ?: "").put("id", session.id)
+            return JSONObject().put("version", 4).put("rulesVersion", GameRules.VERSION).put("topOut",
+                s.topOut?.name ?: "").put("id", session.id)
                 .put("active", JSONObject().put("type", s.active.type.name)
                     .put("x", s.active.x).put("y", s.active.y).put("rotation", s.active.rotation))
                 .put("next", s.next.name).put("bag", JSONArray(session.bag.map { it.name }))
-                .put("startingLevel", s.startingLevel).put("score", s.score).put("lines", s.lines).put("generation", s.generation)
+                .put("startingLevel", s.startingLevel).put("score", s.score).put("lines",
+                    s.lines).put("generation", s.generation)
                 .put("lockRemaining", s.lockRemaining).put("lockResets", s.lockResets)
                 .put("held", s.held?.name ?: "").put("holdUsed", s.holdUsed)
                 .put("lastRotationKick", s.lastRotationKick).put("softDropCells", s.softDropCells)
@@ -89,7 +91,8 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 .put("completedRounds", s.completedRounds).put("victoryPending", s.victoryPending)
                 .put("playedMillis", session.playedMillis)
                 .put("clearMillis", session.clearMillis).put("gravityRemainingNanos", session.gravityRemainingNanos)
-                .put("lockFractionNanos", session.lockFractionNanos).put("clearFractionNanos", session.clearFractionNanos)
+                .put("lockFractionNanos", session.lockFractionNanos).put("clearFractionNanos",
+                    session.clearFractionNanos)
                 .put("recordAtStart", session.recordAtStart).put("finishedAt", session.finishedAt).toString()
                 .dropLast(1) + ",\"board\":" + board + "}"
         }
@@ -112,22 +115,26 @@ internal class SessionStore(private val preferences: SharedPreferences) {
             val active = root.getJSONObject("active")
             val piece = Piece(Tetromino.valueOf(active.getString("type")), active.getInt("x"),
                 active.getInt("y"), active.getInt("rotation"))
-            require(piece.rotation in 0..3 && piece.x in -3..9 && piece.y in -BoardGeometry.HIDDEN_ROWS until BoardGeometry.VISIBLE_ROWS)
+            require(piece.rotation in 0..3 && piece.x in -3..9 &&
+                piece.y in -BoardGeometry.HIDDEN_ROWS until BoardGeometry.VISIBLE_ROWS)
             require(piece.cells().all { it.x in 0..9 && BoardGeometry.row(it.y) in board.indices })
             val clearing = root.getJSONArray("clearingRows").let { a -> List(a.length()) { a.getInt(it) } }
-            require(clearing.size <= 4 && clearing.distinct().size == clearing.size && clearing.all { it in board.indices && board[it].all { cell -> cell != null } })
+            require(clearing.size <= 4 && clearing.distinct().size == clearing.size &&
+                clearing.all { it in board.indices && board[it].all { cell -> cell != null } })
             val state = GameState(board, piece, Tetromino.valueOf(root.getString("next")),
                 root.getInt("score"), root.getInt("lines"), root.getInt("generation"), root.getBoolean("gameOver"),
                 clearing, root.getInt("completedClears"), root.getBoolean("accelerated"),
                 root.getInt("completedRounds"), root.getBoolean("victoryPending"),
                 root.getString("topOut").let { if (it.isEmpty()) null else TopOut.valueOf(it) },
                 root.optLong("lockRemaining", LockRules.DELAY_MILLIS), root.optInt("lockResets", 0),
-                root.optString("held").let { if (it.isEmpty()) null else Tetromino.valueOf(it) }, root.optBoolean("holdUsed", false),
+                root.optString("held").let { if (it.isEmpty()) null else Tetromino.valueOf(it) },
+                    root.optBoolean("holdUsed", false),
                 root.optInt("lastRotationKick", -1), root.optInt("softDropCells", 0), root.optInt("hardDropCells", 0),
                 root.optBoolean("backToBack", false), root.optInt("combo", -1),
                 root.optJSONObject("placement")?.let { p -> PlacementResult(p.getInt("lines"),
                     Spin.valueOf(p.getString("spin")), p.getBoolean("backToBack"), p.getInt("combo"),
-                    p.getBoolean("perfectClear"), p.getInt("softDropCells"), p.getInt("hardDropCells"), p.getInt("level")) },
+                    p.getBoolean("perfectClear"), p.getInt("softDropCells"), p.getInt("hardDropCells"),
+                        p.getInt("level")) },
                 startingLevel = if (root.has("startingLevel")) root.getInt("startingLevel") else 1)
             require(state.lastRotationKick in -1..4 && state.softDropCells >= 0 &&
                 state.hardDropCells in 0..BoardGeometry.TOTAL_ROWS && state.combo >= -1)
@@ -141,7 +148,8 @@ internal class SessionStore(private val preferences: SharedPreferences) {
             val bag = root.getJSONArray("bag").let { a -> List(a.length()) { Tetromino.valueOf(a.getString(it)) } }
             require(bag.size <= 7 && bag.distinct().size == bag.size)
             val session = GameSession(root.getString("id"), state, bag, root.getLong("playedMillis"),
-                root.getLong("clearMillis"), root.getLong("gravityRemainingNanos"), root.getInt("recordAtStart"), root.getLong("finishedAt"),
+                root.getLong("clearMillis"), root.getLong("gravityRemainingNanos"), root.getInt("recordAtStart"),
+                    root.getLong("finishedAt"),
                 root.getLong("lockFractionNanos"), root.getLong("clearFractionNanos"))
             require(session.id.isNotBlank() && session.playedMillis >= 0 && session.recordAtStart >= 0)
             require(session.clearMillis in 0..LineClearAnimation.TOTAL_MILLIS)

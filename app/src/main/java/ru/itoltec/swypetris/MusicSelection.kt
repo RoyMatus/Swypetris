@@ -4,7 +4,8 @@
 enum class Song(val id: String, val title: String, val resource: Int) {
     KOROBEINIKI("korobeiniki", "Коробейники", R.raw.korobeiniki), KALINKA("kalinka", "Калинка", R.raw.kalinka),
     KAMARINSKAYA("kamarinskaya", "Камаринская", R.raw.kamarinskaya), BARYNYA("barynya", "Барыня", R.raw.barynya),
-    SVETIT("svetit_mesyat", "Светит месяц", R.raw.svetit_mesyat), VO_SADU("vo_sadu", "Во саду ли, в огороде", R.raw.vo_sadu),
+    SVETIT("svetit_mesyat", "Светит месяц", R.raw.svetit_mesyat), VO_SADU("vo_sadu", "Во саду ли, в огороде",
+        R.raw.vo_sadu),
     TREPAK("trepak", "Трепак", R.raw.trepak), SUGAR_PLUM("sugar_plum", "Танец Феи Драже", R.raw.sugar_plum)
 }
 

@@ -3,7 +3,9 @@ package ru.itoltec.swypetris
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -69,9 +71,11 @@ class GameFeedbackIntegrationTest {
         override fun stopSound() { soundStops++ }
         val remaining = mutableListOf<Long>()
         /** Запоминает остаток вибрации после паузы. */
-        override fun resumeClear(remainingMillis: Long, vibration: Boolean) { if (vibration) remaining += remainingMillis }
+        override fun resumeClear(remainingMillis: Long,
+            vibration: Boolean) { if (vibration) remaining += remainingMillis }
         /** Сохраняет одно событие вместе с независимыми разрешениями. */
-        override fun play(event: FeedbackEvent, sound: Boolean, vibration: Boolean) { calls += Triple(event, sound, vibration) }
+        override fun play(event: FeedbackEvent, sound: Boolean, vibration: Boolean) { calls += Triple(event, sound,
+            vibration) }
         /** Учитывает остановку при переходах между экранами. */
         override fun stop() { stops++ }
         /** Не владеет устройствами и не требует освобождения. */
@@ -99,7 +103,8 @@ class GameFeedbackIntegrationTest {
     /** Очистка звучит один раз, настройки независимы, продолжение не повторяет эффект. */
     @Test fun clearIsSingleAndResumeDoesNotReplay() {
         val application = ApplicationProvider.getApplicationContext<Application>()
-        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(19) && x !in 4..5) Tetromino.J else null } }
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry
+            .row(19) && x !in 4..5) Tetromino.J else null } }
         val initial = GameState(board = board, active = Piece(Tetromino.O, y = 18), next = Tetromino.T)
         var now = 1000L
         val recorder = Recorder()

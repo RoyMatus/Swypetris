@@ -3,10 +3,27 @@
 import android.provider.Settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -54,7 +71,8 @@ internal fun VictoryScreen(model: GameViewModel) {
     val palette = LocalGamePalette.current
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
-    val animate = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f }
+    val animate = remember { Settings.Global.getFloat(context.contentResolver,
+        Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f }
     LaunchedEffect(model, owner, animate) {
         if (animate) owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = withFrameNanos { it }
@@ -77,11 +95,13 @@ internal fun VictoryScreen(model: GameViewModel) {
             }
             item {
                 Image(painterResource(R.drawable.victory_trophy), "Кубок из блоков и восемь фруктов",
-                    contentScale = ContentScale.Fit, modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth().aspectRatio(1.5f))
+                    contentScale = ContentScale.Fit,
+                        modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth().aspectRatio(1.5f))
             }
             item { RoundFruitCollection(state.fruitCounts) }
             item {
-                Text("Круг ${state.completedRounds + 1} пройден", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+                Text("Круг ${state.completedRounds + 1} пройден", style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center)
                 Text("${state.score} очков", style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
@@ -109,12 +129,15 @@ private fun VictoryFireworks(time: () -> Long) {
         repeat(9) { burst ->
             val age = (elapsed - burst * 650) / 1800f
             if (age !in 0f..1f) return@repeat
-            val center = Offset(size.width * (.10f + (burst * 37 % 80) / 100f), size.height * (.08f + (burst % 3) * .12f))
+            val center = Offset(size.width * (.10f + (burst * 37 % 80) / 100f),
+                size.height * (.08f + (burst % 3) * .12f))
             repeat(28) { particle ->
                 val angle = particle * 2.0 * Math.PI / 28
                 val radius = size.width * .26f * age * (if (particle % 2 == 0) 1f else .65f)
-                val point = center + Offset(cos(angle).toFloat() * radius, sin(angle).toFloat() * radius + age * age * 65.dp.toPx())
-                drawRect(colors[(particle + burst) % 7].copy(alpha = (1f - age) * .85f), point, Size(3.dp.toPx(), 3.dp.toPx()))
+                val point = center + Offset(cos(angle).toFloat() * radius,
+                    sin(angle).toFloat() * radius + age * age * 65.dp.toPx())
+                drawRect(colors[(particle + burst) % 7].copy(alpha = (1f - age) * .85f), point, Size(3.dp.toPx(),
+                    3.dp.toPx()))
             }
         }
     }

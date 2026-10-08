@@ -3,7 +3,7 @@ package ru.itoltec.swypetris
 import android.app.Application
 import android.content.SharedPreferences
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 

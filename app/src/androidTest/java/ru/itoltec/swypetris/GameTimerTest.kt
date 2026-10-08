@@ -3,7 +3,10 @@ package ru.itoltec.swypetris
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -78,7 +81,8 @@ class GameTimerTest {
     }
 
     @Test fun clearSchedulesAnimationFramesAndRestoresFractionalProgress() = main {
-        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(19) && x < 8) Tetromino.J else null } }
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry
+            .row(19) && x < 8) Tetromino.J else null } }
         val model = model(state().copy(board = board, active = Piece(Tetromino.O, x = 8, y = 18)))
         model.command(GameCommand.HARD_DROP)
         assertEquals(now + 16, timer.deadline)

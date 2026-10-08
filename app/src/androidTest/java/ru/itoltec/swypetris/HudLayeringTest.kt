@@ -3,19 +3,37 @@ package ru.itoltec.swypetris
 import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import kotlin.math.abs
@@ -37,9 +55,11 @@ class HudLayeringTest {
             Box(Modifier.size(width.dp, 580.dp)) { GameContent(model, state, 24.dp) }
         }
         for (w in listOf(240, 320, 600)) {
-            compose.runOnIdle { width = w; state = state.copy(score = 240000, active = Piece(Tetromino.I, x = 6, y = 8)) }
+            compose.runOnIdle { width = w; state = state.copy(score = 240000, active = Piece(Tetromino.I, x = 6,
+                y = 8)) }
             val fruits = compose.onNodeWithTag("earnedFruits").fetchSemanticsNode().boundsInRoot
-            val pairs = Fruit.entries.map { compose.onNodeWithTag("earnedFruit_${it.name}").fetchSemanticsNode().boundsInRoot }
+            val pairs = Fruit.entries.map { compose.onNodeWithTag("earnedFruit_${it.name}")
+                .fetchSemanticsNode().boundsInRoot }
             val firstRow = pairs.count { abs(it.top - pairs.first().top) < 1f }
             assertEquals("Fruit rows use at most three evenly distributed items", minOf(3, pairs.size), firstRow)
             save("hud-$w-ordinary.png")
@@ -56,9 +76,11 @@ class HudLayeringTest {
                 val covered = compose.onRoot().captureToImage().toPixelMap()
                 if (row == 2) save("hud-$w-overlap.png")
                 val labels = Fruit.entries.map {
-                    compose.onNodeWithTag("earnedFruitCount_${it.name}").assertTextEquals("3 ×").fetchSemanticsNode().boundsInRoot
+                    compose.onNodeWithTag("earnedFruitCount_${it.name}").assertTextEquals("3 ×")
+                        .fetchSemanticsNode().boundsInRoot
                 }
-                val icons = Fruit.entries.map { compose.onNodeWithContentDescription(it.title).fetchSemanticsNode().boundsInRoot }
+                val icons = Fruit.entries.map { compose.onNodeWithContentDescription(it.title)
+                    .fetchSemanticsNode().boundsInRoot }
                 compose.runOnIdle { state = state.copy(score = 0) }
                 val cleanPiece = compose.onRoot().captureToImage().toPixelMap()
                 val yTop = area.top + row * cellHeight + gap
@@ -72,8 +94,10 @@ class HudLayeringTest {
                         if (column !in 6..9 || inCell < gap + 2 || inCell > cellWidth - gap - 2) continue
                         assertEquals("Fruit drawn over active piece at $w/$row/$x/$y", cleanPiece[x, y], covered[x, y])
                         if (unobscured[x, y] != cleanPiece[x, y]) {
-                            if (labels.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left, y + root.top)) }) coveredLabels++
-                            else if (icons.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left, y + root.top)) }) coveredIcons++
+                            if (labels.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
+                                y + root.top)) }) coveredLabels++
+                            else if (icons.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
+                                y + root.top)) }) coveredIcons++
                         }
                     }
                 }

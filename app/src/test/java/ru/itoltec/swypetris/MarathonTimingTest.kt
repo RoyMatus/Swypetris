@@ -3,7 +3,8 @@ package ru.itoltec.swypetris
 import kotlin.random.Random
 import kotlin.math.pow
 import kotlin.math.roundToLong
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MarathonTimingTest {

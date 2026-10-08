@@ -8,7 +8,13 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -146,7 +152,9 @@ class MusicIntegrationTest {
                 previous = position
             }
             assertTrue("Three real repeats must complete", previous >= MenuTheme.FRAME_COUNT * 3L)
-            android.util.Log.i("SwypetrisMusicTest", "Menu loop frames=$previous; elapsed_ms=${android.os.SystemClock.uptimeMillis() - started}; gain=1.0")
+            android.util.Log.i("SwypetrisMusicTest", "Menu loop frames=$previous; " +
+                "elapsed_ms=${android.os.SystemClock.uptimeMillis() - started}; " +
+                "gain=1.0")
             compose.runOnIdle {
                 model.onBackground()
                 assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
@@ -220,7 +228,8 @@ class MusicIntegrationTest {
             for ((resource, duration) in tracks) {
                 val player = MediaPlayer.create(application, resource)
                 assertNotNull(player)
-                try { assertTrue("Ресурс $resource: ${player.duration}", kotlin.math.abs(player.duration - duration) < 200) }
+                try { assertTrue("Ресурс $resource: ${player.duration}",
+                    kotlin.math.abs(player.duration - duration) < 200) }
                 finally { player.release() }
             }
         }

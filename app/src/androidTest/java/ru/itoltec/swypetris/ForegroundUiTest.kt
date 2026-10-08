@@ -11,7 +11,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -75,7 +78,8 @@ class ForegroundUiTest {
             }
             compose.waitUntil(5000) {
                 ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
-                    ?.isVisible(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars()) == true
+                    ?.isVisible(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type
+                        .navigationBars()) == true
             }
             compose.runOnIdle {
                 @Suppress("DEPRECATION")
@@ -145,7 +149,8 @@ class ForegroundUiTest {
             assertEquals(game, model().game)
             assertEquals(GameScreen.MENU, model().screen)
             val manager = previousActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            assertEquals(1, manager.appTasks.count { it.taskInfo.baseIntent.component?.className == MainActivity::class.java.name })
+            assertEquals(1, manager.appTasks
+                .count { it.taskInfo.baseIntent.component?.className == MainActivity::class.java.name })
         }
     }
 

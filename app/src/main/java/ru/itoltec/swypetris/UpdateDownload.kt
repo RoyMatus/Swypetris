@@ -35,7 +35,8 @@ internal fun copyUpdate(input: InputStream, destination: File, expectedSize: Lon
                 val count = input.read(buffer)
                 if (count < 0) break
                 received += count
-                if (received > expectedSize) throw UpdateFailure(UpdateFailureReason.INTEGRITY, "APK size exceeds release metadata")
+                if (received > expectedSize) throw UpdateFailure(
+                    UpdateFailureReason.INTEGRITY, "APK size exceeds release metadata")
                 try { output.write(buffer, 0, count) } catch (failure: IOException) {
                     throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot write update file", failure)
                 }
@@ -43,9 +44,11 @@ internal fun copyUpdate(input: InputStream, destination: File, expectedSize: Lon
                 progress(received)
             }
             checkActive()
-            if (received != expectedSize) throw UpdateFailure(UpdateFailureReason.INCOMPLETE, "APK download is incomplete")
+            if (received != expectedSize) throw UpdateFailure(
+                UpdateFailureReason.INCOMPLETE, "APK download is incomplete")
             val hash = digest.digest().joinToString("") { "%02x".format(it) }
-            if (!hash.equals(expectedSha256, true)) throw UpdateFailure(UpdateFailureReason.INTEGRITY, "APK hash does not match release metadata")
+            if (!hash.equals(expectedSha256,
+                true)) throw UpdateFailure(UpdateFailureReason.INTEGRITY, "APK hash does not match release metadata")
             try { output.fd.sync() } catch (failure: IOException) {
                 throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot flush update file", failure)
             }

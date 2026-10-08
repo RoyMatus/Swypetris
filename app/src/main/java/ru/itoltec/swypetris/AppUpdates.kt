@@ -76,7 +76,8 @@ internal fun isRuStoreInstall(context: Context): Boolean {
 
 /** Owns update checks for the Activity; gameplay state remains in GameViewModel. */
 internal class AppUpdates(private val activity: ComponentActivity,
-    private val preferences: android.content.SharedPreferences = activity.getSharedPreferences("app_updates", Context.MODE_PRIVATE),
+    private val preferences: android.content.SharedPreferences = activity.getSharedPreferences("app_updates",
+        Context.MODE_PRIVATE),
     private val clock: () -> Long = System::currentTimeMillis,
     private val githubUpdate: () -> AvailableUpdate? = ::fetchGitHubUpdate) {
     val delivery = UpdateDelivery(activity)
@@ -154,7 +155,8 @@ internal class AppUpdates(private val activity: ComponentActivity,
             manualRequested = false
             if (update == null) {
                 val failure = result.exceptionOrNull() as? UpdateRateLimitException
-                val persisted = failure == null || preferences.edit().putLong("retry_at", failure.retryAtMillis).commit()
+                val persisted = failure == null || preferences.edit().putLong("retry_at",
+                    failure.retryAtMillis).commit()
                 if (manual) notice = if (persisted && failure != null) UpdateNotice.RateLimited(failure.retryAtMillis)
                     else UpdateNotice.Failed
                 return@launch

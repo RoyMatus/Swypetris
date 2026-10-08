@@ -87,10 +87,12 @@ class GameViewModel internal constructor(
         private set
     private var gestures = createGestures(GestureConfig())
     private fun createGestures(config: GestureConfig) = GestureController(config, ::command).also {
-        it.onHoldReady = { if (vibrationEnabled && activeForeground && screen == GameScreen.PLAYING && game?.holdUsed == false) feedback.holdReady() }
+        it.onHoldReady = { if (vibrationEnabled && activeForeground && screen == GameScreen.PLAYING &&
+            game?.holdUsed == false) feedback.holdReady() }
     }
     private var lastGameFrame = clock()
-    private var timeline = GameTimeline(restored?.gravityRemainingNanos ?: (game?.gravityNanos ?: GameRules.gravityNanos(1)),
+    private var timeline = GameTimeline(restored?.gravityRemainingNanos ?: (game?.gravityNanos ?:
+        GameRules.gravityNanos(1)),
         restored?.lockFractionNanos ?: 0, (restored?.clearMillis ?: 0) * GameRules.NANOS_PER_MILLI +
             (restored?.clearFractionNanos ?: 0))
     private var advancing = false
@@ -165,7 +167,8 @@ class GameViewModel internal constructor(
                 playedMillis = playedBefore + timeline.advancedNanos / GameRules.NANOS_PER_MILLI
                 acceptState(previous, updated, now)
                 if (screen == GameScreen.PLAYING)
-                    feedbackEvent(previous, updated, GameCommand.TICK)?.let { feedback.play(it, soundEnabled, vibrationEnabled) }
+                    feedbackEvent(previous, updated, GameCommand.TICK)?.let { feedback.play(it, soundEnabled,
+                        vibrationEnabled) }
             }
         } finally { advancing = false }
         playedMillis = playedBefore + timeline.advancedNanos / GameRules.NANOS_PER_MILLI
@@ -341,7 +344,8 @@ class GameViewModel internal constructor(
             screen = GameScreen.VICTORY
             return
         }
-        if (game?.clearingRows?.isNotEmpty() == true) feedback.resumeClear(LineClearAnimation.TOTAL_MILLIS - clearElapsedMillis, vibrationEnabled)
+        if (game?.clearingRows?.isNotEmpty() == true) feedback
+            .resumeClear(LineClearAnimation.TOTAL_MILLIS - clearElapsedMillis, vibrationEnabled)
         gestures.cancel()
         gestures.setEnabled(game?.clearingRows?.isEmpty() == true)
         lastGameFrame = clock()
