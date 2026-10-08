@@ -118,11 +118,10 @@ class GameViewModel internal constructor(
         simulation.scheduleNextEvent()
     }
 
-    /** Stores fireworks elapsed time so Activity recreation does not replay them. */
+    /** Retains the looping celebration phase across Activity recreation and pauses. */
     fun advanceVictoryAnimation(delta: Long) {
-        if (screen == GameScreen.VICTORY)
-            victoryAnimationMillis = (victoryAnimationMillis + delta.coerceAtLeast(0))
-                .coerceAtMost(VICTORY_ANIMATION_MILLIS)
+        if (activeForeground && screen == GameScreen.VICTORY)
+            victoryAnimationMillis = VictoryMotion.advance(victoryAnimationMillis, delta)
     }
 
     /** Retains intro progress across Activity recreation; background time does not advance it. */

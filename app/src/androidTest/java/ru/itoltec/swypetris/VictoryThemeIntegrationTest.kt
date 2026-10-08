@@ -7,14 +7,19 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.DeviceConfigurationOverride
+import androidx.compose.ui.test.FontScale
+import androidx.compose.ui.test.ForcedSize
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
@@ -28,11 +33,13 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.then
 import androidx.compose.ui.test.top
 import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -46,66 +53,93 @@ class VictoryThemeIntegrationTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    /** Записывает фанфары без обращения к динамикам. */
-    private class Music : MusicPlayback {
-        val modes = mutableListOf<MusicMode>()
-        /** Преобразует разрешение музыки в режим. */
-        override fun setPlaying(enabled: Boolean) = setMode(if (enabled) MusicMode.GAME else MusicMode.SILENT)
-        /** Сохраняет запрос для проверки однократного запуска. */
-        override fun setMode(next: MusicMode) { modes += next }
-        /** Тестовая реализация не владеет аудиоресурсами. */
-        override fun release() = Unit
-    }
-
-    /** Поздравление не тратит время, не пишет историю и не повторяет награды при возврате. */
+    /** Celebration continues past the former end time and stops while the app is hidden. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
-    @Test fun victoryAndContinuationPreserveSession() {
-        var now = 1000L
-        val music = Music()
+    @Test fun victoryArtworkAndFireworksFillScreenAndPauseInBackground() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
-            { now }, false, musicPlayback = music)
-        val initialGravity = model.game!!.gravityMillis
+            { 1000L }, false)
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
-        compose.runOnIdle { now += 100; model.input.command(GameCommand.SOFT_DROP) }
-        compose.mainClock.advanceTimeBy(2200)
-        compose.onNodeWithTag("victoryPage").assertIsDisplayed()
-        compose.onNodeWithTag("board").assertDoesNotExist()
-        screenshot("victory-classic.png")
+        compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
+        compose.mainClock.advanceTimeBy(100)
+        val artwork = compose.onNodeWithTag("victoryArtwork").fetchSemanticsNode().boundsInRoot
+        val scene = compose.onNodeWithTag("victoryScene").fetchSemanticsNode().boundsInRoot
+        assertEquals(scene.width, artwork.width, 1f)
+        assertEquals(scene.height, artwork.height, 1f)
+        compose.mainClock.advanceTimeBy(9000)
+        compose.runOnIdle { assertTrue(model.victoryAnimationMillis in 1 until VictoryMotion.PERIOD_MILLIS) }
+        screenshot("victory-loop.png")
+        var paused = 0L
+        compose.runOnIdle { model.onBackground(); paused = model.victoryAnimationMillis }
+        compose.mainClock.advanceTimeBy(1500)
         compose.runOnIdle {
-            assertEquals(80000, model.game!!.score)
-            assertEquals(1, music.modes.count { it == MusicMode.RECORD })
-            assertTrue(model.results.isEmpty())
-            now += 30000
-            model.simulation.advanceFrame(now)
-            model.navigation.menu()
+            assertEquals(paused, model.victoryAnimationMillis)
+            model.onForeground()
             model.resume()
-            assertEquals(GameScreen.VICTORY, model.screen)
-            assertEquals(1, music.modes.count { it == MusicMode.RECORD })
         }
-        compose.mainClock.advanceTimeBy(32)
+        compose.mainClock.advanceTimeBy(250)
+        compose.runOnIdle { assertTrue(model.victoryAnimationMillis != paused) }
+        compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
+        compose.onNodeWithTag("nextRound").assertIsDisplayed()
+    }
+
+    /** Disabled animations leave a still celebration while the next round stays operable. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
+    @Test fun reducedMotionKeepsStaticCelebrationAndAction() {
+        val model = GameViewModel(ApplicationProvider.getApplicationContext(),
+            GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
+            { 1000L }, false)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            CompositionLocalProvider(LocalVictoryAnimations provides false) { SwypetrisApp(model) {} }
+        }
+        compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
+        compose.mainClock.advanceTimeBy(96)
+        compose.runOnIdle { assertEquals(0L, model.victoryAnimationMillis) }
+        compose.onNodeWithTag("victoryFireworks").assertExists()
         compose.mainClock.autoAdvance = true
         compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
         compose.onNodeWithTag("nextRound").performClick()
-        compose.mainClock.advanceTimeBy(32)
-        compose.runOnIdle {
-            assertEquals(GameScreen.PLAYING, model.screen)
-            assertEquals(80000, model.game!!.score)
-            assertEquals(100, model.game!!.lines)
-            assertEquals(initialGravity, model.game!!.gravityMillis)
-            assertEquals(11, model.game!!.level)
-            assertEquals(1, model.game!!.completedRounds)
-            assertEquals(0, model.game!!.roundFruits)
-            assertTrue(model.game!!.board.flatten().all { it == null })
-            val state = model.game
-            model.nextRound()
-            assertEquals(state, model.game)
-            // Заканчиваем эту же партию на тестовом поле, не записывая время поздравления.
-            repeat(30) { model.input.command(GameCommand.HARD_DROP) }
-            assertEquals(1, model.results.size)
-            assertEquals(1, model.results.single().completedRounds)
-            assertEquals(100L, model.results.single().durationMillis)
+        compose.runOnIdle { assertEquals(GameScreen.PLAYING, model.screen) }
+    }
+
+    /** Portrait, narrow and landscape viewports keep the celebration content reachable. */
+    @Test fun victoryContentFitsMultipleViewportShapes() {
+        val model = GameViewModel(ApplicationProvider.getApplicationContext(),
+            GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
+            { 1000L }, false)
+        var viewport by mutableStateOf(DpSize(320.dp, 640.dp))
+        var renderedDensity = 1f
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(viewport) then
+                DeviceConfigurationOverride.FontScale(1.5f)) {
+                CompositionLocalProvider(LocalVictoryAnimations provides false) {
+                    val density = LocalDensity.current
+                    SideEffect { renderedDensity = density.density }
+                    SwypetrisApp(model) {}
+                }
+            }
+        }
+        compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
+        for ((width, height) in listOf(320.dp to 640.dp, 393.dp to 873.dp,
+            600.dp to 400.dp, 800.dp to 480.dp)) {
+            viewport = DpSize(width, height)
+            compose.waitForIdle()
+            val scene = compose.onNodeWithTag("victoryScene").fetchSemanticsNode().boundsInRoot
+            val artwork = compose.onNodeWithTag("victoryArtwork").fetchSemanticsNode().boundsInRoot
+            assertEquals(width.value, scene.width / renderedDensity, 1f)
+            assertEquals(height.value, scene.height / renderedDensity, 1f)
+            assertEquals(scene, artwork)
+            compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("victoryTitle"))
+            compose.onNodeWithTag("victoryTitle").assertIsDisplayed()
+            compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
+            val button = compose.onNodeWithTag("nextRound").assertIsDisplayed()
+                .fetchSemanticsNode().boundsInRoot
+            assertTrue("Button exceeds $width x $height", button.left >= scene.left &&
+                button.right <= scene.right && button.bottom <= scene.bottom)
+            compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+                .assertCountEquals(0)
         }
     }
 

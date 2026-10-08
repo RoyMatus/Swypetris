@@ -56,6 +56,7 @@ SOURCE_GROUPS = {
     "UpdateCheckPolicy.kt": ("updates",),
     "Placement.kt": ("engine",),
     "VictoryScreen.kt": ("results", "visual"),
+    "VictoryMotion.kt": ("results", "visual"),
     "ui/theme/Color.kt": ("visual",),
     "ui/theme/Theme.kt": ("visual",),
     "ui/theme/Type.kt": ("visual",),
@@ -73,7 +74,7 @@ GROUP_TESTS = {
     "score": ((), ("BorderlessHudTest", "HudLayeringTest", "GameUiTest")),
     "updates": (("UpdateCheckPolicyTest", "UpdateDownloadTest"), ("AppUpdatesTest", "UpdateCheckTest")),
     "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
-               ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictoryThemeIntegrationTest")),
+               ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictorySessionIntegrationTest", "VictoryThemeIntegrationTest")),
     "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
     "line_clear": (("LineClearAnimationTest", "GameEngineTest", "GameRulesTest"), ("LineClearUiTest", "GameUiTest")),
     "feedback": (("GameFeedbackTest",), ("GameFeedbackIntegrationTest", "MusicIntegrationTest")),
@@ -83,10 +84,12 @@ GROUP_TESTS = {
     "lifecycle": (("SessionQueueBehaviorSpec",), ("ForegroundUiTest", "SessionLifecycleTest", "GameUiTest")),
     "navigation": ((), ("BrandNavigationTest", "GameUiTest", "ForegroundUiTest")),
     "intro": (("LaunchIntroMotionTest",), ("LaunchIntroTest", "LaunchIntroRecreationTest")),
-    "visual": (("GameLayoutTest", "MenuSkyMotionTest"), ("HelpHudTest", "GameUiTest", "VictoryThemeIntegrationTest", "MenuSkyTest")),
+    "visual": (("GameLayoutTest", "MenuSkyMotionTest", "VictoryMotionTest"),
+               ("HelpHudTest", "GameUiTest", "VictoryThemeIntegrationTest", "MenuSkyTest")),
     "settings": (("DifficultyTest", "PlaylistClockTest"), ("GameUiTest", "MusicSettingsFruitTest", "StatisticsResetTest")),
     "legal": ((), ("LegalScreenTest", "PublicationTest", "ShareAppTest")),
-    "results": (("RecordHistoryTest", "VictoryRulesTest"), ("ResultsIntegrationTest", "VictoryThemeIntegrationTest")),
+    "results": (("RecordHistoryTest", "VictoryRulesTest", "VictoryMotionTest"),
+                ("ResultsIntegrationTest", "VictorySessionIntegrationTest", "VictoryThemeIntegrationTest")),
 }
 
 

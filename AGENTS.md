@@ -8,6 +8,7 @@ Project policy: [publishing/POLICY.md](publishing/POLICY.md). CI selection and c
 - Use a separate worktree. Preserve pre-existing changes and other processes' branches, worktrees and workflow runs. Clean up only your merged, unused branches/worktrees after checking open PRs, unmerged work, local changes and needed artifacts.
 - Before code changes, consult current affected API/framework documentation through Context7. If unavailable, state that and consult official documentation.
 - Prefer repository API scripts and CLI over UI automation. Never print or commit credentials, signing keys or other secrets; do not expand access without authorization.
+- Use local computer resources for builds, tests, emulators, analysis and preparation whenever feasible. Use GitHub only for repository coordination, mandatory check reporting, PRs and publication that cannot be completed locally. Do not move a locally executable task into GitHub Actions or change GitHub settings to do so; retain only the GitHub trigger/status needed by branch protection.
 - Default to no subagents. Delegate only a necessary, bounded, distinct task that justifies not doing it directly; assign file ownership, preserve others' edits, and retain final integration/verification. Do not delegate duplicate searches or spawn role checklists. Use the relevant project role/skill; simple delegated work uses `gpt-6-luna` with low effort.
 
 ## Scope, design and gameplay
@@ -23,7 +24,7 @@ Project policy: [publishing/POLICY.md](publishing/POLICY.md). CI selection and c
 - Prepare and verify code and complete GitHub-facing text locally before writes; use English. Use `tools/Update-Issue.ps1` and `tools/Manage-PullRequest.ps1`, preview supported writes with `-WhatIf`, and verify API results.
 - Implement epic issues sequentially: one linked branch/PR per issue, merge and confirm closure before the next. State the concrete issue plan in chat. Project Priority, Work Type and Testing need evidence-based agent judgment; keep Status aligned with actual progress. After ProjectAccessError, report once and stop Project operations until credentials change.
 - Put `Closes #N` in the PR body for merge-driven issue closure. Confirm closure after merge and add one consolidated issue comment containing completed behavior, actual checks and PR URL; do not redundantly close an already closed issue.
-- GitHub enforces PRs and required checks. Keep your PR current with main, preserve local work when updating it, and wait for CI on the new commit. Inspect at meaningful intervals; never bypass failures or weaken protection to merge. See POLICY.md for enforcement ownership.
+- GitHub enforces PRs and required checks. Keep your PR current with main, preserve local work when updating it, and wait for CI on the new commit. Inspect at meaningful intervals; never bypass failures or weaken protection to merge. If your CI run greatly exceeds a recent comparable duration or shows no test progress for several minutes, inspect its current step and available logs; cancel only your stalled run, preserve diagnostics, find the cause, and fix it before retrying. See POLICY.md for enforcement ownership.
 
 ## Verification and reporting
 
