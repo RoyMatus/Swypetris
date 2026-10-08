@@ -54,13 +54,29 @@ try {
     $instrumentArgs += 'ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner'
     $report = 'app/build/outputs/androidTest-results/windows/instrumentation.txt'
     New-Item -ItemType Directory -Force -Path (Split-Path $report) | Out-Null
+    # Never let a report from an earlier checkout/attempt serve as release evidence.
+    Remove-Item -LiteralPath 'app/build/outputs/androidTest-results/windows/environment.json' -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath 'app/build/outputs/androidTest-results/windows/smoke.txt' -ErrorAction SilentlyContinue
     & $adb @instrumentArgs | Tee-Object -FilePath $report
     if ($LASTEXITCODE -ne 0) { throw "Android instrumentation command failed ($LASTEXITCODE)." }
     & python3 tools/ci/verify_instrumentation_output.py $CheckMode $AndroidClasses $report
     if ($LASTEXITCODE -ne 0) { throw "Android instrumentation verification failed ($LASTEXITCODE)." }
 
-    & $adb -s $serial shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1
+    & $adb -s $serial shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1 |
+        Tee-Object -FilePath 'app/build/outputs/androidTest-results/windows/smoke.txt'
     if ($LASTEXITCODE -ne 0) { throw 'Launcher smoke test failed.' }
+    $environment = @{
+        os = 'Windows'; mode = $CheckMode; android_classes = $AndroidClasses
+        serial = $serial; avd = $avd; instrumentation = 'success'; smoke = 'success'
+        api = ((& $adb -s $serial shell getprop ro.build.version.sdk) -join '').Trim()
+        abi = ((& $adb -s $serial shell getprop ro.product.cpu.abi) -join '').Trim()
+        fingerprint = ((& $adb -s $serial shell getprop ro.build.fingerprint) -join '').Trim()
+        java = ((& java -version 2>&1) -join "`n")
+        emulator = ((& $emulator -version) -join "`n")
+        emulator_options = "@$avd -port 5556 -no-window -no-audio -no-snapshot -wipe-data"
+        instrumentation_command = "adb $($instrumentArgs -join ' ')"
+    }
+    $environment | ConvertTo-Json | Set-Content -Encoding utf8 'app/build/outputs/androidTest-results/windows/environment.json'
 } finally {
     & $adb -s $serial emu kill 2>$null | Out-Null
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }

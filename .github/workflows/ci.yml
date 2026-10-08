@@ -108,6 +108,19 @@ jobs:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
           ANDROID_CLASSES: ${{ steps.changes.outputs.android }}
         run: ./tools/ci/run_windows_android_checks.ps1 -CheckMode $env:CHECK_MODE -AndroidClasses $env:ANDROID_CLASSES
+      - name: Build full regression evidence
+        if: ${{ success() && steps.changes.outputs.mode == 'full' }}
+        env:
+          CHECK_OUTPUTS: ${{ toJSON(steps.changes.outputs) }}
+          CHECK_STEPS: ${{ toJSON(steps) }}
+        run: python3 tools/ci/full_regression_proof.py
+      - name: Save full regression evidence
+        if: ${{ success() && steps.changes.outputs.mode == 'full' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: app/build/ci/full-regression-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
       - name: Save test, lint, and coverage reports
         if: always() && steps.changes.outputs.mode != 'none'
         uses: actions/upload-artifact@v4
