@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -108,32 +110,37 @@ class BorderlessHudTest {
         }
         for (theme in listOf("classic", "solarized_light", "github_light")) for (piece in Tetromino.entries) {
             compose.runOnIdle { palette = GamePalettes.find(theme); held = null; used = false }
-            val empty = compose.onNodeWithTag("holdPreview").captureToImage().toPixelMap()
+            // The preview width varies by shape; compare against the solid empty background.
+            val background = compose.onNodeWithTag("holdPreview").captureToImage().toPixelMap()[0, 0]
             compose.runOnIdle { held = piece }
             val available = compose.onNodeWithTag("holdPreview")
                 .assertContentDescriptionEquals("Запас ${piece.name}, обмен доступен").captureToImage().toPixelMap()
             val paintedTop = (0 until available.height).first { y ->
-                (0 until available.width).any { x -> difference(available[x, y], empty[x, y]) > .001f }
+                (0 until available.width).any { x -> difference(available[x, y], background) > .001f }
             }
             assertTrue("Painted Hold must start at the score top: $theme/$piece", paintedTop <= 1)
+            val paintedLeft = (0 until available.width).first { x ->
+                (0 until available.height).any { y -> difference(available[x, y], background) > .001f }
+            }
+            assertTrue("Painted Hold must align with the reserve lane: $theme/$piece", paintedLeft <= 1)
             compose.runOnIdle { used = true }
             val unavailable = compose.onNodeWithTag("holdPreview")
                 .assertContentDescriptionEquals("Запас ${piece.name}, обмен недоступен").captureToImage().toPixelMap()
             var availableDifference = 0f
             var usedDifference = 0f
-            for (y in 0 until empty.height) for (x in 0 until empty.width) {
-                availableDifference += difference(available[x, y], empty[x, y])
-                usedDifference += difference(unavailable[x, y], empty[x, y])
+            for (y in 0 until available.height) for (x in 0 until available.width) {
+                availableDifference += difference(available[x, y], background)
+                usedDifference += difference(unavailable[x, y], background)
             }
-            availableDifference /= empty.width * empty.height
-            usedDifference /= empty.width * empty.height
+            availableDifference /= available.width * available.height
+            usedDifference /= available.width * available.height
             assertTrue("Recognizable but extra faint: $theme/$piece", availableDifference > .005f &&
                 availableDifference < .25f)
             assertTrue("Used Hold remains distinct: $theme/$piece", usedDifference > .001f &&
                 availableDifference > usedDifference * 1.5f)
             val corner = (density * 1).toInt()
-            for (x in listOf(corner, empty.width - 1 - corner)) for (y in listOf(corner, empty.height - 1 - corner))
-                assertEquals("Hold must have no outer brackets", empty[x, y], available[x, y])
+            for (x in listOf(available.width - 1 - corner)) for (y in listOf(corner, available.height - 1 - corner))
+                assertEquals("Hold must have no outer brackets", background, available[x, y])
         }
     }
     /** Every Next shape uses its spawn cells and an outline stronger than its faint flat fill. */
@@ -200,14 +207,18 @@ class BorderlessHudTest {
         assertEquals(board.left + 20 * pixelsPerDp, hold.left, 1f)
         assertEquals(board.right - 20 * pixelsPerDp, score.right, 1f)
         if (value >= GameRules.FRUIT_STEP) assertFruitLane(value, score)
-        val label = compose.onNodeWithTag("holdLabel").assertTextEquals("Запас")
+        val label = compose.onNodeWithTag("holdLabel").assertTextEquals("ЗАПАС")
             .fetchSemanticsNode().boundsInRoot
         assertTrue(label.top >= hold.bottom && label.left >= hold.left &&
             label.right <= hold.right + 1f)
         val layouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithTag("holdLabel")
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        assertFalse("Hold label must fit", layouts.single().hasVisualOverflow)
+        val textLayout = layouts.single()
+        assertFalse("Hold label must fit", textLayout.hasVisualOverflow)
+        assertEquals(FontFamily.Monospace, textLayout.layoutInput.style.fontFamily)
+        assertEquals(FontWeight.Bold, textLayout.layoutInput.style.fontWeight)
+        assertEquals(hold.center.x, label.center.x, 1f)
         for (tag in listOf("scoreLabel", "nextLabel"))
             compose.onNodeWithTag(tag).assertDoesNotExist()
     }
