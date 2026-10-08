@@ -39,11 +39,23 @@ class SelectionTests(unittest.TestCase):
             self.assertIn("ru.itoltec.swypetris." + name, result["android"].split(","))
 
     def test_tools_use_own_checks(self):
-        result = select(["tools/GitHub-Api.psm1", "tools/Sync-IssueProject.ps1", "tools/release/Build-Release.ps1", "tools/ci/select_checks.py"])
+        result = select(["tools/GitHub-Api.psm1", "tools/Sync-IssueProject.ps1", "tools/release/Build-Release.ps1"])
         self.assertEqual("none", result["mode"])
         self.assertEqual("true", result["github_scripts"])
         self.assertEqual("true", result["release_scripts"])
+        self.assertEqual("false", result["ci_scripts"])
+
+    def test_ci_scripts_require_pipeline_regression(self):
+        result = select(["tools/ci/run_android_checks.sh"])
+        self.assertEqual("full", result["mode"])
         self.assertEqual("true", result["ci_scripts"])
+
+    def test_gradle_and_quality_config_require_full_checks(self):
+        for path in ("build.gradle.kts", "settings.gradle.kts", "gradle.properties",
+                     "gradle/wrapper/gradle-wrapper.properties", "config/detekt/detekt.yml",
+                     "app/src/main/res/values/strings.xml"):
+            with self.subTest(path=path):
+                self.assertEqual("full", select([path])["mode"])
 
     def test_menu_sky_changes_run_motion_and_artwork_checks(self):
         for path in (
