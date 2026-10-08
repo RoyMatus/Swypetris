@@ -36,6 +36,7 @@ class LineClearUiTest {
     }
 
     /** Local highlight, frozen time and exactly-once completion on the 600 ms boundary. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun clearPausesAndCompletesOnControlledClock() {
         var now = 1000L
         val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), almostFull(), { now }, false)
@@ -116,6 +117,7 @@ class LineClearUiTest {
         }
     }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun shardsStayClippedAndSettleToTheExistingClearResult() {
         var state by mutableStateOf(clearFixture(listOf(19)))
         var elapsed by mutableLongStateOf(0)
@@ -159,6 +161,7 @@ class LineClearUiTest {
             assertEquals("Reduced motion must not fly or shift cells", still[x, y], quiet[x, y])
     }
 
+    @androidx.annotation.RequiresApi(26)
     private fun assertClippedAndSave(name: String) {
         val image = compose.onRoot().captureToImage()
         val pixels = image.toPixelMap()
@@ -177,6 +180,7 @@ class LineClearUiTest {
         }
     }
 
+    @androidx.annotation.RequiresApi(26)
     private fun assertSettled(commit: () -> Unit) {
         val settled = compose.onNodeWithTag("board").captureToImage().toPixelMap()
         compose.runOnIdle(commit)

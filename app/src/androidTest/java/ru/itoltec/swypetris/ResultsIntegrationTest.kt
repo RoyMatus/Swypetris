@@ -65,6 +65,7 @@ class ResultsIntegrationTest {
     }
 
     /** Результат сохраняется один раз, пауза исключена из времени, рекорд может получить имя. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun gameOverStoresOneResultAndRecordName() {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val preferences = GameStorage.preferences(application)
@@ -167,6 +168,7 @@ class ResultsIntegrationTest {
     }
 
     /** Сохраняет реальный рендер экрана для визуальной проверки после инструментальных тестов. */
+    @androidx.annotation.RequiresApi(26)
     private fun saveScreenshot(name: String) {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val file = java.io.File(application.getExternalFilesDir(null), name)

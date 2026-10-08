@@ -24,6 +24,7 @@ class HelpHudTest {
     @get:Rule(order = 1) val compose = createComposeRule()
 
     /** Справка не теряет партию, не прокручивается горизонтально и возвращает в меню. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun helpPreservesGameAtLargeFont() {
         val application = ApplicationProvider.getApplicationContext<Application>()
         var now = 1000L
@@ -68,6 +69,7 @@ class HelpHudTest {
     }
 
     /** Line progress pulses once; frequent score changes cannot restart or extend it. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun hudBoundariesAndSinglePulse() {
         var score by mutableIntStateOf(899)
         var lines by mutableIntStateOf(8)
@@ -106,6 +108,7 @@ class HelpHudTest {
     }
 
     /** Сохраняет изображение проверяемой компоновки в файлы тестового приложения. */
+    @androidx.annotation.RequiresApi(26)
     private fun screenshot(name: String) {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val file = java.io.File(application.getExternalFilesDir(null), name)

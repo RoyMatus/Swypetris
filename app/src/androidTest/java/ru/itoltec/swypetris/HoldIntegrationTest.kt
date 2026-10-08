@@ -82,6 +82,7 @@ class HoldIntegrationTest {
         model.pause()
     }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun holdPreviewMovesOutOfBoardAndPreservesSettledCells() {
         val board = BoardGeometry.empty().map { it.toMutableList() }
         board[BoardGeometry.row(2)][1] = Tetromino.J
@@ -99,6 +100,7 @@ class HoldIntegrationTest {
             pixel(after, 1.2f, 2.3f + SPAWN_DISPLAY_ROWS))
     }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun emptyHoldDrawsNothingOverTheBoard() {
         var showHud by mutableStateOf(false)
         val state = GameState(active = Piece(Tetromino.T, y = 10), next = Tetromino.I)

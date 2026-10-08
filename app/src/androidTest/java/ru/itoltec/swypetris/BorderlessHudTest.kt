@@ -110,6 +110,7 @@ class BorderlessHudTest {
     }
     private fun stateFruitCounts(score: Int) = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = score).fruitCounts
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun framelessHoldIsExtraFaintAndUsedStateIsStillDistinct() {
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var held by mutableStateOf<Tetromino?>(null)
@@ -152,6 +153,7 @@ class BorderlessHudTest {
         }
     }
     /** Every Next shape uses its spawn cells and an outline stronger than its faint flat fill. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun nextHasQuietFillAndReadableOutlinesInDarkAndLightThemes() {
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var next by mutableStateOf(Tetromino.I)

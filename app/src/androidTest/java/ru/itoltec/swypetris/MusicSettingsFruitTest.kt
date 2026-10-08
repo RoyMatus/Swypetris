@@ -37,6 +37,7 @@ class MusicSettingsFruitTest {
     }
 
     /** Выбор сразу звучит, одинаковый выбор не перезапускает, фон глушит звук, а меню включает свою тему. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun previewLifecyclePersistenceAndMigration() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         GameStorage.preferences(app).edit().putBoolean("music",false).commit()
@@ -71,6 +72,7 @@ class MusicSettingsFruitTest {
     }
 
     /** Музыка и сетка тем доступны при 320 dp и двойном шрифте. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun musicPickerLargeFontInLightAndDarkThemes() {
         val model=GameViewModel(ApplicationProvider.getApplicationContext(),null,{1000L},false)
         model.settings(); model.setPalette("github_light")
@@ -90,6 +92,7 @@ class MusicSettingsFruitTest {
     }
 
     /** Earned fruits stay below the right-aligned score and away from the spawn/preview area. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun earnedFruitsHaveNoPlaceholdersAndAvoidPreview() {
         var count by mutableIntStateOf(0)
         compose.setContent {
@@ -149,6 +152,7 @@ class MusicSettingsFruitTest {
     }
 
     /** Сохраняет снимок только в каталоге приложения тестового эмулятора. */
+    @androidx.annotation.RequiresApi(26)
     private fun screenshot(name:String) {
         val app=ApplicationProvider.getApplicationContext<Application>()
         java.io.File(app.getExternalFilesDir(null),name).outputStream().use {

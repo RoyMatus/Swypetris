@@ -73,6 +73,7 @@ class LaunchIntroTest {
     }
 
     /** Фон не расходует время; собранный PNG совпадает с меню без изменения размера или позиции. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun stagedAnimationHasNoFinalJumpAndFitsLightCompactScreen() {
         val model = model()
         model.setPalette("github_light")
@@ -137,6 +138,7 @@ class LaunchIntroTest {
         screenshot("intro-menu-dark.png")
     }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun darkApproachEndsOnTheSameMenuComposition() {
         val model = model()
         model.setPalette("synthwave_84")
@@ -160,6 +162,7 @@ class LaunchIntroTest {
     }
 
     /** Оба изображения имеют настоящую прозрачность, включая пространство между полосами. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun transparentAssetsAndAdaptiveIconMasks() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         for (resource in listOf(R.drawable.swypetris_logo, R.drawable.swypetris_mark)) {
@@ -227,6 +230,7 @@ class LaunchIntroTest {
     }
 
     /** Сохраняет реальный кадр Compose для визуального контроля. */
+    @androidx.annotation.RequiresApi(26)
     private fun screenshot(name: String): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap().also { save(it, name) }
 
     /** Записывает снимок в доступный adb каталог тестового приложения. */

@@ -29,6 +29,7 @@ class BrandNavigationTest {
     @get:Rule(order = 1) val compose = createComposeRule()
 
     /** Меню соблюдает порядок; результаты не содержат действий новой игры и возврата. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun menuOrderAndResultsBack() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
         compose.setContent { SwypetrisTheme(darkTheme = true, dynamicColor = false) { SwypetrisApp(model) {} } }
@@ -60,6 +61,7 @@ class BrandNavigationTest {
     }
 
     /** Все семь кнопок целиком видны без прокрутки на экране 320 × 480 dp при двойном шрифте. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun compactMenuFitsSmallScreenWithLargeFont() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
         model.newGame(); model.menu(); model.finishLaunchIntro()
@@ -88,6 +90,7 @@ class BrandNavigationTest {
     }
 
     /** Все фрукты и контакты помещаются при ширине 320 dp и двойном размере шрифта. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun fruitsAndContactsAtLargeFont() {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val model = GameViewModel(application, null, { 1000L }, false)
@@ -147,6 +150,7 @@ class BrandNavigationTest {
     }
 
     /** Сохраняет снимок для визуального контроля нового оформления. */
+    @androidx.annotation.RequiresApi(26)
     private fun screenshot(name: String) {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val file = java.io.File(application.getExternalFilesDir(null), name)
