@@ -90,6 +90,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.buildAnnotatedString
@@ -253,10 +254,11 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
 
 /** Fits one HUD line without clipping its text at large font scales or long scores. */
 @Composable
-private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: Dp? = null): TextUnit {
+private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: Dp? = null,
+    fontFamily: FontFamily? = null, fontWeight: FontWeight? = null): TextUnit {
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
-    val style = TextStyle(fontSize = preferred,
+    val style = TextStyle(fontSize = preferred, fontFamily = fontFamily, fontWeight = fontWeight,
         lineHeight = preferred * 1.2f, letterSpacing = 0.sp,
         platformStyle = PlatformTextStyle(includeFontPadding = false))
     return remember(text, preferred, width, height, density, style, measurer) {
@@ -299,8 +301,9 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
         val hintRight = cellWidth * (nextCells.maxOf { it.x } + 1)
         val leftLaneWidth = (hintLeft - leftMargin - 4.dp).coerceAtLeast(1.dp)
         val rightLaneWidth = (maxWidth - rightMargin - hintRight - 4.dp).coerceAtLeast(1.dp)
-        val holdWidth = minOf((maxWidth * .22f).coerceIn(48.dp, 88.dp), leftLaneWidth)
+        val maxHoldWidth = minOf((maxWidth * .22f).coerceIn(48.dp, 88.dp), leftLaneWidth)
         val holdHeight = minOf((headerHeight * .7f).coerceIn(28.dp, 48.dp), headerHeight)
+        val holdWidth = holdAreaWidth(state.held, maxHoldWidth, holdHeight)
         val scoreTop = minOf(cellWidth, headerHeight / SPAWN_DISPLAY_ROWS) * .07f
         val scoreHeight = minOf(
             ((maxHeight - bottomInset) / 32).coerceIn(16.dp, 28.dp) * density.fontScale,
@@ -337,12 +340,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
         ) {
             HoldPreview(state.held, state.holdUsed,
                 Modifier.width(holdWidth).height(holdHeight).testTag("holdPreview"))
-            val labelFont = fittedHudFont("Запас", 10.sp, holdWidth)
-            Text("Запас", color = LocalGamePalette.current.muted, maxLines = 1, softWrap = false,
-                textAlign = TextAlign.Center,
-                style = TextStyle(fontSize = labelFont, lineHeight = labelFont * 1.2f, letterSpacing = 0.sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                modifier = Modifier.fillMaxWidth().testTag("holdLabel"))
+            HoldLabel(holdWidth)
         }
     }
 }
@@ -381,6 +379,29 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
     }
 }
 
+
+@Composable
+private fun HoldLabel(width: Dp) {
+    val labelFont = fittedHudFont("ЗАПАС", 14.sp, width,
+        fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+    Text("ЗАПАС", color = LocalGamePalette.current.muted, maxLines = 1, softWrap = false,
+        textAlign = TextAlign.Center,
+        style = TextStyle(fontSize = labelFont, fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold, lineHeight = labelFont * 1.2f, letterSpacing = 0.sp,
+            platformStyle = PlatformTextStyle(includeFontPadding = false)),
+        modifier = Modifier.fillMaxWidth().testTag("holdLabel"))
+}
+
+/** Shrinks only the reserve area; the held cells retain their original step size. */
+private fun holdAreaWidth(held: Tetromino?, maxWidth: Dp, height: Dp): Dp {
+    val cells = (held ?: Tetromino.T).shape
+    val columns = cells.maxOf { it.x } - cells.minOf { it.x } + 1
+    val rows = cells.maxOf { it.y } - cells.minOf { it.y } + 1
+    val padding = 4.dp * 2
+    val step = minOf((maxWidth - padding) / columns, (height - padding) / rows)
+    return (step * columns + padding).coerceIn(1.dp, maxWidth)
+}
+
 /** Draws the current Hold piece in spawn orientation and exposes availability to accessibility. */
 @Composable
 private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
@@ -394,17 +415,18 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
     }) {
         if (held == null) return@Canvas
         val cells = held.shape
-        val columns = cells.maxOf { it.x } + 1
+        val firstColumn = cells.minOf { it.x }
+        val columns = cells.maxOf { it.x } - firstColumn + 1
         val firstRow = cells.minOf { it.y }
         val rows = cells.maxOf { it.y } - firstRow + 1
         val padding = 4.dp.toPx()
         val step = minOf((size.width - padding * 2) / columns, (size.height - padding * 2) / rows)
-        // Keep the existing cell size and horizontal centering; block() adds its own gap.
-        // Cancel that gap vertically so the actual painted top equals the score's top.
-        val origin = Offset((size.width - columns * step) / 2, -step * .07f)
+        // Preserve cell size; align the painted edge with the inset-aware reserve lane.
+        // block() adds a gap on both axes, so cancel it at the lane origin.
+        val origin = Offset(-step * .07f, -step * .07f)
         clipRect {
             cells.forEach {
-                block(Cell(it.x, it.y - firstRow), palette.piece(held), palette.finish,
+                block(Cell(it.x - firstColumn, it.y - firstRow), palette.piece(held), palette.finish,
                     palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f)
             }
         }
