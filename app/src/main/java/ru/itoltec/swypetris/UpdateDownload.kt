@@ -24,7 +24,10 @@ internal fun copyUpdate(input: InputStream, destination: File, expectedSize: Lon
     require(Regex("[a-fA-F0-9]{64}").matches(expectedSha256))
     val digest = MessageDigest.getInstance("SHA-256")
     try {
-        destination.outputStream().use { output ->
+        val stream = try { destination.outputStream() } catch (failure: IOException) {
+            throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot open update file", failure)
+        }
+        stream.use { output ->
             val buffer = ByteArray(64 * 1024)
             var received = 0L
             while (true) {
@@ -32,16 +35,20 @@ internal fun copyUpdate(input: InputStream, destination: File, expectedSize: Lon
                 val count = input.read(buffer)
                 if (count < 0) break
                 received += count
-                if (received > expectedSize) throw IOException("APK size exceeds release metadata")
-                output.write(buffer, 0, count)
+                if (received > expectedSize) throw UpdateFailure(UpdateFailureReason.INTEGRITY, "APK size exceeds release metadata")
+                try { output.write(buffer, 0, count) } catch (failure: IOException) {
+                    throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot write update file", failure)
+                }
                 digest.update(buffer, 0, count)
                 progress(received)
             }
             checkActive()
-            if (received != expectedSize) throw IOException("APK download is incomplete")
+            if (received != expectedSize) throw UpdateFailure(UpdateFailureReason.INCOMPLETE, "APK download is incomplete")
             val hash = digest.digest().joinToString("") { "%02x".format(it) }
-            if (!hash.equals(expectedSha256, true)) throw IOException("APK hash does not match release metadata")
-            output.fd.sync()
+            if (!hash.equals(expectedSha256, true)) throw UpdateFailure(UpdateFailureReason.INTEGRITY, "APK hash does not match release metadata")
+            try { output.fd.sync() } catch (failure: IOException) {
+                throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot flush update file", failure)
+            }
         }
     } catch (failure: Throwable) {
         removeUpdateFile(destination)

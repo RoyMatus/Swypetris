@@ -15,7 +15,7 @@ internal fun packageVersionCode(info: PackageInfo): Long =
 /** Check the downloaded package before giving it to Android's final signature verifier. */
 @Suppress("DEPRECATION")
 internal fun validateUpdateApk(context: Context, file: File, update: AvailableUpdate) {
-    if (file.length() != update.sizeBytes) throw IOException("Downloaded APK size does not match")
+    if (file.length() != update.sizeBytes) throw UpdateFailure(UpdateFailureReason.INTEGRITY, "Downloaded APK size does not match")
     val hash = MessageDigest.getInstance("SHA-256")
     file.inputStream().use { input ->
         val buffer = ByteArray(64 * 1024)
@@ -26,20 +26,20 @@ internal fun validateUpdateApk(context: Context, file: File, update: AvailableUp
         }
     }
     if (!hash.digest().joinToString("") { "%02x".format(it) }.equals(update.sha256, true))
-        throw IOException("Downloaded APK checksum does not match")
+        throw UpdateFailure(UpdateFailureReason.INTEGRITY, "Downloaded APK checksum does not match")
     val manager = context.packageManager
     val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES
         else PackageManager.GET_SIGNATURES
     val installed = manager.getPackageInfo(context.packageName, flags)
     val candidate = manager.getPackageArchiveInfo(file.absolutePath, flags)
-        ?: throw IOException("Cannot read APK package or signature")
+        ?: throw UpdateFailure(UpdateFailureReason.PACKAGE, "Cannot read APK package or signature")
     if (candidate.packageName != context.packageName || candidate.splitNames?.isNotEmpty() == true ||
         packageVersionCode(candidate) != update.versionCode || candidate.versionName != update.versionName ||
         !newerVersion(update.versionCode, packageVersionCode(installed)))
-        throw IOException("APK package or version does not match the expected update")
+        throw UpdateFailure(UpdateFailureReason.PACKAGE, "APK package or version does not match the expected update")
     val compatible = if (Build.VERSION.SDK_INT >= 28) {
-        val current = installed.signingInfo ?: throw IOException("Installed signer is unavailable")
-        val next = candidate.signingInfo ?: throw IOException("APK signer is unavailable")
+        val current = installed.signingInfo ?: throw UpdateFailure(UpdateFailureReason.SIGNER, "Installed signer is unavailable")
+        val next = candidate.signingInfo ?: throw UpdateFailure(UpdateFailureReason.SIGNER, "APK signer is unavailable")
         if (current.hasMultipleSigners() || next.hasMultipleSigners()) {
             current.apkContentsSigners.toSet() == next.apkContentsSigners.toSet()
         } else {
@@ -48,5 +48,5 @@ internal fun validateUpdateApk(context: Context, file: File, update: AvailableUp
         }
     } else installed.signatures?.toSet() == candidate.signatures?.toSet() &&
         !installed.signatures.isNullOrEmpty()
-    if (!compatible) throw IOException("APK is signed by a different publisher")
+    if (!compatible) throw UpdateFailure(UpdateFailureReason.SIGNER, "APK is signed by a different publisher")
 }
