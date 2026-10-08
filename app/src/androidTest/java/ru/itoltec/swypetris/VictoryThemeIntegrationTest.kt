@@ -2,12 +2,12 @@
 
 import android.app.Application
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +17,9 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.DeviceConfigurationOverride
+import androidx.compose.ui.test.FontScale
+import androidx.compose.ui.test.ForcedSize
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
@@ -30,11 +33,13 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.then
 import androidx.compose.ui.test.top
 import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -115,22 +120,27 @@ class VictoryThemeIntegrationTest {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
             { 1000L }, false)
-        var viewport by mutableStateOf(320.dp to 640.dp)
+        var viewport by mutableStateOf(DpSize(320.dp, 640.dp))
+        var renderedDensity = 1f
         compose.setContent {
-            CompositionLocalProvider(LocalVictoryAnimations provides false,
-                LocalDensity provides Density(1f, 1.5f)) {
-                Box(Modifier.size(viewport.first, viewport.second)) { SwypetrisApp(model) {} }
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(viewport) then
+                DeviceConfigurationOverride.FontScale(1.5f)) {
+                CompositionLocalProvider(LocalVictoryAnimations provides false) {
+                    val density = LocalDensity.current
+                    SideEffect { renderedDensity = density.density }
+                    SwypetrisApp(model) {}
+                }
             }
         }
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
         for ((width, height) in listOf(320.dp to 640.dp, 393.dp to 873.dp,
             600.dp to 400.dp, 800.dp to 480.dp)) {
-            viewport = width to height
+            viewport = DpSize(width, height)
             compose.waitForIdle()
             val scene = compose.onNodeWithTag("victoryScene").fetchSemanticsNode().boundsInRoot
             val artwork = compose.onNodeWithTag("victoryArtwork").fetchSemanticsNode().boundsInRoot
-            assertEquals(width.value, scene.width, 1f)
-            assertEquals(height.value, scene.height, 1f)
+            assertEquals(width.value, scene.width / renderedDensity, 1f)
+            assertEquals(height.value, scene.height / renderedDensity, 1f)
             assertEquals(scene, artwork)
             compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("victoryTitle"))
             compose.onNodeWithTag("victoryTitle").assertIsDisplayed()
@@ -147,7 +157,6 @@ class VictoryThemeIntegrationTest {
     /** Поздравление не тратит время, не пишет историю и не повторяет награды при возврате. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun victoryAndContinuationPreserveSession() {
-        Log.i("VictoryContinuationCI", "start")
         var now = 1000L
         val music = Music()
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
@@ -156,14 +165,11 @@ class VictoryThemeIntegrationTest {
         val initialGravity = model.game!!.gravityMillis
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
-        Log.i("VictoryContinuationCI", "content ready")
         compose.runOnIdle { now += 100; model.input.command(GameCommand.SOFT_DROP) }
         compose.mainClock.advanceTimeBy(2200)
         compose.onNodeWithTag("victoryPage").assertIsDisplayed()
         compose.onNodeWithTag("board").assertDoesNotExist()
-        Log.i("VictoryContinuationCI", "victory shown")
         screenshot("victory-classic.png")
-        Log.i("VictoryContinuationCI", "screenshot captured")
         compose.runOnIdle {
             assertEquals(80000, model.game!!.score)
             assertEquals(1, music.modes.count { it == MusicMode.RECORD })
@@ -177,11 +183,8 @@ class VictoryThemeIntegrationTest {
         }
         compose.mainClock.advanceTimeBy(32)
         compose.mainClock.autoAdvance = true
-        Log.i("VictoryContinuationCI", "clock automatic")
         compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
-        Log.i("VictoryContinuationCI", "button reached")
         compose.onNodeWithTag("nextRound").performClick()
-        Log.i("VictoryContinuationCI", "button clicked")
         compose.mainClock.advanceTimeBy(32)
         compose.runOnIdle {
             assertEquals(GameScreen.PLAYING, model.screen)
@@ -201,7 +204,6 @@ class VictoryThemeIntegrationTest {
             assertEquals(1, model.results.single().completedRounds)
             assertEquals(100L, model.results.single().durationMillis)
         }
-        Log.i("VictoryContinuationCI", "finished")
     }
 
     /** Все темы сохраняются; Next доступен экранному диктору независимо от тени падения. */
