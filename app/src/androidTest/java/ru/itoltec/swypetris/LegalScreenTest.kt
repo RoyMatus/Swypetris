@@ -20,7 +20,7 @@ class LegalScreenTest {
 
     @Test fun contactsOpenOfflineNoticesAndBundledLicense() {
         val model = ViewModelProvider(compose.activity)[GameViewModel::class.java]
-        compose.runOnIdle { model.finishLaunchIntro(); model.contacts() }
+        compose.runOnIdle { model.navigation.finishLaunchIntro(); model.navigation.contacts() }
         compose.onNodeWithTag("contactsPage").performScrollToNode(hasTestTag("legal"))
         compose.onNodeWithTag("legal").performClick()
         compose.onNodeWithTag("legalPage").assertIsDisplayed()

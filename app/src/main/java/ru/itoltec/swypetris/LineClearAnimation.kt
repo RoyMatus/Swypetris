@@ -1,5 +1,23 @@
 ﻿package ru.itoltec.swypetris
 
+private const val HIGHLIGHT_PEAK_ALPHA = .18f
+private const val SMOOTHSTEP_CUBIC_TERM = 3f
+private const val SHARDS_PER_CELL = 4
+private const val ROW_SEED_MULTIPLIER = 31
+private const val COLUMN_SEED_MULTIPLIER = 17
+private const val PART_SEED_MULTIPLIER = 11
+private const val CLEAR_SEED_MULTIPLIER = 7
+private const val HORIZONTAL_SPLAY = .16f
+private const val HORIZONTAL_VARIATIONS = 7
+private const val HORIZONTAL_VARIATION_CENTER = 3
+private const val HORIZONTAL_VARIATION_STEP = .11f
+private const val BASE_VERTICAL_VELOCITY = -1.8f
+private const val VERTICAL_VARIATIONS = 9
+private const val VERTICAL_VARIATION_STEP = .1f
+private const val BASE_ROTATION_DEGREES = 18f
+private const val ROTATION_VARIATIONS = 19
+
+
 /** Presentation phases sampled from the canonical clear clock; no gameplay state lives here. */
 object LineClearAnimation {
     const val STEP_MILLIS = 16L
@@ -11,7 +29,7 @@ object LineClearAnimation {
 
     fun highlight(elapsedMillis: Long): Float {
         val progress = (elapsedMillis.toFloat() / BURST_MILLIS).coerceIn(0f, 1f)
-        return .18f * (1f - kotlin.math.abs(progress * 2f - 1f))
+        return HIGHLIGHT_PEAK_ALPHA * (1f - kotlin.math.abs(progress * 2f - 1f))
     }
 
     fun burstProgress(elapsedMillis: Long): Float =
@@ -26,7 +44,7 @@ object LineClearAnimation {
     fun settleProgress(elapsedMillis: Long): Float {
         val progress = ((elapsedMillis - SETTLE_MILLIS).toFloat() /
             (TOTAL_MILLIS - SETTLE_MILLIS)).coerceIn(0f, 1f)
-        return progress * progress * (3f - 2f * progress)
+        return progress * progress * (SMOOTHSTEP_CUBIC_TERM - 2f * progress)
     }
 
     /** All rows above a removed row move down, including hidden rows entering the visible board. */
@@ -35,13 +53,19 @@ object LineClearAnimation {
 
     /** Four fixed fragments per source cell, at most 160 for a legal four-line clear. */
     internal fun shards(state: GameState): List<ClearShard> = buildList {
-        state.clearingRows.sorted().distinct().filter { it >= BoardGeometry.HIDDEN_ROWS }.take(4).forEach { row ->
+        state.clearingRows.sorted().distinct().filter { it >= BoardGeometry.HIDDEN_ROWS }
+            .take(GameRules.MAX_CLEAR_LINES).forEach { row ->
             state.board[row].forEachIndexed { column, type ->
-                if (type != null) repeat(4) { part ->
-                    val seed = (row * 31 + column * 17 + part * 11 + state.completedClears * 7) and Int.MAX_VALUE
+                if (type != null) repeat(SHARDS_PER_CELL) { part ->
+                    val seed =
+                        (row * ROW_SEED_MULTIPLIER + column * COLUMN_SEED_MULTIPLIER +
+                            part * PART_SEED_MULTIPLIER +
+                            state.completedClears * CLEAR_SEED_MULTIPLIER) and Int.MAX_VALUE
                     add(ClearShard(column, row, type, part,
-                        (column - 4.5f) * .16f + (seed % 7 - 3) * .11f,
-                        -1.8f - seed % 9 * .1f, (seed % 2 * 2 - 1) * (18f + seed % 19)))
+                        (column - (BoardGeometry.WIDTH - 1) / 2f) * HORIZONTAL_SPLAY + (
+                            seed % HORIZONTAL_VARIATIONS - HORIZONTAL_VARIATION_CENTER) * HORIZONTAL_VARIATION_STEP,
+                        BASE_VERTICAL_VELOCITY - seed % VERTICAL_VARIATIONS * VERTICAL_VARIATION_STEP,
+                            (seed % 2 * 2 - 1) * (BASE_ROTATION_DEGREES + seed % ROTATION_VARIATIONS)))
                 }
             }
         }

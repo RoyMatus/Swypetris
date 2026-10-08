@@ -2,19 +2,37 @@
 
 import android.app.Application
 import android.graphics.Bitmap
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToKey
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ru.itoltec.swypetris.ui.theme.SwypetrisTheme
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -37,9 +55,10 @@ class HelpHudTest {
                 }
             }
         }
-        compose.runOnIdle { model.help() }
+        compose.runOnIdle { model.navigation.help() }
         compose.onNodeWithTag("helpPage").assertIsDisplayed()
-        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+            .assertCountEquals(0)
         compose.onNodeWithTag("helpPage").performScrollToIndex(7)
         compose.onNodeWithText("Цель").assertIsDisplayed()
         compose.onNodeWithTag("helpPage").performScrollToIndex(8)
@@ -57,7 +76,7 @@ class HelpHudTest {
         screenshot("help-large-font.png")
         compose.runOnIdle {
             now += 10000
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(initial, model.game)
         }
         compose.onNodeWithTag("helpBack").assertDoesNotExist()

@@ -2,20 +2,42 @@
 
 import android.app.Application
 import android.graphics.Bitmap
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -46,7 +68,7 @@ class VictoryThemeIntegrationTest {
         val initialGravity = model.game!!.gravityMillis
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
-        compose.runOnIdle { now += 100; model.command(GameCommand.SOFT_DROP) }
+        compose.runOnIdle { now += 100; model.input.command(GameCommand.SOFT_DROP) }
         compose.mainClock.advanceTimeBy(2200)
         compose.onNodeWithTag("victoryPage").assertIsDisplayed()
         compose.onNodeWithTag("board").assertDoesNotExist()
@@ -56,8 +78,8 @@ class VictoryThemeIntegrationTest {
             assertEquals(1, music.modes.count { it == MusicMode.RECORD })
             assertTrue(model.results.isEmpty())
             now += 30000
-            model.advanceFrame(now)
-            model.menu()
+            model.simulation.advanceFrame(now)
+            model.navigation.menu()
             model.resume()
             assertEquals(GameScreen.VICTORY, model.screen)
             assertEquals(1, music.modes.count { it == MusicMode.RECORD })
@@ -80,7 +102,7 @@ class VictoryThemeIntegrationTest {
             model.nextRound()
             assertEquals(state, model.game)
             // Заканчиваем эту же партию на тестовом поле, не записывая время поздравления.
-            repeat(30) { model.command(GameCommand.HARD_DROP) }
+            repeat(30) { model.input.command(GameCommand.HARD_DROP) }
             assertEquals(1, model.results.size)
             assertEquals(1, model.results.single().completedRounds)
             assertEquals(100L, model.results.single().durationMillis)
@@ -96,7 +118,7 @@ class VictoryThemeIntegrationTest {
         assertEquals(12, GamePalettes.all.size)
         assertEquals(2, GamePalettes.all.count { it.light })
         for (palette in GamePalettes.all) {
-            compose.runOnIdle { model.setPalette(palette.id); model.setHints(true) }
+            compose.runOnIdle { model.options.setPalette(palette.id); model.options.setHints(true) }
             compose.onNodeWithTag("board").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription,
                 listOf("Игровое поле, очки 0, линии 0. Следующая фигура T Запас: пусто, обмен доступен.")))
             screenshot("board-${palette.id}.png")
@@ -104,22 +126,23 @@ class VictoryThemeIntegrationTest {
                 val state = model.game
                 val fresh = GameViewModel(app, null, { 1000L }, false)
                 assertEquals(palette.id, fresh.paletteId)
-                model.setHints(false)
+                model.options.setHints(false)
                 assertEquals(state, model.game)
             }
             compose.onNodeWithTag("board").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription,
                 listOf("Игровое поле, очки 0, линии 0. Следующая фигура T Запас: пусто, обмен доступен.")))
             compose.onNodeWithTag("nextPreview").assertIsDisplayed()
         }
-        compose.runOnIdle { model.setPalette("unknown"); assertEquals("classic", model.paletteId); model.settings() }
+        compose.runOnIdle { model.options.setPalette("unknown"); assertEquals("classic", model.paletteId);
+            model.navigation.settings() }
         compose.onNodeWithTag("palette_github_light_preview").performScrollTo().performClick()
         compose.runOnIdle { assertEquals("github_light", model.paletteId) }
         screenshot("settings-github-light.png")
-        compose.runOnIdle { model.menu() }
+        compose.runOnIdle { model.navigation.menu() }
         screenshot("menu-github-light.png")
-        compose.runOnIdle { model.setPalette("solarized_dark") }
+        compose.runOnIdle { model.options.setPalette("solarized_dark") }
         screenshot("menu-solarized-dark.png")
-        compose.runOnIdle { model.setPalette("synthwave_84") }
+        compose.runOnIdle { model.options.setPalette("synthwave_84") }
         screenshot("menu-synthwave-84.png")
     }
 
@@ -128,8 +151,8 @@ class VictoryThemeIntegrationTest {
     @Test fun victoryAtLargeFontAndLightTheme() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999), { 1000L }, false)
-        model.setPalette("solarized_light")
-        model.command(GameCommand.SOFT_DROP)
+        model.options.setPalette("solarized_light")
+        model.input.command(GameCommand.SOFT_DROP)
         compose.mainClock.autoAdvance = false
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
@@ -141,7 +164,8 @@ class VictoryThemeIntegrationTest {
         compose.mainClock.autoAdvance = true
         compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
         compose.onNodeWithTag("nextRound").assertIsDisplayed()
-        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+            .assertCountEquals(0)
         screenshot("victory-light-buttons.png")
     }
 
@@ -149,8 +173,8 @@ class VictoryThemeIntegrationTest {
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun palettePickerAtLargeFont() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
-        model.setPalette("solarized_light")
-        model.settings()
+        model.options.setPalette("solarized_light")
+        model.navigation.settings()
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 Box(Modifier.width(320.dp).fillMaxHeight()) { SwypetrisApp(model) {} }
@@ -158,7 +182,8 @@ class VictoryThemeIntegrationTest {
         }
         GamePalettes.all.forEach { item -> compose.onNodeWithTag("palette_${item.id}_preview").assertExists() }
         compose.onNodeWithTag("palettePicker").assertDoesNotExist()
-        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).assertCountEquals(0)
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+            .assertCountEquals(0)
         compose.onNodeWithTag("palette_synthwave_84_preview").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("palette_catppuccin_preview").performScrollTo().performClick()
         compose.runOnIdle { assertEquals("catppuccin", model.paletteId) }
@@ -175,7 +200,7 @@ class VictoryThemeIntegrationTest {
     /** Названия тем полностью видны и отделены от превью на узком экране при обычном и двойном шрифте. */
     @Test fun paletteNamesFitWithoutOverlappingPreviews() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
-        model.settings()
+        model.navigation.settings()
         var fontScale by mutableFloatStateOf(1f)
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {

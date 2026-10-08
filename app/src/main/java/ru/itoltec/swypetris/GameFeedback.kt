@@ -6,7 +6,8 @@ enum class FeedbackEvent { DROP, CLEAR }
 /** Selects one transition effect; a line clear takes priority over a drop. */
 fun feedbackEvent(before: GameState, after: GameState, command: GameCommand): FeedbackEvent? = when {
     before.clearingRows.isEmpty() && after.clearingRows.isNotEmpty() -> FeedbackEvent.CLEAR
-    command != GameCommand.HOLD && before.clearingRows.isEmpty() && (command == GameCommand.HARD_DROP || before.accelerated) && after.generation != before.generation -> FeedbackEvent.DROP
+    command != GameCommand.HOLD && before.clearingRows.isEmpty() && (command == GameCommand.HARD_DROP ||
+        before.accelerated) && after.generation != before.generation -> FeedbackEvent.DROP
     else -> null
 }
 

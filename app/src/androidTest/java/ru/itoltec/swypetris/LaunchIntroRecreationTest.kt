@@ -1,10 +1,14 @@
 ﻿package ru.itoltec.swypetris
 
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 

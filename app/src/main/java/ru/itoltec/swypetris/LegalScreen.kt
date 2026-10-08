@@ -3,10 +3,23 @@ package ru.itoltec.swypetris
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -47,7 +60,9 @@ internal fun LegalScreen() {
         contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text("Лицензии и права", style = MaterialTheme.typography.headlineLarge) }
         item { Text("Swypetris · © 2026 RoyMatus", style = MaterialTheme.typography.titleMedium) }
-        item { Text("Логотип, значок, иллюстрация кубка, игровые звуки и музыкальные записи созданы для Swypetris. Сведения о сторонних источниках приведены ниже.") }
+        item { Text("Логотип, значок, иллюстрация кубка, игровые звуки и музыкальные " +
+            "записи созданы для Swypetris. Сведения о сторонних источниках " +
+            "приведены ниже.") }
         sections.forEach { section ->
             item { Text(section.title, style = MaterialTheme.typography.titleLarge) }
             item { Text(section.introduction, style = MaterialTheme.typography.bodyMedium) }

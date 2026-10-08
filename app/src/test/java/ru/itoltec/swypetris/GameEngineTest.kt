@@ -1,6 +1,7 @@
 package ru.itoltec.swypetris
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
 
@@ -27,7 +28,8 @@ class GameEngineTest {
     @Test fun rotationsAreReversible() {
         Tetromino.entries.forEach { type ->
             val start = state(Piece(type, y = 4))
-            assertEquals(start.active, engine.apply(engine.apply(start, GameCommand.CLOCKWISE), GameCommand.COUNTERCLOCKWISE).active)
+            assertEquals(start.active, engine.apply(engine.apply(start, GameCommand.CLOCKWISE),
+                GameCommand.COUNTERCLOCKWISE).active)
             var rotated = start
             repeat(4) { rotated = engine.apply(rotated, GameCommand.CLOCKWISE) }
             assertEquals(start.active, rotated.active)
@@ -132,7 +134,8 @@ class GameEngineTest {
             val types = mutableListOf<Tetromino>()
             repeat(7) {
                 types += current.active.type
-                current = engine.apply(current.copy(board = List(BoardGeometry.TOTAL_ROWS) { List(10) { null } }), GameCommand.HARD_DROP)
+                current = engine.apply(current.copy(board = List(BoardGeometry.TOTAL_ROWS) { List(10) { null } }),
+                    GameCommand.HARD_DROP)
             }
             assertEquals(Tetromino.entries.toSet(), types.toSet())
         }

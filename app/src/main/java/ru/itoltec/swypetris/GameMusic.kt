@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -13,6 +13,9 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+
+private const val GAME_EFFECT_VOLUME = .4f
+
 
 /** Audio mode: silence, menu theme, game playlist, or a one-shot record fanfare. */
 enum class MusicMode { SILENT, MENU, GAME, RECORD }
@@ -50,7 +53,8 @@ class GameMusic(private val context: Context) : MusicPlayback {
         hasFocus = change == AudioManager.AUDIOFOCUS_GAIN
         synchronizePlayback()
     }
-    private val focusRequest = if (Build.VERSION.SDK_INT >= 26) AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+    private val focusRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) AudioFocusRequest
+        .Builder(AudioManager.AUDIOFOCUS_GAIN)
         .setAudioAttributes(attributes).setOnAudioFocusChangeListener(listener, handler).build() else null
     private val timer = object : Runnable {
         /** Checks for the end of a gap only while playback is allowed. */
@@ -70,7 +74,8 @@ class GameMusic(private val context: Context) : MusicPlayback {
     }
 
     /** Resumes the previous track or the remainder of an inter-track gap. */
-    override fun setPlaying(enabled: Boolean) = setMode(if (enabled && selection != MusicSelection.Off) MusicMode.GAME else MusicMode.SILENT)
+    override fun setPlaying(enabled: Boolean) = setMode(if (enabled &&
+        selection != MusicSelection.Off) MusicMode.GAME else MusicMode.SILENT)
 
     /** Releases the old player and starts the newly selected mode from the beginning. */
     override fun select(selection: MusicSelection) {
@@ -96,7 +101,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
         mode = target
         if (target == MusicMode.SILENT) {
             hasFocus = false
-            if (Build.VERSION.SDK_INT >= 26) focusRequest?.let(audio::abandonAudioFocusRequest)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) focusRequest?.let(audio::abandonAudioFocusRequest)
             else audio.abandonAudioFocus(listener)
         } else {
             blockedByHeadphones = false
@@ -106,7 +111,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
                 }
                 recordPlayer?.seekTo(0)
             }
-            val result = if (Build.VERSION.SDK_INT >= 26) audio.requestAudioFocus(focusRequest!!)
+            val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) audio.requestAudioFocus(focusRequest!!)
                 else audio.requestAudioFocus(listener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
             hasFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         }
@@ -120,17 +125,19 @@ class GameMusic(private val context: Context) : MusicPlayback {
         val allowed = hasFocus && !blockedByHeadphones && selection != MusicSelection.Off
         playlist.setActive(allowed && mode == MusicMode.GAME)
         playlist.advance()
-        if (mode != MusicMode.MENU || !allowed) menuPlayer?.pause()
-        if (mode != MusicMode.GAME || !allowed) gamePlayer?.pause()
-        if (mode != MusicMode.RECORD || !allowed) recordPlayer?.pause()
-        if (!allowed) return
-        if (mode == MusicMode.MENU) {
-            if (menuPlayer == null) menuPlayer = MenuThemePlayer.create(context, attributes)
-            menuPlayer?.play()
-            return
+        pauseInactivePlayers(allowed)
+        if (allowed) when (mode) {
+            MusicMode.MENU -> {
+                if (menuPlayer == null) menuPlayer = MenuThemePlayer.create(context, attributes)
+                menuPlayer?.play()
+            }
+            MusicMode.RECORD -> recordPlayer?.start()
+            MusicMode.GAME -> synchronizeGamePlayback()
+            MusicMode.SILENT -> Unit
         }
-        if (mode == MusicMode.RECORD) { recordPlayer?.start(); return }
-        if (mode != MusicMode.GAME) return
+    }
+
+    private fun synchronizeGamePlayback() {
         if (playlist.remainingGap != null) {
             handler.postDelayed(timer, playlist.remainingGap!!.coerceAtLeast(1L))
             return
@@ -159,7 +166,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
     private fun createPlayer(resource: Int): MediaPlayer? =
         MediaPlayer.create(context, resource, attributes, 0)?.apply {
             isLooping = false
-            setVolume(.4f, .4f)
+            setVolume(GAME_EFFECT_VOLUME, GAME_EFFECT_VOLUME)
         }
 
     /** Stops the timer and releases both players at the end of the session. */
@@ -175,5 +182,10 @@ class GameMusic(private val context: Context) : MusicPlayback {
         menuPlayer = null
         gamePlayer = null
         recordPlayer = null
+    }
+    private fun pauseInactivePlayers(allowed: Boolean) {
+        if (mode != MusicMode.MENU || !allowed) menuPlayer?.pause()
+        if (mode != MusicMode.GAME || !allowed) gamePlayer?.pause()
+        if (mode != MusicMode.RECORD || !allowed) recordPlayer?.pause()
     }
 }

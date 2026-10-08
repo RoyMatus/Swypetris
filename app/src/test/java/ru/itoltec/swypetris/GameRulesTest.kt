@@ -1,6 +1,9 @@
 package ru.itoltec.swypetris
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Проверяет общую арифметику и переходы движка на границах новых правил. */
@@ -15,7 +18,7 @@ class GameRulesTest {
         assertEquals(90L, GameRules.threshold(10))
         assertTrue(GameRules.nextThreshold(Int.MAX_VALUE) > Int.MAX_VALUE.toLong())
         for (score in listOf(899,900,999,1000,2125,Int.MAX_VALUE))
-            assertEquals("$score", GameRules.displayScore(score))
+            assertEquals("$score", displayScore(score))
         assertEquals(Int.MAX_VALUE, GameRules.add(Int.MAX_VALUE, 1500))
     }
 

@@ -2,14 +2,19 @@ package ru.itoltec.swypetris
 
 import android.app.Application
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -110,7 +115,7 @@ class UpdateCheckTest {
             compose.onNodeWithTag("newGame").performClick()
             compose.runOnIdle {
                 assertEquals(GameScreen.PLAYING, model.screen)
-                model.menu()
+                model.navigation.menu()
                 now = retryAt - 1
                 updates.check(true)
                 assertEquals(1, calls.get())

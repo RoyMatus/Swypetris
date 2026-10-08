@@ -2,7 +2,10 @@
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -16,7 +19,8 @@ class MigrationTest {
         val oldJson = """[{"id":"old","date":123,"name":"Иван","score":12000,"lines":30,"level":4,"duration":999}]"""
         preferences.edit().putString("results_v2", oldJson).putInt("record_v2", 15000)
             .putInt("legacy_record", 17000).putInt("record_v3", 25000)
-            .putInt("record_v5", 31000).putInt("record_v4", 30000).putBoolean("rules_4_migrated", true).putBoolean("rules_3_migrated", true).putBoolean("music", false).putBoolean("sound", false)
+            .putInt("record_v5", 31000).putInt("record_v4", 30000).putBoolean("rules_4_migrated",
+                true).putBoolean("rules_3_migrated", true).putBoolean("music", false).putBoolean("sound", false)
             .putBoolean("vibration", true).putBoolean("hints", true).putString("player_name", "Иван").commit()
         GameStorage.migrate(preferences)
         assertEquals(oldJson, preferences.getString("results_v2", null))

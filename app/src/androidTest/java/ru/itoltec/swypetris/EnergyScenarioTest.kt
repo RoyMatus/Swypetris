@@ -26,10 +26,10 @@ class EnergyScenarioTest {
         lateinit var model: GameViewModel
         compose.runOnUiThread {
             model = GameViewModel(ApplicationProvider.getApplicationContext<Application>())
-            model.finishLaunchIntro()
-            model.setSound(true)
-            model.setVibration(true)
-            model.chooseMusic(MusicSelection.Track(Song.KOROBEINIKI))
+            model.navigation.finishLaunchIntro()
+            model.options.setSound(true)
+            model.options.setVibration(true)
+            model.options.chooseMusic(MusicSelection.Track(Song.KOROBEINIKI))
             model.newGame()
         }
         compose.setContent { SwypetrisApp(model) {} }
@@ -41,8 +41,8 @@ class EnergyScenarioTest {
             repeat(seconds) { step ->
                 compose.runOnIdle {
                     if (step % 30 == 0 || model.screen != GameScreen.PLAYING) model.newGame()
-                    if (step == 0 || step == seconds / 2) model.setHints(step >= seconds / 2)
-                    model.command(when (step % 6) {
+                    if (step == 0 || step == seconds / 2) model.options.setHints(step >= seconds / 2)
+                    model.input.command(when (step % 6) {
                         0, 1 -> GameCommand.LEFT
                         2 -> GameCommand.CLOCKWISE
                         3, 4 -> GameCommand.RIGHT
@@ -54,16 +54,20 @@ class EnergyScenarioTest {
             }
         } finally {
             if (Build.VERSION.SDK_INT >= 29) Trace.endAsyncSection("SwypetrisEnergyGameplay", 1)
-            val metrics = Bundle()
-            Debug.getRuntimeStats().forEach { (key, value) ->
-                val before = runtimeBefore[key]?.toLongOrNull()
-                val after = value?.toLongOrNull()
-                if (before != null && after != null) metrics.putString("energy.$key", (after - before).toString())
-            }
-            metrics.putString("energy.elapsedMillis", (SystemClock.uptimeMillis() - start).toString())
-            InstrumentationRegistry.getInstrumentation().sendStatus(2, metrics)
+            sendMetrics(runtimeBefore, start)
             compose.runOnIdle { model.pause() }
             Log.i("SwypetrisEnergy", "end elapsed=${SystemClock.uptimeMillis() - start}")
         }
+    }
+
+    private fun sendMetrics(runtimeBefore: Map<String, String>, start: Long) {
+    val metrics = Bundle()
+    Debug.getRuntimeStats().forEach { (key, value) ->
+        val before = runtimeBefore[key]?.toLongOrNull()
+        val after = value?.toLongOrNull()
+        if (before != null && after != null) metrics.putString("energy.$key", (after - before).toString())
+    }
+    metrics.putString("energy.elapsedMillis", (SystemClock.uptimeMillis() - start).toString())
+    InstrumentationRegistry.getInstrumentation().sendStatus(2, metrics)
     }
 }

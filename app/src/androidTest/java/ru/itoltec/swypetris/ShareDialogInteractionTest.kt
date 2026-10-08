@@ -17,7 +17,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -43,13 +42,13 @@ class ShareDialogInteractionTest {
             }
         }
         compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).assertCountEquals(1)
-        compose.onNodeWithTag("shareApk").performScrollTo().performClick()
+        compose.onNodeWithTag("shareApk").performScrollTo().performTouchInput { click() }
         compose.runOnIdle {
             assertTrue(shown)
             assertEquals(Intent.ACTION_CHOOSER, launched?.action)
             @Suppress("DEPRECATION")
             val send = launched?.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-            assertEquals(apkDownloadUrl(), send?.getStringExtra(Intent.EXTRA_TEXT))
+            assertEquals(APK_DOWNLOAD_URL, send?.getStringExtra(Intent.EXTRA_TEXT))
         }
         compose.onNodeWithTag("apkQr").performScrollTo().performTouchInput { click() }
         compose.runOnIdle { assertFalse(shown) }

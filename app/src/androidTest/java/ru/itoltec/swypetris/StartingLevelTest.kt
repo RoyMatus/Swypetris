@@ -1,18 +1,25 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import org.json.JSONObject
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import ru.itoltec.swypetris.ui.theme.SwypetrisTheme
@@ -39,7 +46,7 @@ class StartingLevelTest {
             assertEquals(5, model.game!!.level)
             assertEquals(0, model.game!!.lines)
             model.pause()
-            model.chooseStartingLevel(15)
+            model.options.chooseStartingLevel(15)
             model.resume()
             assertEquals(5, model.game!!.startingLevel)
             model.pause()

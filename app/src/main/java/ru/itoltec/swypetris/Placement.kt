@@ -1,5 +1,8 @@
 package ru.itoltec.swypetris
 
+private const val MIN_SPIN_CORNERS = 3
+
+
 enum class Spin { NONE, MINI, FULL }
 
 /** Immutable event retained through the clear animation and next-piece spawn. */
@@ -13,7 +16,7 @@ data class PlacementResult(
     val hardDropCells: Int = 0,
     val level: Int = 1
 ) {
-    val difficult: Boolean get() = lines > 0 && (lines == 4 || spin != Spin.NONE)
+    val difficult: Boolean get() = lines > 0 && (lines == GameRules.MAX_CLEAR_LINES || spin != Spin.NONE)
 }
 
 internal object SpinRecognition {
@@ -25,9 +28,10 @@ internal object SpinRecognition {
         // Clockwise order: upper-left, upper-right, lower-right, lower-left.
         val corners = listOf(occupied(piece.x, piece.y), occupied(piece.x + 2, piece.y),
             occupied(piece.x + 2, piece.y + 2), occupied(piece.x, piece.y + 2))
-        if (corners.count { it } < 3) return Spin.NONE
-        val front = listOf(0 to 1, 1 to 2, 2 to 3, 3 to 0)[piece.rotation]
-        return if ((corners[front.first] && corners[front.second]) || state.lastRotationKick == 4)
-            Spin.FULL else Spin.MINI
+        return if (corners.count { it } < MIN_SPIN_CORNERS) Spin.NONE else {
+            val front = listOf(0 to 1, 1 to 2, 2 to 3, 3 to 0)[piece.rotation]
+            if ((corners[front.first] && corners[front.second]) || state.lastRotationKick == LAST_ROTATION_KICK)
+                Spin.FULL else Spin.MINI
+        }
     }
 }

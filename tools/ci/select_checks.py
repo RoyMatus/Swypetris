@@ -13,6 +13,8 @@ SMOKE = "SmokeTest"
 # until its dependencies are reviewed and recorded here.
 SOURCE_GROUPS = {
     "AndroidGameFeedback.kt": ("feedback",),
+    "ActionStyle.kt": ("navigation",),
+    "DeveloperContact.kt": ("navigation", "legal"),
     "AppActionButton.kt": ("navigation",),
     "AppUpdates.kt": ("updates",),
     "ContactsScreen.kt": ("navigation", "legal"),
@@ -61,6 +63,8 @@ SOURCE_GROUPS = {
 
 # Cross-cutting state and composition are intentionally full-regression inputs.
 FULL_SOURCES = {
+    "GameContent.kt", "GameBoard.kt",
+    "MainMenu.kt", "MenuAction.kt", "AppNavigation.kt",
     "GameSession.kt", "GameTimeline.kt", "GameViewModel.kt", "MainActivity.kt",
     "UpdateFailure.kt", "UpdateApk.kt", "UpdateDelivery.kt", "UpdateDialog.kt", "UpdateDownload.kt", "UpdateInstaller.kt",
 }

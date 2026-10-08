@@ -2,6 +2,9 @@
 
 import kotlin.random.Random
 
+private const val TRACK_GAP_MILLIS = 1500L
+
+
 /** Android-independent clock for track gaps that advances only while playback is allowed. */
 internal class PlaylistClock(private val count: Int, private val random: Random = Random.Default,
     private val clock: () -> Long) {
@@ -34,7 +37,7 @@ internal class PlaylistClock(private val count: Int, private val random: Random 
     /** Completing a track starts exactly one 1.5-second gap. */
     fun completed() {
         if (remainingGap != null) return
-        remainingGap = 1500L
+        remainingGap = TRACK_GAP_MILLIS
         lastTime = clock()
     }
 

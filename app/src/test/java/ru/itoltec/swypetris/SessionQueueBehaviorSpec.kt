@@ -19,8 +19,10 @@ class SessionQueueBehaviorSpec : BehaviorSpec({
                 var before = state
                 var after = state
                 repeat(remaining.size) {
-                    before = original.apply(before.copy(board = List(BoardGeometry.TOTAL_ROWS) { List(10) { null } }), GameCommand.HARD_DROP)
-                    after = restored.apply(after.copy(board = List(BoardGeometry.TOTAL_ROWS) { List(10) { null } }), GameCommand.HARD_DROP)
+                    before = original.apply(before
+                        .copy(board = List(BoardGeometry.TOTAL_ROWS) { List(10) { null } }), GameCommand.HARD_DROP)
+                    after = restored.apply(after
+                        .copy(board = List(BoardGeometry.TOTAL_ROWS) { List(10) { null } }), GameCommand.HARD_DROP)
                     after.active.type shouldBe before.active.type
                     after.next shouldBe before.next
                 }

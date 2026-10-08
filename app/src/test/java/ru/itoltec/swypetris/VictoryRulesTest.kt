@@ -1,6 +1,8 @@
 package ru.itoltec.swypetris
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Проверяет победные границы, приоритет победы и сохранение партии между кругами. */
@@ -46,8 +48,10 @@ class VictoryRulesTest {
     /** Победа подавляет проигрыш при одновременном достижении порога и закрытом входе. */
     @Test fun victoryWinsOverBlockedSpawnAndNewGameResets() {
         val engine = GameEngine()
-        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(0) && x == 4) Tetromino.Z else null } }
-        val start = GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 17), next = Tetromino.O, score = 79999)
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry
+            .row(0) && x == 4) Tetromino.Z else null } }
+        val start = GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 17), next = Tetromino.O,
+            score = 79999)
         val won = engine.apply(start, GameCommand.HARD_DROP)
         assertTrue(won.victoryPending)
         assertFalse(won.gameOver)

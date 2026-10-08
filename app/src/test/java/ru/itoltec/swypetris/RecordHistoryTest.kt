@@ -1,6 +1,6 @@
 package ru.itoltec.swypetris
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RecordHistoryTest {

@@ -4,11 +4,23 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +35,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+private const val DARK_SUBTITLE_COLOR = 0xFFADB9E3
+private const val LIGHT_PANEL_TINT = .045f
+private const val DARK_PANEL_TINT = .09f
+
 
 /** Compact day/night artwork shared by the non-gameplay screens. */
 @Composable
@@ -50,7 +67,7 @@ internal fun ScreenArtHeader(title: String, subtitle: String, onBack: (() -> Uni
                 Text(title, color = if (palette.light) palette.text else Color.White,
                     fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black,
                     fontSize = 24.sp, maxLines = 2)
-                Text(subtitle, color = if (palette.light) palette.text else Color(0xFFADB9E3),
+                Text(subtitle, color = if (palette.light) palette.text else Color(DARK_SUBTITLE_COLOR),
                     style = MaterialTheme.typography.bodyMedium, maxLines = 2)
             }
         }
@@ -63,6 +80,6 @@ internal fun ThemedCard(accent: Color, modifier: Modifier = Modifier, content: @
     val palette = LocalGamePalette.current
     val shape = RoundedCornerShape(12.dp)
     Box(modifier.background(Brush.linearGradient(listOf(
-        lerp(palette.panel, accent, if (palette.light) .045f else .09f), palette.panel)), shape)
+        lerp(palette.panel, accent, if (palette.light) LIGHT_PANEL_TINT else DARK_PANEL_TINT), palette.panel)), shape)
         .border(1.dp, accent, shape)) { content() }
 }

@@ -6,7 +6,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -42,7 +44,8 @@ class SignedUpdateScenarioTest {
         }
         try {
             compose.runOnIdle { delivery.download(update) }
-            compose.waitUntil(180_000) { delivery.notice is DeliveryNotice.Ready || delivery.notice is DeliveryNotice.Failed }
+            compose.waitUntil(180_000) { delivery.notice is DeliveryNotice.Ready ||
+                delivery.notice is DeliveryNotice.Failed }
             if (args.getString("expectSignerMismatch") == "true") {
                 assertEquals(UpdateFailureReason.SIGNER.userMessage, (delivery.notice as DeliveryNotice.Failed).message)
                 assertFalse(java.io.File(compose.activity.noBackupFilesDir, "updates/ready.apk").exists())
@@ -50,13 +53,15 @@ class SignedUpdateScenarioTest {
                 assertTrue("Download result: ${delivery.notice}", delivery.notice is DeliveryNotice.Ready)
                 if (args.getString("commitSignedUpdate") == "true") {
                     compose.runOnIdle {
-                        delivery.install(androidx.lifecycle.ViewModelProvider(compose.activity)[GameViewModel::class.java], true)
+                        delivery.install(androidx.lifecycle
+                            .ViewModelProvider(compose.activity)[GameViewModel::class.java], true)
                     }
                     compose.waitUntil(30_000) {
                         delivery.notice == DeliveryNotice.Confirmation || delivery.notice is DeliveryNotice.Failed ||
                             delivery.notice == null
                     }
-                    assertFalse("Installer rejected update: ${delivery.notice}", delivery.notice is DeliveryNotice.Failed)
+                    assertFalse("Installer rejected update: ${delivery.notice}",
+                        delivery.notice is DeliveryNotice.Failed)
                     compose.runOnIdle { delivery.confirmInstallation() }
                 }
             }

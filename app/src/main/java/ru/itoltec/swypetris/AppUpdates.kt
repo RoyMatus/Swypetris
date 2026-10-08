@@ -42,30 +42,41 @@ internal fun parseGitHubRelease(release: JSONObject, metadata: JSONObject): Avai
     val versionName = metadata.optString("versionName")
     val versionCode = metadata.optLong("versionCode", 0)
     val sha256 = metadata.optString("sha256")
-    if (versionCode <= 0 || !Regex("\\d+\\.\\d+\\.\\d+").matches(versionName) ||
-        !Regex("[a-fA-F0-9]{64}").matches(sha256) ||
-        release.optString("tag_name") != "v$versionName") return null
-    val assets = release.optJSONArray("assets") ?: return null
+    val validVersion = versionCode > 0 && Regex("\\d+\\.\\d+\\.\\d+").matches(versionName) &&
+        release.optString("tag_name") == "v$versionName"
+    val assets = release.optJSONArray("assets")
+    return if (validVersion && Regex("[a-fA-F0-9]{64}").matches(sha256) && assets != null)
+        parseReleaseAssets(assets, versionCode, versionName, sha256) else null
+}
+
+private fun parseReleaseAssets(assets: org.json.JSONArray, versionCode: Long, versionName: String,
+    sha256: String): AvailableUpdate? {
+    val expected = "https://github.com/RoyMatus/Swypetris/releases/download/v$versionName/Swypetris.apk"
     var apkUrl: String? = null
     var sizeBytes = 0L
     for (index in 0 until assets.length()) {
-        val asset = assets.optJSONObject(index) ?: continue
-        if (asset.optString("name") != "Swypetris.apk" || asset.optString("state") != "uploaded") continue
-        val url = asset.optString("browser_download_url")
-        if (url == "https://github.com/RoyMatus/Swypetris/releases/download/v$versionName/Swypetris.apk") {
-            val digest = if (asset.isNull("digest")) "" else asset.optString("digest").removePrefix("sha256:")
-            if (digest.isNotEmpty() && !digest.equals(sha256, true)) return null
-            sizeBytes = asset.optLong("size", 0)
-            if (sizeBytes !in 1..MAX_UPDATE_BYTES) return null
-            apkUrl = url
+        val asset = assets.optJSONObject(index)
+        if (isUploadedAsset(asset, "Swypetris.apk") && asset?.optString("browser_download_url") == expected) {
+            sizeBytes = releaseApkSize(requireNotNull(asset), sha256) ?: return null
+            apkUrl = expected
         }
     }
     return apkUrl?.let { AvailableUpdate(versionCode, versionName, it, false, sha256, sizeBytes) }
 }
 
+private fun isUploadedAsset(asset: JSONObject?, name: String): Boolean =
+    asset != null && asset.optString("name") == name && asset.optString("state") == "uploaded"
+
+private fun releaseApkSize(asset: JSONObject, sha256: String): Long? {
+    val digest = if (asset.isNull("digest")) "" else asset.optString("digest").removePrefix("sha256:")
+    val validDigest = digest.isEmpty() || digest.equals(sha256, true)
+    val size = asset.optLong("size", 0)
+    return if (validDigest && size in 1..MAX_UPDATE_BYTES) size else null
+}
+
 internal fun isRuStoreInstall(context: Context): Boolean {
     val manager = context.packageManager
-    val installer = if (Build.VERSION.SDK_INT >= 30) {
+    val installer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         manager.getInstallSourceInfo(context.packageName).installingPackageName
     } else {
         @Suppress("DEPRECATION")
@@ -76,10 +87,13 @@ internal fun isRuStoreInstall(context: Context): Boolean {
 
 /** Owns update checks for the Activity; gameplay state remains in GameViewModel. */
 internal class AppUpdates(private val activity: ComponentActivity,
-    private val preferences: android.content.SharedPreferences = activity.getSharedPreferences("app_updates", Context.MODE_PRIVATE),
+    private val preferences: android.content.SharedPreferences = activity.getSharedPreferences("app_updates",
+        Context.MODE_PRIVATE),
     private val clock: () -> Long = System::currentTimeMillis,
     private val githubUpdate: () -> AvailableUpdate? = ::fetchGitHubUpdate) {
     val delivery = UpdateDelivery(activity)
+    private val githubChecks = GitHubChecks()
+    private val storeChecks = StoreChecks()
     private val storeManager by lazy { RuStoreAppUpdateManagerFactory.create(activity) }
     private var checking = false
     private var manualRequested = false
@@ -95,73 +109,87 @@ internal class AppUpdates(private val activity: ComponentActivity,
         if (manual && delivery.showReady()) return
         if (checking) {
             if (manual) manualRequested = true
-            return
-        }
+        } else {
         val now = clock()
         val fromStore = isRuStoreInstall(activity)
-        if (!fromStore && !allowGitHubCheck(manual, now)) return
+        if (!fromStore && !githubChecks.allowed(manual, now)) return
         checking = true
         manualRequested = manual
-        if (fromStore) checkRuStore(now)
-        else checkGitHub(now)
-    }
-
-    private fun allowGitHubCheck(manual: Boolean, now: Long): Boolean {
-        val retryAt = preferences.getLong("retry_at", Long.MIN_VALUE)
-        if (now < retryAt) {
-            if (manual) notice = UpdateNotice.RateLimited(retryAt)
-            return false
+        if (fromStore) storeChecks.check(now)
+        else githubChecks.check(now)
         }
-        if (manual) return true
-        val last = if (preferences.contains("last_check")) preferences.getLong("last_check", 0) else null
-        val rebased = last?.coerceAtMost(now)
-        if (last != rebased && !preferences.edit().putLong("last_check", rebased!!).commit()) return false
-        if (!automaticCheckDue(now, rebased)) return false
-        // Persist before requesting so Activity/process death or an HTTP failure cannot cause a launch storm.
-        return preferences.edit().putLong("last_check", now).commit()
     }
 
-    private fun checkRuStore(now: Long) {
-        storeManager.getAppUpdateInfo().addOnSuccessListener { info ->
-            activity.runOnUiThread {
+    private inner class GitHubChecks {
+        fun allowed(manual: Boolean, now: Long): Boolean {
+            val retryAt = preferences.getLong("retry_at", Long.MIN_VALUE)
+            if (now < retryAt) {
+                if (manual) notice = UpdateNotice.RateLimited(retryAt)
+                return false
+            }
+            return if (manual) true else allowAutomaticCheck(now)
+        }
+
+        private fun allowAutomaticCheck(now: Long): Boolean {
+            val last = if (preferences.contains("last_check")) preferences.getLong("last_check", 0) else null
+            val rebased = last?.coerceAtMost(now)
+            val rebasedSaved = last == rebased || preferences.edit().putLong("last_check", rebased!!).commit()
+            if (!rebasedSaved || !automaticCheckDue(now, rebased)) return false
+            // Persist before requesting so Activity/process death or an HTTP failure cannot cause a launch storm.
+            return preferences.edit().putLong("last_check", now).commit()
+        }
+
+        fun check(now: Long) {
+            activity.lifecycleScope.launch {
+                val result = withContext(Dispatchers.IO) { runCatching { githubUpdate() } }
+                val update = result.getOrNull()
                 checking = false
                 val manual = manualRequested
                 manualRequested = false
-                preferences.edit().putLong("last_check", now).apply()
-                val currentCode = installedVersionCode()
-                if ((info.updateAvailability == UpdateAvailability.UPDATE_AVAILABLE ||
-                    info.updateAvailability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) &&
-                    newerVersion(info.availableVersionCode, currentCode)) {
-                    val update = AvailableUpdate(info.availableVersionCode, info.availableVersionName, null, true)
-                    showAvailable(update, manual)
-                } else if (manual) notice = UpdateNotice.Current
-            }
-        }.addOnFailureListener {
-            activity.runOnUiThread {
-                checking = false
-                if (manualRequested) notice = UpdateNotice.Failed
-                manualRequested = false
+                if (update == null) {
+                    val failure = result.exceptionOrNull() as? UpdateRateLimitException
+                    val persisted = failure == null || preferences.edit().putLong("retry_at",
+                        failure.retryAtMillis).commit()
+                    if (manual) notice = if (persisted &&
+                        failure != null) UpdateNotice.RateLimited(failure.retryAtMillis)
+                        else UpdateNotice.Failed
+                    return@launch
+                }
+                preferences.edit().putLong("last_check", now).remove("retry_at").apply()
+                if (newerVersion(update.versionCode, installedVersionCode())) showAvailable(update, manual)
+                else if (manual) notice = UpdateNotice.Current
             }
         }
     }
 
-    private fun checkGitHub(now: Long) {
-        activity.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { runCatching { githubUpdate() } }
-            val update = result.getOrNull()
-            checking = false
-            val manual = manualRequested
-            manualRequested = false
-            if (update == null) {
-                val failure = result.exceptionOrNull() as? UpdateRateLimitException
-                val persisted = failure == null || preferences.edit().putLong("retry_at", failure.retryAtMillis).commit()
-                if (manual) notice = if (persisted && failure != null) UpdateNotice.RateLimited(failure.retryAtMillis)
-                    else UpdateNotice.Failed
-                return@launch
+    private inner class StoreChecks {
+        fun check(now: Long) {
+            storeManager.getAppUpdateInfo().addOnSuccessListener { info ->
+                activity.runOnUiThread {
+                    checking = false
+                    val manual = manualRequested
+                    manualRequested = false
+                    preferences.edit().putLong("last_check", now).apply()
+                    val currentCode = installedVersionCode()
+                    if ((info.updateAvailability == UpdateAvailability.UPDATE_AVAILABLE ||
+                        info.updateAvailability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) &&
+                        newerVersion(info.availableVersionCode, currentCode)) {
+                        val update = AvailableUpdate(info.availableVersionCode, info.availableVersionName, null, true)
+                        showAvailable(update, manual)
+                    } else if (manual) notice = UpdateNotice.Current
+                }
+            }.addOnFailureListener {
+                activity.runOnUiThread {
+                    checking = false
+                    if (manualRequested) notice = UpdateNotice.Failed
+                    manualRequested = false
+                }
             }
-            preferences.edit().putLong("last_check", now).remove("retry_at").apply()
-            if (newerVersion(update.versionCode, installedVersionCode())) showAvailable(update, manual)
-            else if (manual) notice = UpdateNotice.Current
+        }
+
+        fun clearListener() {
+            storeListener?.let(storeManager::unregisterListener)
+            storeListener = null
         }
     }
 
@@ -200,10 +228,11 @@ internal class AppUpdates(private val activity: ComponentActivity,
     fun installAutomaticallyIfReady(model: GameViewModel) {
         if (!automaticEnabled || model.screen != GameScreen.MENU) return
         delivery.installAutomatically(model)
-        val storeUpdate = (notice as? UpdateNotice.StoreReady)?.update ?: return
-        if (preferences.getLong("automatic_store_attempt", 0) == storeUpdate.versionCode) return
-        preferences.edit().putLong("automatic_store_attempt", storeUpdate.versionCode).apply()
-        installStore(model, automatic = true)
+        val storeUpdate = (notice as? UpdateNotice.StoreReady)?.update
+        if (storeUpdate != null && preferences.getLong("automatic_store_attempt", 0) != storeUpdate.versionCode) {
+            preferences.edit().putLong("automatic_store_attempt", storeUpdate.versionCode).apply()
+            installStore(model, automatic = true)
+        }
     }
 
     fun dismiss() {
@@ -241,20 +270,20 @@ internal class AppUpdates(private val activity: ComponentActivity,
             val listener = InstallStateUpdateListener { state -> activity.runOnUiThread {
                 if (state.installStatus == InstallStatus.DOWNLOADED) {
                     notice = UpdateNotice.StoreReady(update)
-                    clearStoreListener()
+                    storeChecks.clearListener()
                 } else if (state.installStatus == InstallStatus.FAILED ||
                     state.installStatus == InstallStatus.DOWNLOAD_INTERRUPTED) {
-                    clearStoreListener()
+                    storeChecks.clearListener()
                     notice = UpdateNotice.Failed
                 }
             } }
-            clearStoreListener()
+            storeChecks.clearListener()
             storeListener = listener
             storeManager.registerListener(listener)
             if (info.updateAvailability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS)
                 return@addOnSuccessListener
             storeManager.startUpdateFlow(info, options).addOnFailureListener {
-                activity.runOnUiThread { clearStoreListener(); notice = UpdateNotice.Failed }
+                activity.runOnUiThread { storeChecks.clearListener(); notice = UpdateNotice.Failed }
             }
         }.addOnFailureListener { activity.runOnUiThread { notice = UpdateNotice.Failed } }
     }
@@ -278,37 +307,25 @@ internal class AppUpdates(private val activity: ComponentActivity,
     }
 
     fun close() {
-        clearStoreListener()
+        storeChecks.clearListener()
         delivery.close()
-    }
-
-    private fun clearStoreListener() {
-        storeListener?.let(storeManager::unregisterListener)
-        storeListener = null
     }
 
     private fun installedVersionCode(): Long {
         @Suppress("DEPRECATION")
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        return if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
     }
 }
 
 private fun fetchGitHubUpdate(): AvailableUpdate? {
     val release = readJson(GITHUB_RELEASE_API)
     val assets = release.optJSONArray("assets") ?: return null
-    var metadataUrl: String? = null
-    for (index in 0 until assets.length()) {
-        val asset = assets.optJSONObject(index) ?: continue
-        if (asset.optString("name") == "update.json" && asset.optString("state") == "uploaded") {
-            metadataUrl = asset.optString("browser_download_url")
-            break
-        }
-    }
+    val metadataUrl = (0 until assets.length()).asSequence().mapNotNull { assets.optJSONObject(it) }
+        .firstOrNull { isUploadedAsset(it, "update.json") }?.optString("browser_download_url")
     val version = release.optString("tag_name")
     val expected = "https://github.com/RoyMatus/Swypetris/releases/download/$version/update.json"
-    if (metadataUrl != expected) return null
-    return parseGitHubRelease(release, readJson(expected))
+    return if (metadataUrl == expected) parseGitHubRelease(release, readJson(expected)) else null
 }
 
 private fun readJson(url: String): JSONObject {

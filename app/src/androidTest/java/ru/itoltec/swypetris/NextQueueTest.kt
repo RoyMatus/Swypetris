@@ -1,19 +1,42 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.filter
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -52,12 +75,7 @@ class NextQueueTest {
             for (y in listOf(-2, -1, 0, 1)) {
                 compose.runOnIdle { state = state.copy(active = state.active.copy(y = y)) }
                 val spawned = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-                for (cell in spawnPiece(next).cells().filterNot { it in state.active.cells() }) {
-                    assertNotEquals("Missing preview $next behind $active/$rotation at $y",
-                        descended.colorAt(Cell(9, cell.y)), descended.colorAt(cell))
-                    assertEquals("Preview moved or disappeared for $next/$active/$rotation at $y",
-                        descended.colorAt(cell), spawned.colorAt(cell))
-                }
+                assertUncoveredPreview(state, descended, spawned)
             }
         }
     }
@@ -81,7 +99,8 @@ class NextQueueTest {
             compose.runOnIdle { state = current.copy(next = alternate) }
             val otherPreview = compose.onNodeWithTag("board").captureToImage().toPixelMap()
             for (cell in current.active.cells().filter { it.y >= -SPAWN_DISPLAY_ROWS }) {
-                assertEquals("Active block must cover both preview colors", image.colorAt(cell), otherPreview.colorAt(cell))
+                assertEquals("Active block must cover both preview colors", image.colorAt(cell),
+                    otherPreview.colorAt(cell))
             }
             compose.runOnIdle { state = current }
         }
@@ -121,7 +140,7 @@ class NextQueueTest {
         for ((w, h, scale) in listOf(Triple(240, 400, 2f), Triple(320, 640, 1f), Triple(600, 400, 2f))) {
             compose.runOnIdle { width = w; height = h; fontScale = scale }
             for (ghost in listOf(false, true)) {
-                compose.runOnIdle { model.setHints(ghost) }
+                compose.runOnIdle { model.options.setHints(ghost) }
                 val previewBounds = compose.onNodeWithTag("nextPreview").assertIsDisplayed()
                     .assertContentDescriptionEquals("Следующая фигура I").getUnclippedBoundsInRoot()
                 val boardBounds = compose.onNodeWithTag("board").getUnclippedBoundsInRoot()
@@ -157,4 +176,15 @@ class NextQueueTest {
         }
     }
 
+
+    private fun assertUncoveredPreview(state: GameState, descended: PixelMap, spawned: PixelMap) {
+        for (cell in spawnPiece(state.next).cells().filterNot { it in state.active.cells() }) {
+        assertNotEquals("Missing preview ${state.next} behind ${state.active.type}/${state.active.rotation}" +
+            " at ${state.active.y}",
+            descended.colorAt(Cell(9, cell.y)), descended.colorAt(cell))
+        assertEquals("Preview moved or disappeared for ${state.next}/${state.active.type}/${state.active.rotation}" +
+            " at ${state.active.y}",
+            descended.colorAt(cell), spawned.colorAt(cell))
+        }
+    }
 }

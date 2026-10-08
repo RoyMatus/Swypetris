@@ -1,6 +1,6 @@
 package ru.itoltec.swypetris
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ScoringTest {
@@ -9,7 +9,8 @@ class ScoringTest {
             Triple(Spin.NONE, 0, 0), Triple(Spin.NONE, 1, 100), Triple(Spin.NONE, 2, 300),
             Triple(Spin.NONE, 3, 500), Triple(Spin.NONE, 4, 800),
             Triple(Spin.MINI, 0, 100), Triple(Spin.MINI, 1, 200), Triple(Spin.MINI, 2, 400),
-            Triple(Spin.FULL, 0, 400), Triple(Spin.FULL, 1, 800), Triple(Spin.FULL, 2, 1200), Triple(Spin.FULL, 3, 1600))
+            Triple(Spin.FULL, 0, 400), Triple(Spin.FULL, 1, 800), Triple(Spin.FULL, 2, 1200), Triple(Spin.FULL, 3,
+                1600))
         for ((spin, lines, base) in cases) for (level in listOf(1, 3, 999)) {
             val event = PlacementResult(lines, spin, false, 0, level = level)
             assertEquals(base * level, GameRules.placementScore(event))

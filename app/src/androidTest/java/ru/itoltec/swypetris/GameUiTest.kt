@@ -6,13 +6,31 @@ import android.content.res.Configuration
 import androidx.test.espresso.Espresso
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.height
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.top
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,7 +46,7 @@ class GameUiTest {
 
     /** Пересоздание контактов сохраняет экран, портретную ориентацию и приостановленную партию. */
     @Test fun contactsSurviveRecreation() {
-        compose.runOnIdle { model().newGame(); model().contacts() }
+        compose.runOnIdle { model().newGame(); model().navigation.contacts() }
         val saved = model().game
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag("contactsPage").assertIsDisplayed()
@@ -46,7 +64,7 @@ class GameUiTest {
 
     /** Пересоздание справки сохраняет экран и не возобновляет партию автоматически. */
     @Test fun helpSurvivesRecreation() {
-        compose.runOnIdle { model().newGame(); model().menu() }
+        compose.runOnIdle { model().newGame(); model().navigation.menu() }
         compose.onNodeWithTag("help").performClick()
         val saved = model().game
         compose.activityRule.scenario.recreate()
@@ -77,7 +95,8 @@ class GameUiTest {
             compose.runOnIdle {
                 val store = ViewModelStore()
                 try {
-                    val factory = ViewModelProvider.AndroidViewModelFactory(ApplicationProvider.getApplicationContext<Application>())
+                    val factory = ViewModelProvider
+                        .AndroidViewModelFactory(ApplicationProvider.getApplicationContext<Application>())
                     val fresh = ViewModelProvider(store, factory)[GameViewModel::class.java]
                     assertEquals(!oldSound, fresh.soundEnabled)
                     assertEquals(!oldVibration, fresh.vibrationEnabled)
@@ -91,9 +110,9 @@ class GameUiTest {
             compose.onNodeWithTag("sound").assertDoesNotExist()
         } finally {
             compose.runOnIdle {
-                model().setSound(oldSound)
-                model().setVibration(oldVibration)
-                model().setHints(oldHints)
+                model().options.setSound(oldSound)
+                model().options.setVibration(oldVibration)
+                model().options.setHints(oldHints)
             }
         }
     }
@@ -114,7 +133,7 @@ class GameUiTest {
             compose.runOnIdle { assertEquals(GameScreen.MENU, model().screen) }
         } finally {
             compose.runOnIdle {
-                model().setHints(originalHints)
+                model().options.setHints(originalHints)
             }
         }
     }
@@ -184,7 +203,7 @@ class GameUiTest {
         compose.onNodeWithTag("newGame").performClick()
         var previous: GameState? = null
         compose.runOnIdle {
-            model().command(GameCommand.HARD_DROP)
+            model().input.command(GameCommand.HARD_DROP)
             model().pause()
             previous = model().game
         }
@@ -199,22 +218,23 @@ class GameUiTest {
         compose.runOnIdle {
             val current = model()
             current.newGame()
-            current.command(GameCommand.HARD_DROP)
+            current.input.command(GameCommand.HARD_DROP)
             val originalHints = current.hintsEnabled
-            current.setHints(!originalHints)
+            current.options.setHints(!originalHints)
             val store = ViewModelStore()
             try {
-                val factory = ViewModelProvider.AndroidViewModelFactory(ApplicationProvider.getApplicationContext<Application>())
+                val factory = ViewModelProvider
+                    .AndroidViewModelFactory(ApplicationProvider.getApplicationContext<Application>())
                 val fresh = ViewModelProvider(store, factory)[GameViewModel::class.java]
                 assertEquals(current.record, fresh.record)
                 assertEquals(!originalHints, fresh.hintsEnabled)
             } finally {
-                current.setHints(originalHints)
+                current.options.setHints(originalHints)
                 store.clear()
             }
             current.pause()
             val paused = current.game
-            current.command(GameCommand.TICK)
+            current.input.command(GameCommand.TICK)
             assertEquals(paused, current.game)
         }
     }

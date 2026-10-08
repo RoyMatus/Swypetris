@@ -2,18 +2,40 @@
 
 import android.app.Application
 import android.graphics.Bitmap
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.bottom
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.left
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.right
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.top
+import androidx.compose.ui.test.width
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -45,7 +67,7 @@ class MusicSettingsFruitTest {
         val initial = GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=10000)
         val model = GameViewModel(app,initial,{1000L},false,musicPlayback=recorder)
         assertEquals(MusicSelection.Off,model.musicSelection)
-        model.settings()
+        model.navigation.settings()
         compose.setContent { SwypetrisApp(model) {} }
         compose.onNodeWithTag("musicPicker").performScrollTo().performClick()
         compose.onNodeWithTag("music_trepak").performScrollTo().performClick()
@@ -53,17 +75,17 @@ class MusicSettingsFruitTest {
             assertEquals(MusicSelection.Track(Song.TREPAK),model.musicSelection)
             assertEquals(MusicMode.MENU,recorder.modes.last())
             val count=recorder.selections.size
-            model.chooseMusic(model.musicSelection)
+            model.options.chooseMusic(model.musicSelection)
             assertEquals(count,recorder.selections.size)
             model.onBackground(); assertEquals(MusicMode.SILENT,recorder.modes.last())
             model.onForeground(); assertEquals(MusicMode.MENU,recorder.modes.last())
-            model.menu(); assertEquals(MusicMode.MENU,recorder.modes.last())
+            model.navigation.menu(); assertEquals(MusicMode.MENU,recorder.modes.last())
             model.resume(); assertEquals(MusicMode.GAME,recorder.modes.last())
             assertEquals(initial,model.game)
             assertEquals(model.musicSelection,GameViewModel(app,null,{1000L},false).musicSelection)
-            model.settings(); model.chooseMusic(MusicSelection.ShuffleAll)
+            model.navigation.settings(); model.options.chooseMusic(MusicSelection.ShuffleAll)
             assertEquals(MusicMode.MENU,recorder.modes.last())
-            model.chooseMusic(MusicSelection.Off)
+            model.options.chooseMusic(MusicSelection.Off)
             assertEquals(MusicMode.SILENT,recorder.modes.last())
             assertFalse(GameViewModel(app,null,{1000L},false).musicEnabled)
             assertTrue(model.results.isEmpty())
@@ -75,14 +97,14 @@ class MusicSettingsFruitTest {
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun musicPickerLargeFontInLightAndDarkThemes() {
         val model=GameViewModel(ApplicationProvider.getApplicationContext(),null,{1000L},false)
-        model.settings(); model.setPalette("github_light")
+        model.navigation.settings(); model.options.setPalette("github_light")
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density,2f)) {
                 Box(Modifier.width(320.dp).fillMaxHeight()) { SwypetrisApp(model) {} }
             }
         }
         for (theme in listOf("github_light","classic")) {
-            compose.runOnIdle { model.setPalette(theme) }
+            compose.runOnIdle { model.options.setPalette(theme) }
             compose.onNodeWithTag("musicPicker").performScrollTo().performClick()
             compose.onNodeWithTag("music_sugar_plum").performScrollTo().performClick()
             compose.onNodeWithTag("musicPicker").assertIsDisplayed()

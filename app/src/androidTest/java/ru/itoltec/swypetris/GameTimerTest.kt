@@ -3,7 +3,10 @@ package ru.itoltec.swypetris
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -42,9 +45,9 @@ class GameTimerTest {
         assertNull(timer.action)
         model.newGame()
         assertEquals(now + 1000, timer.deadline)
-        model.menu()
+        model.navigation.menu()
         assertNull(timer.action)
-        model.help()
+        model.navigation.help()
         assertNull(timer.action)
         model.resume()
         assertNotNull(timer.action)
@@ -63,7 +66,7 @@ class GameTimerTest {
         val model = model(state())
         assertEquals(2000L, timer.deadline)
         now += 217
-        model.command(GameCommand.RIGHT)
+        model.input.command(GameCommand.RIGHT)
         assertEquals(1, timer.scheduled)
         assertEquals(2000L, timer.deadline)
         model.pause()
@@ -78,9 +81,10 @@ class GameTimerTest {
     }
 
     @Test fun clearSchedulesAnimationFramesAndRestoresFractionalProgress() = main {
-        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry.row(19) && x < 8) Tetromino.J else null } }
+        val board = List(BoardGeometry.TOTAL_ROWS) { y -> List<Tetromino?>(10) { x -> if (y == BoardGeometry
+            .row(19) && x < 8) Tetromino.J else null } }
         val model = model(state().copy(board = board, active = Piece(Tetromino.O, x = 8, y = 18)))
-        model.command(GameCommand.HARD_DROP)
+        model.input.command(GameCommand.HARD_DROP)
         assertEquals(now + 16, timer.deadline)
         repeat(3) { timer.fire() }
         assertEquals(48L, model.clearElapsedMillis)
@@ -100,7 +104,7 @@ class GameTimerTest {
     @Test fun dropPointsDoNotChangeLevelOrGravityDeadline() = main {
         val model = model(state().copy(score = 999))
         now += 200
-        model.command(GameCommand.SOFT_DROP)
+        model.input.command(GameCommand.SOFT_DROP)
         assertEquals(1000L + model.game!!.gravityMillis, timer.deadline)
         assertEquals(2000L, timer.deadline)
         assertEquals(1, model.game!!.level)
@@ -111,7 +115,7 @@ class GameTimerTest {
         val board = BoardGeometry.empty().map { it.toMutableList() }
         for (x in 0..7) board[BoardGeometry.row(19)][x] = Tetromino.J
         val model = model(state().copy(board = board, active = Piece(Tetromino.O,x=8,y=18), lines = 9))
-        model.command(GameCommand.HARD_DROP)
+        model.input.command(GameCommand.HARD_DROP)
         finishClear(model)
         assertEquals(10, model.game!!.lines)
         assertEquals(2, model.game!!.level)
@@ -132,7 +136,7 @@ class GameTimerTest {
 
     @Test fun terminalStatesCancelTimerAndNextRoundSchedulesAgain() = main {
         val model = model(state().copy(score = GameRules.ROUND_SCORE - 1))
-        model.command(GameCommand.SOFT_DROP)
+        model.input.command(GameCommand.SOFT_DROP)
         assertEquals(GameScreen.VICTORY, model.screen)
         assertNull(timer.action)
         model.nextRound()
@@ -182,12 +186,12 @@ class GameTimerTest {
     @Test fun holdReadinessSchedulesOnceWithoutPostponingGravity() = main {
         val model = model(state())
         val initial = model.game
-        model.pointerDown(100f, 200f, now)
+        model.input.pointerDown(100f, 200f, now)
         assertEquals(now + 300, timer.deadline)
         timer.fire()
         assertEquals(initial, model.game)
         assertEquals(2000L, timer.deadline)
-        model.pointerUp(100f, 200f, now)
+        model.input.pointerUp(100f, 200f, now)
         assertEquals(initial, model.game)
         model.pause()
     }
@@ -221,7 +225,7 @@ class GameTimerTest {
         board[BoardGeometry.row(0)][4] = Tetromino.Z
         val model = model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18), score = 50))
         now += 1000
-        model.advanceFrame(now)
+        model.simulation.advanceFrame(now)
         assertTrue(model.game!!.gameOver)
         assertEquals(500L, model.latestResult!!.durationMillis)
     }

@@ -6,7 +6,13 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -17,7 +23,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.FilterQuality
@@ -31,10 +41,13 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 
+private const val QR_QUIET_ZONE_MODULES = 4
+
+
 /** The encoder's four-module margin remains part of the white image in every theme. */
 internal fun downloadQrMatrix(url: String): BitMatrix = QRCodeWriter().encode(
     url, BarcodeFormat.QR_CODE, 0, 0,
-    mapOf(EncodeHintType.MARGIN to 4)
+    mapOf(EncodeHintType.MARGIN to QR_QUIET_ZONE_MODULES)
 )
 
 /** Renders at an integer scale so the modules stay crisp when Compose resizes the image. */
@@ -76,7 +89,7 @@ internal fun shareAppDownload(context: Context, url: String): Boolean = try {
 }
 
 /** The latest published GitHub Release provides the APK for every new app build. */
-internal fun apkDownloadUrl(): String =
+internal const val APK_DOWNLOAD_URL =
     "https://github.com/RoyMatus/Swypetris/releases/latest/download/Swypetris.apk"
 
 /** Shows the canonical store link, a scannable QR code, and Android sharing actions. */
@@ -89,7 +102,7 @@ internal fun ApkDownloadDialog(onDismiss: () -> Unit) = DownloadLinkDialog(onDis
 @Composable
 private fun DownloadLinkDialog(onDismiss: () -> Unit, directApk: Boolean) {
     val context = LocalContext.current
-    val url = if (directApk) apkDownloadUrl()
+    val url = if (directApk) APK_DOWNLOAD_URL
         else context.getString(R.string.app_download_url)
     val qr = remember(url) { downloadQrBitmap(url).asImageBitmap() }
     var actionUnavailable by remember { mutableStateOf(false) }
