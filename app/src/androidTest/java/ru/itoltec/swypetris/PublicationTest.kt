@@ -36,7 +36,7 @@ class PublicationTest {
         val model = GameViewModel(app, GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=1234), { 1000L },
             false)
         val game = model.game
-        model.contacts()
+        model.navigation.contacts()
         compose.setContent { SwypetrisApp(model) {} }
         compose.onNodeWithTag("contactsPage").performScrollToNode(hasTestTag("privacy"))
         compose.onNodeWithTag("privacy").performClick()
@@ -47,7 +47,7 @@ class PublicationTest {
         Espresso.pressBack()
         compose.onNodeWithTag("contactsPage").assertIsDisplayed()
         compose.onNodeWithTag("contactsBack").assertDoesNotExist()
-        compose.runOnIdle { model.privacy() }
+        compose.runOnIdle { model.navigation.privacy() }
         compose.onNodeWithTag("privacyBack").assertDoesNotExist()
         Espresso.pressBack()
         compose.runOnIdle { assertEquals(game, model.game); assertEquals(GameScreen.CONTACTS,model.screen);
@@ -64,17 +64,17 @@ class PublicationTest {
         } }
         val model = GameViewModel(app, GameState(board=board,active=Piece(Tetromino.T,x=4,y=6),next=Tetromino.L,
             score=34620,lines=28), { 1000L }, false)
-        model.setHints(true); model.menu()
+        model.options.setHints(true); model.navigation.menu()
         compose.setContent { SwypetrisApp(model) {} }
         compose.onNodeWithTag("newGame").assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "01-menu.png")
         compose.runOnIdle { model.resume() }
         compose.onNodeWithTag("board").assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "02-game-classic.png")
-        compose.runOnIdle { model.settings() }
+        compose.runOnIdle { model.navigation.settings() }
         compose.onNodeWithTag("musicPicker").performScrollTo().assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "03-settings.png")
-        compose.runOnIdle { model.setPalette("github_light"); model.resume() }
+        compose.runOnIdle { model.options.setPalette("github_light"); model.resume() }
         compose.onNodeWithTag("board").assertIsDisplayed()
         save(compose.onRoot().captureToImage().asAndroidBitmap(), "04-game-light.png")
         assertTrue(model.results.isEmpty())

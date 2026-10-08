@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
@@ -41,6 +41,39 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private const val OPAQUE_ARGB_MASK = 0xFF000000L
+private const val LIGHT_GOLD_RGB = 0x8A5700L
+private const val PREVIEW_BLOCK_X_OFFSET = .15f
+private const val PREVIEW_BLOCK_Y_OFFSET = .05f
+private const val PREVIEW_BLOCK_FILL = .89f
+private const val FLAT_FINISH_OUTLINE_BLEND = .36f
+private const val RETRO_STRIPE_DIVISOR = 3
+private const val DRACULA_DOT_RADIUS = .045f
+private const val DRACULA_DOT_X = .72f
+private const val DRACULA_DOT_Y = .27f
+private const val NORD_DOT_RADIUS = .025f
+private const val NORD_DOT_X = .25f
+private const val NORD_DOT_Y = .60f
+private const val SOLARIZED_LINE_OPACITY = .6f
+private const val SOLARIZED_LINE_START = .34f
+private const val SOLARIZED_LINE_STEP = .14f
+private const val GITHUB_DOT_RADIUS = .028f
+private const val GITHUB_DOT_START = .32f
+private const val GITHUB_DOT_STEP = .18f
+private const val GITHUB_DOT_Y = .5f
+private const val TOKYO_SECONDARY_OPACITY = .65f
+private const val CATPPUCCIN_OUTER_OPACITY = .65f
+private const val CATPPUCCIN_OUTER_RADIUS = .16f
+private const val CATPPUCCIN_DOT_X = .68f
+private const val CATPPUCCIN_DOT_Y = .32f
+private const val CATPPUCCIN_INNER_OPACITY = .55f
+private const val CATPPUCCIN_INNER_RADIUS = .11f
+private const val SYNTHWAVE_LINE_START = .30f
+private const val SYNTHWAVE_LINE_STEP = .19f
+private const val SYNTHWAVE_MIDDLE_WEIGHT = 1.2f
+private const val SYNTHWAVE_OUTER_WEIGHT = .7f
+
+
 /** Complete UI and seven-piece palette; its stable ID is stored in settings. */
 enum class BlockFinish { BEVEL, MATTE, FROST, SATIN, NEON, RETRO }
 enum class BlockTexture { CLASSIC, MONOKAI, GRUVBOX, VSCODE, DRACULA, NORD,
@@ -81,13 +114,14 @@ data class GamePalette(val id: String, val title: String, val light: Boolean,
 /** Stable palettes, including light-theme shades adjusted for contrast. */
 object GamePalettes {
     /** Converts an RGB value to a Compose color without Android Color. */
-    private fun c(value: Long) = Color(0xFF000000 or value)
+    private fun c(value: Long) = Color(OPAQUE_ARGB_MASK or value)
     /** Builds a palette from the published base shades of a theme. */
     private fun p(id: String, title: String, light: Boolean, bg: Long, panel: Long, text: Long,
         muted: Long, grid: Long, finish: BlockFinish, texture: BlockTexture, vararg pieces: Long): GamePalette {
         val colors = pieces.map(::c)
         return GamePalette(id, title, light, c(bg), c(panel), c(text), c(muted), c(grid), colors,
-            if (light) colors[5] else colors[0], colors[2], if (light) c(0x8A5700) else colors[1], finish, texture)
+            if (light) colors[Tetromino.J.ordinal] else colors[0], colors[2],
+                if (light) c(LIGHT_GOLD_RGB) else colors[1], finish, texture)
     }
     val all = listOf(
         p("classic", "Классическая", false, 0x0B1020, 0x131D32, 0xEAF0FF, 0xB8C9E4, 0x283850, BlockFinish.BEVEL,
@@ -158,7 +192,7 @@ internal fun PalettePicker(model: GameViewModel) {
                         Column(Modifier.weight(1f).heightIn(min = 96.dp)
                             .background(item.background, shape)
                             .border(if (selected) 3.dp else 1.dp, if (selected) accent else palette.grid, shape)
-                            .clickable { model.setPalette(item.id) }
+                            .clickable { model.options.setPalette(item.id) }
                             .semantics { this.selected = selected }
                             .testTag("palette_${item.id}_preview").padding(5.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -167,8 +201,10 @@ internal fun PalettePicker(model: GameViewModel) {
                                 val side = minOf(size.width / 4.6f, size.height / 2.4f)
                                 val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
                                 positions.forEachIndexed { index, (column, row) ->
-                                    bevelBlock(Offset(column * side + side * .15f, row * side + side * .05f),
-                                        Size(side * .89f, side * .89f), item.pieces[index], item.finish, item.texture)
+                                    bevelBlock(Offset(column * side + side * PREVIEW_BLOCK_X_OFFSET,
+                                        row * side + side * PREVIEW_BLOCK_Y_OFFSET),
+                                        Size(side * PREVIEW_BLOCK_FILL, side * PREVIEW_BLOCK_FILL),
+                                            item.pieces[index], item.finish, item.texture)
                                 }
                             }
                             Text(item.title, Modifier.fillMaxWidth().testTag("palette_${item.id}_label"),
@@ -197,12 +233,12 @@ internal fun DrawScope.bevelBlock(at: Offset, size: Size, color: Color, finish: 
     val x = at.x; val y = at.y; val w = size.width; val h = size.height
     drawRect(color.copy(alpha = alpha), at, size)
     if (finish == BlockFinish.MATTE) {
-        drawRect(lerp(color, Color.Black, .28f).copy(alpha = alpha), at, size, style = Stroke(1.dp.toPx()))
+        drawRect(lerp(color, Color.Black, fraction = .28f).copy(alpha = alpha), at, size, style = Stroke(1.dp.toPx()))
     } else if (finish == BlockFinish.SATIN || finish == BlockFinish.FROST) {
         drawRect(brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = .22f * alpha),
             Color.Transparent, Color.Black.copy(alpha = .15f * alpha)), startY = y, endY = y + h), topLeft = at,
                 size = size)
-        drawRect(lerp(color, if (finish == BlockFinish.FROST) Color.White else Color.Black, .36f)
+        drawRect(lerp(color, if (finish == BlockFinish.FROST) Color.White else Color.Black, FLAT_FINISH_OUTLINE_BLEND)
             .copy(alpha = alpha), at, size, style = Stroke(1.dp.toPx()))
     } else {
         /** Draws a quadrilateral bevel with the block's effective transparency. */
@@ -212,17 +248,20 @@ internal fun DrawScope.bevelBlock(at: Offset, size: Size, color: Color, finish: 
                 it.y) }; close() }
             drawPath(path, shade.copy(alpha = alpha))
         }
-        face(lerp(color, Color.White, .50f), Offset(x,y), Offset(x+w,y), Offset(x+w-b,y+b), Offset(x+b,y+b))
-        face(lerp(color, Color.White, .28f), Offset(x,y), Offset(x+b,y+b), Offset(x+b,y+h-b), Offset(x,y+h))
-        face(lerp(color, Color.Black, .42f), Offset(x,y+h), Offset(x+b,y+h-b), Offset(x+w-b,y+h-b), Offset(x+w,y+h))
-        face(lerp(color, Color.Black, .25f), Offset(x+w,y), Offset(x+w,y+h), Offset(x+w-b,y+h-b), Offset(x+w-b,y+b))
-        drawRect(lerp(color, Color.Black, .55f).copy(alpha = alpha), at, size, style = Stroke(.65.dp.toPx()))
+        face(lerp(color, Color.White, fraction = .50f), Offset(x,y), Offset(x+w,y), Offset(x+w-b,y+b), Offset(x+b,y+b))
+        face(lerp(color, Color.White, fraction = .28f), Offset(x,y), Offset(x+b,y+b), Offset(x+b,y+h-b), Offset(x,y+h))
+        face(lerp(color, Color.Black, fraction = .42f), Offset(x,y+h), Offset(x+b,y+h-b), Offset(x+w-b,y+h-b),
+            Offset(x+w,y+h))
+        face(lerp(color, Color.Black, fraction = .25f), Offset(x+w,y), Offset(x+w,y+h), Offset(x+w-b,y+h-b),
+            Offset(x+w-b,y+b))
+        drawRect(lerp(color, Color.Black, fraction = .55f).copy(alpha = alpha), at, size, style = Stroke(.65.dp.toPx()))
         if (finish == BlockFinish.NEON) {
-            drawRect(lerp(color, Color.White, .65f).copy(alpha = alpha),
+            drawRect(lerp(color, Color.White, fraction = .65f).copy(alpha = alpha),
                 Offset(x + b, y + b), Size(w - 2*b, h - 2*b), style = Stroke(.8.dp.toPx()))
         } else if (finish == BlockFinish.RETRO) {
-            for (stripe in 1..2) drawLine(lerp(color, Color.Black, .34f).copy(alpha = alpha),
-                Offset(x + b, y + h * stripe / 3), Offset(x + w - b, y + h * stripe / 3), .6.dp.toPx())
+            for (stripe in 1..2) drawLine(lerp(color, Color.Black, fraction = .34f).copy(alpha = alpha),
+                Offset(x + b, y + h * stripe / RETRO_STRIPE_DIVISOR), Offset(x + w - b,
+                    y + h * stripe / RETRO_STRIPE_DIVISOR), .6.dp.toPx())
         }
     }
     drawBlockTexture(at, size, color, texture, alpha)
@@ -233,62 +272,80 @@ private fun DrawScope.drawBlockTexture(at: Offset, size: Size, color: Color,
     texture: BlockTexture, alpha: Float) {
     val x = at.x; val y = at.y; val w = size.width; val h = size.height
     val unit = minOf(w, h)
-    val bright = lerp(color, Color.White, .66f).copy(alpha = alpha * .47f)
-    val dark = lerp(color, Color.Black, .62f).copy(alpha = alpha * .42f)
-    val stroke = maxOf(unit * .025f, .55.dp.toPx())
+    val bright = lerp(color, Color.White, fraction = .66f).copy(alpha = alpha * .47f)
+    val dark = lerp(color, Color.Black, fraction = .62f).copy(alpha = alpha * .42f)
+    val stroke = maxOf(unit * NORD_DOT_RADIUS, .55.dp.toPx())
     fun line(c: Color, x1: Float, y1: Float, x2: Float, y2: Float, weight: Float = 1f) =
         drawLine(c, Offset(x + w * x1, y + h * y1), Offset(x + w * x2, y + h * y2), stroke * weight)
     when (texture) {
-        BlockTexture.CLASSIC -> {
-            line(bright, .20f, .22f, .70f, .22f)
-            line(dark, .75f, .72f, .75f, .82f)
-        }
-        BlockTexture.MONOKAI -> {
-            line(bright, .18f, .28f, .53f, .28f)
-            line(bright.copy(alpha = bright.alpha * .5f), .18f, .36f, .38f, .36f)
-        }
-        BlockTexture.GRUVBOX -> {
-            line(dark, .17f, .42f, .72f, .42f)
-            line(bright.copy(alpha = bright.alpha * .5f), .28f, .62f, .80f, .62f)
-        }
-        BlockTexture.VSCODE -> {
-            line(bright, .20f, .20f, .20f, .65f)
-            line(bright, .20f, .65f, .52f, .65f)
-        }
-        BlockTexture.DRACULA -> {
-            line(bright, .25f, .75f, .75f, .25f)
-            drawCircle(bright, unit * .045f, Offset(x + w * .72f, y + h * .27f))
-        }
-        BlockTexture.NORD -> {
-            line(bright, .18f, .27f, .75f, .27f)
-            line(bright.copy(alpha = bright.alpha * .5f), .32f, .43f, .62f, .43f)
-            drawCircle(bright, unit * .025f, Offset(x + w * .25f, y + h * .60f))
-        }
+        BlockTexture.CLASSIC, BlockTexture.MONOKAI, BlockTexture.GRUVBOX,
+        BlockTexture.VSCODE, BlockTexture.DRACULA, BlockTexture.NORD ->
+            drawCoreBlockTexture(texture, at, size, bright, dark)
         BlockTexture.SOLARIZED_LIGHT -> {
-            for (row in 0..2) line(dark.copy(alpha = dark.alpha * .6f), .22f,
-                .34f + row * .14f, .78f, .34f + row * .14f)
+            for (row in 0..2) line(dark.copy(alpha = dark.alpha * SOLARIZED_LINE_OPACITY), x1 = .22f, y1 =
+                SOLARIZED_LINE_START + row * SOLARIZED_LINE_STEP, x2 = .78f,
+                    y2 = SOLARIZED_LINE_START + row * SOLARIZED_LINE_STEP)
         }
         BlockTexture.SOLARIZED_DARK -> {
-            line(bright, .20f, .68f, .55f, .32f)
-            line(dark, .45f, .72f, .78f, .38f)
+            line(bright, x1 = .20f, y1 = .68f, x2 = .55f, y2 = .32f)
+            line(dark, x1 = .45f, y1 = .72f, x2 = .78f, y2 = .38f)
         }
         BlockTexture.GITHUB_LIGHT -> {
-            for (column in 0..2) drawCircle(dark, unit * .028f,
-                Offset(x + w * (.32f + column * .18f), y + h * .5f))
+            for (column in 0..2) drawCircle(dark, unit * GITHUB_DOT_RADIUS,
+                Offset(x + w * (GITHUB_DOT_START + column * GITHUB_DOT_STEP), y + h * GITHUB_DOT_Y))
         }
         BlockTexture.TOKYO_NIGHT -> {
-            line(bright, .20f, .72f, .45f, .34f)
-            line(bright.copy(alpha = bright.alpha * .65f), .50f, .72f, .75f, .34f)
+            line(bright, x1 = .20f, y1 = .72f, x2 = .45f, y2 = .34f)
+            line(bright.copy(alpha = bright.alpha * TOKYO_SECONDARY_OPACITY), x1 = .50f, y1 = .72f, x2 = .75f,
+                y2 = .34f)
         }
         BlockTexture.CATPPUCCIN -> {
-            drawCircle(bright.copy(alpha = bright.alpha * .65f), unit * .16f,
-                Offset(x + w * .68f, y + h * .32f))
-            drawCircle(color.copy(alpha = alpha * .55f), unit * .11f,
-                Offset(x + w * .68f, y + h * .32f))
+            drawCircle(bright.copy(alpha = bright.alpha * CATPPUCCIN_OUTER_OPACITY), unit * CATPPUCCIN_OUTER_RADIUS,
+                Offset(x + w * CATPPUCCIN_DOT_X, y + h * CATPPUCCIN_DOT_Y))
+            drawCircle(color.copy(alpha = alpha * CATPPUCCIN_INNER_OPACITY), unit * CATPPUCCIN_INNER_RADIUS,
+                Offset(x + w * CATPPUCCIN_DOT_X, y + h * CATPPUCCIN_DOT_Y))
         }
         BlockTexture.SYNTHWAVE -> {
-            for (row in 0..2) line(bright, .17f, .30f + row * .19f,
-                .83f, .30f + row * .19f, if (row == 1) 1.2f else .7f)
+            for (row in 0..2) line(bright, x1 = .17f, y1 = SYNTHWAVE_LINE_START + row * SYNTHWAVE_LINE_STEP,
+                x2 = .83f, y2 = SYNTHWAVE_LINE_START + row * SYNTHWAVE_LINE_STEP,
+                    weight = if (row == 1) SYNTHWAVE_MIDDLE_WEIGHT else SYNTHWAVE_OUTER_WEIGHT)
         }
+    }
+}
+
+private fun DrawScope.drawCoreBlockTexture(texture: BlockTexture, at: Offset, size: Size,
+    bright: Color, dark: Color) {
+    val x = at.x; val y = at.y; val w = size.width; val h = size.height
+    val unit = minOf(w, h)
+    val stroke = maxOf(unit * NORD_DOT_RADIUS, .55.dp.toPx())
+    fun line(c: Color, x1: Float, y1: Float, x2: Float, y2: Float) =
+        drawLine(c, Offset(x + w * x1, y + h * y1), Offset(x + w * x2, y + h * y2), stroke)
+    when (texture) {
+        BlockTexture.CLASSIC -> {
+            line(bright, x1 = .20f, y1 = .22f, x2 = .70f, y2 = .22f)
+            line(dark, x1 = .75f, y1 = .72f, x2 = .75f, y2 = .82f)
+        }
+        BlockTexture.MONOKAI -> {
+            line(bright, x1 = .18f, y1 = .28f, x2 = .53f, y2 = .28f)
+            line(bright.copy(alpha = bright.alpha * .5f), x1 = .18f, y1 = .36f, x2 = .38f, y2 = .36f)
+        }
+        BlockTexture.GRUVBOX -> {
+            line(dark, x1 = .17f, y1 = .42f, x2 = .72f, y2 = .42f)
+            line(bright.copy(alpha = bright.alpha * .5f), x1 = .28f, y1 = .62f, x2 = .80f, y2 = .62f)
+        }
+        BlockTexture.VSCODE -> {
+            line(bright, x1 = .20f, y1 = .20f, x2 = .20f, y2 = .65f)
+            line(bright, x1 = .20f, y1 = .65f, x2 = .52f, y2 = .65f)
+        }
+        BlockTexture.DRACULA -> {
+            line(bright, x1 = .25f, y1 = .75f, x2 = .75f, y2 = .25f)
+            drawCircle(bright, unit * DRACULA_DOT_RADIUS, Offset(x + w * DRACULA_DOT_X, y + h * DRACULA_DOT_Y))
+        }
+        BlockTexture.NORD -> {
+            line(bright, x1 = .18f, y1 = .27f, x2 = .75f, y2 = .27f)
+            line(bright.copy(alpha = bright.alpha * .5f), x1 = .32f, y1 = .43f, x2 = .62f, y2 = .43f)
+            drawCircle(bright, unit * NORD_DOT_RADIUS, Offset(x + w * NORD_DOT_X, y + h * NORD_DOT_Y))
+        }
+        else -> Unit
     }
 }

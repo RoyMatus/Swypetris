@@ -116,6 +116,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import ru.itoltec.swypetris.ui.theme.SwypetrisTheme
 
+private const val SCORE_FONT_FIT_STEPS = 12
+private const val SCORE_PULSE_LEG_MILLIS = 110
+private const val FRUIT_COLUMNS = 3
+
+
 /** Current score scale exposed for testing a single pulse with a controlled Compose clock. */
 internal val ScorePulseScale = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("ScorePulseScale")
 
@@ -138,7 +143,7 @@ class MainActivity : ComponentActivity() {
                     controller.isAppearanceLightNavigationBars = palette.light
                     @Suppress("DEPRECATION")
                     window.statusBarColor = android.graphics.Color.TRANSPARENT
-                    if (Build.VERSION.SDK_INT >= 29) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         window.isNavigationBarContrastEnforced = false
                     }
                     @Suppress("DEPRECATION")
@@ -203,7 +208,7 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
     }
     DisposableEffect(model, density, owner) {
         val configuration = ViewConfiguration.get(context)
-        model.configureGestures(GestureConfig(
+        model.input.configureGestures(GestureConfig(
             tapSlop = configuration.scaledTouchSlop / density
         ))
         val observer = LifecycleEventObserver { _, event ->
@@ -213,7 +218,7 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
         owner.lifecycle.addObserver(observer)
         onDispose {
             owner.lifecycle.removeObserver(observer)
-            model.cancelGesture()
+            model.input.cancelGesture()
         }
     }
     LaunchIntroClock(model)
@@ -222,7 +227,7 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
         if (updateWindowActive) updates?.installAutomaticallyIfReady(model)
     }
     BackHandler(enabled = model.launchIntroPending || model.screen != GameScreen.MENU) {
-        model.back()
+        model.navigation.back()
     }
     val palette = GamePalettes.find(model.paletteId)
     CompositionLocalProvider(LocalGamePalette provides palette) {
@@ -234,276 +239,15 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
             if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
                 LaunchIntroMotion.approachProgress(model.launchIntroMillis))
             key(model.screen) {
-            if (model.screen == GameScreen.MENU) MainMenu(model, onExit, onCheckUpdates = { updates?.check(true) })
-            else if (model.screen == GameScreen.CONTACTS) ContactsScreen(model)
-            else if (model.screen == GameScreen.PRIVACY) PrivacyScreen(model)
-            else if (model.screen == GameScreen.LEGAL) LegalScreen()
-            else if (model.screen == GameScreen.HELP) HelpScreen(model)
-            else if (model.screen == GameScreen.SETTINGS) SettingsScreen(model,
-                onCheckUpdates = { updates?.check(true) }, automaticUpdates = updates?.automaticEnabled == true,
-                onAutomaticUpdatesChange = { updates?.requestAutomatic(it) })
-            else if (model.screen == GameScreen.VICTORY) VictoryScreen(model)
-            else if (model.screen == GameScreen.RECORD) RecordScreen(model)
-            else if (model.screen in listOf(GameScreen.GAME_OVER, GameScreen.RESULTS)) ResultsScreen(model)
-            else model.game?.let { GameContent(model, it) }
+            AppScreen(model, updates, onExit)
             }
         }
     }
 }
 
-    if (model.screen in listOf(GameScreen.MENU, GameScreen.SETTINGS) && updates != null) {
-    if (updates.consentRequested) AutomaticUpdateConsentDialog(updates)
-    else UpdateDeliveryDialog(updates.delivery, model) { updates.check(true) }
-    if (!updates.consentRequested && updates.delivery.notice == null) updates.notice?.let { notice ->
-        AlertDialog(onDismissRequest = { if (notice != UpdateNotice.StoreInstalling) updates.dismiss() },
-            title = { Text(if (notice is UpdateNotice.Available) "Доступно обновление" else "Проверка обновлений") },
-            text = { Text(when (notice) {
-                is UpdateNotice.Available -> "Установлена версия ${BuildConfig.VERSION_NAME}. Доступна " +
-                    "${notice.update.versionName}."
-                is UpdateNotice.StoreReady -> "RuStore загрузил версию ${notice.update.versionName}. Установка " +
-                    "сохранит партию и перезапустит приложение."
-                UpdateNotice.StoreInstalling -> "Сохраняем партию. RuStore устанавливает обновление."
-                UpdateNotice.Current -> "Установлена актуальная версия ${BuildConfig.VERSION_NAME}."
-                UpdateNotice.Failed -> "Не удалось завершить обновление. Проверьте подключение и повторите " +
-                    "проверку позже."
-                is UpdateNotice.RateLimited -> "GitHub временно ограничил проверку обновлений. Повторить можно после " +
-                    java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.MEDIUM)
-                        .format(java.util.Date(notice.retryAtMillis)) + " (время устройства). Игру можно продолжить."
-            }) },
-            confirmButton = {
-                if (notice is UpdateNotice.Available) TextButton(onClick = { updates.open(notice.update) },
-                    modifier = Modifier.testTag("confirmUpdate")) { Text("Обновить") }
-                else if (notice is UpdateNotice.StoreReady) TextButton(onClick = { updates
-                    .installStore(model) }) { Text("Установить") }
-                else if (notice != UpdateNotice.StoreInstalling) TextButton(onClick = updates::dismiss) {
-                    Text("Понятно") }
-            },
-            dismissButton = if (notice is UpdateNotice.Available || notice is UpdateNotice.StoreReady) ({
-                TextButton(onClick = updates::dismiss, modifier = Modifier.testTag("laterUpdate")) { Text("Позже") }
-            }) else null)
-    }
-    }
+    if (model.screen in listOf(GameScreen.MENU, GameScreen.SETTINGS) && updates != null)
+        AppUpdateDialogs(model, updates)
 
-    }
-}
-
-/** Compact menu action with its label, accent color, test tag, and click handler. */
-private data class MenuAction(val label: String, val color: Color, val tag: String,
-    val icon: ImageVector, val action: () -> Unit)
-
-/** Primary gameplay actions sit above compact navigation; the logo keeps the final intro position. */
-@Composable
-private fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: () -> Unit) {
-    var menuOrigin by remember { mutableStateOf(Offset.Zero) }
-    var logoBounds by remember { mutableStateOf(Rect.Zero) }
-    val intro = model.launchIntroPending
-    val palette = LocalGamePalette.current
-    val primary = buildList {
-        add(MenuAction("Новая игра", palette.piece(Tetromino.I), "newGame",
-            Icons.Outlined.PlayArrow, model::newGame))
-        if (model.game?.gameOver == false) add(MenuAction("Продолжить", palette.piece(Tetromino.S),
-            "resumeGame", Icons.Outlined.PlayArrow, model::resume))
-    }
-    val secondary = listOf(
-        MenuAction("Настройки", palette.piece(Tetromino.T), "settings", Icons.Outlined.Settings, model::settings),
-        MenuAction("Как играть", palette.piece(Tetromino.J), "help", Icons.Outlined.MenuBook, model::help),
-        MenuAction("Результаты", palette.piece(Tetromino.O), "results", Icons.Outlined.EmojiEvents, model::showResults),
-        MenuAction("Контакты", palette.piece(Tetromino.L), "contacts", Icons.Outlined.MailOutline, model::contacts)
-    )
-    Box(Modifier.fillMaxSize().onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
-    MenuTetrominoBackdrop(logoBounds, Modifier.matchParentSize())
-    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
-        contentAlignment = Alignment.BottomCenter) {
-        val gap = (maxHeight * .01f).coerceIn(3.dp, 8.dp)
-        val primaryHeight = (maxHeight * .11f).coerceIn(48.dp, 64.dp)
-        val secondaryHeight = (maxHeight * .10f).coerceIn(48.dp, 56.dp)
-        val exitHeight = 48.dp
-        val controlsHeight = primaryHeight + secondaryHeight * 2 + exitHeight + gap * 4
-        val bottomSpace = maxHeight * .12f
-        val logoHeight = minOf(maxHeight * .30f, 260.dp,
-            maxHeight - controlsHeight - bottomSpace).coerceAtLeast(0.dp)
-        val reveal = Modifier.graphicsLayer {
-            val buttonsAlpha = LaunchIntroMotion.buttonsAlpha(model.launchIntroMillis)
-            alpha = buttonsAlpha
-            translationY = 12.dp.toPx() * (1f - buttonsAlpha)
-        }.then(if (intro) Modifier.clearAndSetSemantics {} else Modifier)
-        Column(Modifier.widthIn(max = 480.dp).fillMaxWidth().padding(bottom = bottomSpace).testTag("mainMenu"),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(gap)) {
-            Box(Modifier.fillMaxWidth().height(logoHeight), contentAlignment = Alignment.Center) {
-                GameTitle(Modifier.onGloballyPositioned {
-                    logoBounds = Rect(it.positionInRoot() - menuOrigin, Size(it.size.width.toFloat(),
-                        it.size.height.toFloat()))
-                }.graphicsLayer { alpha = if (model.launchLogoAssembled) 1f else 0f }
-                    .then(if (intro) Modifier.clearAndSetSemantics {} else Modifier),
-                    wordmarkOnly = true, heightLimit = logoHeight)
-            }
-            Row(Modifier.fillMaxWidth().height(primaryHeight).then(reveal),
-                horizontalArrangement = Arrangement.spacedBy(gap)) {
-                primary.forEach { item ->
-                    Box(Modifier.weight(1f)) {
-                        MenuTile(item.label, item.color, item.tag, item.icon, ActionStyle.PRIMARY, primaryHeight,
-                            enabled = !intro, onClick = item.action)
-                    }
-                }
-            }
-            secondary.chunked(2).forEach { row ->
-                Row(Modifier.fillMaxWidth().height(secondaryHeight).then(reveal),
-                    horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    row.forEach { item ->
-                        Box(Modifier.weight(1f)) {
-                            MenuTile(item.label, item.color, item.tag, item.icon, ActionStyle.SECONDARY,
-                                secondaryHeight,
-                                enabled = !intro, onClick = item.action)
-                        }
-                    }
-                }
-            }
-            Box(Modifier.fillMaxWidth(.5f).then(reveal)) {
-                MenuTile("Выход", palette.piece(Tetromino.Z), "exitGame",
-                    Icons.Outlined.ExitToApp, ActionStyle.SECONDARY, exitHeight,
-                    enabled = !intro, destructive = true, onClick = onExit)
-            }
-        }
-        TextButton(onClick = onCheckUpdates, enabled = !intro,
-            modifier = Modifier.align(Alignment.BottomStart).testTag("versionCheck")) {
-            Text(BuildConfig.VERSION_NAME, color = palette.muted,
-                style = MaterialTheme.typography.labelSmall)
-        }
-    }
-    if (intro) LaunchIntroOverlay(model, logoBounds, Modifier.matchParentSize())
-    }
-}
-
-/** Compact rectangular button whose label adapts to increased font size. */
-@Composable
-internal fun MenuTile(label: String, accent: Color, tag: String,
-    icon: ImageVector,
-    style: ActionStyle = ActionStyle.SECONDARY, height: Dp = 64.dp,
-    enabled: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.fillMaxWidth().height(height).testTag(tag),
-        shape = RoundedCornerShape(12.dp),
-        colors = if (destructive) ButtonDefaults.outlinedButtonColors(
-            containerColor = LocalGamePalette.current.background.copy(alpha = .8f), contentColor = accent)
-        else paletteButtonColors(accent, style),
-        border = paletteButtonBorder(accent, style),
-        contentPadding = PaddingValues(8.dp)
-    ) {
-        BoxWithConstraints(contentAlignment = Alignment.Center) {
-            val scale = LocalDensity.current.fontScale
-            val showIcon = scale < 1.5f
-            val iconSpace = if (showIcon) 32.dp else 0.dp
-            val font = minOf(20f, (maxWidth - iconSpace).value / (label.length * 0.78f) / scale,
-                maxHeight.value / 1.4f / scale).coerceAtLeast(if (style == ActionStyle.PRIMARY) 8f else 10f)
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (showIcon) Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-                Text(label, fontSize = font.sp, maxLines = 1, fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center)
-            }
-        }
-    }
-}
-/** Number of grid rows reserved above the visible playfield for spawning pieces. */
-internal const val SPAWN_DISPLAY_ROWS = 2
-private const val GAME_GRID_ROWS = BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS
-
-/** Draws the grid across the entire gameplay surface without outer gutters. */
-@Composable
-private fun GameGridBackground(geometry: GameplayGeometry) {
-    val palette = LocalGamePalette.current
-    Canvas(Modifier.fillMaxSize().testTag("gridBackground")) {
-        for (column in 0..BoardGeometry.WIDTH) {
-            val x = column * size.width / BoardGeometry.WIDTH
-            drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
-        }
-        // Join the status area to the first complete row instead of drawing a cropped strip.
-        drawLine(palette.grid, Offset.Zero, Offset(size.width, 0f))
-        for (row in 2..GAME_GRID_ROWS) {
-            val y = geometry.gridTop + row * geometry.cellHeight
-            drawLine(palette.grid, Offset(0f, y), Offset(size.width, y))
-        }
-    }
-}
-
-/** Grid extends under system icons; foreground and gestures stay below their safe boundary. */
-@Composable
-internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? = null) {
-    val localDensity = LocalDensity.current
-    val density = localDensity.density
-    val playing = model.screen == GameScreen.PLAYING
-    val safeTop = topInset ?: with(localDensity) {
-        WindowInsets.statusBars.union(WindowInsets.displayCutout).getTop(this).toDp()
-    }
-    val palette = LocalGamePalette.current
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.glass,
-        lerp(palette.glass, palette.background, if (palette.light) .08f else .35f))))
-        .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))) {
-        val hints = model.hintsEnabled
-        val landing = remember(state.board, state.active, state.clearingRows, hints) {
-            if (hints && state.clearingRows.isEmpty()) model.engine.ghost(state) else null
-        }
-        Box(Modifier.fillMaxSize()) {
-            BoxWithConstraints(Modifier.fillMaxSize()) {
-                val boardWidth = maxWidth
-                val geometry = gameplayGeometry(with(localDensity) { maxHeight.toPx() },
-                    with(localDensity) { safeTop.toPx() })
-                val spawnBandHeight = with(localDensity) { (geometry.cellHeight * SPAWN_DISPLAY_ROWS).toDp() }
-                LaunchedEffect(boardWidth) { model.setBoardWidth(boardWidth.value) }
-
-                GameGridBackground(geometry)
-                Box(Modifier.fillMaxSize()) {
-                    Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis }, geometry = geometry,
-                        drawActive = false)
-                    Box(Modifier.offset(y = safeTop).fillMaxWidth().height(spawnBandHeight)
-                        .semantics { contentDescription = "Следующая фигура ${state.next.name}" }
-                        .testTag("nextPreview"))
-                }
-                Box(Modifier.fillMaxSize().padding(top = safeTop)
-                    .consumeWindowInsets(PaddingValues(top = safeTop))) {
-                    GameHud(state, spawnBandHeight,
-                        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues(),
-                        with(localDensity) { WindowInsets.safeDrawing.getBottom(this).toDp() }) {
-                        ActivePiece(state, geometry.copy(safeTop = 0f))
-                    }
-                }
-            }
-        }
-
-        // Use the same content-local coordinates for drawing and gameplay gestures.
-        Box(Modifier.fillMaxSize().padding(top = safeTop)
-            .testTag("gameArea").pointerInput(model, playing, density) {
-        if (!playing) return@pointerInput
-        try {
-            awaitEachGesture {
-                val first = awaitFirstDown(requireUnconsumed = false)
-                val id = first.id
-                model.pointerDown(first.position.x / density, first.position.y / density, first.uptimeMillis)
-                first.consume()
-                var canceled = false
-                do {
-                    val event = awaitPointerEvent()
-                    if (event.changes.any { it.id != id && it.pressed }) {
-                        canceled = true
-                        model.cancelGesture()
-                    }
-                    val change = event.changes.firstOrNull { it.id == id }
-                    if (!canceled && change != null) {
-                        if (change.pressed) model.pointerMove(change.position.x / density,
-                            change.position.y / density, change.uptimeMillis)
-                        else model.pointerUp(change.position.x / density, change.position.y / density,
-                            change.uptimeMillis)
-                    }
-                    event.changes.forEach { it.consume() }
-                } while (event.changes.any { it.pressed })
-            }
-        } finally {
-            model.cancelGesture()
-        }
-        }) {}
     }
 }
 
@@ -526,7 +270,7 @@ private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: 
             // Measure the actual constrained paragraph rather than assuming proportional glyph widths.
             var low = .1f
             var high = preferred.value
-            repeat(12) {
+            repeat(SCORE_FONT_FIT_STEPS) {
                 val middle = (low + high) / 2
                 if (fits(middle.sp)) low = middle else high = middle
             }
@@ -541,24 +285,8 @@ private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: 
 internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
     horizontalInsets: PaddingValues = PaddingValues(0.dp), bottomInset: Dp = 0.dp,
     pieceOverlay: @Composable () -> Unit = {}) {
-    val displayed = GameRules.displayScore(state.score)
-    val currentLines by rememberUpdatedState(state.lines)
-    val nearing by rememberUpdatedState(GameRules.nearingLevel(state.lines, state.startingLevel))
-    val scale = remember { Animatable(1f) }
-    LaunchedEffect(Unit) {
-        var pulsing = false
-        snapshotFlow { currentLines }.drop(1).collect {
-            if (nearing && !pulsing) {
-                pulsing = true
-                launch {
-                    try {
-                        scale.animateTo(SCORE_MAX_SCALE, tween(110))
-                        scale.animateTo(1f, tween(110))
-                    } finally { pulsing = false }
-                }
-            }
-        }
-    }
+    val displayed = displayScore(state.score)
+    val scale = rememberScorePulse(state)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val leftMargin = GAMEPLAY_HUD_MARGIN.dp +
@@ -627,7 +355,7 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
     val itemWidth = ((width - FRUIT_GAP.dp * 2) / 3).coerceAtLeast(1.dp)
     val iconSize = minOf(FRUIT_SIZE.dp, itemWidth * .55f).coerceAtLeast(1.dp)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
-        fruits.chunked(3).forEach { row ->
+        fruits.chunked(FRUIT_COLUMNS).forEach { row ->
             Row(Modifier.fillMaxWidth(),
                 horizontalArrangement = if (row.size == 1) Arrangement.Center else Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
@@ -683,90 +411,26 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
     }
 }
 
-/** Draws the logical board, spawn preview, active piece, and optional landing ghost. */
+
 @Composable
-internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint: Piece? = null,
-    clearTime: () -> Long = { clearElapsedMillis }, geometry: GameplayGeometry? = null, drawActive: Boolean = true,
-    reducedMotion: Boolean = Build.VERSION.SDK_INT >= 26 && !android.animation.ValueAnimator.areAnimatorsEnabled()) {
-    val palette = LocalGamePalette.current
-    val shards = remember(state.board, state.clearingRows, state.completedClears) { LineClearAnimation.shards(state) }
-    Canvas(Modifier.fillMaxSize()
-        .semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
-        " Следующая фигура ${state.next.name}" +
-        " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }
-            .testTag("board")) {
-        val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
-        val cell = Size(size.width / BoardGeometry.WIDTH, geometry?.cellHeight ?: (size.height / GAME_GRID_ROWS))
-        val origin = Offset(0f, (geometry?.gridTop ?: 0f) + SPAWN_DISPLAY_ROWS * cell.height)
-        val firstVisibleSpawnRow = -SPAWN_DISPLAY_ROWS
-        clipRect(top = geometry?.safeTop ?: 0f) {
-
-            // The outline uses engine spawn cells; its faint flat fill cannot look like an active block.
-            spawnPiece(state.next).cells()
-                .filter { it.y in firstVisibleSpawnRow until BoardGeometry.VISIBLE_ROWS }
-                .forEach {
-                    val gap = minOf(cell.width, cell.height) * .07f
-                    val at = origin + Offset(it.x * cell.width + gap, it.y * cell.height + gap)
-                    val bounds = Size(cell.width - gap * 2, cell.height - gap * 2)
-                    val previewColor = lerp(palette.piece(state.next), palette.text, if (palette.light) .35f else .1f)
-                    drawRect(previewColor.copy(alpha = .0275f), at, bounds)
-                    drawRect(previewColor.copy(alpha = if (palette.light) .35f else .30f), at, bounds,
-                        style = Stroke(1.dp.toPx()))
+private fun rememberScorePulse(state: GameState):
+    androidx.compose.animation.core.Animatable<Float, androidx.compose.animation.core.AnimationVector1D> {
+    val currentLines by rememberUpdatedState(state.lines)
+    val nearing by rememberUpdatedState(GameRules.nearingLevel(state.lines, state.startingLevel))
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        var pulsing = false
+        snapshotFlow { currentLines }.drop(1).collect {
+            if (nearing && !pulsing) {
+                pulsing = true
+                launch {
+                    try {
+                        scale.animateTo(SCORE_MAX_SCALE, tween(SCORE_PULSE_LEG_MILLIS))
+                        scale.animateTo(1f, tween(SCORE_PULSE_LEG_MILLIS))
+                    } finally { pulsing = false }
                 }
-
-            state.board.forEachIndexed { rowIndex, row ->
-                val logicalY = rowIndex - BoardGeometry.HIDDEN_ROWS
-                val shift = LineClearAnimation.rowShift(rowIndex, state.clearingRows, elapsed, reducedMotion)
-                if (logicalY + shift + 1 > firstVisibleSpawnRow &&
-                    !(rowIndex in state.clearingRows && LineClearAnimation.isRemoved(elapsed))) {
-                    row.forEachIndexed { x, type ->
-                        if (type != null) block(Cell(x, logicalY), palette.piece(type), palette.finish,
-                            palette.texture, origin + Offset(0f, shift * cell.height), cell)
-                    }
-                }
-            }
-            if (state.clearingRows.isNotEmpty()) clipRect(top = origin.y) {
-                lineClearEffects(shards, state.clearingRows, palette, origin, cell, elapsed, reducedMotion)
-            }
-
-            if (!state.gameOver && state.clearingRows.isEmpty()) {
-                landingHint?.let { hint ->
-                    hint.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach {
-                        block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell,
-                            alpha = palette.ghostAlpha, outline = true)
-                    }
-                }
-                if (drawActive) fallingPiece(state, palette, origin, cell)
             }
         }
     }
-}
-
-/** Dedicated falling-piece layer between fruits and the other HUD indicators. */
-@Composable
-private fun ActivePiece(state: GameState, geometry: GameplayGeometry) {
-    val palette = LocalGamePalette.current
-    Canvas(Modifier.fillMaxSize().testTag("activePiece")) {
-        val cell = Size(size.width / BoardGeometry.WIDTH, geometry.cellHeight)
-        val origin = Offset(0f, geometry.gridTop + SPAWN_DISPLAY_ROWS * cell.height)
-        clipRect(top = geometry.safeTop) { fallingPiece(state, palette, origin, cell) }
-    }
-}
-
-private fun DrawScope.fallingPiece(state: GameState, palette: GamePalette, origin: Offset, cell: Size) {
-    if (!state.gameOver && state.clearingRows.isEmpty()) {
-        state.active.cells().filter { it.y in -SPAWN_DISPLAY_ROWS until BoardGeometry.VISIBLE_ROWS }.forEach {
-            block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell)
-        }
-    }
-}
-
-/** Draws a colored cell with spacing using independent width and height. */
-private fun DrawScope.block(cell: Cell, color: Color, finish: BlockFinish, texture: BlockTexture, origin: Offset,
-    step: Size,
-    alpha: Float = 1f, outline: Boolean = false) {
-    val gap = minOf(step.width, step.height) * 0.07f
-    val topLeft = origin + Offset(cell.x * step.width + gap, cell.y * step.height + gap)
-    val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
-    bevelBlock(topLeft, blockSize, color, finish, texture, alpha, outline)
+    return scale
 }

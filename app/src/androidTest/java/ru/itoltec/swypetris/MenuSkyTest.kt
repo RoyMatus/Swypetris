@@ -53,14 +53,7 @@ class MenuSkyTest {
             for (t in listOf(8.0, 32.0, 53.0)) {
                 compose.runOnIdle { time = t }
                 val after = capture("$palette-$format-$t")
-                // Everything below the sky is anchored, including all lower foreground pixels.
-                var skyChanges = 0
-                for (y in 0 until before.height) for (x in 0 until before.width) {
-                    val same = before.getPixel(x, y) == after.getPixel(x, y)
-                    if (y >= before.height / 2) assertTrue("Foreground moved at $x,$y", same)
-                    else if (!same) skyChanges++
-                }
-                assertTrue("Sky animation must be discernible", skyChanges > 100)
+                assertAnchoredForeground(before, after)
             }
         }
     }
@@ -120,5 +113,16 @@ class MenuSkyTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val directory = File(context.getExternalFilesDir(null), "issue-176").apply { mkdirs() }
         File(directory, "$name.png").outputStream().use { out -> it.compress(Bitmap.CompressFormat.PNG, 100, out) }
+    }
+
+    private fun assertAnchoredForeground(before: Bitmap, after: Bitmap) {
+    // Everything below the sky is anchored, including all lower foreground pixels.
+    var skyChanges = 0
+    for (y in 0 until before.height) for (x in 0 until before.width) {
+        val same = before.getPixel(x, y) == after.getPixel(x, y)
+        if (y >= before.height / 2) assertTrue("Foreground moved at $x,$y", same)
+        else if (!same) skyChanges++
+    }
+    assertTrue("Sky animation must be discernible", skyChanges > 100)
     }
 }

@@ -2,6 +2,11 @@ package ru.itoltec.swypetris
 
 import androidx.compose.ui.geometry.Rect
 
+private const val PREVIEW_WIDTH_FRACTION = .18f
+private const val MIN_PREVIEW_WIDTH_DP = 40f
+private const val MAX_PREVIEW_WIDTH_DP = 72f
+
+
 internal const val FRUIT_SIZE = 20f
 internal const val FRUIT_GAP = 4f
 internal const val HUD_HORIZONTAL_MARGIN = 4f
@@ -20,7 +25,8 @@ internal fun gameplayGeometry(height: Float, safeTop: Float): GameplayGeometry {
 }
 
 /** Shared preview width for rendering and fruit collision avoidance, in dp. */
-internal fun nextPreviewWidth(width: Float): Float = (width * .18f).coerceIn(40f, 72f)
+internal fun nextPreviewWidth(width: Float): Float = (width * PREVIEW_WIDTH_FRACTION)
+    .coerceIn(MIN_PREVIEW_WIDTH_DP, MAX_PREVIEW_WIDTH_DP)
 
 /**
  * Returns the occupied rectangle of [piece] in board-local pixels.
@@ -32,8 +38,10 @@ internal fun nextPreviewWidth(width: Float): Float = (width * .18f).coerceIn(40f
  */
 internal fun pieceBounds(piece: Piece, width: Float, height: Float): Rect {
     val cells = piece.cells()
-    return Rect(cells.minOf { it.x } * width / 10, cells.minOf { it.y } * height / 20,
-        (cells.maxOf { it.x } + 1) * width / 10, (cells.maxOf { it.y } + 1) * height / 20)
+    return Rect(cells.minOf { it.x } * width / BoardGeometry.WIDTH,
+        cells.minOf { it.y } * height / BoardGeometry.VISIBLE_ROWS,
+        (cells.maxOf { it.x } + 1) * width / BoardGeometry.WIDTH,
+            (cells.maxOf { it.y } + 1) * height / BoardGeometry.VISIBLE_ROWS)
 }
 
 /** Top-right position of the vertical fruit collection in board-local coordinates. */

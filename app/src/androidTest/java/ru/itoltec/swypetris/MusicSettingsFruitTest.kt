@@ -67,7 +67,7 @@ class MusicSettingsFruitTest {
         val initial = GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=10000)
         val model = GameViewModel(app,initial,{1000L},false,musicPlayback=recorder)
         assertEquals(MusicSelection.Off,model.musicSelection)
-        model.settings()
+        model.navigation.settings()
         compose.setContent { SwypetrisApp(model) {} }
         compose.onNodeWithTag("musicPicker").performScrollTo().performClick()
         compose.onNodeWithTag("music_trepak").performScrollTo().performClick()
@@ -75,17 +75,17 @@ class MusicSettingsFruitTest {
             assertEquals(MusicSelection.Track(Song.TREPAK),model.musicSelection)
             assertEquals(MusicMode.MENU,recorder.modes.last())
             val count=recorder.selections.size
-            model.chooseMusic(model.musicSelection)
+            model.options.chooseMusic(model.musicSelection)
             assertEquals(count,recorder.selections.size)
             model.onBackground(); assertEquals(MusicMode.SILENT,recorder.modes.last())
             model.onForeground(); assertEquals(MusicMode.MENU,recorder.modes.last())
-            model.menu(); assertEquals(MusicMode.MENU,recorder.modes.last())
+            model.navigation.menu(); assertEquals(MusicMode.MENU,recorder.modes.last())
             model.resume(); assertEquals(MusicMode.GAME,recorder.modes.last())
             assertEquals(initial,model.game)
             assertEquals(model.musicSelection,GameViewModel(app,null,{1000L},false).musicSelection)
-            model.settings(); model.chooseMusic(MusicSelection.ShuffleAll)
+            model.navigation.settings(); model.options.chooseMusic(MusicSelection.ShuffleAll)
             assertEquals(MusicMode.MENU,recorder.modes.last())
-            model.chooseMusic(MusicSelection.Off)
+            model.options.chooseMusic(MusicSelection.Off)
             assertEquals(MusicMode.SILENT,recorder.modes.last())
             assertFalse(GameViewModel(app,null,{1000L},false).musicEnabled)
             assertTrue(model.results.isEmpty())
@@ -97,14 +97,14 @@ class MusicSettingsFruitTest {
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun musicPickerLargeFontInLightAndDarkThemes() {
         val model=GameViewModel(ApplicationProvider.getApplicationContext(),null,{1000L},false)
-        model.settings(); model.setPalette("github_light")
+        model.navigation.settings(); model.options.setPalette("github_light")
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density,2f)) {
                 Box(Modifier.width(320.dp).fillMaxHeight()) { SwypetrisApp(model) {} }
             }
         }
         for (theme in listOf("github_light","classic")) {
-            compose.runOnIdle { model.setPalette(theme) }
+            compose.runOnIdle { model.options.setPalette(theme) }
             compose.onNodeWithTag("musicPicker").performScrollTo().performClick()
             compose.onNodeWithTag("music_sugar_plum").performScrollTo().performClick()
             compose.onNodeWithTag("musicPicker").assertIsDisplayed()

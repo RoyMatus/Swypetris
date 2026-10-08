@@ -47,18 +47,18 @@ class MusicIntegrationTest {
             val model = GameViewModel(application,
                 GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18), next = Tetromino.O, score = 100),
                 { 1000L }, false, musicPlayback = recorder)
-            model.command(GameCommand.HARD_DROP)
+            model.input.command(GameCommand.HARD_DROP)
             assertEquals(GameScreen.RECORD, model.screen)
             assertEquals(if (musicEnabled) 1 else 0, recorder.modes.count { it == MusicMode.RECORD })
-            repeat(3) { model.advanceFrame(1000L); model.command(GameCommand.HARD_DROP) }
+            repeat(3) { model.simulation.advanceFrame(1000L); model.input.command(GameCommand.HARD_DROP) }
             assertEquals(if (musicEnabled) 1 else 0, recorder.modes.count { it == MusicMode.RECORD })
             model.pause()
             assertEquals(MusicMode.SILENT, recorder.modes.last())
             model.resume() // Завершённая партия не должна снова запускать фанфары.
             assertEquals(MusicMode.SILENT, recorder.modes.last())
-            model.saveRecordName("Тест")
+            model.statistics.saveRecordName("Тест")
             assertEquals(MusicMode.SILENT, recorder.modes.last())
-            model.back()
+            model.navigation.back()
             assertEquals(GameScreen.MENU, model.screen)
         }
     }
@@ -74,10 +74,10 @@ class MusicIntegrationTest {
         model.onForeground()
         assertEquals(MusicMode.MENU, recorder.modes.last())
 
-        model.settings()
+        model.navigation.settings()
         assertEquals(MusicMode.MENU, recorder.modes.last())
 
-        model.help()
+        model.navigation.help()
         assertEquals(GameScreen.HELP, model.screen)
         assertEquals(MusicMode.MENU, recorder.modes.last())
 
@@ -86,10 +86,11 @@ class MusicIntegrationTest {
         model.onWindowFocusChanged(true)
         assertEquals(MusicMode.MENU, recorder.modes.last())
 
-        model.chooseMusic(MusicSelection.Off)
+        model.options.chooseMusic(MusicSelection.Off)
         assertEquals(MusicMode.SILENT, recorder.modes.last())
-        for (navigate in listOf(model::settings, model::help, model::contacts, model::privacy,
-            model::legal, model::showResults, model::menu)) {
+        for (navigate in listOf(model.navigation::settings, model.navigation::help, model.navigation::contacts,
+            model.navigation::privacy,
+            model.navigation::legal, model.navigation::showResults, model.navigation::menu)) {
             navigate()
             assertEquals(MusicMode.SILENT, recorder.modes.last())
         }
@@ -99,8 +100,8 @@ class MusicIntegrationTest {
         val restarted = GameViewModel(application, null, { 1000L }, false, musicPlayback = restartedRecorder)
         restarted.onForeground()
         assertEquals(MusicMode.SILENT, restartedRecorder.modes.last())
-        model.menu()
-        model.chooseMusic(MusicSelection.Track(Song.KOROBEINIKI))
+        model.navigation.menu()
+        model.options.chooseMusic(MusicSelection.Track(Song.KOROBEINIKI))
         assertEquals(MusicMode.MENU, recorder.modes.last())
     }
 
@@ -137,8 +138,9 @@ class MusicIntegrationTest {
         try {
             val started = android.os.SystemClock.uptimeMillis()
             var previous = 0L
-            val navigation = listOf(model::settings, model::help, model::contacts, model::privacy,
-                model::legal, model::showResults, model::menu)
+            val navigation = listOf(model.navigation::settings, model.navigation::help, model.navigation::contacts,
+                model.navigation::privacy,
+                model.navigation::legal, model.navigation::showResults, model.navigation::menu)
             var screen = 0
             while (previous < MenuTheme.FRAME_COUNT * 3L && android.os.SystemClock.uptimeMillis() - started < 105000) {
                 compose.runOnIdle {
@@ -161,7 +163,7 @@ class MusicIntegrationTest {
                 model.onForeground()
                 assertSame(track, menuTrack(music))
                 assertEquals(AudioTrack.PLAYSTATE_PLAYING, track.playState)
-                model.chooseMusic(MusicSelection.Off)
+                model.options.chooseMusic(MusicSelection.Off)
                 assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
                 for (mode in MusicMode.entries) music.setMode(mode)
                 assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)

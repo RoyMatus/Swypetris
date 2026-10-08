@@ -1,9 +1,7 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,16 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-/** Developer contact with a display address, copyable text, and an external URI. */
-internal enum class DeveloperContact(val title: String, val address: String, val uri: String) {
-    EMAIL("Email", "piligrim18@gmail.com", "mailto:piligrim18@gmail.com"),
-    TELEGRAM("Telegram", "@RoyMatus", "https://t.me/RoyMatus"),
-    WEBSITE("Сайт", "https://itoltec.ru/", "https://itoltec.ru/");
-
-    /** Builds an email or browser intent without sending any message on the user's behalf. */
-    fun intent(): Intent = Intent(if (this == EMAIL) Intent.ACTION_SENDTO else Intent.ACTION_VIEW, Uri.parse(uri))
-}
-
 /** Opens a contact; the UI handles devices without a suitable external application. */
 internal fun openContact(context: Context, contact: DeveloperContact): Boolean = try {
     context.startActivity(contact.intent())
@@ -76,29 +64,14 @@ fun ContactsScreen(model: GameViewModel) {
             item { ScreenArtHeader("Контакты", "Связаться с разработчиком") }
             DeveloperContact.entries.forEachIndexed { index, contact ->
                 item {
-                    val accent = listOf(palette.accent, palette.secondary, palette.gold)[index]
-                    ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        Column(Modifier.fillMaxWidth().padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(contact.title.uppercase(), color = accent, fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                            SettingsDivider(accent)
-                            Text(contact.address, color = palette.text, style = MaterialTheme.typography.bodyLarge)
-                            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                AppActionButton("Открыть", ActionStyle.TEXT,
-                                    Modifier.testTag("open${contact.name}"), accent) {
-                                    if (!openContact(context, contact)) scope.launch {
-                                        messages.showSnackbar("Нет приложения для открытия. Скопируйте адрес.")
-                                    }
-                                }
-                                AppActionButton("Копировать", ActionStyle.TEXT, Modifier.testTag("copy${contact.name}"),
-                                    LocalGamePalette.current.piece(Tetromino.J)) {
-                                    clipboard.setText(AnnotatedString(contact.address))
-                                    scope.launch { messages.showSnackbar("Адрес скопирован") }
-                                }
-                            }
+                    ContactCard(contact, index, onOpen = {
+                        if (!openContact(context, contact)) scope.launch {
+                            messages.showSnackbar("Нет приложения для открытия. Скопируйте адрес.")
                         }
-                    }
+                    }, onCopy = {
+                        clipboard.setText(AnnotatedString(contact.address))
+                        scope.launch { messages.showSnackbar("Адрес скопирован") }
+                    })
                 }
             }
             item {
@@ -119,9 +92,10 @@ fun ContactsScreen(model: GameViewModel) {
                             showApkDownload = true
                         }
                         AppActionButton("Лицензии и права", ActionStyle.SECONDARY,
-                            Modifier.fillMaxWidth().testTag("legal"), palette.piece(Tetromino.J), model::legal)
+                            Modifier.fillMaxWidth().testTag("legal"), palette.piece(Tetromino.J),
+                                model.navigation::legal)
                         AppActionButton("Конфиденциальность", ActionStyle.SECONDARY,
-                            Modifier.fillMaxWidth().testTag("privacy"), accent, model::privacy)
+                            Modifier.fillMaxWidth().testTag("privacy"), accent, model.navigation::privacy)
                     }
                 }
             }
@@ -130,4 +104,30 @@ fun ContactsScreen(model: GameViewModel) {
     }
     if (showShareApp) ShareAppDialog(onDismiss = { showShareApp = false })
     if (showApkDownload) ApkDownloadDialog(onDismiss = { showApkDownload = false })
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun ContactCard(contact: DeveloperContact, index: Int, onOpen: () -> Unit, onCopy: () -> Unit) {
+    val palette = LocalGamePalette.current
+    val accent = listOf(palette.accent, palette.secondary, palette.gold)[index]
+    ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Column(Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(contact.title.uppercase(), color = accent, fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            SettingsDivider(accent)
+            Text(contact.address, color = palette.text, style = MaterialTheme.typography.bodyLarge)
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppActionButton("Открыть", ActionStyle.TEXT,
+                    Modifier.testTag("open${contact.name}"), accent) {
+                    onOpen()
+                }
+                AppActionButton("Копировать", ActionStyle.TEXT, Modifier.testTag("copy${contact.name}"),
+                    LocalGamePalette.current.piece(Tetromino.J)) {
+                    onCopy()
+                }
+            }
+        }
+    }
 }

@@ -45,12 +45,13 @@ internal class UpdateInstaller(private val context: Context) {
         val parameters = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         parameters.setAppPackageName(context.packageName)
         parameters.setSize(file.length())
-        if (Build.VERSION.SDK_INT >= 31) parameters.setRequireUserAction(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) parameters.setRequireUserAction(
             if (allowWithoutConfirmation) PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
             else PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
-        if (Build.VERSION.SDK_INT >= 33)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             parameters.setPackageSource(PackageInstaller.PACKAGE_SOURCE_DOWNLOADED_FILE)
         val id = installer.createSession(parameters)
+        var prepared = false
         try {
             installer.openSession(id).use { session ->
                 session.openWrite("base.apk", 0, file.length()).use { output ->
@@ -60,10 +61,10 @@ internal class UpdateInstaller(private val context: Context) {
             }
             if (!preferences.edit().putInt("session", id).remove("status").commit())
                 throw IOException("Cannot persist the installation session")
+            prepared = true
             return id
-        } catch (failure: Exception) {
-            installer.abandonSession(id)
-            throw failure
+        } finally {
+            if (!prepared) installer.abandonSession(id)
         }
     }
 
@@ -72,7 +73,7 @@ internal class UpdateInstaller(private val context: Context) {
         val callback = Intent(context, UpdateInstallReceiver::class.java)
             .setAction("${context.packageName}.INSTALL_RESULT.$id")
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-            if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
         val receiver = PendingIntent.getBroadcast(context, id, callback, flags)
         installer.openSession(id).use { it.commit(receiver.intentSender) }
     }

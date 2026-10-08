@@ -3,8 +3,15 @@
 import kotlin.math.pow
 import kotlin.math.roundToLong
 
+private const val GRAVITY_FLOOR_STEP = 18
+private const val GRAVITY_BASE_SECONDS = 0.8
+private const val GRAVITY_STEP_SECONDS = 0.007
+private const val NANOS_PER_SECOND = 1_000_000_000
+
+
 /** Shared version-6 rules for engine, HUD, and help; thresholds avoid Int overflow. */
 object GameRules {
+    const val MAX_CLEAR_LINES = 4
     const val VERSION = 6
     const val PREVIOUS_VERSION = 5
     const val NANOS_PER_MILLI = 1_000_000L
@@ -37,9 +44,6 @@ object GameRules {
     fun nearingLevel(lines: Int, startingLevel: Int = 1): Boolean =
         lines.toLong() == nextThreshold(lines, startingLevel) - 1
 
-    /** Score remains score; level progress has its own source of truth. */
-    fun displayScore(score: Int): String = "$score"
-
     /** Adds earned [points] to [score] without overflowing Int; negative awards are ignored. */
     fun add(score: Int, points: Int): Int = (score.toLong() + points.coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE
         .toLong()).toInt()
@@ -55,7 +59,9 @@ object GameRules {
     }
 
     /** Base award for an ordinary clear, before the level multiplier. */
-    fun lineScore(count: Int): Int = listOf(0, 100, 300, 500, 800)[count]
+    private val ordinaryClearAwards = listOf(0, 100, 300, 500, 800)
+
+    fun lineScore(count: Int): Int = ordinaryClearAwards[count]
 
     /** The event captures the level before removal; drop points were already awarded. */
     fun placementScore(event: PlacementResult): Int {
@@ -82,8 +88,8 @@ object GameRules {
     fun gravityNanos(level: Int, startingLevel: Int = 1): Long {
         val start = startingLevel.coerceAtLeast(1)
         val steps = start - 1 + (level.coerceAtLeast(start) - start) / GRAVITY_PROGRESSION_STRETCH
-        if (steps >= 18) return MIN_GRAVITY_NANOS
-        return ((0.8 - steps * 0.007).pow(steps) * 1_000_000_000).roundToLong()
+        if (steps >= GRAVITY_FLOOR_STEP) return MIN_GRAVITY_NANOS
+        return ((GRAVITY_BASE_SECONDS - steps * GRAVITY_STEP_SECONDS).pow(steps) * NANOS_PER_SECOND).roundToLong()
             .coerceAtLeast(MIN_GRAVITY_NANOS)
     }
 

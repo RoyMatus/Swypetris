@@ -32,7 +32,7 @@ class GameplaySurfaceTest {
         var top by mutableIntStateOf(52)
         var state by mutableStateOf(GameState(active = Piece(Tetromino.T, y = 8), next = Tetromino.O))
         val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), state, { 1000L }, false)
-        model.setHints(false)
+        model.options.setHints(false)
         var pixelsPerDp = 1f
         compose.setContent {
             pixelsPerDp = LocalDensity.current.density

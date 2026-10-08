@@ -1,6 +1,10 @@
 package ru.itoltec.swypetris
 
 import java.io.IOException
+import android.content.pm.PackageManager
+import kotlinx.coroutines.CancellationException
+import org.json.JSONException
+import java.security.GeneralSecurityException
 
 internal enum class UpdateFailureReason(val userMessage: String) {
     NETWORK("Не удалось загрузить APK с GitHub. Проверьте подключение и повторите загрузку."),
@@ -28,3 +32,15 @@ internal fun updateFailureMessage(failure: Exception, stage: UpdateStage): Strin
         UpdateStage.STORAGE, UpdateStage.SAVE -> UpdateFailureReason.PERSISTENCE
     }.userMessage
 }
+
+/** Recover documented I/O, metadata and package failures; cancellation keeps its coroutine semantics. */
+internal suspend inline fun <T> recoverExpectedUpdateFailure(operation: () -> T, recover: (Exception) -> T): T =
+    try { operation() }
+    catch (cancelled: CancellationException) { throw cancelled }
+    catch (failure: IOException) { recover(failure) }
+    catch (failure: JSONException) { recover(failure) }
+    catch (failure: PackageManager.NameNotFoundException) { recover(failure) }
+    catch (failure: SecurityException) { recover(failure) }
+    catch (failure: IllegalArgumentException) { recover(failure) }
+    catch (failure: IllegalStateException) { recover(failure) }
+    catch (failure: GeneralSecurityException) { recover(failure) }

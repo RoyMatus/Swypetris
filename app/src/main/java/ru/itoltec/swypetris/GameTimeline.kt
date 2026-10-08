@@ -53,16 +53,7 @@ internal class GameTimeline(
             }
             val spent = minOf(budget, untilEvent)
             val previous = state
-            when {
-                clearing -> clearElapsedNanos += spent
-                grounded -> {
-                    advanceGravityPhase(spent, state.gravityNanos)
-                    val lockTime = lockFractionNanos + spent
-                    lockFractionNanos = lockTime % milli
-                    state = engine.advanceLock(state, lockTime / milli)
-                }
-                else -> gravityRemainingNanos -= spent
-            }
+            state = spendTime(state, spent, clearing, grounded, engine)
             budget -= spent
             advancedNanos += spent
             if (spent == untilEvent) {
@@ -79,21 +70,39 @@ internal class GameTimeline(
         return state
     }
 
+    private fun spendTime(state: GameState, spent: Long, clearing: Boolean, grounded: Boolean,
+        engine: GameEngine): GameState {
+        return when {
+            clearing -> { clearElapsedNanos += spent; state }
+            grounded -> {
+                advanceGravityPhase(spent, state.gravityNanos)
+                val lockTime = lockFractionNanos + spent
+                lockFractionNanos = lockTime % milli
+                engine.advanceLock(state, lockTime / milli)
+            }
+            else -> { gravityRemainingNanos -= spent; state }
+        }
+    }
+
     /** Lifecycle suspension records clocks without moving, locking, or completing a clear. */
     fun freeze(state: GameState, elapsedMillis: Long, engine: GameEngine): GameState {
         val elapsed = elapsedMillis.coerceIn(0, Long.MAX_VALUE / milli) * milli
-        if (state.clearingRows.isNotEmpty()) {
-            clearElapsedNanos += minOf(elapsed, LineClearAnimation.TOTAL_MILLIS * milli - clearElapsedNanos)
-            return state
+        return when {
+            state.clearingRows.isNotEmpty() -> {
+                clearElapsedNanos += minOf(elapsed, LineClearAnimation.TOTAL_MILLIS * milli - clearElapsedNanos)
+                state
+            }
+            !engine.grounded(state) -> {
+                gravityRemainingNanos = (gravityRemainingNanos - elapsed).coerceAtLeast(0)
+                state
+            }
+            else -> {
+                advanceGravityPhase(elapsed, state.gravityNanos)
+                val lockTime = lockFractionNanos + minOf(elapsed, state.lockRemaining * milli - lockFractionNanos)
+                val updated = engine.advanceLock(state, lockTime / milli, allowLock = false)
+                lockFractionNanos = if (updated.lockRemaining == 0L) 0 else lockTime % milli
+                updated
+            }
         }
-        if (!engine.grounded(state)) {
-            gravityRemainingNanos = (gravityRemainingNanos - elapsed).coerceAtLeast(0)
-            return state
-        }
-        advanceGravityPhase(elapsed, state.gravityNanos)
-        val lockTime = lockFractionNanos + minOf(elapsed, state.lockRemaining * milli - lockFractionNanos)
-        val updated = engine.advanceLock(state, lockTime / milli, allowLock = false)
-        lockFractionNanos = if (updated.lockRemaining == 0L) 0 else lockTime % milli
-        return updated
     }
 }

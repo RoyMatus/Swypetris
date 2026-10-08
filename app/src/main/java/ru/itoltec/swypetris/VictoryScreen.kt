@@ -47,6 +47,16 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlin.math.cos
 import kotlin.math.sin
 
+internal const val VICTORY_ANIMATION_MILLIS = 8000L
+
+private const val UNEARNED_FRUIT_OPACITY = .22f
+private const val TROPHY_ASPECT_RATIO = 1.5f
+private const val STATIC_FIREWORK_MILLIS = 2400L
+private const val FIREWORK_BURSTS = 9
+private const val PARTICLES_PER_BURST = 28
+private const val FIREWORK_OPACITY = .85f
+
+
 /** Complete fruit set with cumulative quantities; unearned silhouettes are dimmed. */
 @Composable
 internal fun RoundFruitCollection(counts: List<Int>, iconSize: Dp = 28.dp) {
@@ -58,7 +68,7 @@ internal fun RoundFruitCollection(counts: List<Int>, iconSize: Dp = 28.dp) {
             }, verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(1.dp)) {
                 if (count > 1) Text("$count ×", fontSize = 10.sp, color = LocalGamePalette.current.text)
-                FruitIcon(fruit, Modifier.size(iconSize).alpha(if (count > 0) 1f else .22f))
+                FruitIcon(fruit, Modifier.size(iconSize).alpha(if (count > 0) 1f else UNEARNED_FRUIT_OPACITY))
             }
         }
     }
@@ -76,9 +86,9 @@ internal fun VictoryScreen(model: GameViewModel) {
     LaunchedEffect(model, owner, animate) {
         if (animate) owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = withFrameNanos { it }
-            while (model.victoryAnimationMillis < 8000) {
+            while (model.victoryAnimationMillis < VICTORY_ANIMATION_MILLIS) {
                 val now = withFrameNanos { it }
-                model.advanceVictoryAnimation((now - last) / 1_000_000)
+                model.advanceVictoryAnimation((now - last) / GameRules.NANOS_PER_MILLI)
                 last = now
             }
         }
@@ -96,7 +106,7 @@ internal fun VictoryScreen(model: GameViewModel) {
             item {
                 Image(painterResource(R.drawable.victory_trophy), "Кубок из блоков и восемь фруктов",
                     contentScale = ContentScale.Fit,
-                        modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth().aspectRatio(1.5f))
+                        modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth().aspectRatio(TROPHY_ASPECT_RATIO))
             }
             item { RoundFruitCollection(state.fruitCounts) }
             item {
@@ -115,7 +125,7 @@ internal fun VictoryScreen(model: GameViewModel) {
                     palette.piece(Tetromino.S), model::nextRound)
             }
         }
-        VictoryFireworks { if (animate) model.victoryAnimationMillis else 2400L }
+        VictoryFireworks { if (animate) model.victoryAnimationMillis else STATIC_FIREWORK_MILLIS }
     }
 }
 
@@ -125,18 +135,19 @@ private fun VictoryFireworks(time: () -> Long) {
     val colors = LocalGamePalette.current.pieces
     Canvas(Modifier.fillMaxSize().testTag("victoryFireworks")) {
         val elapsed = time()
-        if (elapsed >= 8000) return@Canvas
-        repeat(9) { burst ->
+        if (elapsed >= VICTORY_ANIMATION_MILLIS) return@Canvas
+        repeat(FIREWORK_BURSTS) { burst ->
             val age = (elapsed - burst * 650) / 1800f
             if (age !in 0f..1f) return@repeat
             val center = Offset(size.width * (.10f + (burst * 37 % 80) / 100f),
                 size.height * (.08f + (burst % 3) * .12f))
-            repeat(28) { particle ->
-                val angle = particle * 2.0 * Math.PI / 28
+            repeat(PARTICLES_PER_BURST) { particle ->
+                val angle = particle * 2.0 * Math.PI / PARTICLES_PER_BURST
                 val radius = size.width * .26f * age * (if (particle % 2 == 0) 1f else .65f)
                 val point = center + Offset(cos(angle).toFloat() * radius,
                     sin(angle).toFloat() * radius + age * age * 65.dp.toPx())
-                drawRect(colors[(particle + burst) % 7].copy(alpha = (1f - age) * .85f), point, Size(3.dp.toPx(),
+                drawRect(colors[(particle + burst) % colors.size].copy(alpha = (1f - age) * FIREWORK_OPACITY),
+                    point, Size(3.dp.toPx(),
                     3.dp.toPx()))
             }
         }

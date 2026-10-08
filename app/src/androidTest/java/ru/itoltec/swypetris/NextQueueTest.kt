@@ -75,12 +75,7 @@ class NextQueueTest {
             for (y in listOf(-2, -1, 0, 1)) {
                 compose.runOnIdle { state = state.copy(active = state.active.copy(y = y)) }
                 val spawned = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-                for (cell in spawnPiece(next).cells().filterNot { it in state.active.cells() }) {
-                    assertNotEquals("Missing preview $next behind $active/$rotation at $y",
-                        descended.colorAt(Cell(9, cell.y)), descended.colorAt(cell))
-                    assertEquals("Preview moved or disappeared for $next/$active/$rotation at $y",
-                        descended.colorAt(cell), spawned.colorAt(cell))
-                }
+                assertUncoveredPreview(state, descended, spawned)
             }
         }
     }
@@ -145,7 +140,7 @@ class NextQueueTest {
         for ((w, h, scale) in listOf(Triple(240, 400, 2f), Triple(320, 640, 1f), Triple(600, 400, 2f))) {
             compose.runOnIdle { width = w; height = h; fontScale = scale }
             for (ghost in listOf(false, true)) {
-                compose.runOnIdle { model.setHints(ghost) }
+                compose.runOnIdle { model.options.setHints(ghost) }
                 val previewBounds = compose.onNodeWithTag("nextPreview").assertIsDisplayed()
                     .assertContentDescriptionEquals("Следующая фигура I").getUnclippedBoundsInRoot()
                 val boardBounds = compose.onNodeWithTag("board").getUnclippedBoundsInRoot()
@@ -181,4 +176,15 @@ class NextQueueTest {
         }
     }
 
+
+    private fun assertUncoveredPreview(state: GameState, descended: PixelMap, spawned: PixelMap) {
+        for (cell in spawnPiece(state.next).cells().filterNot { it in state.active.cells() }) {
+        assertNotEquals("Missing preview ${state.next} behind ${state.active.type}/${state.active.rotation}" +
+            " at ${state.active.y}",
+            descended.colorAt(Cell(9, cell.y)), descended.colorAt(cell))
+        assertEquals("Preview moved or disappeared for ${state.next}/${state.active.type}/${state.active.rotation}" +
+            " at ${state.active.y}",
+            descended.colorAt(cell), spawned.colorAt(cell))
+        }
+    }
 }

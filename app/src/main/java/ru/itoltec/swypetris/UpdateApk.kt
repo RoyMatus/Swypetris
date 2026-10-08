@@ -10,11 +10,16 @@ import java.security.MessageDigest
 
 @Suppress("DEPRECATION")
 internal fun packageVersionCode(info: PackageInfo): Long =
-    if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
 
 /** Check the downloaded package before giving it to Android's final signature verifier. */
 @Suppress("DEPRECATION")
 internal fun validateUpdateApk(context: Context, file: File, update: AvailableUpdate) {
+    validateUpdateContent(file, update)
+    validateUpdatePackage(context, file, update)
+}
+
+private fun validateUpdateContent(file: File, update: AvailableUpdate) {
     if (file.length() != update.sizeBytes) throw UpdateFailure(
         UpdateFailureReason.INTEGRITY, "Downloaded APK size does not match")
     val hash = MessageDigest.getInstance("SHA-256")
@@ -28,20 +33,31 @@ internal fun validateUpdateApk(context: Context, file: File, update: AvailableUp
     }
     if (!hash.digest().joinToString("") { "%02x".format(it) }.equals(update.sha256, true))
         throw UpdateFailure(UpdateFailureReason.INTEGRITY, "Downloaded APK checksum does not match")
+}
+
+@Suppress("DEPRECATION")
+private fun validateUpdatePackage(context: Context, file: File, update: AvailableUpdate) {
     val manager = context.packageManager
-    val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES
+    val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) PackageManager.GET_SIGNING_CERTIFICATES
         else PackageManager.GET_SIGNATURES
     val installed = manager.getPackageInfo(context.packageName, flags)
     val candidate = manager.getPackageArchiveInfo(file.absolutePath, flags)
         ?: throw UpdateFailure(UpdateFailureReason.PACKAGE, "Cannot read APK package or signature")
-    if (candidate.packageName != context.packageName || candidate.splitNames?.isNotEmpty() == true ||
-        packageVersionCode(candidate) != update.versionCode || candidate.versionName != update.versionName ||
+    val expectedVersion = packageVersionCode(candidate) == update.versionCode &&
+        candidate.versionName == update.versionName
+    val standalonePackage = candidate.packageName == context.packageName &&
+        candidate.splitNames?.isNotEmpty() != true
+    if (!standalonePackage || !expectedVersion ||
         !newerVersion(update.versionCode, packageVersionCode(installed)))
         throw UpdateFailure(UpdateFailureReason.PACKAGE, "APK package or version does not match the expected update")
-    val compatible = if (Build.VERSION.SDK_INT >= 28) {
-        val current = installed.signingInfo ?:
-            throw UpdateFailure(UpdateFailureReason.SIGNER, "Installed signer is unavailable")
-        val next = candidate.signingInfo ?: throw UpdateFailure(UpdateFailureReason.SIGNER, "APK signer is unavailable")
+    validateUpdateSigner(installed, candidate)
+}
+
+@Suppress("DEPRECATION")
+private fun validateUpdateSigner(installed: PackageInfo, candidate: PackageInfo) {
+    val compatible = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val current = requireUpdateSigner(installed, "Installed signer is unavailable")
+        val next = requireUpdateSigner(candidate, "APK signer is unavailable")
         if (current.hasMultipleSigners() || next.hasMultipleSigners()) {
             current.apkContentsSigners.toSet() == next.apkContentsSigners.toSet()
         } else {
@@ -52,3 +68,7 @@ internal fun validateUpdateApk(context: Context, file: File, update: AvailableUp
         !installed.signatures.isNullOrEmpty()
     if (!compatible) throw UpdateFailure(UpdateFailureReason.SIGNER, "APK is signed by a different publisher")
 }
+
+@androidx.annotation.RequiresApi(Build.VERSION_CODES.P)
+private fun requireUpdateSigner(info: PackageInfo, message: String): android.content.pm.SigningInfo =
+    info.signingInfo ?: throw UpdateFailure(UpdateFailureReason.SIGNER, message)

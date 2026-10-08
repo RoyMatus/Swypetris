@@ -40,7 +40,7 @@ class ForegroundUiTest {
                             android.content.res.Configuration.ORIENTATION_PORTRAIT
                         else android.content.res.Configuration.ORIENTATION_LANDSCAPE
                 }
-                compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
+                compose.runOnIdle { model().navigation.finishLaunchIntro(); model().newGame() }
                 compose.waitForIdle()
                 val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
                 val board = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
@@ -67,13 +67,13 @@ class ForegroundUiTest {
         for (theme in listOf("classic", "github_light"))
             for (screen in listOf(GameScreen.MENU, GameScreen.PLAYING, GameScreen.SETTINGS, GameScreen.HELP)) {
             compose.runOnIdle {
-                model().setPalette(theme)
-                model().finishLaunchIntro()
+                model().options.setPalette(theme)
+                model().navigation.finishLaunchIntro()
                 when (screen) {
                     GameScreen.PLAYING -> model().newGame()
-                    GameScreen.SETTINGS -> model().settings()
-                    GameScreen.HELP -> model().help()
-                    else -> model().menu()
+                    GameScreen.SETTINGS -> model().navigation.settings()
+                    GameScreen.HELP -> model().navigation.help()
+                    else -> model().navigation.menu()
                 }
             }
             compose.waitUntil(5000) {
@@ -107,7 +107,7 @@ class ForegroundUiTest {
     }
 
     @Test fun visibleStatusBarAndNotificationShadePausesWithoutAutoResume() {
-        compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
+        compose.runOnIdle { model().navigation.finishLaunchIntro(); model().newGame() }
         compose.onNodeWithTag("board").assertIsDisplayed()
         compose.waitUntil(5000) {
             ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
@@ -117,7 +117,7 @@ class ForegroundUiTest {
             shell("cmd statusbar expand-notifications")
             compose.waitUntil(5000) { model().screen == GameScreen.MENU }
             val saved = model().game
-            compose.runOnIdle { model().advanceFrame(android.os.SystemClock.uptimeMillis() + 10000) }
+            compose.runOnIdle { model().simulation.advanceFrame(android.os.SystemClock.uptimeMillis() + 10000) }
             assertEquals(saved, model().game)
             shell("cmd statusbar collapse")
             compose.waitUntil(5000) { compose.activity.hasWindowFocus() }
@@ -134,7 +134,7 @@ class ForegroundUiTest {
     }
 
     @Test fun launcherRelaunchReusesActivityTaskAndState() {
-        compose.runOnIdle { model().finishLaunchIntro(); model().newGame(); model().pause() }
+        compose.runOnIdle { model().navigation.finishLaunchIntro(); model().newGame(); model().pause() }
         val previousActivity = compose.activity
         val previousModel = model()
         val game = previousModel.game
@@ -155,7 +155,7 @@ class ForegroundUiTest {
     }
 
     @Test fun focusLossKeepsStatusBarVisibleAndRequiresContinue() {
-        compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
+        compose.runOnIdle { model().navigation.finishLaunchIntro(); model().newGame() }
         compose.waitUntil(5000) {
             ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
                 ?.isVisible(WindowInsetsCompat.Type.statusBars()) == true
@@ -180,7 +180,7 @@ class ForegroundUiTest {
     }
 
     @Test fun lifecycleReturnRequiresContinueAndScoreRespectsInsets() {
-        compose.runOnIdle { model().finishLaunchIntro(); model().newGame() }
+        compose.runOnIdle { model().navigation.finishLaunchIntro(); model().newGame() }
         val density = compose.activity.resources.displayMetrics.density
         // Platform bar visibility and Compose inset padding update asynchronously.
         compose.waitUntil(5000) {

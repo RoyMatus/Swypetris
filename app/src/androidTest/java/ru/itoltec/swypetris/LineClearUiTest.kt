@@ -61,53 +61,44 @@ class LineClearUiTest {
             model.game?.let { Board(it, model.clearElapsedMillis) }
         } }
         compose.runOnIdle {
-            model.command(GameCommand.HARD_DROP)
+            model.input.command(GameCommand.HARD_DROP)
             val locked = model.game
             assertEquals(listOf(BoardGeometry.row(19)), locked!!.clearingRows)
             now += 30
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(30L, model.clearElapsedMillis)
-            model.command(GameCommand.HARD_DROP)
-            model.pointerDown(0f, 0f, now)
-            model.pointerUp(0f, 0f, now + 1)
+            model.input.command(GameCommand.HARD_DROP)
+            model.input.pointerDown(0f, 0f, now)
+            model.input.pointerUp(0f, 0f, now + 1)
             assertEquals(locked, model.game)
         }
         val beforeRemoval = compose.onNodeWithTag("board").captureToImage().toPixelMap()
         compose.runOnIdle {
             now += 30
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
         }
         val white = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-        val side = minOf(
-            white.width.toFloat() / BoardGeometry.WIDTH,
-            white.height.toFloat() / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
-        )
-        val boardLeft = (white.width - side * BoardGeometry.WIDTH) / 2f
-        val bottomRowY = ((SPAWN_DISPLAY_ROWS + 19.5f) * side).toInt()
-        val leftCellX = (boardLeft + .5f * side).toInt()
-        val rightCellX = (boardLeft + 9.5f * side).toInt()
-        assertNotEquals(beforeRemoval[leftCellX, bottomRowY], white[leftCellX, bottomRowY])
-        assertNotEquals(beforeRemoval[rightCellX, bottomRowY], white[rightCellX, bottomRowY])
+        val bottomRowY = assertClearHighlights(beforeRemoval, white)
         compose.runOnIdle {
             model.pause()
             now += 5000
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(60L, model.clearElapsedMillis)
-            model.menu()
+            model.navigation.menu()
             now += 5000
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(60L, model.clearElapsedMillis)
             model.resume()
             now += 539
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(0, model.game!!.generation)
             now += 1
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertTrue(model.game!!.clearingRows.isEmpty())
             assertEquals(1, model.game!!.generation)
             assertEquals(100, model.game!!.score)
             assertEquals(Tetromino.T, model.game!!.active.type)
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(100, model.game!!.score)
         }
         val cleared = compose.onNodeWithTag("board").captureToImage().toPixelMap()
@@ -121,14 +112,14 @@ class LineClearUiTest {
         val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), almostFull(), { now },
             false)
         compose.runOnIdle {
-            model.command(GameCommand.HARD_DROP)
+            model.input.command(GameCommand.HARD_DROP)
             now += 100
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             model.newGame()
             assertEquals(0L, model.clearElapsedMillis)
             assertTrue(model.game!!.clearingRows.isEmpty())
             now += 300
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(0, model.game!!.score)
             assertEquals(0, model.game!!.generation)
         }
@@ -189,7 +180,9 @@ class LineClearUiTest {
         val right = (bounds.right - root.left).toInt()
         val bottom = (bounds.bottom - root.top).toInt()
         for (y in 0 until pixels.height step 3) for (x in 0 until pixels.width step 3) {
-            if (x < left - 1 || x > right + 1 || y < top - 1 || y > bottom + 1)
+            val outsideHorizontal = x < left - 1 || x > right + 1
+            val outsideVertical = y < top - 1 || y > bottom + 1
+            if (outsideHorizontal || outsideVertical)
                 assertEquals("Shard outside board: $name at $x/$y", Color.Magenta, pixels[x, y])
         }
         saveArtifact(name) { file ->
@@ -257,9 +250,9 @@ class LineClearUiTest {
             GameStorage.preferences(app).edit().clear().commit()
             var now = 1000L
             val original = GameViewModel(app, almostFull(), { now }, false)
-            original.command(GameCommand.HARD_DROP)
+            original.input.command(GameCommand.HARD_DROP)
             now += phase
-            original.advanceFrame(now)
+            original.simulation.advanceFrame(now)
             original.onBackground()
             val frozen = original.game
             val shards = LineClearAnimation.shards(frozen!!)
@@ -271,13 +264,13 @@ class LineClearUiTest {
             restored.onForeground()
             restored.resume()
             now += 599 - phase
-            restored.advanceFrame(now)
+            restored.simulation.advanceFrame(now)
             assertEquals(0, restored.game!!.generation)
             now++
-            restored.advanceFrame(now)
+            restored.simulation.advanceFrame(now)
             assertEquals(1, restored.game!!.generation)
             assertEquals(100, restored.game!!.score)
-            restored.advanceFrame(now)
+            restored.simulation.advanceFrame(now)
             assertEquals(1, restored.game!!.generation)
             assertEquals(100, restored.game!!.score)
             restored.pause()
@@ -292,5 +285,20 @@ class LineClearUiTest {
         board[BoardGeometry.row(-3)][1] = Tetromino.I
         return GameState(board = board, active = Piece(Tetromino.O), next = Tetromino.T,
             clearingRows = rows.map(BoardGeometry::row), completedClears = 2)
+    }
+
+    private fun assertClearHighlights(beforeRemoval: androidx.compose.ui.graphics.PixelMap,
+        white: androidx.compose.ui.graphics.PixelMap): Int {
+        val side = minOf(
+            white.width.toFloat() / BoardGeometry.WIDTH,
+            white.height.toFloat() / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)
+        )
+        val boardLeft = (white.width - side * BoardGeometry.WIDTH) / 2f
+        val bottomRowY = ((SPAWN_DISPLAY_ROWS + 19.5f) * side).toInt()
+        val leftCellX = (boardLeft + .5f * side).toInt()
+        val rightCellX = (boardLeft + 9.5f * side).toInt()
+        assertNotEquals(beforeRemoval[leftCellX, bottomRowY], white[leftCellX, bottomRowY])
+        assertNotEquals(beforeRemoval[rightCellX, bottomRowY], white[rightCellX, bottomRowY])
+        return bottomRowY
     }
 }

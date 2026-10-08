@@ -67,7 +67,7 @@ class BrandNavigationTest {
         assertEquals(expected, observed)
         expected.forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
         screenshot("menu-brand.png")
-        compose.runOnIdle { model.newGame(); model.menu() }
+        compose.runOnIdle { model.newGame(); model.navigation.menu() }
         compose.onNodeWithTag("resumeGame").assertIsDisplayed()
         val resume = compose.onNodeWithTag("resumeGame").fetchSemanticsNode().boundsInRoot
         val newGame = compose.onNodeWithTag("newGame").fetchSemanticsNode().boundsInRoot
@@ -77,7 +77,7 @@ class BrandNavigationTest {
         assertTrue(newGame.left < resume.left)
         assertTrue(kotlin.math.abs(resume.width - newGame.width) <= 1f)
         assertTrue(exit.width <= settings.width * 1.2f)
-        compose.runOnIdle { model.showResults() }
+        compose.runOnIdle { model.navigation.showResults() }
         compose.onNodeWithTag("newGame").assertDoesNotExist()
         compose.onNodeWithTag("toMenu").assertDoesNotExist()
         Espresso.pressBack()
@@ -89,7 +89,7 @@ class BrandNavigationTest {
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun compactMenuFitsSmallScreenWithLargeFont() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
-        model.newGame(); model.menu(); model.finishLaunchIntro()
+        model.newGame(); model.navigation.menu(); model.navigation.finishLaunchIntro()
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 SwypetrisTheme(darkTheme = true, dynamicColor = false) {
@@ -128,7 +128,7 @@ class BrandNavigationTest {
                 }
             }
         }
-        compose.runOnIdle { model.help() }
+        compose.runOnIdle { model.navigation.help() }
         // Indexed lazy-list actions execute scrolling on the UI thread in Compose 1.7.
         for ((item, control) in listOf(
             2 to "Двигать фигуру",
@@ -147,7 +147,7 @@ class BrandNavigationTest {
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("helpPage").performScrollToIndex(0)
         screenshot("help-controls.png")
-        compose.runOnIdle { fontScale = 2f; model.contacts() }
+        compose.runOnIdle { fontScale = 2f; model.navigation.contacts() }
         for ((index, contact) in DeveloperContact.entries.withIndex()) {
             compose.onNodeWithTag("contactsPage").performScrollToIndex(index + 1)
             compose.onNodeWithText(contact.address).assertIsDisplayed()
@@ -157,7 +157,7 @@ class BrandNavigationTest {
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("contactsPage").performScrollToIndex(0)
         screenshot("contacts-brand.png")
-        compose.runOnIdle { model.setPalette("github_light") }
+        compose.runOnIdle { model.options.setPalette("github_light") }
         screenshot("contacts-light.png")
         Espresso.pressBack()
         compose.runOnIdle { assertEquals(GameScreen.MENU, model.screen) }

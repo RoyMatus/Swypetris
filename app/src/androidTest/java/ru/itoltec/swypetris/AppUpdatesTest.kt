@@ -44,7 +44,7 @@ class AppUpdatesTest {
         val model = GameViewModel(app, null, { 1000L }, false)
         compose.setContent { SwypetrisApp(model) {} }
         compose.onNodeWithTag("versionCheck").assertIsDisplayed().assert(hasClickAction())
-        compose.runOnIdle { model.settings() }
+        compose.runOnIdle { model.navigation.settings() }
         compose.onNodeWithTag("checkUpdates").performScrollTo().assertIsDisplayed().assert(hasClickAction())
     }
 }

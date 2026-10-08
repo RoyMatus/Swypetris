@@ -37,6 +37,21 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import org.json.JSONObject
 
+private const val MAX_SKY_FRAME_NANOS = 100_000_000L
+private const val NANOS_PER_SKY_SECOND = 1_000_000_000.0
+private const val LIGHT_OUTER_TOWER_ALPHA = .37f
+private const val DARK_OUTER_TOWER_ALPHA = .80f
+private const val LIGHT_INNER_TOWER_ALPHA = .18f
+private const val DARK_INNER_TOWER_ALPHA = .50f
+private const val TRAVEL_GRID_LINES = 10
+private const val LOWER_FADE_START = .50f
+private const val LOWER_FADE_MIDPOINT = .68f
+private const val REGISTRATION_WIDTH = 640
+private const val REGISTRATION_HEIGHT = 1137
+private const val HALO_FALLOFF_STOP = .27f
+private const val ARTWORK_CHANNEL_GAIN = .6f
+
+
 /** Test override for a static sky while verifying unrelated transparent UI. */
 internal val LocalMenuSkyAnimations = staticCompositionLocalOf<Boolean?> { null }
 
@@ -59,7 +74,7 @@ internal fun rememberMenuSkyTime(enabled: Boolean): State<Double> {
             var last = withInfiniteAnimationFrameNanos { it }
             while (true) {
                 val now = withInfiniteAnimationFrameNanos { it }
-                seconds.value += (now - last).coerceIn(0L, 100_000_000L) / 1_000_000_000.0
+                seconds.value += (now - last).coerceIn(0L, MAX_SKY_FRAME_NANOS) / NANOS_PER_SKY_SECOND
                 last = now
             }
         }
@@ -73,20 +88,9 @@ internal fun MenuSkyArtwork(palette: GamePalette, approach: Float, seconds: () -
     val artwork = ImageBitmap
         .imageResource(if (palette.light) R.drawable.red_square_day else R.drawable.red_square_synthwave)
     val skyPatch = ImageBitmap.imageResource(if (palette.light) R.drawable.menu_sky_day else R.drawable.menu_sky_night)
-    val sprites = if (palette.light) listOf(R.drawable.menu_cloud_day_0, R.drawable.menu_cloud_day_1,
-        R.drawable.menu_cloud_day_2, R.drawable.menu_cloud_day_3) else listOf(R.drawable.menu_cloud_night_0,
-        R.drawable.menu_cloud_night_1, R.drawable.menu_cloud_night_2, R.drawable.menu_cloud_night_3)
-    val clouds = sprites.map { ImageBitmap.imageResource(it) }
+    val clouds = menuCloudSprites(palette.light)
     val resources = LocalContext.current.resources
-    val registration = remember(resources) {
-        val json = resources.openRawResource(R.raw.menu_sky_registration).bufferedReader().use { JSONObject(it
-            .readText()) }
-        val path = registrationPath(json.getJSONArray("cloudRuns"))
-        val sky = registrationPath(json.getJSONArray("skyRuns"))
-        val stars = json.getJSONArray("stars")
-        Triple(path, sky, List(stars.length()) { i -> stars.getJSONArray(i).let { Offset(it.getDouble(0).toFloat(),
-            it.getDouble(1).toFloat()) } })
-    }
+    val registration = remember(resources) { readSkyRegistration(resources) }
     val filter = remember(palette) {
         if (palette.light || palette.id == "classic" ||
             palette.id == "synthwave_84") null else artworkColorFilter(palette)
@@ -113,14 +117,7 @@ internal fun MenuSkyArtwork(palette: GamePalette, approach: Float, seconds: () -
                 drawImage(artwork, colorFilter = filter)
                 drawImage(skyPatch, colorFilter = filter)
                 clipPath(registration.first) {
-                    MenuSkyMotion.clouds.forEachIndexed { i, cloud ->
-                        val image = clouds[i]
-                        val spriteScale = cloud.width / image.width
-                        withTransform({ translate(cloud.x(time), cloud.y); scale(spriteScale, spriteScale,
-                            Offset.Zero) }) {
-                            drawImage(image, colorFilter = filter)
-                        }
-                    }
+                    drawMenuCloudSprites(clouds, time, filter)
                 }
                 clipPath(registration.second) {
                     if (!palette.light) registration.third.forEachIndexed { i, star ->
@@ -129,34 +126,44 @@ internal fun MenuSkyArtwork(palette: GamePalette, approach: Float, seconds: () -
                 }
                 val pulse = MenuSkyMotion.towerPulse(time)
                 val star = Offset(92f, 395f)
-                drawHalo(halos[1], star, (if (palette.light) .37f else .80f) * pulse)
-                drawHalo(halos[2], star, (if (palette.light) .18f else .50f) * pulse)
+                drawHalo(halos[1], star, (if (
+                    palette.light) LIGHT_OUTER_TOWER_ALPHA else DARK_OUTER_TOWER_ALPHA) * pulse)
+                drawHalo(halos[2], star, (if (
+                    palette.light) LIGHT_INNER_TOWER_ALPHA else DARK_INNER_TOWER_ALPHA) * pulse)
             }
         }
         Canvas(Modifier.fillMaxSize()) {
-            val travelAlpha = (1f - approach) * .35f
-            if (travelAlpha > 0f) {
-                val horizon = size.height * .50f
-                for (line in 0..9) {
-                    val depth = (line / 10f + approach * .75f) % 1f
-                    val y = horizon + (size.height - horizon) * depth * depth
-                    drawLine(palette.accent.copy(alpha = travelAlpha * depth), Offset(0f, y), Offset(size.width,
-                        y), 1f + depth * 2f)
-                }
-            }
-            drawRect(Brush.verticalGradient(0f to Color.Transparent, .50f to Color.Transparent,
-                .68f to palette.background.copy(alpha = if (palette.light) .08f else .16f),
-                1f to palette.background.copy(alpha = if (palette.light) .28f else .48f), endY = size.height))
+            drawMenuTravelGrid(palette, approach)
         }
     }
+}
+
+private fun DrawScope.drawMenuCloudSprites(clouds: List<ImageBitmap>, time: Double, filter: ColorFilter?) {
+    MenuSkyMotion.clouds.forEachIndexed { i, cloud ->
+        val image = clouds[i]
+        val spriteScale = cloud.width / image.width
+        withTransform({ translate(cloud.x(time), cloud.y); scale(spriteScale, spriteScale,
+            Offset.Zero) }) {
+            drawImage(image, colorFilter = filter)
+        }
+    }
+}
+
+@Composable
+private fun menuCloudSprites(light: Boolean): List<ImageBitmap> {
+    val sprites = if (light) listOf(R.drawable.menu_cloud_day_0, R.drawable.menu_cloud_day_1,
+        R.drawable.menu_cloud_day_2, R.drawable.menu_cloud_day_3) else listOf(R.drawable.menu_cloud_night_0,
+        R.drawable.menu_cloud_night_1, R.drawable.menu_cloud_night_2, R.drawable.menu_cloud_night_3)
+    return sprites.map { ImageBitmap.imageResource(it) }
 }
 
 private fun registrationPath(runs: JSONArray): Path = Path().apply {
     for (i in 0 until runs.length()) {
         val run = runs.getJSONArray(i)
-        val x = run.getInt(0) * MenuSkyMotion.WIDTH / 640
-        val y = run.getInt(1) * MenuSkyMotion.HEIGHT / 1137
-        addRect(Rect(x, y, x + run.getInt(2) * MenuSkyMotion.WIDTH / 640, y + MenuSkyMotion.HEIGHT / 1137))
+        val x = run.getInt(0) * MenuSkyMotion.WIDTH / REGISTRATION_WIDTH
+        val y = run.getInt(1) * MenuSkyMotion.HEIGHT / REGISTRATION_HEIGHT
+        addRect(Rect(x, y, x + run.getInt(2) * MenuSkyMotion.WIDTH / REGISTRATION_WIDTH,
+            y + MenuSkyMotion.HEIGHT / REGISTRATION_HEIGHT))
     }
 }
 private fun skyHalo(radius: Float, color: Color): ImageBitmap {
@@ -165,7 +172,8 @@ private fun skyHalo(radius: Float, color: Color): ImageBitmap {
         androidx.compose.ui.unit.Density(1f), androidx.compose.ui.unit.LayoutDirection.Ltr,
         androidx.compose.ui.graphics.Canvas(image), androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
     ) {
-        drawRect(Brush.radialGradient(0f to color, .27f to color.copy(alpha = .48f), 1f to color.copy(alpha = 0f),
+        drawRect(Brush.radialGradient(0f to color, HALO_FALLOFF_STOP to color.copy(alpha = .48f),
+            1f to color.copy(alpha = 0f),
             center = Offset(radius, radius), radius = radius))
     }
     return image
@@ -181,9 +189,35 @@ private fun artworkColorFilter(palette: GamePalette): ColorFilter {
     val green = palette.piece(Tetromino.S)
     val blue = palette.piece(Tetromino.J)
     return ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
-        red.red * .6f, green.red * .6f, blue.red * .6f, 0f, 0f,
-        red.green * .6f, green.green * .6f, blue.green * .6f, 0f, 0f,
-        red.blue * .6f, green.blue * .6f, blue.blue * .6f, 0f, 0f,
+        red.red * ARTWORK_CHANNEL_GAIN, green.red * ARTWORK_CHANNEL_GAIN, blue.red * ARTWORK_CHANNEL_GAIN, 0f, 0f,
+        red.green * ARTWORK_CHANNEL_GAIN, green.green * ARTWORK_CHANNEL_GAIN, blue.green * ARTWORK_CHANNEL_GAIN, 0f, 0f,
+        red.blue * ARTWORK_CHANNEL_GAIN, green.blue * ARTWORK_CHANNEL_GAIN, blue.blue * ARTWORK_CHANNEL_GAIN, 0f, 0f,
         0f, 0f, 0f, 1f, 0f
     )))
+}
+
+private fun DrawScope.drawMenuTravelGrid(palette: GamePalette, approach: Float) {
+    val travelAlpha = (1f - approach) * .35f
+    if (travelAlpha > 0f) {
+        val horizon = size.height * .50f
+        for (line in 0 until TRAVEL_GRID_LINES) {
+            val depth = (line / 10f + approach * .75f) % 1f
+            val y = horizon + (size.height - horizon) * depth * depth
+            drawLine(palette.accent.copy(alpha = travelAlpha * depth), Offset(0f, y), Offset(size.width,
+                y), 1f + depth * 2f)
+        }
+    }
+    drawRect(Brush.verticalGradient(0f to Color.Transparent, LOWER_FADE_START to Color.Transparent,
+        LOWER_FADE_MIDPOINT to palette.background.copy(alpha = if (palette.light) .08f else .16f),
+        1f to palette.background.copy(alpha = if (palette.light) .28f else .48f), endY = size.height))
+}
+
+private fun readSkyRegistration(resources: android.content.res.Resources): Triple<Path, Path, List<Offset>> {
+    val json = resources.openRawResource(R.raw.menu_sky_registration).bufferedReader().use { JSONObject(it
+        .readText()) }
+    val path = registrationPath(json.getJSONArray("cloudRuns"))
+    val sky = registrationPath(json.getJSONArray("skyRuns"))
+    val stars = json.getJSONArray("stars")
+    return Triple(path, sky, List(stars.length()) { i -> stars.getJSONArray(i).let { Offset(it.getDouble(0).toFloat(),
+        it.getDouble(1).toFloat()) } })
 }

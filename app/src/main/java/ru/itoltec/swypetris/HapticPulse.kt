@@ -10,11 +10,13 @@ internal data class HapticPulse(val duration: Long, val amplitude: Int, val fall
         fallbackDuration = (fallbackDuration / 2 + fallbackDuration % 2).coerceAtLeast(1))
 
     companion object {
+        val HoldReady = HapticPulse(35L, 100, 20L)
         val Drop = HapticPulse(70L, 128, 35L)
         val Clear = clear(LineClearAnimation.TOTAL_MILLIS)
         val Preview = HapticPulse(100L, 220)
 
         /** Keeps a clear synchronized on amplitude-capable motors and shortens fixed-strength fallback. */
-        fun clear(remainingMillis: Long) = HapticPulse(remainingMillis, 127, (remainingMillis + 1) / 2)
+        fun clear(remainingMillis: Long) = HapticPulse(remainingMillis, amplitude = 127,
+            fallbackDuration = (remainingMillis + 1) / 2)
     }
 }

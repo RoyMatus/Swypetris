@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 /** Quick visual controls and essential rules for starting a game. */
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
-fun HelpScreen(model: GameViewModel) {
+fun HelpScreen() {
     val controls = listOf(
         Triple("← →", "Двигать фигуру", Tetromino.I),
         Triple("↖ ↗", "Поворачивать", Tetromino.T),
@@ -47,33 +47,7 @@ fun HelpScreen(model: GameViewModel) {
         item { Text("Управление", style = MaterialTheme.typography.titleLarge) }
         controls.forEach { (symbol, label, piece) ->
             item {
-                val accent = LocalGamePalette.current.piece(piece)
-                val indicatorColors = paletteButtonColors(accent, ActionStyle.SECONDARY)
-                Surface(
-                    Modifier.widthIn(max = 640.dp).fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = LocalGamePalette.current.accent.copy(alpha = .08f),
-                    border = BorderStroke(1.dp, LocalGamePalette.current.accent.copy(alpha = .4f))
-                ) {
-                    Row(
-                        Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Surface(
-                            Modifier.size(56.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = indicatorColors.containerColor,
-                            contentColor = indicatorColors.contentColor,
-                            border = paletteButtonBorder(accent, ActionStyle.SECONDARY)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(symbol, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    }
-                }
+                HelpControl(symbol, label, piece)
             }
         }
 
@@ -100,22 +74,7 @@ fun HelpScreen(model: GameViewModel) {
             )
         }
         item(key = "fruits") {
-            HelpSection(
-                "Фрукты",
-                "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт. " +
-                    "Коллекция сохраняется между кругами; " +
-                    "число рядом с фруктом показывает, сколько таких фруктов собрано. " +
-                        "Восемь фруктов открывают следующий круг: " +
-                    "поле очищается, а счёт и скорость сохраняются."
-            ) {
-                FlowRow(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Fruit.entries.forEach { fruit -> FruitIcon(fruit, Modifier.size(32.dp)) }
-                }
-            }
+            HelpFruits()
         }
         item {
             HelpSection(
@@ -140,6 +99,59 @@ private fun HelpSection(title: String, body: String, content: @Composable () -> 
             Text(title, style = MaterialTheme.typography.titleLarge)
             Text(body, style = MaterialTheme.typography.bodyMedium)
             content()
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun HelpControl(symbol: String, label: String, piece: Tetromino) {
+    val accent = LocalGamePalette.current.piece(piece)
+    val indicatorColors = paletteButtonColors(accent, ActionStyle.SECONDARY)
+    Surface(
+        Modifier.widthIn(max = 640.dp).fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = LocalGamePalette.current.accent.copy(alpha = .08f),
+        border = BorderStroke(1.dp, LocalGamePalette.current.accent.copy(alpha = .4f))
+    ) {
+        Row(
+            Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Surface(
+                Modifier.size(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = indicatorColors.containerColor,
+                contentColor = indicatorColors.contentColor,
+                border = paletteButtonBorder(accent, ActionStyle.SECONDARY)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(symbol, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+            Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun HelpFruits() {
+    HelpSection(
+        "Фрукты",
+        "Каждые ${GameRules.FRUIT_STEP} очков вы получаете следующий фрукт. " +
+            "Коллекция сохраняется между кругами; " +
+            "число рядом с фруктом показывает, сколько таких фруктов собрано. " +
+                "Восемь фруктов открывают следующий круг: " +
+            "поле очищается, а счёт и скорость сохраняются."
+    ) {
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Fruit.entries.forEach { fruit -> FruitIcon(fruit, Modifier.size(32.dp)) }
         }
     }
 }

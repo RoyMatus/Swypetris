@@ -25,7 +25,7 @@ class StatisticsResetTest {
         ResultStore(preferences).write(listOf(GameResult("old", 1L, "Player", 9000, 2, 1, 1200)))
         val state = GameState(active = Piece(Tetromino.T), next = Tetromino.O, score = 123)
         val model = GameViewModel(app, state, { 1000L }, false)
-        model.settings()
+        model.navigation.settings()
         compose.setContent { SwypetrisApp(model) {} }
 
         compose.onNodeWithTag("resetStatistics").performScrollTo().performClick()

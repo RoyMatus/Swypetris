@@ -31,6 +31,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
+private const val LOGO_ASPECT_RATIO = 1.5f
+
+
 private const val WORDMARK_OUTLINE_PX = 3
 
 /** Renders the shared logo at a size that leaves room for buttons on short screens. */
@@ -43,7 +46,7 @@ internal fun GameTitle(imageModifier: Modifier = Modifier, wordmarkOnly: Boolean
     val logo = ImageBitmap.imageResource(R.drawable.swypetris_logo)
     val palette = LocalGamePalette.current
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.widthIn(max = logoWidth).fillMaxWidth().aspectRatio(1.5f)
+        Canvas(Modifier.widthIn(max = logoWidth).fillMaxWidth().aspectRatio(LOGO_ASPECT_RATIO)
             .testTag("gameLogo").semantics { contentDescription = "SWYPETRIS" }.then(imageModifier)) {
             drawBrandLogo(logo, Rect(Offset.Zero, size), palette, wordmarkOnly)
         }
@@ -105,7 +108,7 @@ internal fun DrawScope.drawWordmarkSliceWithOutline(
 
 /** Maps the original RGB logo channels to theme colors and makes its black matte transparent. */
 internal fun brandColorFilter(palette: GamePalette, strength: Float = .5f): ColorFilter {
-    fun tone(color: Color) = if (palette.light) lerp(color, palette.text, .35f) else color
+    fun tone(color: Color) = if (palette.light) lerp(color, palette.text, fraction = .35f) else color
     val red = tone(palette.piece(Tetromino.Z))
     val green = tone(palette.piece(Tetromino.S))
     val blue = tone(palette.piece(Tetromino.J))

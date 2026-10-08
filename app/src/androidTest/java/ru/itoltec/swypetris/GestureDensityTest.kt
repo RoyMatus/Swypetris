@@ -60,7 +60,7 @@ class GestureDensityTest {
         val density = context.resources.displayMetrics.density
         val step = maxOf(12 * density, android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()) + 2
         compose.onNodeWithTag("gameArea").performTouchInput { down(center) }
-        compose.runOnIdle { now += 800; model.advanceFrame(now) }
+        compose.runOnIdle { now += 800; model.simulation.advanceFrame(now) }
         val spawned = model.game!!
         assertEquals(1, spawned.generation)
         compose.onNodeWithTag("gameArea").performTouchInput { moveBy(Offset(step, 0f)); up() }

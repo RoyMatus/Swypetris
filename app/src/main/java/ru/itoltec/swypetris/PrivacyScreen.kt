@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 
 /** Shows the offline privacy policy; the same source text feeds the public HTML page. */
 @Composable
-internal fun PrivacyScreen(model: GameViewModel) {
+internal fun PrivacyScreen() {
     val context = LocalContext.current
     val paragraphs = remember(context) {
         context.assets.open("privacy.txt").bufferedReader().use { it.readText() }

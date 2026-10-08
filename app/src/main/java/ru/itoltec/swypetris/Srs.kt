@@ -1,9 +1,12 @@
 package ru.itoltec.swypetris
 
 /** Persisted orientation values remain 0, 1, 2, 3 for 0, R, 2, L. */
+internal const val LAST_ROTATION_KICK = 4
+
 enum class RotationState(val value: Int) {
-    SPAWN(0), RIGHT(1), REVERSE(2), LEFT(3);
-    fun turn(clockwise: Boolean): RotationState = entries[(value + if (clockwise) 1 else 3) % 4]
+    SPAWN(0), RIGHT(1), REVERSE(2), LEFT(value = 3);
+    fun turn(clockwise: Boolean): RotationState = entries[(value + if (
+        clockwise) 1 else entries.size - 1) % entries.size]
 }
 
 /** Ordered SRS tests in board coordinates: positive y points downward. */

@@ -48,7 +48,7 @@ class HudLayeringTest {
         var state by mutableStateOf(GameState(active = Piece(Tetromino.I, x = 6, y = 8), next = Tetromino.O,
             held = Tetromino.L, score = 240000))
         val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), state, { 1000L }, false)
-        model.setHints(false)
+        model.options.setHints(false)
         var density = 1f
         compose.setContent {
             density = LocalDensity.current.density
@@ -66,9 +66,7 @@ class HudLayeringTest {
             val unobscured = compose.onRoot().captureToImage().toPixelMap()
             val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
             val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
-            val cellWidth = area.width / 10
-            val cellHeight = area.height / 21
-            val gap = minOf(cellWidth, cellHeight) * .07f
+            val overlap = HudOverlap(fruits, root, area, unobscured)
             var coveredIcons = 0
             var coveredLabels = 0
             for (row in 0..5) {
@@ -83,24 +81,9 @@ class HudLayeringTest {
                     .fetchSemanticsNode().boundsInRoot }
                 compose.runOnIdle { state = state.copy(score = 0) }
                 val cleanPiece = compose.onRoot().captureToImage().toPixelMap()
-                val yTop = area.top + row * cellHeight + gap
-                val yBottom = yTop + cellHeight - gap * 2
-                for (y in (maxOf(yTop, fruits.top) - root.top).toInt() + 2 until
-                    (minOf(yBottom, fruits.bottom) - root.top).toInt() - 2) {
-                    for (x in (fruits.left - root.left).toInt() + 2 until (fruits.right - root.left).toInt() - 2) {
-                        val local = x + root.left - area.left
-                        val column = (local / cellWidth).toInt()
-                        val inCell = local - column * cellWidth
-                        if (column !in 6..9 || inCell < gap + 2 || inCell > cellWidth - gap - 2) continue
-                        assertEquals("Fruit drawn over active piece at $w/$row/$x/$y", cleanPiece[x, y], covered[x, y])
-                        if (unobscured[x, y] != cleanPiece[x, y]) {
-                            if (labels.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
-                                y + root.top)) }) coveredLabels++
-                            else if (icons.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
-                                y + root.top)) }) coveredIcons++
-                        }
-                    }
-                }
+                val (iconsCovered, labelsCovered) = overlap.countCovered(w, row, covered, cleanPiece, labels, icons)
+                coveredIcons += iconsCovered
+                coveredLabels += labelsCovered
                 compose.runOnIdle { state = state.copy(score = 240000) }
                 Fruit.entries.forEach { compose.onNodeWithTag("earnedFruit_${it.name}").assertIsDisplayed() }
             }
@@ -132,6 +115,40 @@ class HudLayeringTest {
         val file = java.io.File(app.getExternalFilesDir(null), name)
         compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
             file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
+    }
+
+    private class HudOverlap(val fruits: androidx.compose.ui.geometry.Rect,
+        val root: androidx.compose.ui.geometry.Rect, val area: androidx.compose.ui.geometry.Rect,
+        val unobscured: androidx.compose.ui.graphics.PixelMap) {
+        val cellWidth = area.width / 10
+        val cellHeight = area.height / 21
+        val gap = minOf(cellWidth, cellHeight) * .07f
+
+        fun countCovered(w: Int, row: Int, covered: androidx.compose.ui.graphics.PixelMap,
+            cleanPiece: androidx.compose.ui.graphics.PixelMap, labels: List<androidx.compose.ui.geometry.Rect>,
+            icons: List<androidx.compose.ui.geometry.Rect>): Pair<Int, Int> {
+            var coveredIcons = 0
+            var coveredLabels = 0
+        val yTop = area.top + row * cellHeight + gap
+        val yBottom = yTop + cellHeight - gap * 2
+        for (y in (maxOf(yTop, fruits.top) - root.top).toInt() + 2 until
+            (minOf(yBottom, fruits.bottom) - root.top).toInt() - 2) {
+            for (x in (fruits.left - root.left).toInt() + 2 until (fruits.right - root.left).toInt() - 2) {
+                val local = x + root.left - area.left
+                val column = (local / cellWidth).toInt()
+                val inCell = local - column * cellWidth
+                if (column !in 6..9 || inCell < gap + 2 || inCell > cellWidth - gap - 2) continue
+                assertEquals("Fruit drawn over active piece at $w/$row/$x/$y", cleanPiece[x, y], covered[x, y])
+                if (unobscured[x, y] != cleanPiece[x, y]) {
+                    if (labels.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
+                        y + root.top)) }) coveredLabels++
+                    else if (icons.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
+                        y + root.top)) }) coveredIcons++
+                }
+            }
+        }
+            return coveredIcons to coveredLabels
         }
     }
 }

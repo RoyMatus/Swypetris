@@ -20,17 +20,17 @@ class GameFeedbackIntegrationTest {
         val recorder = Recorder()
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O, y = 0), next = Tetromino.T), { now }, false, recorder)
-        model.pointerDown(100f, 100f, now)
+        model.input.pointerDown(100f, 100f, now)
         now = 1500
-        model.advanceFrame(now)
-        model.pointerMove(140f, 100f, 1520)
-        model.pointerMove(141f, 170f, 1570)
+        model.simulation.advanceFrame(now)
+        model.input.pointerMove(140f, 100f, 1520)
+        model.input.pointerMove(141f, 170f, 1570)
         val dropped = model.game!!
         assertEquals(1, dropped.generation)
         assertEquals(36, dropped.score)
         assertEquals(listOf(Triple(FeedbackEvent.DROP, true, true)), recorder.calls)
-        model.pointerMove(141f, 170f, 1580)
-        model.pointerUp(141f, 170f, 1590)
+        model.input.pointerMove(141f, 170f, 1580)
+        model.input.pointerUp(141f, 170f, 1590)
         assertEquals(dropped, model.game)
         assertFalse(model.game!!.accelerated)
         assertTrue(model.results.isEmpty())
@@ -43,13 +43,13 @@ class GameFeedbackIntegrationTest {
         var now = 1000L
         val model = GameViewModel(application,
             GameState(active = Piece(Tetromino.O, y = 17), next = Tetromino.T), { now }, false, recorder)
-        model.pointerDown(50f, 50f, now)
+        model.input.pointerDown(50f, 50f, now)
         now += 100
-        model.pointerUp(50f, 50f, now)
+        model.input.pointerUp(50f, 50f, now)
         assertTrue(model.game!!.accelerated)
         assertTrue(recorder.calls.isEmpty())
         now += 800
-        model.advanceFrame(now)
+        model.simulation.advanceFrame(now)
         assertEquals(listOf(Triple(FeedbackEvent.DROP, true, true)), recorder.calls)
         assertFalse(model.game!!.accelerated)
         model.newGame()
@@ -87,14 +87,14 @@ class GameFeedbackIntegrationTest {
         val recorder = Recorder()
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false, recorder)
         assertEquals(0, recorder.previews)
-        model.setVibration(false)
-        model.setVibration(true)
-        model.setVibration(true)
+        model.options.setVibration(false)
+        model.options.setVibration(true)
+        model.options.setVibration(true)
         assertEquals(1, recorder.previews)
         assertEquals(1, recorder.vibrationStops)
         assertEquals(0, recorder.soundStops)
         assertEquals(0, recorder.stops)
-        model.setSound(false)
+        model.options.setSound(false)
         assertEquals(1, recorder.soundStops)
         assertEquals(1, recorder.vibrationStops)
         assertEquals(0, recorder.stops)
@@ -112,31 +112,31 @@ class GameFeedbackIntegrationTest {
         val sound = model.soundEnabled
         val vibration = model.vibrationEnabled
         try {
-            model.setSound(false)
-            model.setVibration(true)
-            model.command(GameCommand.HARD_DROP)
+            model.options.setSound(false)
+            model.options.setVibration(true)
+            model.input.command(GameCommand.HARD_DROP)
             assertEquals(listOf(Triple(FeedbackEvent.CLEAR, false, true)), recorder.calls)
-            model.command(GameCommand.HARD_DROP)
+            model.input.command(GameCommand.HARD_DROP)
             now += 100
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             model.pause()
             assertTrue(recorder.stops > 0)
             model.resume()
             assertEquals(listOf(500L), recorder.remaining)
             now += 500
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(1, recorder.calls.size)
-            model.setSound(true)
-            model.setVibration(false)
-            model.command(GameCommand.HARD_DROP)
+            model.options.setSound(true)
+            model.options.setVibration(false)
+            model.input.command(GameCommand.HARD_DROP)
             assertEquals(Triple(FeedbackEvent.DROP, true, false), recorder.calls.last())
-            model.menu()
+            model.navigation.menu()
             val count = recorder.calls.size
-            model.command(GameCommand.HARD_DROP)
+            model.input.command(GameCommand.HARD_DROP)
             assertEquals(count, recorder.calls.size)
         } finally {
-            model.setSound(sound)
-            model.setVibration(vibration)
+            model.options.setSound(sound)
+            model.options.setVibration(vibration)
         }
     }
 }

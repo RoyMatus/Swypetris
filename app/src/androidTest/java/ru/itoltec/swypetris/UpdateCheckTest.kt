@@ -115,7 +115,7 @@ class UpdateCheckTest {
             compose.onNodeWithTag("newGame").performClick()
             compose.runOnIdle {
                 assertEquals(GameScreen.PLAYING, model.screen)
-                model.menu()
+                model.navigation.menu()
                 now = retryAt - 1
                 updates.check(true)
                 assertEquals(1, calls.get())

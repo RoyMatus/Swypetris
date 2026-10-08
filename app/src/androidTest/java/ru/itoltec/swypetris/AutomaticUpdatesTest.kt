@@ -44,7 +44,8 @@ class AutomaticUpdatesTest {
 
     @Test fun automaticUpdatesRequireConsentAndSurviveActivityRecreation() {
         compose.activityRule.scenario.onActivity {
-            ViewModelProvider(it)[GameViewModel::class.java].apply { finishLaunchIntro(); settings() }
+            ViewModelProvider(it)[GameViewModel::class.java].apply { navigation.finishLaunchIntro();
+                navigation.settings() }
         }
         compose.onNodeWithTag("automaticUpdates").performScrollTo().assertIsOff().performClick()
         compose.onNodeWithTag("manualUpdatesOnly").assertIsDisplayed().performClick()

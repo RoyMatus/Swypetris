@@ -63,7 +63,7 @@ class ResultsIntegrationTest {
             autofillTree = LocalAutofillTree.current
             SwypetrisApp(model) {}
         }
-        compose.runOnIdle { model.command(GameCommand.HARD_DROP) }
+        compose.runOnIdle { model.input.command(GameCommand.HARD_DROP) }
         compose.runOnIdle {
             val nameNode = autofillTree.children.values.single { AutofillType.PersonFullName in it.autofillTypes }
             nameNode.onFill?.invoke("Мария")
@@ -75,7 +75,7 @@ class ResultsIntegrationTest {
 
         compose.runOnIdle {
             model = GameViewModel(application, recordState(20000), { 2000L }, false)
-            model.command(GameCommand.HARD_DROP)
+            model.input.command(GameCommand.HARD_DROP)
         }
         compose.onNodeWithTag("recordName").assertTextContains("Мария")
         compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("skipRecord"))
@@ -116,79 +116,25 @@ class ResultsIntegrationTest {
                 now += 5000
                 model.resume()
                 now += 200
-                model.command(GameCommand.HARD_DROP)
+                model.input.command(GameCommand.HARD_DROP)
                 assertEquals(GameScreen.RECORD, model.screen)
                 assertEquals(1, model.results.size)
                 assertEquals(300L, model.results.single().durationMillis)
                 assertTrue(model.requestRecordName)
-                model.command(GameCommand.HARD_DROP)
+                model.input.command(GameCommand.HARD_DROP)
                 assertEquals(1, model.results.size)
             }
-            compose.onNodeWithTag("recordPage").assertIsDisplayed()
-            compose.onNodeWithTag("resultsPage").assertDoesNotExist()
-            compose.onNodeWithTag("board").assertDoesNotExist()
-            saveScreenshot("record.png")
-            compose.runOnIdle { model.setPalette("github_light") }
-            saveScreenshot("record-light.png")
-            compose.runOnIdle { model.setPalette("classic") }
-            compose.onNodeWithTag("recordName").performTextReplacement("  Алексей  ")
-            compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("saveRecord"))
-            compose.onNodeWithText("Сохранить").performClick()
-            compose.onNodeWithTag("resultsPage").assertIsDisplayed()
-            compose.onNodeWithTag("recordName").assertDoesNotExist()
-            compose.onNodeWithTag("newGame").assertDoesNotExist()
-            compose.onNodeWithTag("toMenu").assertDoesNotExist()
-            saveScreenshot("results.png")
-            compose.runOnIdle {
-                assertFalse(model.requestRecordName)
-                assertEquals(GameScreen.GAME_OVER, model.screen)
-                val restored = ResultStore(preferences).read().single()
-                assertEquals("Алексей", restored.name)
-                assertEquals(10000, restored.score)
-                assertEquals(1, fruitCount(restored.score))
-                val fresh = GameViewModel(application, null, { now }, false)
-                assertEquals(10000, fresh.record)
-                assertEquals(model.results, fresh.results)
-                assertEquals(4321, fresh.legacyRecord)
-            }
+            assertRecordPageAndSaveName(model)
+            assertRecordSaved(model, preferences, application) { now }
             // Узкий экран с крупным шрифтом и планшетная логическая ширина на том же устройстве.
-            for ((density, label) in listOf(Density(3.375f, 1.5f) to "narrow", Density(1.35f, 1.2f) to "tablet")) {
-                compose.runOnIdle { testDensity = density }
-                compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
-                    .assertCountEquals(0)
-                compose.onNodeWithTag("resultsPage").performScrollToNode(hasText("Алексей"))
-                val bounds = compose.onNodeWithText("Алексей").fetchSemanticsNode().boundsInRoot
-                val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
-                assertTrue(bounds.left >= root.left && bounds.right <= root.right)
-                saveScreenshot("results-$label.png")
-            }
-            compose.runOnIdle { testDensity = null; model.setPalette("github_light") }
+            assertHistoryFits { testDensity = it }
+            compose.runOnIdle { testDensity = null; model.options.setPalette("github_light") }
             compose.onNodeWithTag("resultsPage").performScrollToIndex(0)
             saveScreenshot("results-light.png")
-            compose.runOnIdle {
-                testDensity = null
-                model.newGame()
-                repeat(30) { model.command(GameCommand.HARD_DROP) }
-                assertEquals(GameScreen.GAME_OVER, model.screen)
-                assertFalse(model.requestRecordName)
-                assertEquals(1, model.results.size)
-                assertNotNull(model.latestResult)
-            }
-            compose.onNodeWithTag("recordPage").assertDoesNotExist()
-            compose.onNodeWithTag("resultsPage").assertIsDisplayed()
-            compose.onNodeWithTag("recordName").assertDoesNotExist()
-            androidx.test.espresso.Espresso.pressBack()
-            compose.runOnIdle { assertEquals(GameScreen.MENU, model.screen) }
+            compose.runOnIdle { testDensity = null }
+            assertNextGameDoesNotRequestRecordName(model)
         } finally {
-            val editor = preferences.edit().clear()
-            backup.forEach { (key, value) -> when (value) {
-                is String -> editor.putString(key, value)
-                is Int -> editor.putInt(key, value)
-                is Long -> editor.putLong(key, value)
-                is Boolean -> editor.putBoolean(key, value)
-                is Float -> editor.putFloat(key, value)
-            } }
-            editor.commit()
+            restorePreferences(preferences, backup)
         }
     }
 
@@ -200,5 +146,82 @@ class ResultsIntegrationTest {
         compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
             file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
+    }
+
+    @androidx.annotation.RequiresApi(26)
+    private fun assertRecordPageAndSaveName(model: GameViewModel) {
+        compose.onNodeWithTag("recordPage").assertIsDisplayed()
+        compose.onNodeWithTag("resultsPage").assertDoesNotExist()
+        compose.onNodeWithTag("board").assertDoesNotExist()
+        saveScreenshot("record.png")
+        compose.runOnIdle { model.options.setPalette("github_light") }
+        saveScreenshot("record-light.png")
+        compose.runOnIdle { model.options.setPalette("classic") }
+        compose.onNodeWithTag("recordName").performTextReplacement("  Алексей  ")
+        compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("saveRecord"))
+        compose.onNodeWithText("Сохранить").performClick()
+        compose.onNodeWithTag("resultsPage").assertIsDisplayed()
+        compose.onNodeWithTag("recordName").assertDoesNotExist()
+        compose.onNodeWithTag("newGame").assertDoesNotExist()
+        compose.onNodeWithTag("toMenu").assertDoesNotExist()
+        saveScreenshot("results.png")
+    }
+
+    private fun assertNextGameDoesNotRequestRecordName(model: GameViewModel) {
+        compose.runOnIdle {
+            model.newGame()
+            repeat(30) { model.input.command(GameCommand.HARD_DROP) }
+            assertEquals(GameScreen.GAME_OVER, model.screen)
+            assertFalse(model.requestRecordName)
+            assertEquals(1, model.results.size)
+            assertNotNull(model.latestResult)
+        }
+        compose.onNodeWithTag("recordPage").assertDoesNotExist()
+        compose.onNodeWithTag("resultsPage").assertIsDisplayed()
+        compose.onNodeWithTag("recordName").assertDoesNotExist()
+        androidx.test.espresso.Espresso.pressBack()
+        compose.runOnIdle { assertEquals(GameScreen.MENU, model.screen) }
+    }
+
+    private fun assertRecordSaved(model: GameViewModel, preferences: android.content.SharedPreferences,
+        application: Application, clock: () -> Long) {
+        compose.runOnIdle {
+            assertFalse(model.requestRecordName)
+            assertEquals(GameScreen.GAME_OVER, model.screen)
+            val restored = ResultStore(preferences).read().single()
+            assertEquals("Алексей", restored.name)
+            assertEquals(10000, restored.score)
+            assertEquals(1, fruitCount(restored.score))
+            val fresh = GameViewModel(application, null, clock, false)
+            assertEquals(10000, fresh.record)
+            assertEquals(model.results, fresh.results)
+            assertEquals(4321, fresh.legacyRecord)
+        }
+    }
+
+    @androidx.annotation.RequiresApi(26)
+    private fun assertHistoryFits(setDensity: (Density) -> Unit) {
+        for ((density, label) in listOf(Density(3.375f, 1.5f) to "narrow", Density(1.35f, 1.2f) to "tablet")) {
+            compose.runOnIdle { setDensity(density) }
+            compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+                .assertCountEquals(0)
+            compose.onNodeWithTag("resultsPage").performScrollToNode(hasText("Алексей"))
+            val bounds = compose.onNodeWithText("Алексей").fetchSemanticsNode().boundsInRoot
+            val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            assertTrue(bounds.left >= root.left && bounds.right <= root.right)
+            saveScreenshot("results-$label.png")
+        }
+    }
+
+    private fun restorePreferences(preferences: android.content.SharedPreferences, backup: Map<String, *>) {
+        val editor = preferences.edit().clear()
+        backup.forEach { (key, value) -> when (value) {
+            is String -> editor.putString(key, value)
+            is Int -> editor.putInt(key, value)
+            is Long -> editor.putLong(key, value)
+            is Boolean -> editor.putBoolean(key, value)
+            is Float -> editor.putFloat(key, value)
+        } }
+        editor.commit()
     }
 }

@@ -64,6 +64,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private const val MAX_RECORD_NAME_LENGTH = 40
+private const val CONFETTI_DURATION_MILLIS = 2600
+private const val CONFETTI_PARTICLES = 24
+private const val CONFETTI_OPACITY = .5f
+private const val SECONDS_PER_MINUTE = 60
+private const val ROUND_COLLECTION_RULES_VERSION = 4
+
+
 private val Ice: Color @Composable get() = LocalGamePalette.current.accent
 private val Lavender: Color @Composable get() = LocalGamePalette.current.secondary
 private val Gold: Color @Composable get() = LocalGamePalette.current.gold
@@ -129,7 +137,8 @@ fun RecordScreen(model: GameViewModel) {
     val autofill = LocalAutofill.current
     val autofillTree = LocalAutofillTree.current
     val nameAutofill = remember(model.currentResultId) {
-        AutofillNode(autofillTypes = listOf(AutofillType.PersonFullName), onFill = { name = it.take(40) })
+        AutofillNode(autofillTypes = listOf(AutofillType.PersonFullName),
+            onFill = { name = it.take(MAX_RECORD_NAME_LENGTH) })
     }
     DisposableEffect(autofillTree, nameAutofill) {
         autofillTree += nameAutofill
@@ -158,7 +167,7 @@ fun RecordScreen(model: GameViewModel) {
             item {
                 AccentPanel(Ice, Modifier.padding(horizontal = 12.dp)) {
                     Text("ИМЯ ИГРОКА", color = Ice, style = MaterialTheme.typography.labelLarge)
-                    OutlinedTextField(value = name, onValueChange = { name = it.take(40) },
+                    OutlinedTextField(value = name, onValueChange = { name = it.take(MAX_RECORD_NAME_LENGTH) },
                         label = { Text("Имя игрока") }, supportingText = { Text("Можно оставить пустым") },
                         singleLine = true, shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().onGloballyPositioned {
@@ -167,30 +176,11 @@ fun RecordScreen(model: GameViewModel) {
                             if (it.isFocused) autofill?.requestAutofillForNode(nameAutofill)
                             else autofill?.cancelAutofillForNode(nameAutofill)
                         }.testTag("recordName"))
-                    val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.4f
-                    if (stacked) {
-                        AppActionButton("Сохранить", ActionStyle.PRIMARY,
-                            Modifier.fillMaxWidth().testTag("saveRecord"),
-                                LocalGamePalette.current.piece(Tetromino.S)) {
-                            focus.clearFocus(); keyboard?.hide(); model.saveRecordName(name)
-                        }
-                        AppActionButton("Пропустить", ActionStyle.SECONDARY,
-                            Modifier.fillMaxWidth().testTag("skipRecord"),
-                                LocalGamePalette.current.piece(Tetromino.Z)) {
-                            focus.clearFocus(); keyboard?.hide(); model.saveRecordName("")
-                        }
-                    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.weight(1f)) { AppActionButton("Сохранить", ActionStyle.PRIMARY,
-                            Modifier.fillMaxWidth().testTag("saveRecord"),
-                                LocalGamePalette.current.piece(Tetromino.S)) {
-                            focus.clearFocus(); keyboard?.hide(); model.saveRecordName(name)
-                        } }
-                        Box(Modifier.weight(1f)) { AppActionButton("Пропустить", ActionStyle.SECONDARY,
-                            Modifier.fillMaxWidth().testTag("skipRecord"),
-                                LocalGamePalette.current.piece(Tetromino.Z)) {
-                            focus.clearFocus(); keyboard?.hide(); model.saveRecordName("")
-                        } }
-                    }
+                    RecordNameActions(onSave = {
+                        focus.clearFocus(); keyboard?.hide(); model.statistics.saveRecordName(name)
+                    }, onSkip = {
+                        focus.clearFocus(); keyboard?.hide(); model.statistics.saveRecordName("")
+                    })
                 }
             }
         }
@@ -245,15 +235,15 @@ private fun ResultCard(result: GameResult) {
 @Composable
 private fun CelebrationBlocks(key: String?) {
     val progress = remember(key) { Animatable(0f) }
-    LaunchedEffect(key) { progress.animateTo(1f, tween(2600)) }
+    LaunchedEffect(key) { progress.animateTo(1f, tween(CONFETTI_DURATION_MILLIS)) }
     val colors = listOf(Ice, Lavender, Gold)
     Canvas(Modifier.fillMaxSize()) {
         val p = progress.value
-        if (p < 1f) repeat(24) { index ->
+        if (p < 1f) repeat(CONFETTI_PARTICLES) { index ->
             val x = size.width * ((index * 37 % 101) / 100f)
             val y = size.height * ((index % 6) / 12f + p * .45f)
             val side = (5 + index % 5).dp.toPx()
-            drawRect(colors[index % 3].copy(alpha = (1 - p) * .5f),
+            drawRect(colors[index % colors.size].copy(alpha = (1 - p) * CONFETTI_OPACITY),
                 Offset(x, y), Size(side, side))
         }
     }
@@ -261,14 +251,14 @@ private fun CelebrationBlocks(key: String?) {
 /** Formats elapsed duration independently of the time zone. */
 internal fun formatDuration(millis: Long): String {
     val seconds = millis.coerceAtLeast(0) / 1000
-    return "%d:%02d".format(seconds / 60, seconds % 60)
+    return "%d:%02d".format(seconds / SECONDS_PER_MINUTE, seconds % SECONDS_PER_MINUTE)
 }
 
 /** Shows the current round's fruit collection without multipliers, preserving legacy results. */
 @Composable
 private fun FruitCollection(result: GameResult) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        if (result.rulesVersion >= 4) {
+        if (result.rulesVersion >= ROUND_COLLECTION_RULES_VERSION) {
             Text("Пройдено кругов: ${result.completedRounds}", color = Muted)
             val current = (fruitCount(result.score) - result.completedRounds * Fruit.entries.size)
                 .coerceIn(0, Fruit.entries.size)
@@ -277,5 +267,33 @@ private fun FruitCollection(result: GameResult) {
             val current = fruitCount(result.score).coerceAtMost(Fruit.entries.size)
             RoundFruitCollection(List(Fruit.entries.size) { index -> if (index < current) 1 else 0 })
         }
+    }
+}
+
+@Composable
+private fun RecordNameActions(onSave: () -> Unit, onSkip: () -> Unit) {
+    val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.4f
+    if (stacked) {
+        AppActionButton("Сохранить", ActionStyle.PRIMARY,
+            Modifier.fillMaxWidth().testTag("saveRecord"),
+                LocalGamePalette.current.piece(Tetromino.S)) {
+            onSave()
+        }
+        AppActionButton("Пропустить", ActionStyle.SECONDARY,
+            Modifier.fillMaxWidth().testTag("skipRecord"),
+                LocalGamePalette.current.piece(Tetromino.Z)) {
+            onSkip()
+        }
+    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.weight(1f)) { AppActionButton("Сохранить", ActionStyle.PRIMARY,
+            Modifier.fillMaxWidth().testTag("saveRecord"),
+                LocalGamePalette.current.piece(Tetromino.S)) {
+            onSave()
+        } }
+        Box(Modifier.weight(1f)) { AppActionButton("Пропустить", ActionStyle.SECONDARY,
+            Modifier.fillMaxWidth().testTag("skipRecord"),
+                LocalGamePalette.current.piece(Tetromino.Z)) {
+            onSkip()
+        } }
     }
 }

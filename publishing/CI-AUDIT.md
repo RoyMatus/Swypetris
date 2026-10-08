@@ -1,6 +1,6 @@
-# CI/CD quality audit — 2026-10-08
+# CI/CD quality audit â€” 2026-10-08
 
-This change is intentionally not ready to merge: newly enforced checks expose existing violations. No baseline, disabled rules, formatting sweep, application/UI changes, Quality Gate threshold changes, protection updates, or merge are included.
+This document records the historical CI audit for PR #200 and its later delivery follow-up. The original audit exposed existing violations and was not ready to merge. Its findings and proposed approvals below describe that snapshot, not the current branch-protection policy; see [POLICY.md](POLICY.md) for current enforcement.
 
 ## Before
 
@@ -80,4 +80,10 @@ The owner instructed this chat not to run CI manually or merge while another pro
 
 The follow-up separates report verification from the JVM step into required quality_reports. A Lint XML error now fails that report step while a successful Gradle JVM invocation retains success. Selected/full gates reject missing, skipped, failed, cancelled, or masked report validation. Release verification already has a separate report step and is unchanged.
 
-The 52 strict test-source lint errors are corrected through actual API contracts, Typeface.NORMAL, and public ViewModelProvider. A proposed legacy detekt baseline in the initial follow-up PR was withdrawn after the owner's explicit no-baseline instruction; it never reached main. No baseline, rule exclusion, severity relaxation, or continue-on-error remains in the delivery changes. Outstanding detekt findings remain blocking and must not all be described as confirmed bugs. Existing audit worktree and PR #200 are preserved.
+The 52 strict test-source lint errors are corrected through actual API contracts, Typeface.NORMAL, and public ViewModelProvider. A proposed legacy detekt baseline in the initial follow-up PR was withdrawn after the owner's explicit no-baseline instruction; it never reached main. No baseline, severity relaxation, or continue-on-error remains in the delivery changes. Outstanding detekt findings remained blocking at that checkpoint and must not all be described as confirmed bugs. Existing audit worktree and PR #200 are preserved.
+
+## Local readiness verification
+
+The delivery follow-up fixes enforced source findings with explicit imports, unchanged named constants, smaller rendering/validation helpers, and operations grouped by responsibility. GameViewModel retains the game state; engine bags, gesture state and update lifecycle fields retain their original owners. Cancellation propagates while expected update failures remain recoverable. Compose naming follows the framework convention documented in CI.md; no baseline or general suppression is used.
+
+Local debug verification completed with 136 JVM tests, nonempty JaCoCo, zero detekt findings, and zero Lint errors / 121 warnings. The API-35 headless emulator completed 130 Android scenarios: 128 passed and two existing opt-in scenarios were skipped (EnergyScenarioTest and the live signed GitHub download). Those two behaviors are not verified by that run. Compact-menu, narrow-HUD and tablet-results screenshots were inspected. Local success does not establish GitHub CI success or authorize bypassing the required check.

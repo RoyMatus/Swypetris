@@ -46,7 +46,7 @@ class StartingLevelTest {
             assertEquals(5, model.game!!.level)
             assertEquals(0, model.game!!.lines)
             model.pause()
-            model.chooseStartingLevel(15)
+            model.options.chooseStartingLevel(15)
             model.resume()
             assertEquals(5, model.game!!.startingLevel)
             model.pause()

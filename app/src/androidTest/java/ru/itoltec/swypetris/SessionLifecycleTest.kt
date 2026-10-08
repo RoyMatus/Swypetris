@@ -67,7 +67,7 @@ class SessionLifecycleTest {
         val first = model()
         assertFalse(first.hintsEnabled)
         GameStorage.preferences(app).edit().putString("difficulty", "hard").apply()
-        first.setHints(true)
+        first.options.setHints(true)
         repeat(3) {
             val fresh = model()
             assertTrue(fresh.hintsEnabled)
@@ -80,8 +80,8 @@ class SessionLifecycleTest {
     @Test fun settingOnlyAppliesToNewGames() {
         val first = model()
         first.newGame()
-        first.menu()
-        first.chooseStartingLevel(5)
+        first.navigation.menu()
+        first.options.chooseStartingLevel(5)
         first.resume()
         assertEquals(1, first.game!!.startingLevel)
         first.newGame()
@@ -91,8 +91,8 @@ class SessionLifecycleTest {
     @Test fun restoresBoardQueueAndRemainingGravityAfterFullRestart() {
         val first = model()
         first.newGame()
-        first.command(GameCommand.RIGHT)
-        first.command(GameCommand.SOFT_DROP)
+        first.input.command(GameCommand.RIGHT)
+        first.input.command(GameCommand.SOFT_DROP)
         now += 300
         first.pause()
         val saved = first.game
@@ -102,14 +102,14 @@ class SessionLifecycleTest {
         assertEquals(GameScreen.MENU, restored.screen)
         assertEquals(saved, restored.game)
         assertEquals(bag, restored.engine.remainingBag())
-        restored.advanceFrame(now)
+        restored.simulation.advanceFrame(now)
         assertEquals(saved, restored.game)
         restored.resume()
         now += 699
-        restored.advanceFrame(now)
+        restored.simulation.advanceFrame(now)
         assertEquals(saved, restored.game)
         now++
-        restored.advanceFrame(now)
+        restored.simulation.advanceFrame(now)
         assertEquals(saved!!.active.y + 1, restored.game!!.active.y)
         assertEquals(1000L, SessionStore(GameStorage.sessionPreferences(app)).read()!!.playedMillis)
     }
@@ -121,8 +121,8 @@ class SessionLifecycleTest {
         assertEquals(state(), first.game)
         assertEquals(GameScreen.MENU, first.screen)
         now += 10000
-        first.advanceFrame(now)
-        first.command(GameCommand.HARD_DROP)
+        first.simulation.advanceFrame(now)
+        first.input.command(GameCommand.HARD_DROP)
         first.resume()
         assertEquals(GameScreen.MENU, first.screen)
         first.onBackground()
@@ -138,17 +138,17 @@ class SessionLifecycleTest {
 
     @Test fun holdingThroughNaturalLockControlsNextPieceWithoutPhantomTap() {
         val first = model(state().copy(active = Piece(Tetromino.O, y = 18)))
-        first.pointerDown(100f, 100f, now)
+        first.input.pointerDown(100f, 100f, now)
         now += 800
-        first.advanceFrame(now)
+        first.simulation.advanceFrame(now)
         val spawned = first.game!!
         assertEquals(1, spawned.generation)
-        first.pointerMove(100f, 100f, now)
+        first.input.pointerMove(100f, 100f, now)
         assertEquals(spawned, first.game)
-        first.pointerMove(112f, 100f, now + 20)
+        first.input.pointerMove(112f, 100f, now + 20)
         assertEquals(spawned.active.x + 1, first.game!!.active.x)
         val moved = first.game
-        first.pointerUp(112f, 100f, now + 40)
+        first.input.pointerUp(112f, 100f, now + 40)
         assertEquals(moved, first.game)
     }
 
@@ -160,21 +160,21 @@ class SessionLifecycleTest {
 
     @Test fun pointerTracksDuringClearThenRebasesAtActualPosition() {
         val first = model(clearingStart())
-        first.pointerDown(100f, 100f, now)
-        first.command(GameCommand.HARD_DROP)
-        first.pointerMove(200f, 300f, now + 100)
+        first.input.pointerDown(100f, 100f, now)
+        first.input.command(GameCommand.HARD_DROP)
+        first.input.pointerMove(200f, 300f, now + 100)
         now += 600
-        first.advanceFrame(now)
+        first.simulation.advanceFrame(now)
         val spawned = first.game!!
-        first.pointerMove(200f, 300f, now)
+        first.input.pointerMove(200f, 300f, now)
         assertEquals(spawned, first.game)
-        first.pointerMove(212f, 300f, now + 20)
+        first.input.pointerMove(212f, 300f, now + 20)
         assertEquals(spawned.active.x + 1, first.game!!.active.x)
     }
 
     @Test fun restartDuringClearPreservesItsExactProgress() {
         val first = model(clearingStart().copy(lines = 9))
-        first.command(GameCommand.HARD_DROP)
+        first.input.command(GameCommand.HARD_DROP)
         now += 217
         first.pause()
         now += 10000
@@ -183,10 +183,10 @@ class SessionLifecycleTest {
         assertEquals(217L, restored.clearElapsedMillis)
         restored.resume()
         now += 382
-        restored.advanceFrame(now)
+        restored.simulation.advanceFrame(now)
         assertEquals(0, restored.game!!.generation)
         now++
-        restored.advanceFrame(now)
+        restored.simulation.advanceFrame(now)
         assertEquals(1, restored.game!!.generation)
         assertEquals(100, restored.game!!.score)
         assertEquals(10, restored.game!!.lines)
@@ -196,32 +196,32 @@ class SessionLifecycleTest {
 
     @Test fun tapMovesExactlyOneCellAndHoldUsesOnlyGravity() {
         val first = model(state())
-        first.pointerDown(100f, 100f, now)
-        first.pointerUp(100f, 100f, now + 100)
+        first.input.pointerDown(100f, 100f, now)
+        first.input.pointerUp(100f, 100f, now + 100)
         assertEquals(1, first.game!!.active.y)
         assertEquals(0, first.game!!.active.rotation)
-        first.pointerDown(100f, 100f, now + 200)
+        first.input.pointerDown(100f, 100f, now + 200)
         now += 999
-        first.advanceFrame(now)
+        first.simulation.advanceFrame(now)
         assertEquals(1, first.game!!.active.y)
         now++
-        first.advanceFrame(now)
+        first.simulation.advanceFrame(now)
         assertEquals(2, first.game!!.active.y)
-        first.pointerUp(100f, 100f, now)
+        first.input.pointerUp(100f, 100f, now)
         assertEquals(2, first.game!!.active.y)
     }
 
     @Test fun newGameReplacesSavedSessionAndGameOverCannotContinue() {
         val first = model()
         first.newGame()
-        first.command(GameCommand.HARD_DROP)
+        first.input.command(GameCommand.HARD_DROP)
         first.newGame()
         first.pause()
         assertEquals(first.game, model().game)
         val board = state().board.map { it.toMutableList() }
         board[BoardGeometry.row(0)][4] = Tetromino.Z
         val losing = model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18), score = 50))
-        losing.command(GameCommand.HARD_DROP)
+        losing.input.command(GameCommand.HARD_DROP)
         assertTrue(losing.game!!.gameOver)
         val restored = model()
         restored.resume()
@@ -237,7 +237,7 @@ class SessionLifecycleTest {
             val board = state().board.map { it.toMutableList() }
             board[BoardGeometry.row(0)][4] = Tetromino.Z
             return model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
-                score = score)).also { it.command(GameCommand.HARD_DROP) }
+                score = score)).also { it.input.command(GameCommand.HARD_DROP) }
         }
         val record = finish(100)
         assertEquals(2, record.results.size)
@@ -267,7 +267,7 @@ class SessionLifecycleTest {
         board[BoardGeometry.row(0)][4] = Tetromino.Z
         val first = model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 17),
             next = Tetromino.O, score = 79999))
-        first.command(GameCommand.HARD_DROP)
+        first.input.command(GameCommand.HARD_DROP)
         val restored = model()
         assertEquals(first.game, restored.game)
         restored.resume()

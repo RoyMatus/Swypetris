@@ -46,7 +46,7 @@ class GameUiTest {
 
     /** Пересоздание контактов сохраняет экран, портретную ориентацию и приостановленную партию. */
     @Test fun contactsSurviveRecreation() {
-        compose.runOnIdle { model().newGame(); model().contacts() }
+        compose.runOnIdle { model().newGame(); model().navigation.contacts() }
         val saved = model().game
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag("contactsPage").assertIsDisplayed()
@@ -64,7 +64,7 @@ class GameUiTest {
 
     /** Пересоздание справки сохраняет экран и не возобновляет партию автоматически. */
     @Test fun helpSurvivesRecreation() {
-        compose.runOnIdle { model().newGame(); model().menu() }
+        compose.runOnIdle { model().newGame(); model().navigation.menu() }
         compose.onNodeWithTag("help").performClick()
         val saved = model().game
         compose.activityRule.scenario.recreate()
@@ -110,9 +110,9 @@ class GameUiTest {
             compose.onNodeWithTag("sound").assertDoesNotExist()
         } finally {
             compose.runOnIdle {
-                model().setSound(oldSound)
-                model().setVibration(oldVibration)
-                model().setHints(oldHints)
+                model().options.setSound(oldSound)
+                model().options.setVibration(oldVibration)
+                model().options.setHints(oldHints)
             }
         }
     }
@@ -133,7 +133,7 @@ class GameUiTest {
             compose.runOnIdle { assertEquals(GameScreen.MENU, model().screen) }
         } finally {
             compose.runOnIdle {
-                model().setHints(originalHints)
+                model().options.setHints(originalHints)
             }
         }
     }
@@ -203,7 +203,7 @@ class GameUiTest {
         compose.onNodeWithTag("newGame").performClick()
         var previous: GameState? = null
         compose.runOnIdle {
-            model().command(GameCommand.HARD_DROP)
+            model().input.command(GameCommand.HARD_DROP)
             model().pause()
             previous = model().game
         }
@@ -218,9 +218,9 @@ class GameUiTest {
         compose.runOnIdle {
             val current = model()
             current.newGame()
-            current.command(GameCommand.HARD_DROP)
+            current.input.command(GameCommand.HARD_DROP)
             val originalHints = current.hintsEnabled
-            current.setHints(!originalHints)
+            current.options.setHints(!originalHints)
             val store = ViewModelStore()
             try {
                 val factory = ViewModelProvider
@@ -229,12 +229,12 @@ class GameUiTest {
                 assertEquals(current.record, fresh.record)
                 assertEquals(!originalHints, fresh.hintsEnabled)
             } finally {
-                current.setHints(originalHints)
+                current.options.setHints(originalHints)
                 store.clear()
             }
             current.pause()
             val paused = current.game
-            current.command(GameCommand.TICK)
+            current.input.command(GameCommand.TICK)
             assertEquals(paused, current.game)
         }
     }

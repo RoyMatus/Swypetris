@@ -55,7 +55,7 @@ class HelpHudTest {
                 }
             }
         }
-        compose.runOnIdle { model.help() }
+        compose.runOnIdle { model.navigation.help() }
         compose.onNodeWithTag("helpPage").assertIsDisplayed()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
             .assertCountEquals(0)
@@ -76,7 +76,7 @@ class HelpHudTest {
         screenshot("help-large-font.png")
         compose.runOnIdle {
             now += 10000
-            model.advanceFrame(now)
+            model.simulation.advanceFrame(now)
             assertEquals(initial, model.game)
         }
         compose.onNodeWithTag("helpBack").assertDoesNotExist()

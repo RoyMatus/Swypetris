@@ -55,7 +55,7 @@ class LaunchIntroTest {
         compose.runOnIdle {
             assertNull(model.game)
             assertEquals(GameScreen.MENU, model.screen)
-            model.settings(); model.menu(); model.onBackground(); model.onForeground()
+            model.navigation.settings(); model.navigation.menu(); model.onBackground(); model.onForeground()
             assertFalse(model.launchIntroPending)
             assertTrue(model.results.isEmpty())
         }
@@ -87,7 +87,7 @@ class LaunchIntroTest {
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun stagedAnimationHasNoFinalJumpAndFitsLightCompactScreen() {
         val model = model()
-        model.setPalette("github_light")
+        model.options.setPalette("github_light")
         compose.mainClock.autoAdvance = false
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f),
@@ -112,7 +112,7 @@ class LaunchIntroTest {
         val assembled = compose.onNodeWithTag("gameLogo").captureToImage().asAndroidBitmap()
         val assembledBounds = compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot
         save(assembled, "intro-logo-assembled.png")
-        compose.runOnIdle { model.finishLaunchIntro() }
+        compose.runOnIdle { model.navigation.finishLaunchIntro() }
         compose.mainClock.advanceTimeByFrame()
         screenshot("intro-menu-light.png")
         val menu = compose.onNodeWithTag("gameLogo").captureToImage().asAndroidBitmap()
@@ -144,7 +144,7 @@ class LaunchIntroTest {
         listOf("newGame", "settings", "help", "results", "contacts", "exitGame").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
-        compose.runOnIdle { model.setPalette("monokai") }
+        compose.runOnIdle { model.options.setPalette("monokai") }
         compose.mainClock.advanceTimeByFrame()
         screenshot("intro-menu-dark.png")
     }
@@ -152,7 +152,7 @@ class LaunchIntroTest {
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun darkApproachEndsOnTheSameMenuComposition() {
         val model = model()
-        model.setPalette("synthwave_84")
+        model.options.setPalette("synthwave_84")
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
         compose.mainClock.advanceTimeByFrame()
@@ -163,7 +163,7 @@ class LaunchIntroTest {
         screenshot("approach-2000.png")
         advanceTo(model, 2650)
         val finalFrame = screenshot("approach-2650.png")
-        compose.runOnIdle { model.finishLaunchIntro() }
+        compose.runOnIdle { model.navigation.finishLaunchIntro() }
         compose.mainClock.advanceTimeByFrame()
         val menuFrame = screenshot("approach-menu.png")
         assertEquals(finalFrame.width, menuFrame.width)

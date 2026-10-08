@@ -26,6 +26,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 
+private const val WRAPPED_ACTION_FONT_SCALE = 1.4f
+
+
 /** Music choices also serve as a preview, without a separate play button. */
 @Composable
 internal fun MusicPicker(model: GameViewModel) {
@@ -57,12 +60,12 @@ internal fun MusicPicker(model: GameViewModel) {
         DropdownMenu(expanded, onDismissRequest = { expanded = false }, Modifier.heightIn(max = 360.dp)) {
             MusicSelection.all.forEach { selection ->
                 DropdownMenuItem(text = { Text(selection.title) }, modifier = Modifier.testTag("music_${selection.id}"),
-                    onClick = { model.chooseMusic(selection); expanded = false })
+                    onClick = { model.options.chooseMusic(selection); expanded = false })
             }
         }
         }
     }
-    if (LocalDensity.current.fontScale >= 1.4f) {
+    if (LocalDensity.current.fontScale >= WRAPPED_ACTION_FONT_SCALE) {
         SettingsLabel("Музыка", description)
         Spacer(Modifier.height(6.dp))
         selector()

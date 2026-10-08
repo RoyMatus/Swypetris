@@ -35,10 +35,13 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 
+private const val QR_QUIET_ZONE_MODULES = 4
+
+
 /** The encoder's four-module margin remains part of the white image in every theme. */
 internal fun downloadQrMatrix(url: String): BitMatrix = QRCodeWriter().encode(
     url, BarcodeFormat.QR_CODE, 0, 0,
-    mapOf(EncodeHintType.MARGIN to 4)
+    mapOf(EncodeHintType.MARGIN to QR_QUIET_ZONE_MODULES)
 )
 
 /** Renders at an integer scale so the modules stay crisp when Compose resizes the image. */
@@ -80,7 +83,7 @@ internal fun shareAppDownload(context: Context, url: String): Boolean = try {
 }
 
 /** The latest published GitHub Release provides the APK for every new app build. */
-internal fun apkDownloadUrl(): String =
+internal const val APK_DOWNLOAD_URL =
     "https://github.com/RoyMatus/Swypetris/releases/latest/download/Swypetris.apk"
 
 /** Shows the canonical store link, a scannable QR code, and Android sharing actions. */
@@ -93,7 +96,7 @@ internal fun ApkDownloadDialog(onDismiss: () -> Unit) = DownloadLinkDialog(onDis
 @Composable
 private fun DownloadLinkDialog(onDismiss: () -> Unit, directApk: Boolean) {
     val context = LocalContext.current
-    val url = if (directApk) apkDownloadUrl()
+    val url = if (directApk) APK_DOWNLOAD_URL
         else context.getString(R.string.app_download_url)
     val qr = remember(url) { downloadQrBitmap(url).asImageBitmap() }
     var actionUnavailable by remember { mutableStateOf(false) }
