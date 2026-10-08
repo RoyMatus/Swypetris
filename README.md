@@ -32,13 +32,13 @@ Use the playfield as the touch surface; there are no separate movement, rotation
 
 Hold is available once until a piece locks. Held pieces return in their initial orientation at the spawn position. Release your finger after a Hold exchange before controlling the replacement. Holding still does not accelerate gravity; releasing a prepared Hold without swiping up cancels it without a Soft Drop. The readiness pulse respects the vibration setting.
 
-Gesture distances use density-independent units and account for Android touch slop. Default thresholds start at 12 dp for horizontal movement, 24 dp for rotation, and 48 dp for Hard Drop. A downward drop needs at least twice as much vertical as horizontal movement. A second finger cancels the gesture. Piece changes reset motion anchors so old movement does not accidentally control the replacement.
+A downward drop needs at least twice as much vertical as horizontal movement. A second finger cancels the gesture. After a piece changes, previous movement does not accidentally control its replacement.
 
 ### Playfield and rules
 
-- The visible field is **10 columns × 20 rows**, with two additional spawn-display rows at the top. The engine maintains 20 hidden rows above the visible field.
+- The visible field is **10 columns × 20 rows**, with two additional spawn-display rows at the top. There are also 20 hidden rows above the visible field.
 - All seven tetrominoes come from shuffled **seven-bags**, each containing one of every piece type.
-- Rotations use **SRS** wall kicks, with separate transition tables for I and for J, L, S, T, Z.
+- Rotations use **SRS** wall kicks to help pieces turn near walls and other blocks.
 - Grounded pieces have a **500 ms lock delay**. Successful movement or rotation from the ground can reset it at most **15 times per piece**. Hard Drop locks immediately.
 - A blocked spawn ends the game. Locking a piece entirely above the visible field also ends it; partly hidden placement is allowed.
 - Completed rows disappear column by column over **600 ms**, alternating left-to-right and right-to-left between clear events. Multiple rows clear together. Gravity and piece commands wait until the effect finishes; then the board collapses, points are awarded, and the next piece spawns.
@@ -80,7 +80,7 @@ The current rules version is **6**. Placement awards use the level **before** th
 - **Combo:** consecutive line-clearing placements add `50 × combo count × level`; the first clear has count zero.
 - **Perfect Clear:** emptying the entire logical board adds 800 / 1,200 / 1,800 / 2,000 × level for one / two / three / four lines. A back-to-back four-line Perfect Clear adds 3,200 × level instead.
 - **Manual Soft Drop:** 1 point per cell. **Hard Drop:** 2 points per cell. These awards are not multiplied by level.
-- Automatic gravity gives no points. Score addition is capped safely at `Int.MAX_VALUE`.
+- Automatic gravity gives no points. The maximum score is 2,147,483,647 points.
 
 ### Fruits and victory rounds
 
@@ -96,9 +96,9 @@ The next round starts on an empty board while retaining **score, cleared lines, 
 
 Back pauses into the main menu. Backgrounding or losing window focus, including opening the notification shade, also stops play. Returning to the foreground does not resume gameplay automatically: choose Continue.
 
-Local autosave preserves the board, active and next pieces, remaining seven-bag queue, Hold state, score, lines, rounds, starting level, lock delay, and timing progress. Activity recreation restores a paused game; reopening the app offers Continue from the menu. New game replaces the active save. A lost game cannot be continued. Incompatible older active saves are rejected without deleting settings or historical results.
+Local autosave preserves the board, active and next pieces, remaining seven-bag queue, Hold state, score, lines, rounds, starting level, lock delay, and timing progress. If Android recreates the game screen, the game is restored paused; reopening the app offers Continue from the menu. New game replaces the active save. A lost game cannot be continued. Incompatible older active saves are rejected without deleting settings or historical results.
 
-Results shows the latest finished game's score, lines, level, active play time, and fruit collection, plus personal record history. Pauses are excluded from play time. A new personal best opens a record celebration and optional name entry. Current code persists new record-setting results; previously stored history remains available, and records from different rules versions are kept separate. Results are local, without a shared online ranking.
+Results shows the latest finished game's score, lines, level, active play time, and fruit collection, plus personal record history. Pauses are excluded from play time. A new personal best opens a record celebration and optional name entry. New personal records are saved; previously stored history remains available, and records from different rules versions are kept separate. Results are local, without a shared online ranking.
 
 **Reset statistics** asks for confirmation and removes stored history and records, including older ones. Settings and the current game are preserved.
 
@@ -128,62 +128,13 @@ Effects use Android's media volume. Haptics accompany supported game events and 
 
 ### Updates, sharing, and privacy
 
-**RuStore installations use the RuStore update SDK; direct APK installations use GitHub Releases.** Checks are available from Settings and the menu version; launch checks follow the app's check policy. Playing does not require a successful network check.
+**RuStore installations receive updates through RuStore; direct APK installations receive updates through GitHub Releases.** Checks are available from Settings and the menu version; launch checks follow the app's check policy. Playing does not require a successful network check.
 
 Automatic downloading and installation require explicit consent and run from the main menu after saving the game. The option can be disabled. Android may still require installation permission or confirmation. Direct APK updates are checked for download size, SHA-256, package identity, version, and signing compatibility before installation.
 
 Contacts offers developer links, APK download access, and a sharing dialog with a QR code and Android's share action. These actions open the selected external application; messages are not sent automatically.
 
 The app does not send player names, scores, or settings to the developer. Update requests go to GitHub or RuStore under those services' policies. Settings and historical results may participate in Android backup; active sessions and update files are excluded. See the bundled [privacy policy](app/src/main/assets/privacy.txt), its [HTML version](publishing/privacy.html), and **Contacts → Privacy** inside the app. Credits and bundled license notices are available through **Contacts → Licenses and rights** and [legal-notices.json](app/src/main/assets/legal-notices.json).
-
-### Build and verification
-
-The application uses **Kotlin, Jetpack Compose, and Material 3**. Use **JDK 21** to match CI, an Android SDK supporting the configured compile SDK **36.1**, and the checked-in Gradle wrapper. Configure the SDK path in `local.properties` or your SDK environment. The application ID is `ru.itoltec.swypetris`; release version information is in [gradle.properties](gradle.properties) and [app/build.gradle.kts](app/build.gradle.kts).
-
-Build a debug APK on Windows:
-
-```powershell
-.\gradlew.bat :app:assembleDebug
-```
-
-Output: `app/build/outputs/apk/debug/app-debug.apk`. On Linux or macOS, use `./gradlew` instead of `gradlew.bat`.
-
-Standard local build, lint, JVM tests, and coverage:
-
-```powershell
-.\tools\Verify-Tests.ps1 -Suite Fast
-# If JAVA_HOME is not configured, add -JavaHome with your JDK 21 directory.
-```
-
-For narrower JVM checks, use `:app:testDebugUnitTest` with Gradle's `--tests` filter. Instrumentation requires a ready isolated emulator and an explicit serial:
-
-```powershell
-adb devices -l
-.\tools\Verify-Tests.ps1 -Suite Android -Serial emulator-5554
-```
-
-Replace the example serial with your emulator's actual serial. [TESTING.md](TESTING.md) documents verification and test inventory; [PERFORMANCE.md](PERFORMANCE.md) covers performance measurement. CI selects checks by changed files; documentation-only changes do not need Android regression runs. These commands describe available checks, not a claim that all have run for the current revision.
-
-API documentation: `:app:dokkaGenerate`. Signed distribution builds use [tools/release/Build-Release.ps1](tools/release/Build-Release.ps1), external signing credentials, and output under `dist/<version>/`. See [music generation](tools/music/README.md) and [theme provenance](tools/themes/README.md) for resource details.
-
-### Source layout
-
-Kotlin files below live under `app/src/main/java/ru/itoltec/swypetris/`:
-
-| Files | Responsibility |
-| --- | --- |
-| `GameEngine.kt` | Android-independent board, pieces, seven-bag, Hold, placement, victory, and loss. |
-| `GameRules.kt`, `Placement.kt`, `Srs.kt` | Scoring, progression, placement classification, and rotation kicks. |
-| `GameTimeline.kt`, `GameTimer.kt` | Gravity, lock, and line-clear timing. |
-| `GestureController.kt` | One-finger gesture recognition. |
-| `GameViewModel.kt` | Screen transitions, lifecycle, settings, and game coordination. |
-| `GameSession.kt`, `GameStorage.kt`, `GameResults.kt` | Autosave, storage, and personal results. |
-| `MainActivity.kt`, `GameLayout.kt`, screen files | Compose UI, Canvas playfield, HUD, and layout. |
-| `GamePalette.kt`, `GameArt.kt`, `MenuSkyMotion.kt` | Themes, artwork, and menu sky effects. |
-| `GameMusic.kt`, `PlaylistClock.kt`, `AndroidGameFeedback.kt` | Music, playlist timing, effects, and haptics. |
-| `AppUpdates.kt`, `Update*.kt` | Update checks, download validation, and installation. |
-
-JVM tests are in `app/src/test/`; Android integration/UI tests are in `app/src/androidTest/`. `tools/` and `.github/workflows/` contain build/release, media generation, verification, and repository automation.
 
 **Developer:** Roy Matus · [itoltec.ru](https://itoltec.ru/) · [Telegram](https://t.me/RoyMatus) · [Email](mailto:piligrim18@gmail.com)
 
@@ -219,13 +170,13 @@ Swypetris — бесплатная головоломка с падающими 
 
 «Запас» доступен один раз до фиксации фигуры. Фигура из запаса появляется в исходном положении и ориентации. После обмена отпустите палец, прежде чем управлять заменой. Неподвижное удержание не ускоряет падение; отпускание после подготовки «Запаса» без свайпа вверх отменяет действие без спуска на клетку. Импульс готовности учитывает настройку вибрации.
 
-Расстояния жестов задаются в независимых от плотности экрана единицах с учётом системного порога касания Android. Базовые пороги: 12 dp для горизонтального перемещения, 24 dp для поворота и 48 dp для броска. Для броска вертикальное смещение должно как минимум вдвое превышать горизонтальное. Второй палец отменяет жест. При смене фигуры опорные точки сбрасываются, чтобы предыдущее движение не вызвало случайную команду для новой фигуры.
+Для броска вертикальное смещение должно как минимум вдвое превышать горизонтальное. Второй палец отменяет жест. После смены фигуры предыдущее движение не вызывает случайную команду для новой.
 
 ### Поле и правила
 
-- Видимое поле — **10 столбцов × 20 строк**, сверху отображаются ещё две строки для появления фигур. В логике игры над видимым полем предусмотрено 20 скрытых строк.
+- Видимое поле — **10 столбцов × 20 строк**, сверху отображаются ещё две строки для появления фигур. Над видимым полем есть ещё 20 скрытых строк.
 - Семь видов тетромино поступают из перемешанных **мешков по семь фигур**, по одной фигуре каждого вида в мешке.
-- Повороты используют **SRS** со смещениями у стен и препятствий. Для I и для J, L, S, T, Z используются отдельные таблицы переходов.
+- Повороты используют **SRS** со смещениями у стен и препятствий.
 - После касания опоры действует **задержка фиксации 500 мс**. Успешное перемещение или поворот с опоры может сбросить её не более **15 раз для одной фигуры**. Мгновенный бросок фиксирует фигуру сразу.
 - Если новая фигура не помещается в месте появления, партия заканчивается. Полная фиксация выше видимого поля также означает проигрыш; частично скрытое размещение допускается.
 - Строки исчезают по столбцам за **600 мс**. Направление чередуется между событиями очистки: слева направо, затем справа налево. Несколько строк очищаются одновременно. До завершения эффекта падение и команды остановлены; затем блоки сдвигаются, начисляются очки и появляется следующая фигура.
@@ -267,7 +218,7 @@ steps = начальный уровень - 1 + (уровень - начальн
 - **Комбо:** последовательные размещения с очисткой добавляют `50 × номер комбо × уровень`; у первой очистки номер равен нулю.
 - **Perfect Clear:** полное опустошение логического поля добавляет 800 / 1 200 / 1 800 / 2 000 × уровень за одну / две / три / четыре строки. Для back-to-back Perfect Clear на четыре строки добавляется 3 200 × уровень вместо 2 000.
 - **Ручной спуск:** 1 очко за клетку. **Мгновенный бросок:** 2 очка за клетку. Эти награды не умножаются на уровень.
-- Автоматическое падение очков не даёт. Счёт защищён от переполнения и ограничен значением `Int.MAX_VALUE`.
+- Автоматическое падение очков не даёт. Максимальный счёт — 2 147 483 647 очков.
 
 ### Фрукты и победные круги
 
@@ -283,9 +234,9 @@ steps = начальный уровень - 1 + (уровень - начальн
 
 «Назад» ставит игру на паузу и возвращает в главное меню. Уход в фон или потеря фокуса окна, включая открытие шторки уведомлений, также останавливают игру. Возврат в приложение не возобновляет её автоматически: нужно нажать «Продолжить».
 
-Локальное автосохранение включает поле, активную и следующую фигуры, остаток мешка, состояние запаса, очки, линии, круги, начальный уровень, задержку фиксации и прогресс таймеров. При пересоздании Activity партия восстанавливается на паузе; после повторного запуска меню предлагает продолжить игру. Новая партия заменяет активное сохранение. Проигранную партию продолжить нельзя. Несовместимые старые активные сохранения отклоняются без удаления настроек и прежних результатов.
+Локальное автосохранение включает поле, активную и следующую фигуры, остаток мешка, состояние запаса, очки, линии, круги, начальный уровень, задержку фиксации и прогресс таймеров. Если Android пересоздаёт игровой экран, партия восстанавливается на паузе; после повторного запуска меню предлагает продолжить игру. Новая партия заменяет активное сохранение. Проигранную партию продолжить нельзя. Несовместимые старые активные сохранения отклоняются без удаления настроек и прежних результатов.
 
-Результаты показывают очки, линии, уровень, активное время и фрукты последней завершённой партии, а также историю личных рекордов. Паузы не входят в игровое время. Новый рекорд открывает поздравление и необязательный ввод имени. Текущий код сохраняет новые рекордные результаты; прежняя история остаётся доступной, а рекорды разных версий правил учитываются отдельно. Результаты локальные, общей онлайн-таблицы нет.
+Результаты показывают очки, линии, уровень, активное время и фрукты последней завершённой партии, а также историю личных рекордов. Паузы не входят в игровое время. Новый рекорд открывает поздравление и необязательный ввод имени. Новые личные рекорды сохраняются; прежняя история остаётся доступной, а рекорды разных версий правил учитываются отдельно. Результаты локальные, общей онлайн-таблицы нет.
 
 **«Сбросить статистику»** требует подтверждения и удаляет сохранённую историю и рекорды, включая старые. Настройки и текущая партия сохраняются.
 
@@ -315,61 +266,12 @@ steps = начальный уровень - 1 + (уровень - начальн
 
 ### Обновления, обмен ссылкой и конфиденциальность
 
-**Для установки из RuStore используется SDK обновлений RuStore; для прямой установки APK — GitHub Releases.** Проверка доступна в настройках и по нажатию на версию в меню; проверки при запуске выполняются по правилам приложения. Успешное подключение к сети для игры не требуется.
+**Установки из RuStore получают обновления через RuStore; прямые установки APK — через GitHub Releases.** Проверка доступна в настройках и по нажатию на версию в меню; проверки при запуске выполняются по правилам приложения. Успешное подключение к сети для игры не требуется.
 
 Автоматическая загрузка и установка требуют явного согласия и выполняются из главного меню после сохранения партии. Режим можно отключить. Android при необходимости запрашивает разрешение или подтверждение установки. Для прямых APK проверяются размер загрузки, SHA-256, имя пакета, версия и совместимость подписи.
 
 В контактах есть ссылки разработчика, доступ к скачиванию APK и диалог обмена ссылкой с QR-кодом и системной функцией «Поделиться». Эти действия открывают выбранное внешнее приложение; сообщения не отправляются автоматически.
 
 Игра не передаёт разработчику имя игрока, результаты или настройки. Запросы обновлений обрабатываются GitHub или RuStore по правилам этих сервисов. Настройки и история могут включаться в резервные копии Android; активная партия и файлы обновлений исключены. Подробности — во встроенной [политике конфиденциальности](app/src/main/assets/privacy.txt), её [HTML-версии](publishing/privacy.html) и на странице **«Контакты → Конфиденциальность»**. Сведения об источниках и сторонних лицензиях доступны в **«Контакты → Лицензии и права»** и [legal-notices.json](app/src/main/assets/legal-notices.json).
-
-### Сборка и проверки
-
-Приложение написано на **Kotlin с Jetpack Compose и Material 3**. Используйте **JDK 21**, как в CI, Android SDK с поддержкой настроенного compile SDK **36.1** и Gradle wrapper из репозитория. Укажите путь к SDK в `local.properties` или настройте окружение SDK. Идентификатор приложения — `ru.itoltec.swypetris`; версия задаётся в [gradle.properties](gradle.properties) и [app/build.gradle.kts](app/build.gradle.kts).
-
-Сборка отладочного APK в Windows:
-
-```powershell
-.\gradlew.bat :app:assembleDebug
-```
-
-Результат: `app/build/outputs/apk/debug/app-debug.apk`. В Linux и macOS используйте `./gradlew` вместо `gradlew.bat`.
-
-Стандартные локальные проверки сборки, lint, JVM-тестов и покрытия:
-
-```powershell
-.\tools\Verify-Tests.ps1 -Suite Fast
-# Если JAVA_HOME не настроен, добавьте -JavaHome с путём к каталогу JDK 21.
-```
-
-Для узких JVM-проверок используйте `:app:testDebugUnitTest` с фильтром Gradle `--tests`. Инструментальные тесты требуют готового изолированного эмулятора и явного серийного номера:
-
-```powershell
-adb devices -l
-.\tools\Verify-Tests.ps1 -Suite Android -Serial emulator-5554
-```
-
-Замените пример фактическим номером своего эмулятора. Порядок проверок и перечень тестов описаны в [TESTING.md](TESTING.md), измерения производительности — в [PERFORMANCE.md](PERFORMANCE.md). CI выбирает проверки по изменённым файлам; для изменений только документации Android-регрессия не требуется. Эти команды описывают доступные проверки и не означают, что все они выполнены для текущей ревизии.
-
-API-документация: `:app:dokkaGenerate`. Подписанные сборки выпускает [tools/release/Build-Release.ps1](tools/release/Build-Release.ps1), используя учётные данные подписи вне репозитория; результат помещается в `dist/<версия>/`. Подробности ресурсов: [генерация музыки](tools/music/README.md) и [происхождение тем](tools/themes/README.md).
-
-### Структура кода
-
-Kotlin-файлы ниже находятся в `app/src/main/java/ru/itoltec/swypetris/`:
-
-| Файлы | Назначение |
-| --- | --- |
-| `GameEngine.kt` | Поле, фигуры, мешок, запас, размещение, победа и проигрыш без зависимости от Android. |
-| `GameRules.kt`, `Placement.kt`, `Srs.kt` | Очки, уровни, классификация размещений и смещения поворотов. |
-| `GameTimeline.kt`, `GameTimer.kt` | Таймеры падения, фиксации и очистки строк. |
-| `GestureController.kt` | Распознавание жестов одним пальцем. |
-| `GameViewModel.kt` | Переходы экранов, жизненный цикл, настройки и координация игры. |
-| `GameSession.kt`, `GameStorage.kt`, `GameResults.kt` | Автосохранение, хранилище и личные результаты. |
-| `MainActivity.kt`, `GameLayout.kt`, файлы экранов | Compose-интерфейс, поле на Canvas, индикаторы и компоновка. |
-| `GamePalette.kt`, `GameArt.kt`, `MenuSkyMotion.kt` | Темы, иллюстрации и эффекты неба в меню. |
-| `GameMusic.kt`, `PlaylistClock.kt`, `AndroidGameFeedback.kt` | Музыка, таймер плейлиста, эффекты и вибрация. |
-| `AppUpdates.kt`, `Update*.kt` | Проверка обновлений, проверка загрузок и установка. |
-
-JVM-тесты находятся в `app/src/test/`, Android-тесты интеграции и интерфейса — в `app/src/androidTest/`. `tools/` и `.github/workflows/` содержат сборку и выпуск, генерацию ресурсов, проверки и автоматизацию репозитория.
 
 **Разработчик:** Roy Matus · [itoltec.ru](https://itoltec.ru/) · [Telegram](https://t.me/RoyMatus) · [Email](mailto:piligrim18@gmail.com)
