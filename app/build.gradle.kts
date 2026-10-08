@@ -4,6 +4,22 @@ plugins {
     id("org.jetbrains.dokka")
     id("org.jetbrains.dokka-javadoc")
     jacoco
+    id("dev.detekt")
+}
+
+// AGP 9 support starts in detekt 2.0.0-alpha.3; retain the built-in Kotlin DSL.
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    failOnSeverity.set(dev.detekt.gradle.extensions.FailOnSeverity.Warning)
+}
+
+tasks.named<dev.detekt.gradle.Detekt>("detekt") {
+    setSource(fileTree("src") { include("**/*.kt") })
+    reports {
+        html.required.set(true)
+        sarif.required.set(true)
+    }
 }
 
 tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
@@ -81,6 +97,13 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    lint {
+        abortOnError = true
+        htmlReport = true
+        xmlReport = true
+        sarifReport = true
+        checkTestSources = true
     }
     testOptions {
         unitTests.all { it.useJUnitPlatform() }
