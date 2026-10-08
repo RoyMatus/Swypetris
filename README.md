@@ -136,55 +136,6 @@ Contacts offers developer links, APK download access, and a sharing dialog with 
 
 The app does not send player names, scores, or settings to the developer. Update requests go to GitHub or RuStore under those services' policies. Settings and historical results may participate in Android backup; active sessions and update files are excluded. See the bundled [privacy policy](app/src/main/assets/privacy.txt), its [HTML version](publishing/privacy.html), and **Contacts → Privacy** inside the app. Credits and bundled license notices are available through **Contacts → Licenses and rights** and [legal-notices.json](app/src/main/assets/legal-notices.json).
 
-### Build and verification
-
-The application uses **Kotlin, Jetpack Compose, and Material 3**. Use **JDK 21** to match CI, an Android SDK supporting the configured compile SDK **36.1**, and the checked-in Gradle wrapper. Configure the SDK path in `local.properties` or your SDK environment. The application ID is `ru.itoltec.swypetris`; release version information is in [gradle.properties](gradle.properties) and [app/build.gradle.kts](app/build.gradle.kts).
-
-Build a debug APK on Windows:
-
-```powershell
-.\gradlew.bat :app:assembleDebug
-```
-
-Output: `app/build/outputs/apk/debug/app-debug.apk`. On Linux or macOS, use `./gradlew` instead of `gradlew.bat`.
-
-Standard local build, lint, JVM tests, and coverage:
-
-```powershell
-.\tools\Verify-Tests.ps1 -Suite Fast
-# If JAVA_HOME is not configured, add -JavaHome with your JDK 21 directory.
-```
-
-For narrower JVM checks, use `:app:testDebugUnitTest` with Gradle's `--tests` filter. Instrumentation requires a ready isolated emulator and an explicit serial:
-
-```powershell
-adb devices -l
-.\tools\Verify-Tests.ps1 -Suite Android -Serial emulator-5554
-```
-
-Replace the example serial with your emulator's actual serial. [TESTING.md](TESTING.md) documents verification and test inventory; [PERFORMANCE.md](PERFORMANCE.md) covers performance measurement. CI selects checks by changed files; documentation-only changes do not need Android regression runs. These commands describe available checks, not a claim that all have run for the current revision.
-
-API documentation: `:app:dokkaGenerate`. Signed distribution builds use [tools/release/Build-Release.ps1](tools/release/Build-Release.ps1), external signing credentials, and output under `dist/<version>/`. See [music generation](tools/music/README.md) and [theme provenance](tools/themes/README.md) for resource details.
-
-### Source layout
-
-Kotlin files below live under `app/src/main/java/ru/itoltec/swypetris/`:
-
-| Files | Responsibility |
-| --- | --- |
-| `GameEngine.kt` | Android-independent board, pieces, seven-bag, Hold, placement, victory, and loss. |
-| `GameRules.kt`, `Placement.kt`, `Srs.kt` | Scoring, progression, placement classification, and rotation kicks. |
-| `GameTimeline.kt`, `GameTimer.kt` | Gravity, lock, and line-clear timing. |
-| `GestureController.kt` | One-finger gesture recognition. |
-| `GameViewModel.kt` | Screen transitions, lifecycle, settings, and game coordination. |
-| `GameSession.kt`, `GameStorage.kt`, `GameResults.kt` | Autosave, storage, and personal results. |
-| `MainActivity.kt`, `GameLayout.kt`, screen files | Compose UI, Canvas playfield, HUD, and layout. |
-| `GamePalette.kt`, `GameArt.kt`, `MenuSkyMotion.kt` | Themes, artwork, and menu sky effects. |
-| `GameMusic.kt`, `PlaylistClock.kt`, `AndroidGameFeedback.kt` | Music, playlist timing, effects, and haptics. |
-| `AppUpdates.kt`, `Update*.kt` | Update checks, download validation, and installation. |
-
-JVM tests are in `app/src/test/`; Android integration/UI tests are in `app/src/androidTest/`. `tools/` and `.github/workflows/` contain build/release, media generation, verification, and repository automation.
-
 **Developer:** Roy Matus · [itoltec.ru](https://itoltec.ru/) · [Telegram](https://t.me/RoyMatus) · [Email](mailto:piligrim18@gmail.com)
 
 ---
@@ -322,54 +273,5 @@ steps = начальный уровень - 1 + (уровень - начальн
 В контактах есть ссылки разработчика, доступ к скачиванию APK и диалог обмена ссылкой с QR-кодом и системной функцией «Поделиться». Эти действия открывают выбранное внешнее приложение; сообщения не отправляются автоматически.
 
 Игра не передаёт разработчику имя игрока, результаты или настройки. Запросы обновлений обрабатываются GitHub или RuStore по правилам этих сервисов. Настройки и история могут включаться в резервные копии Android; активная партия и файлы обновлений исключены. Подробности — во встроенной [политике конфиденциальности](app/src/main/assets/privacy.txt), её [HTML-версии](publishing/privacy.html) и на странице **«Контакты → Конфиденциальность»**. Сведения об источниках и сторонних лицензиях доступны в **«Контакты → Лицензии и права»** и [legal-notices.json](app/src/main/assets/legal-notices.json).
-
-### Сборка и проверки
-
-Приложение написано на **Kotlin с Jetpack Compose и Material 3**. Используйте **JDK 21**, как в CI, Android SDK с поддержкой настроенного compile SDK **36.1** и Gradle wrapper из репозитория. Укажите путь к SDK в `local.properties` или настройте окружение SDK. Идентификатор приложения — `ru.itoltec.swypetris`; версия задаётся в [gradle.properties](gradle.properties) и [app/build.gradle.kts](app/build.gradle.kts).
-
-Сборка отладочного APK в Windows:
-
-```powershell
-.\gradlew.bat :app:assembleDebug
-```
-
-Результат: `app/build/outputs/apk/debug/app-debug.apk`. В Linux и macOS используйте `./gradlew` вместо `gradlew.bat`.
-
-Стандартные локальные проверки сборки, lint, JVM-тестов и покрытия:
-
-```powershell
-.\tools\Verify-Tests.ps1 -Suite Fast
-# Если JAVA_HOME не настроен, добавьте -JavaHome с путём к каталогу JDK 21.
-```
-
-Для узких JVM-проверок используйте `:app:testDebugUnitTest` с фильтром Gradle `--tests`. Инструментальные тесты требуют готового изолированного эмулятора и явного серийного номера:
-
-```powershell
-adb devices -l
-.\tools\Verify-Tests.ps1 -Suite Android -Serial emulator-5554
-```
-
-Замените пример фактическим номером своего эмулятора. Порядок проверок и перечень тестов описаны в [TESTING.md](TESTING.md), измерения производительности — в [PERFORMANCE.md](PERFORMANCE.md). CI выбирает проверки по изменённым файлам; для изменений только документации Android-регрессия не требуется. Эти команды описывают доступные проверки и не означают, что все они выполнены для текущей ревизии.
-
-API-документация: `:app:dokkaGenerate`. Подписанные сборки выпускает [tools/release/Build-Release.ps1](tools/release/Build-Release.ps1), используя учётные данные подписи вне репозитория; результат помещается в `dist/<версия>/`. Подробности ресурсов: [генерация музыки](tools/music/README.md) и [происхождение тем](tools/themes/README.md).
-
-### Структура кода
-
-Kotlin-файлы ниже находятся в `app/src/main/java/ru/itoltec/swypetris/`:
-
-| Файлы | Назначение |
-| --- | --- |
-| `GameEngine.kt` | Поле, фигуры, мешок, запас, размещение, победа и проигрыш без зависимости от Android. |
-| `GameRules.kt`, `Placement.kt`, `Srs.kt` | Очки, уровни, классификация размещений и смещения поворотов. |
-| `GameTimeline.kt`, `GameTimer.kt` | Таймеры падения, фиксации и очистки строк. |
-| `GestureController.kt` | Распознавание жестов одним пальцем. |
-| `GameViewModel.kt` | Переходы экранов, жизненный цикл, настройки и координация игры. |
-| `GameSession.kt`, `GameStorage.kt`, `GameResults.kt` | Автосохранение, хранилище и личные результаты. |
-| `MainActivity.kt`, `GameLayout.kt`, файлы экранов | Compose-интерфейс, поле на Canvas, индикаторы и компоновка. |
-| `GamePalette.kt`, `GameArt.kt`, `MenuSkyMotion.kt` | Темы, иллюстрации и эффекты неба в меню. |
-| `GameMusic.kt`, `PlaylistClock.kt`, `AndroidGameFeedback.kt` | Музыка, таймер плейлиста, эффекты и вибрация. |
-| `AppUpdates.kt`, `Update*.kt` | Проверка обновлений, проверка загрузок и установка. |
-
-JVM-тесты находятся в `app/src/test/`, Android-тесты интеграции и интерфейса — в `app/src/androidTest/`. `tools/` и `.github/workflows/` содержат сборку и выпуск, генерацию ресурсов, проверки и автоматизацию репозитория.
 
 **Разработчик:** Roy Matus · [itoltec.ru](https://itoltec.ru/) · [Telegram](https://t.me/RoyMatus) · [Email](mailto:piligrim18@gmail.com)
