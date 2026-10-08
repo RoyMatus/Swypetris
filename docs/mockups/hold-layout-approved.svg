@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+<defs>
+  <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+    <path d="M100 0H0V100" fill="none" stroke="#26324a" stroke-width="2"/>
+  </pattern>
+  <style>
+    .ui{font-family:monospace;fill:#f2f4fa}
+    .seg{font-family:monospace;fill:#ffffff}
+  </style>
+</defs>
+<rect width="1080" height="1920" fill="#0b1429"/>
+<rect width="1080" height="1920" fill="url(#grid)"/>
+<text x="52" y="66" class="ui" font-size="34" font-weight="700">07:09</text>
+<text x="706" y="66" class="ui" font-size="28">🔑  ▣  ▥  WiFi  76</text>
+<text x="948" y="170" class="seg" font-size="74">62</text>
+
+<!-- HOLD / reserve preview: left edge intentionally aligned with clock -->
+<g transform="translate(52,112)">
+  <rect x="0" y="0" width="42" height="42" fill="#401c30" stroke="#6a2941" stroke-width="3"/>
+  <rect x="42" y="0" width="42" height="42" fill="#401c30" stroke="#6a2941" stroke-width="3"/>
+  <rect x="42" y="42" width="42" height="42" fill="#401c30" stroke="#6a2941" stroke-width="3"/>
+  <rect x="84" y="42" width="42" height="42" fill="#401c30" stroke="#6a2941" stroke-width="3"/>
+  <!-- label centered to reserve box width -->
+  <text x="63" y="132" text-anchor="middle" class="ui" font-size="24" font-weight="700" letter-spacing="2">ЗАПАС</text>
+</g>
+
+<!-- next preview outlines -->
+<g transform="translate(310,112)" fill="none" stroke="#245d45" stroke-width="3">
+  <rect x="90" y="0" width="68" height="68"/><rect x="158" y="0" width="68" height="68"/>
+  <rect x="22" y="68" width="68" height="68"/><rect x="90" y="68" width="68" height="68"/>
+</g>
+
+<!-- yellow piece -->
+<g transform="translate(760,458)" stroke="#9f7a00" stroke-width="4">
+  <rect width="84" height="84" fill="#ffd32a"/><rect x="84" width="84" height="84" fill="#ffd32a"/>
+  <rect y="84" width="84" height="84" fill="#ffd32a"/><rect x="84" y="84" width="84" height="84" fill="#ffd32a"/>
+</g>
+
+<!-- bottom stack -->
+<g transform="translate(205,1575)" stroke-width="4">
+  <g fill="#10cbe5" stroke="#11879b">
+    <rect x="0" y="0" width="84" height="84"/><rect x="0" y="84" width="84" height="84"/>
+    <rect x="0" y="168" width="84" height="84"/><rect x="0" y="252" width="84" height="84"/>
+  </g>
+  <g fill="#3a73de" stroke="#244e9a">
+    <rect x="84" y="168" width="84" height="84"/><rect x="84" y="252" width="84" height="84"/>
+    <rect x="168" y="252" width="84" height="84"/><rect x="252" y="252" width="84" height="84"/>
+  </g>
+</g>
+<rect x="365" y="1877" width="300" height="9" rx="5" fill="#f4f5f8"/>
+</svg>
