@@ -69,3 +69,9 @@ No extra workflow or cache layer was added. Every app run now generates unfilter
 3. Consider one required approving review and ownership review for workflow/quality-policy changes if the repository's reviewer setup supports it. This is a policy choice, not an applied change.
 4. Keep CI-based Sonar analysis and automatic analysis=false. Confirm token ownership/rotation and analysis permissions in Sonar administration; public APIs and GitHub secret-name listing cannot verify those details. No token replacement or threshold change is required by the observed successful scans.
 5. Approve merge explicitly only after required checks are green. Until then retain this branch/worktree/PR and its verification artifacts.
+
+## Coordination update
+
+During the audit PR 199 was merged into main (`19e42bb393602dec2cf7ff7acda0937de5e7eab8`). Its new UpdateFailure.kt was not in the explicit source map, causing the source-inventory test to fail on the synthetic merge of PR 200. The local audit branch was rebased onto that main commit and UpdateFailure.kt registered as a full-regression input. All 23 Python tests passed locally afterwards. Checks started before the owner's coordination instruction completed with 794 detekt findings, 52 lint errors / 120 warnings, and JVM XML totals {'tests': 134, 'failures': 0, 'errors': 0, 'skipped': 0}.
+
+The owner instructed this chat not to run CI manually or merge while another process performs application work. The first PR 200 CI run was cancelled. The owner subsequently authorized publishing the latest pipeline and monitoring automatically triggered CI every 15 minutes. Publish the rebased branch and mapping/report correction; no manual dispatch, rerun, or merge is authorized. Assess only runs created after 2026-10-08 07:45:58 UTC, verify the checked commit contains this pipeline, and report completed results without treating runs of old configurations as validation.
