@@ -74,6 +74,7 @@ fun ContactsScreen(model: GameViewModel) {
                     })
                 }
             }
+            item { ShareAppSection(onStore = { showShareApp = true }, onApk = { showApkDownload = true }) }
             item {
                 val accent = palette.piece(Tetromino.T)
                 ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -83,14 +84,6 @@ fun ContactsScreen(model: GameViewModel) {
                         SettingsDivider(accent)
                         Text("Swypetris · © 2026 RoyMatus", color = palette.text,
                             style = MaterialTheme.typography.bodyMedium)
-                        AppActionButton("Поделиться приложением", ActionStyle.SECONDARY,
-                            Modifier.fillMaxWidth().testTag("shareApp"), palette.piece(Tetromino.S)) {
-                            showShareApp = true
-                        }
-                        AppActionButton("Скачать APK", ActionStyle.SECONDARY,
-                            Modifier.fillMaxWidth().testTag("downloadApk"), palette.piece(Tetromino.S)) {
-                            showApkDownload = true
-                        }
                         AppActionButton("Лицензии и права", ActionStyle.SECONDARY,
                             Modifier.fillMaxWidth().testTag("legal"), palette.piece(Tetromino.J),
                                 model.navigation::legal)
@@ -127,6 +120,27 @@ private fun ContactCard(contact: DeveloperContact, index: Int, onOpen: () -> Uni
                     LocalGamePalette.current.piece(Tetromino.J)) {
                     onCopy()
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShareAppSection(onStore: () -> Unit, onApk: () -> Unit) {
+    val palette = LocalGamePalette.current
+    val accent = palette.piece(Tetromino.S)
+    ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("shareAppSection")) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("ПОДЕЛИТЬСЯ ПРИЛОЖЕНИЕМ", color = accent, fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            SettingsDivider(accent)
+            AppActionButton("RuStore", ActionStyle.SECONDARY,
+                Modifier.fillMaxWidth().testTag("shareApp"), palette.piece(Tetromino.S)) {
+                onStore()
+            }
+            AppActionButton("Скачать APK", ActionStyle.SECONDARY,
+                Modifier.fillMaxWidth().testTag("downloadApk"), palette.piece(Tetromino.S)) {
+                onApk()
             }
         }
     }

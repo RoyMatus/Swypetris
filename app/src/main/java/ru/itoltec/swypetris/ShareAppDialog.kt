@@ -10,11 +10,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material3.Surface
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -101,11 +107,18 @@ private fun DownloadLinkDialog(onDismiss: () -> Unit, directApk: Boolean) {
     val qr = remember(url) { downloadQrBitmap(url).asImageBitmap() }
     var actionUnavailable by remember { mutableStateOf(false) }
 
-    AlertDialog(onDismissRequest = onDismiss,
-        title = { Text(if (directApk) "Скачать APK Swypetris" else "Поделиться Swypetris") },
-        text = {
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()
+                .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * .9f)
+                .testTag("shareLinkDialog")
+                .semantics { onClick("Закрыть") { onDismiss(); true } }
+                .pointerInput(onDismiss) { detectTapGestures { onDismiss() } }) {
+            Column(Modifier.padding(24.dp).fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(if (directApk) "Скачать APK Swypetris" else "Swypetris в RuStore",
+                    style = MaterialTheme.typography.headlineSmall)
                 Text(if (directApk) "Отсканируйте код, чтобы скачать APK напрямую"
                     else "Отсканируйте код, чтобы скачать Swypetris")
                 Image(qr, contentDescription = null,
@@ -115,20 +128,13 @@ private fun DownloadLinkDialog(onDismiss: () -> Unit, directApk: Boolean) {
                             else "QR-код ссылки на Swypetris в RuStore" },
                     filterQuality = FilterQuality.None)
                 Text(url, style = MaterialTheme.typography.bodySmall)
-                AppActionButton(if (directApk) "Открыть загрузку APK" else "Открыть RuStore", ActionStyle.SECONDARY,
-                    Modifier.fillMaxWidth().testTag(if (directApk) "openApk" else "openDownload")) {
-                    actionUnavailable = !openAppDownload(context, url)
-                }
                 AppActionButton("Поделиться ссылкой", ActionStyle.SECONDARY,
                     Modifier.fillMaxWidth().testTag(if (directApk) "shareApk" else "shareDownload")) {
                     actionUnavailable = !shareAppDownload(context, url)
                 }
-                if (actionUnavailable) Text("Нет приложения для открытия ссылки или передачи её другому пользователю.",
+                if (actionUnavailable) Text("Нет приложения для передачи ссылки.",
                     color = MaterialTheme.colorScheme.error)
             }
-        }, confirmButton = {
-            AppActionButton("Закрыть", ActionStyle.TEXT,
-                Modifier.testTag(if (directApk) "closeApk" else "closeShareApp"),
-                onClick = onDismiss)
-        })
+        }
+    }
 }
