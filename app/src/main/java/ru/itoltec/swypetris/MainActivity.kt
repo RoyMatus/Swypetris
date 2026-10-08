@@ -138,11 +138,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SwypetrisTheme(darkTheme = true, dynamicColor = false) {
-                DisposableEffect(gameModel.paletteId) {
+                DisposableEffect(gameModel.paletteId, gameModel.screen) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
                     val palette = GamePalettes.find(gameModel.paletteId)
-                    controller.isAppearanceLightStatusBars = palette.light
-                    controller.isAppearanceLightNavigationBars = palette.light
+                    controller.isAppearanceLightStatusBars = palette.light && gameModel.screen != GameScreen.VICTORY
+                    controller.isAppearanceLightNavigationBars = palette.light && gameModel.screen != GameScreen.VICTORY
                     @Suppress("DEPRECATION")
                     window.statusBarColor = android.graphics.Color.TRANSPARENT
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -236,8 +236,8 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
     MaterialTheme(colorScheme = palette.scheme(), typography = MaterialTheme.typography) {
     Surface(color = palette.background, contentColor = palette.text, modifier = Modifier.fillMaxSize()) {
         val safeInsets = WindowInsets.safeDrawing
-        val gameVisible = model.screen == GameScreen.PLAYING
-        Box(Modifier.fillMaxSize().then(if (gameVisible) Modifier else Modifier.windowInsetsPadding(safeInsets))) {
+        val fullBleed = model.screen == GameScreen.PLAYING || model.screen == GameScreen.VICTORY
+        Box(Modifier.fillMaxSize().then(if (fullBleed) Modifier else Modifier.windowInsetsPadding(safeInsets))) {
             if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
                 LaunchIntroMotion.approachProgress(model.launchIntroMillis))
             key(model.screen) {
