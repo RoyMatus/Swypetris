@@ -9,6 +9,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performScrollToNode
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
@@ -44,7 +46,7 @@ class ShareAppTest {
         compose.onNodeWithTag("downloadQr").assertIsDisplayed()
         compose.onNodeWithText(compose.activity.getString(R.string.app_download_url)).assertExists()
         compose.onNodeWithTag("shareDownload").assertExists()
-        compose.onNodeWithTag("closeShareApp").performClick()
+        compose.onNodeWithTag("downloadQr").performTouchInput { click() }
         compose.onNodeWithTag("downloadQr").assertDoesNotExist()
 
         var launched: Intent? = null
@@ -79,9 +81,9 @@ class ShareAppTest {
         compose.onNodeWithTag("downloadApk").performClick()
         compose.onNodeWithTag("apkQr").assertIsDisplayed()
         compose.onNodeWithText(url).assertExists()
-        compose.onNodeWithTag("openApk").assertExists()
+        compose.onNodeWithTag("openApk").assertDoesNotExist()
         compose.onNodeWithTag("shareApk").assertExists()
-        compose.onNodeWithTag("closeApk").performClick()
+        compose.onNodeWithTag("apkQr").performTouchInput { click() }
         compose.onNodeWithTag("apkQr").assertDoesNotExist()
 
         var launched: Intent? = null
