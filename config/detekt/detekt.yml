@@ -1,0 +1,4 @@
+# Extend all default rules. No baseline, exclusions, or threshold relaxation.
+config:
+  validation: true
+  warningsAsErrors: true
