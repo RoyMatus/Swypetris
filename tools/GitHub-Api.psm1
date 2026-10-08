@@ -119,6 +119,9 @@ function Get-GitHubPullRequestBlockers {
         } else { @() }
         if ($matchingChecks.Count -eq 0 -and $matchingStatuses.Count -eq 0) {
             $blockers.Add("PR #$number is missing required check '$($required.context)' (app: $($required.app_id)).")
+        } elseif (@($matchingChecks | Where-Object { $_.status -eq 'completed' -and $_.conclusion -eq 'success' }).Count -eq 0 -and
+                  @($matchingStatuses | Where-Object state -eq 'success').Count -eq 0) {
+            $blockers.Add("PR #$number required check '$($required.context)' has no successful result.")
         }
     }
     return $blockers.ToArray()
@@ -136,4 +139,34 @@ function Assert-GitHubPullRequestReady {
     if ($blockers.Count -gt 0) { throw ($blockers -join '; ') }
 }
 
-Export-ModuleMember -Function New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Get-GitHubPullRequestBlockers, Assert-GitHubPullRequestReady
+
+function Get-GitHubRequiredChecks {
+    param([Parameter(Mandatory)]$Client, [Parameter(Mandatory)][string]$Branch)
+
+    $encoded = [uri]::EscapeDataString($Branch)
+    # This endpoint includes active repository/inherited rulesets, not classic protection.
+    $rules = @(Invoke-GitHubRestPaged -Client $Client -Path "rules/branches/$encoded")
+    $checks = @(foreach ($rule in $rules) {
+        if ($rule.type -eq 'required_status_checks') {
+            foreach ($check in $rule.parameters.required_status_checks) {
+                [pscustomobject]@{ context = $check.context; app_id = $check.integration_id }
+            }
+        }
+    })
+    try {
+        $classic = Invoke-GitHubRest -Client $Client -Method Get -Path "branches/$encoded/protection"
+    } catch {
+        if ([int]$_.Exception.Response.StatusCode -ne 404) { throw }
+        $classic = $null
+    }
+    $checks += @($classic.required_status_checks.checks | Where-Object { $_ })
+    foreach ($context in @($classic.required_status_checks.contexts | Where-Object { $_ })) {
+        if (@($checks | Where-Object context -eq $context).Count -eq 0) {
+            $checks += [pscustomobject]@{ context = $context; app_id = $null }
+        }
+    }
+    # Keep distinct sources for the same name: every applicable restriction must hold.
+    $checks | Sort-Object context, app_id -Unique
+}
+
+Export-ModuleMember -Function Get-GitHubRequiredChecks, New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Get-GitHubPullRequestBlockers, Assert-GitHubPullRequestReady
