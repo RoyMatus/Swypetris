@@ -62,7 +62,7 @@ SOURCE_GROUPS = {
 # Cross-cutting state and composition are intentionally full-regression inputs.
 FULL_SOURCES = {
     "GameSession.kt", "GameTimeline.kt", "GameViewModel.kt", "MainActivity.kt",
-    "UpdateApk.kt", "UpdateDelivery.kt", "UpdateDialog.kt", "UpdateDownload.kt", "UpdateInstaller.kt",
+    "UpdateFailure.kt", "UpdateApk.kt", "UpdateDelivery.kt", "UpdateDialog.kt", "UpdateDownload.kt", "UpdateInstaller.kt",
 }
 
 GROUP_TESTS = {
