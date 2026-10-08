@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.net.Uri
+import android.util.Log
+import android.system.ErrnoException
+import android.system.OsConstants
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -76,7 +79,8 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
                         throw IOException("Saved update expired")
                     validateUpdateApk(activity, apk(), update)
                     update
-                } catch (_: Exception) {
+                } catch (failure: Exception) {
+                    Log.e("SwypetrisUpdates", "Saved update validation failed", failure)
                     forgetReady()
                     failureMessage = "Сохранённый APK устарел или не прошёл проверку. Проверьте обновления и загрузите файл заново."
                     null
@@ -115,7 +119,8 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
             notice = DeliveryNotice.Ready(it)
             return true
         }
-        return notice != null
+        return notice is DeliveryNotice.Downloading || notice == DeliveryNotice.Installing ||
+            notice == DeliveryNotice.Confirmation || notice == DeliveryNotice.Permission
     }
 
     fun download(update: AvailableUpdate, automatic: Boolean = false) {
@@ -124,15 +129,23 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
         showNotice = !automatic
         attempted = update
         operation = activity.lifecycleScope.launch {
+            var stage = UpdateStage.STORAGE
             try {
                 withContext(Dispatchers.IO) {
+                    forgetReady()
+                    ready = null
+                    if (!directory.isDirectory && !directory.mkdirs())
+                        throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot create update directory")
                     if (directory.usableSpace < update.sizeBytes * 2)
-                        throw IOException("Недостаточно места. Освободите место и повторите загрузку.")
+                        throw UpdateFailure(UpdateFailureReason.STORAGE, "Insufficient space for update")
                     val temporary = File(directory, "${UUID.randomUUID()}.part")
-                    preferences.edit().putBoolean("interrupted", true).commit()
+                    if (!preferences.edit().putBoolean("interrupted", true).commit())
+                        throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot persist download state")
+                    stage = UpdateStage.CONNECT
                     val connection = openUpdateConnection(requireNotNull(update.apkUrl))
                     try {
                         val context = coroutineContext
+                        stage = UpdateStage.DOWNLOAD
                         connection.inputStream.use { input ->
                             var lastPercent = -1L
                             copyUpdate(input, temporary, update.sizeBytes, requireNotNull(update.sha256),
@@ -147,14 +160,16 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
                                     }
                                 })
                         }
+                        stage = UpdateStage.VALIDATE
                         validateUpdateApk(activity, temporary, update)
                         context.ensureActive()
-                        if (!temporary.renameTo(apk())) throw IOException("Cannot save downloaded APK")
+                        stage = UpdateStage.SAVE
+                        if (!temporary.renameTo(apk())) throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot save downloaded APK")
                         val metadata = JSONObject().put("code", update.versionCode).put("name", update.versionName)
                             .put("url", update.apkUrl).put("hash", update.sha256).put("size", update.sizeBytes)
                         if (!preferences.edit().putString("ready", metadata.toString())
                                 .putLong("saved_at", System.currentTimeMillis()).putBoolean("interrupted", false).commit())
-                            throw IOException("Cannot save update metadata")
+                            throw UpdateFailure(UpdateFailureReason.PERSISTENCE, "Cannot save update metadata")
                     } finally {
                         connection.disconnect()
                         removeUpdateFile(temporary)
@@ -167,9 +182,16 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) {
                 showNotice = true
-                notice = DeliveryNotice.Failed(if (failure is UpdateRateLimitException)
-                    "GitHub временно ограничил загрузки с вашей сети. Попробуйте позже."
-                    else "Не удалось загрузить или проверить APK. Проверьте сеть и свободное место, затем повторите загрузку.")
+                Log.e("SwypetrisUpdates", "Update failed at $stage", failure)
+                withContext(Dispatchers.IO) { forgetReady() }
+                ready = null
+                val noSpace = generateSequence<Throwable>(failure) { it.cause }
+                    .any { it is ErrnoException && it.errno == OsConstants.ENOSPC }
+                notice = DeliveryNotice.Failed(if (noSpace) UpdateFailureReason.STORAGE.userMessage
+                    else updateFailureMessage(failure, stage))
+            } finally {
+                operation = null
+                preferences.edit().putBoolean("interrupted", false).apply()
             }
         }
     }
@@ -249,9 +271,11 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
             } catch (cancelled: CancellationException) {
                 if (prepared >= 0) installer.abandon(prepared)
                 throw cancelled
-            } catch (_: Exception) {
+            } catch (failure: Exception) {
+                Log.e("SwypetrisUpdates", "Update installation preparation failed", failure)
                 if (prepared >= 0) installer.abandon(prepared)
-                notice = DeliveryNotice.Failed("Установка не началась. Проверьте разрешение и свободное место; можно повторить установку.")
+                notice = DeliveryNotice.Failed(if (failure is UpdateFailure) failure.reason.userMessage
+                    else "Установка не началась. Проверьте разрешение и свободное место; можно повторить установку.")
             }
         }
     }
