@@ -2,6 +2,7 @@
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
@@ -124,7 +125,8 @@ class VictoryThemeIntegrationTest {
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
         for ((width, height) in listOf(320.dp to 640.dp, 393.dp to 873.dp,
             600.dp to 400.dp, 800.dp to 480.dp)) {
-            compose.runOnIdle { viewport = width to height }
+            viewport = width to height
+            compose.waitForIdle()
             val scene = compose.onNodeWithTag("victoryScene").fetchSemanticsNode().boundsInRoot
             val artwork = compose.onNodeWithTag("victoryArtwork").fetchSemanticsNode().boundsInRoot
             assertEquals(width.value, scene.width, 1f)
@@ -145,6 +147,7 @@ class VictoryThemeIntegrationTest {
     /** Поздравление не тратит время, не пишет историю и не повторяет награды при возврате. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun victoryAndContinuationPreserveSession() {
+        Log.i("VictoryContinuationCI", "start")
         var now = 1000L
         val music = Music()
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
@@ -153,11 +156,14 @@ class VictoryThemeIntegrationTest {
         val initialGravity = model.game!!.gravityMillis
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
+        Log.i("VictoryContinuationCI", "content ready")
         compose.runOnIdle { now += 100; model.input.command(GameCommand.SOFT_DROP) }
         compose.mainClock.advanceTimeBy(2200)
         compose.onNodeWithTag("victoryPage").assertIsDisplayed()
         compose.onNodeWithTag("board").assertDoesNotExist()
+        Log.i("VictoryContinuationCI", "victory shown")
         screenshot("victory-classic.png")
+        Log.i("VictoryContinuationCI", "screenshot captured")
         compose.runOnIdle {
             assertEquals(80000, model.game!!.score)
             assertEquals(1, music.modes.count { it == MusicMode.RECORD })
@@ -171,8 +177,11 @@ class VictoryThemeIntegrationTest {
         }
         compose.mainClock.advanceTimeBy(32)
         compose.mainClock.autoAdvance = true
+        Log.i("VictoryContinuationCI", "clock automatic")
         compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
+        Log.i("VictoryContinuationCI", "button reached")
         compose.onNodeWithTag("nextRound").performClick()
+        Log.i("VictoryContinuationCI", "button clicked")
         compose.mainClock.advanceTimeBy(32)
         compose.runOnIdle {
             assertEquals(GameScreen.PLAYING, model.screen)
@@ -192,6 +201,7 @@ class VictoryThemeIntegrationTest {
             assertEquals(1, model.results.single().completedRounds)
             assertEquals(100L, model.results.single().durationMillis)
         }
+        Log.i("VictoryContinuationCI", "finished")
     }
 
     /** Все темы сохраняются; Next доступен экранному диктору независимо от тени падения. */

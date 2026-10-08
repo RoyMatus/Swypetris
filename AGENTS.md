@@ -23,7 +23,7 @@ Project policy: [publishing/POLICY.md](publishing/POLICY.md). CI selection and c
 - Prepare and verify code and complete GitHub-facing text locally before writes; use English. Use `tools/Update-Issue.ps1` and `tools/Manage-PullRequest.ps1`, preview supported writes with `-WhatIf`, and verify API results.
 - Implement epic issues sequentially: one linked branch/PR per issue, merge and confirm closure before the next. State the concrete issue plan in chat. Project Priority, Work Type and Testing need evidence-based agent judgment; keep Status aligned with actual progress. After ProjectAccessError, report once and stop Project operations until credentials change.
 - Put `Closes #N` in the PR body for merge-driven issue closure. Confirm closure after merge and add one consolidated issue comment containing completed behavior, actual checks and PR URL; do not redundantly close an already closed issue.
-- GitHub enforces PRs and required checks. Keep your PR current with main, preserve local work when updating it, and wait for CI on the new commit. Inspect at meaningful intervals; never bypass failures or weaken protection to merge. See POLICY.md for enforcement ownership.
+- GitHub enforces PRs and required checks. Keep your PR current with main, preserve local work when updating it, and wait for CI on the new commit. Inspect at meaningful intervals; never bypass failures or weaken protection to merge. If your CI run greatly exceeds a recent comparable duration or shows no test progress for several minutes, inspect its current step and available logs; cancel only your stalled run, preserve diagnostics, find the cause, and fix it before retrying. See POLICY.md for enforcement ownership.
 
 ## Verification and reporting
 
