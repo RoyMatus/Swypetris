@@ -66,7 +66,7 @@ jobs:
       - name: Build and lint app
         id: build
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
-        run: ./gradlew.bat :app:assembleDebug :app:lintDebug --console=plain
+        run: ./gradlew.bat :app:assembleDebug :app:lintDebug --build-cache --console=plain
       - name: Run JVM tests and coverage
         id: jvm
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
@@ -83,9 +83,27 @@ jobs:
         id: quality_reports
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         run: python3 tools/ci/verify_quality_results.py
+      - name: SonarQube Cloud analysis
+        id: sonar
+        if: ${{ success() && steps.changes.outputs.mode != 'none' }}
+        env:
+          TRUSTED_CONTEXT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_REGION: ${{ vars.SONAR_REGION }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if ($env:TRUSTED_CONTEXT -ne 'true') {
+            throw 'App changes require a trusted branch for token-based Sonar analysis.'
+          }
+          if (-not $env:SONAR_ORGANIZATION -or -not $env:SONAR_PROJECT_KEY -or -not $env:SONAR_TOKEN) {
+            throw 'App changes require SONAR_ORGANIZATION, SONAR_PROJECT_KEY, and SONAR_TOKEN.'
+          }
+          ./gradlew.bat sonar '-Dsonar.qualitygate.wait=true' --console=plain
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run affected Android tests and smoke
         id: device
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        if: ${{ success() && steps.changes.outputs.mode != 'none' }}
         env:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
           ANDROID_CLASSES: ${{ steps.changes.outputs.android }}
@@ -104,24 +122,6 @@ jobs:
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
           if-no-files-found: warn
-      - name: SonarQube Cloud analysis
-        id: sonar
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
-        env:
-          TRUSTED_CONTEXT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          SONAR_REGION: ${{ vars.SONAR_REGION }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          if ($env:TRUSTED_CONTEXT -ne 'true') {
-            throw 'App changes require a trusted branch for token-based Sonar analysis.'
-          }
-          if (-not $env:SONAR_ORGANIZATION -or -not $env:SONAR_PROJECT_KEY -or -not $env:SONAR_TOKEN) {
-            throw 'App changes require SONAR_ORGANIZATION, SONAR_PROJECT_KEY, and SONAR_TOKEN.'
-          }
-          ./gradlew.bat sonar '-Dsonar.qualitygate.wait=true' --console=plain
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify required checks executed
         if: always()
         env:

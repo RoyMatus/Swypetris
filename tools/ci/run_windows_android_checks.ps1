@@ -37,7 +37,7 @@ try {
     } while ((Get-Date) -lt $deadline)
     if ((Get-Date) -ge $deadline) { throw "The $avd emulator did not boot within four minutes." }
 
-    & ./gradlew.bat :app:assembleDebugAndroidTest --console=plain
+    & ./gradlew.bat :app:assembleDebugAndroidTest --build-cache --console=plain
     if ($LASTEXITCODE -ne 0) { throw "Android test APK build failed ($LASTEXITCODE)." }
     & $adb -s $serial install -r app/build/outputs/apk/debug/app-debug.apk
     if ($LASTEXITCODE -ne 0) { throw 'Application APK installation failed.' }
