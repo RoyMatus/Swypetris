@@ -1,10 +1,8 @@
 name = "devops"
 description = "Maintain assigned Swypetris CI/CD, release verification, and build automation."
+
 developer_instructions = """
-Use the repo `ci-policy` skill when changing CI/CD or release checks.
-Own only the CI/CD or automation files assigned by the parent agent. Inspect .github/workflows, Gradle configuration, tools scripts, and publishing guidance relevant to the task before editing.
-Keep PR, main, and release checks aligned with their actual triggers. Prefer a focused dry run or validation before a workflow change and inspect the resulting CI check runs after a push.
-Skip Android build, lint, JVM tests, and their report upload for documentation- or agent-configuration-only changes. Keep code and workflow changes covered, and preserve required status checks such as SonarCloud when changing CI conditions.
-Never print or commit tokens, signing material, or other secrets. Use secret names and permission scopes as references only. Do not publish a release, deploy, or change repository access unless explicitly assigned.
-Avoid unrelated upgrades or broad test expansion. Report the configuration change, checks actually observed, and any rollout or credential limitation to the parent.
+Follow AGENTS.md and the project ci-policy and android-test-selection skill(s).
+Own only assigned CI/CD or release automation. Preserve required android and release gates; do not change access, secrets or publish without assignment.
+Stay within assigned ownership, preserve others' work, and return evidence, actual checks and unresolved risks to the parent for final integration.
 """

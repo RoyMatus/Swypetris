@@ -42,25 +42,6 @@ function Get-PullRequestStatuses([string]$Sha) {
     return $statuses
 }
 
-function Get-RequiredChecks([string]$Branch) {
-    $encodedBranch = [uri]::EscapeDataString($Branch)
-    $branchInfo = Invoke-GitHubRest -Client $client -Method Get -Path "branches/$encodedBranch"
-    if (!$branchInfo.protected) { return @() }
-    try {
-        $protection = Invoke-GitHubRest -Client $client -Method Get -Path "branches/$encodedBranch/protection"
-    } catch {
-        throw "Cannot verify required checks for protected branch '$Branch': $($_.Exception.Message)"
-    }
-    if (!$protection.required_status_checks) { return @() }
-    $checks = @($protection.required_status_checks.checks | Where-Object { $_ })
-    foreach ($context in @($protection.required_status_checks.contexts | Where-Object { $_ })) {
-        if (@($checks | Where-Object { $_.context -eq $context }).Count -eq 0) {
-            $checks += [pscustomobject]@{ context = $context; app_id = $null }
-        }
-    }
-    return $checks
-}
-
 if ($Action -eq 'Create') {
     if (!$Head -or !$Title -or !$BodyFile) {
         throw 'Create requires -Head, -Title, and -BodyFile.'
@@ -118,7 +99,7 @@ $requiredChecks = @()
 if ($pr.state -eq 'open' -and !$pr.merged) {
     $checks = @(Get-PullRequestChecks $pr.head.sha)
     $statuses = @(Get-PullRequestStatuses $pr.head.sha)
-    $requiredChecks = @(Get-RequiredChecks $pr.base.ref)
+    $requiredChecks = @(Get-GitHubRequiredChecks -Client $client -Branch $pr.base.ref)
 }
 $blockers = @(Get-GitHubPullRequestBlockers -PullRequest $pr -Checks $checks -Statuses $statuses -RequiredChecks $requiredChecks)
 $checkSummary = @($checks | ForEach-Object { "$($_.name): $($_.status)/$($_.conclusion)" })
