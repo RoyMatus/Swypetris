@@ -15,7 +15,8 @@ permissions:
 
 jobs:
   android:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows, X64, swypetris-android]
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,7 +25,7 @@ jobs:
         id: changes
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-        run: python3 tools/ci/select_checks.py --base "$BASE_SHA" --output "$GITHUB_OUTPUT"
+        run: python3 tools/ci/select_checks.py --base $env:BASE_SHA --output $env:GITHUB_OUTPUT
       - name: Check GitHub API scripts
         id: github_scripts
         if: steps.changes.outputs.github_scripts == 'true'
@@ -60,45 +61,34 @@ jobs:
       - name: Analyze Kotlin
         id: detekt
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
-        run: bash ./gradlew :app:detekt --console=plain
+        run: ./gradlew.bat :app:detekt --console=plain
       - name: Build and lint app
         id: build
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
-        run: bash ./gradlew :app:assembleDebug :app:lintDebug --console=plain
+        run: ./gradlew.bat :app:assembleDebug :app:lintDebug --console=plain
       - name: Run JVM tests and coverage
         id: jvm
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         env:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
         run: |
-          if [ "$CHECK_MODE" = 'full' ]; then
-            bash ./gradlew :app:test :app:jacocoDebugUnitTestReport --console=plain
-          else
-            bash ./gradlew :app:jacocoDebugUnitTestReport --console=plain
-          fi
+          if ($env:CHECK_MODE -eq 'full') {
+            ./gradlew.bat :app:test :app:jacocoDebugUnitTestReport --console=plain
+          } else {
+            ./gradlew.bat :app:jacocoDebugUnitTestReport --console=plain
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate quality reports
         id: quality_reports
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
         run: python3 tools/ci/verify_quality_results.py
-      - name: Enable KVM
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
       - name: Run affected Android tests and smoke
         id: device
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
-        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         env:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
           ANDROID_CLASSES: ${{ steps.changes.outputs.android }}
-        with:
-          api-level: 35
-          arch: x86_64
-          emulator-port: 5554
-          disable-animations: false
-          script: bash tools/ci/run_android_checks.sh
+        run: ./tools/ci/run_windows_android_checks.ps1 -CheckMode $env:CHECK_MODE -AndroidClasses $env:ANDROID_CLASSES
       - name: Save test, lint, and coverage reports
         if: always() && steps.changes.outputs.mode != 'none'
         uses: actions/upload-artifact@v4
@@ -123,15 +113,14 @@ jobs:
           SONAR_REGION: ${{ vars.SONAR_REGION }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          if [ "$TRUSTED_CONTEXT" != 'true' ]; then
-            echo 'App changes require a trusted branch for token-based Sonar analysis.' >&2
-            exit 1
-          fi
-          if [ -z "$SONAR_ORGANIZATION" ] || [ -z "$SONAR_PROJECT_KEY" ] || [ -z "$SONAR_TOKEN" ]; then
-            echo 'App changes require SONAR_ORGANIZATION, SONAR_PROJECT_KEY, and SONAR_TOKEN.' >&2
-            exit 1
-          fi
-          bash ./gradlew sonar -Dsonar.qualitygate.wait=true --console=plain
+          if ($env:TRUSTED_CONTEXT -ne 'true') {
+            throw 'App changes require a trusted branch for token-based Sonar analysis.'
+          }
+          if (-not $env:SONAR_ORGANIZATION -or -not $env:SONAR_PROJECT_KEY -or -not $env:SONAR_TOKEN) {
+            throw 'App changes require SONAR_ORGANIZATION, SONAR_PROJECT_KEY, and SONAR_TOKEN.'
+          }
+          ./gradlew.bat sonar -Dsonar.qualitygate.wait=true --console=plain
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify required checks executed
         if: always()
         env:
