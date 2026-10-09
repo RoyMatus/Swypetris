@@ -82,6 +82,8 @@ Base64 values must encode the corresponding `.p12` keystore files. The workflow 
 
 ## Cloud GitHub release
 
+Before committing an authorized publication/version change, complete the applicable [RuStore and GitHub compliance review](RELEASE-COMPLIANCE.md) and resolve its blockers. The report is a release-preparation prerequisite; automated technical checks cannot verify console declarations, licensing decisions or whole-project platform compliance.
+
 Changing `swypetrisVersion` on `main` triggers release verification. Increase the Android versionCode as part of the same release change. Only the final publish job receives contents-write permission; signing jobs keep read-only permissions. Signing keys remain in the runner temporary directory. APK metadata and SHA-256 are read from the verified signed APK, then `Swypetris.apk`, `update.json`, and `SHA256SUMS.txt` are published to a new version tag. An existing release is never overwritten. Tag/manual runs verify artifacts without publishing.
 
 ## detekt policy
