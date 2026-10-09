@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalAutofillTree
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasTestTag
@@ -160,6 +161,9 @@ class ResultsIntegrationTest {
         compose.onNodeWithTag("recordName").performTextReplacement("  Алексей  ")
         compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("saveRecord"))
         compose.onNodeWithText("Сохранить").performClick()
+        compose.runOnIdle { assertEquals(GameScreen.GAME_OVER, model.screen) }
+        // Keyboard dismissal/layout is driven by Android, outside the Compose frame clock.
+        compose.waitUntil(timeoutMillis = 5000) { compose.onNodeWithTag("resultsPage").isDisplayed() }
         compose.onNodeWithTag("resultsPage").assertIsDisplayed()
         compose.onNodeWithTag("recordName").assertDoesNotExist()
         compose.onNodeWithTag("newGame").assertDoesNotExist()

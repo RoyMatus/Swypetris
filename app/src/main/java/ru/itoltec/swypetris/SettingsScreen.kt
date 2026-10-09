@@ -85,6 +85,7 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
                 SettingsDivider(audio)
                 SettingsToggle("Вибрация", "Тактильная обратная связь", "vibration",
                     model.vibrationEnabled, model.options::setVibration)
+                VibrationStrengthSetting(model)
             }
             SettingsPanel("ВНЕШНИЙ ВИД", "Цветовая тема и оформление", Icons.Outlined.Palette, appearance) {
                 PalettePicker(model)
@@ -149,6 +150,17 @@ private fun StartingLevelSetting(model: GameViewModel) {
             modifier = Modifier.fillMaxWidth().testTag("startingLevel"))
         Text("Следующий уровень после ${model.startingLevel * GameRules.LINES_PER_LEVEL} линий",
             color = LocalGamePalette.current.muted, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun VibrationStrengthSetting(model: GameViewModel) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        SettingsLabel("Сила вибрации: ${model.vibrationStrength}%", "0% отключает все виброэффекты")
+        Slider(value = model.vibrationStrength.toFloat(),
+            onValueChange = { model.options.setVibrationStrength(it.roundToInt()) },
+            valueRange = 0f..MAX_VIBRATION_STRENGTH.toFloat(),
+            modifier = Modifier.fillMaxWidth().testTag("vibrationStrength"))
     }
 }
 

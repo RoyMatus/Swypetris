@@ -16,7 +16,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | --- | --- | --- |
 | `DifficultyTest` | JVM: Easy/Medium/Hard curves, late-game bounds, selected difficulty across rounds | Keep; covers current three-mode progression. |
 | `GameEngineTest` | JVM: movement, collision, rotation, drops, line clears, game over, bag, gravity | Add stacked-board ghost case; the original ghost check used an empty board. |
-| `GameFeedbackTest` | JVM: command-to-feedback rules | Keep; integration feedback test checks playback effects separately. |
+| `GameFeedbackTest` | JVM: command-to-feedback rules, global intensity, zero suppression and fixed-strength fallback | Keep; integration feedback test checks playback effects separately. |
 | `GameLayoutTest` | JVM: fruit placement across sizes and shapes | Keep; Android UI tests separately check rendered bounds. |
 | `GameRulesTest` | JVM: score and level boundaries, mixed descent, feedback priority | Keep; assertions match current score rules. |
 | `GestureControllerTest` | JVM: taps, rotation, reversal, diagonal protection, hard drop, piece change, clear | Keep; each boundary or state transition protects a distinct input behavior. |
@@ -33,6 +33,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `EnergyScenarioTest` | Android measurement: repeatable gameplay workload | Keep opt-in; its real-time sleep is for measurement, never a normal correctness assertion. |
 | `ForegroundUiTest` | Android lifecycle: notification shade, task reuse, insets | Keep; requires system UI and Activity state. |
 | `GameFeedbackIntegrationTest` | Android integration: sound/vibration settings and single-event behavior | Keep; complements pure feedback rules. |
+| `VibrationSettingsTest` | Compose UI: 0/50/100% slider input, persisted intensity, narrow/landscape screens and large fonts | Keep; covers the accessible settings control separately from motor parameters. |
 | `GameTimerTest` | Android model: injected scheduler, pause remainder, clear and terminal deadlines | Keep; deterministic despite Android model construction. |
 | `GameUiTest` | Compose UI: settings, controls, recreation, pause, record and layout | Keep; exercises user actions beyond model-only tests. |
 | `GestureDensityTest` | Compose input: pointer across spawn and pixel-to-dp conversion | Keep; device density behavior cannot be established by JVM gestures alone. |
