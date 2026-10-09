@@ -53,6 +53,60 @@ class VictoryThemeIntegrationTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
+    @Test fun randomThemeChangesOnlyOnNewRoundAndSurvivesRestoration() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = GameViewModel(app,
+            GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999),
+            { 1000L }, false, paletteRandom = kotlin.random.Random(183))
+        val initialPalette = model.paletteId
+        model.options.setRandomTheme(true)
+        assertEquals(initialPalette, model.paletteId)
+        model.input.command(GameCommand.SOFT_DROP)
+        assertEquals(GameScreen.VICTORY, model.screen)
+        val beforeRound = model.game!!
+        model.onBackground()
+        model.nextRound()
+        assertEquals(initialPalette, model.paletteId)
+        model.onForeground()
+        model.resume()
+        model.nextRound()
+        assertEquals(beforeRound.score, model.game!!.score)
+        assertEquals(beforeRound.lines, model.game!!.lines)
+        assertEquals(beforeRound.completedRounds + 1, model.game!!.completedRounds)
+        assertEquals(beforeRound.startingLevel, model.game!!.startingLevel)
+        assertEquals(GameScreen.PLAYING, model.screen)
+        assertFalse(initialPalette == model.paletteId)
+        val roundPalette = model.paletteId
+        model.pause()
+        model.resume()
+        assertEquals(roundPalette, model.paletteId)
+        val restored = GameViewModel(app, null, { 1000L }, false)
+        assertTrue(restored.randomThemeEnabled)
+        assertEquals(roundPalette, restored.paletteId)
+        restored.resume()
+        assertEquals(roundPalette, restored.paletteId)
+        restored.newGame()
+        assertFalse(roundPalette == restored.paletteId)
+    }
+
+    @Test fun everyManualThemeIncludingCurrentDisablesRandomizationPersistently() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = GameViewModel(app, null, { 1000L }, false)
+        for (palette in GamePalettes.all) {
+            model.options.setRandomTheme(true)
+            model.options.setPalette(palette.id)
+            assertFalse(model.randomThemeEnabled)
+            model.newGame()
+            assertEquals(palette.id, model.paletteId)
+            val restored = GameViewModel(app, null, { 1000L }, false)
+            assertFalse(restored.randomThemeEnabled)
+            assertEquals(palette.id, restored.paletteId)
+        }
+        model.options.setRandomTheme(true)
+        model.options.setPalette(model.paletteId)
+        assertFalse(model.randomThemeEnabled)
+    }
+
     /** Celebration continues past the former end time and stops while the app is hidden. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun victoryArtworkAndFireworksFillScreenAndPauseInBackground() {
@@ -209,18 +263,33 @@ class VictoryThemeIntegrationTest {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
         model.options.setPalette("solarized_light")
         model.navigation.settings()
+        var viewport by mutableStateOf(DpSize(320.dp, 640.dp))
         compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
-                Box(Modifier.width(320.dp).fillMaxHeight()) { SwypetrisApp(model) {} }
-            }
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(viewport) then
+                DeviceConfigurationOverride.FontScale(2f)) { SwypetrisApp(model) {} }
         }
+        for (size in listOf(DpSize(320.dp, 640.dp), DpSize(393.dp, 873.dp), DpSize(600.dp, 400.dp))) {
+            viewport = size
+            compose.waitForIdle()
+            val control = compose.onNodeWithTag("randomTheme").performScrollTo().assertIsDisplayed()
+            val bounds = control.fetchSemanticsNode().boundsInRoot
+            val checkbox = compose.onNodeWithTag("randomThemeBox", useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInRoot
+            assertTrue(checkbox.left > bounds.center.x)
+            screenshot("random-theme-${size.width.value}-${size.height.value}.png")
+        }
+        compose.onNodeWithTag("randomTheme").performClick()
+        compose.runOnIdle { assertTrue(model.randomThemeEnabled) }
         GamePalettes.all.forEach { item -> compose.onNodeWithTag("palette_${item.id}_preview").assertExists() }
         compose.onNodeWithTag("palettePicker").assertDoesNotExist()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
             .assertCountEquals(0)
         compose.onNodeWithTag("palette_synthwave_84_preview").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("palette_catppuccin_preview").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals("catppuccin", model.paletteId) }
+        compose.runOnIdle {
+            assertEquals("catppuccin", model.paletteId)
+            assertFalse(model.randomThemeEnabled)
+        }
         compose.runOnIdle {
             val restored = GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false)
             assertEquals("catppuccin", restored.paletteId)

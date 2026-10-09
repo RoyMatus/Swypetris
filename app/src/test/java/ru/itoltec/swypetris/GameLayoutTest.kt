@@ -7,6 +7,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GameLayoutTest {
+    @Test fun roundThemesChooseAcrossTheCatalogRatherThanRotateSequentially() {
+        val random = kotlin.random.Random(183)
+        var current = GamePalettes.all.first().id
+        val seen = mutableSetOf<String>()
+        var nonSequential = false
+        repeat(100) {
+            val next = GamePalettes.randomId(current, random)
+            assertTrue(GamePalettes.all.any { it.id == next })
+            assertFalse(current == next)
+            val sequential = GamePalettes.all[(GamePalettes.all.indexOfFirst { it.id == current } + 1) %
+                GamePalettes.all.size].id
+            nonSequential = nonSequential || next != sequential
+            seen += next
+            current = next
+        }
+        assertEquals(GamePalettes.all.map { it.id }.toSet(), seen)
+        assertTrue(nonSequential)
+    }
+
     @Test fun everyFruitAvoidsEverySpawnAndNextPreview() {
         for (width in listOf(240f, 320f, 411f, 600f, 1000f))
             for (height in listOf(320f, 600f, 900f))

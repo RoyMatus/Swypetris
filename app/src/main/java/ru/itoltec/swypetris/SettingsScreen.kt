@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +50,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
@@ -88,6 +92,7 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
                 VibrationStrengthSetting(model)
             }
             SettingsPanel("ВНЕШНИЙ ВИД", "Цветовая тема и оформление", Icons.Outlined.Palette, appearance) {
+                RandomThemeSetting(model)
                 PalettePicker(model)
             }
             SettingsPanel("О ПРИЛОЖЕНИИ", "Версия и обновления", Icons.Outlined.Lightbulb, assistance) {
@@ -150,6 +155,17 @@ private fun StartingLevelSetting(model: GameViewModel) {
             modifier = Modifier.fillMaxWidth().testTag("startingLevel"))
         Text("Следующий уровень после ${model.startingLevel * GameRules.LINES_PER_LEVEL} линий",
             color = LocalGamePalette.current.muted, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun RandomThemeSetting(model: GameViewModel) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("randomTheme")
+        .toggleable(model.randomThemeEnabled, role = Role.Checkbox, onValueChange = model.options::setRandomTheme),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text("Менять тему каждый раунд", Modifier.weight(1f), color = LocalGamePalette.current.text,
+            textAlign = TextAlign.End)
+        Checkbox(model.randomThemeEnabled, onCheckedChange = null, modifier = Modifier.testTag("randomThemeBox"))
     }
 }
 

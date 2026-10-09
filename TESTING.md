@@ -17,7 +17,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `DifficultyTest` | JVM: Easy/Medium/Hard curves, late-game bounds, selected difficulty across rounds | Keep; covers current three-mode progression. |
 | `GameEngineTest` | JVM: movement, collision, rotation, drops, line clears, game over, bag, gravity | Add stacked-board ghost case; the original ghost check used an empty board. |
 | `GameFeedbackTest` | JVM: command-to-feedback rules, global intensity, zero suppression and fixed-strength fallback | Keep; integration feedback test checks playback effects separately. |
-| `GameLayoutTest` | JVM: fruit placement across sizes and shapes | Keep; Android UI tests separately check rendered bounds. |
+| `GameLayoutTest` | JVM: fruit placement across sizes/shapes and random round-theme selection | Keep; Android UI tests separately check rendered bounds. |
 | `GameRulesTest` | JVM: score and level boundaries, mixed descent, feedback priority | Keep; assertions match current score rules. |
 | `GestureControllerTest` | JVM: taps, rotation, reversal, diagonal protection, hard drop, piece change, clear | Keep; each boundary or state transition protects a distinct input behavior. |
 | `LaunchIntroMotionTest` | JVM: deterministic animation progress and haptic values | Keep; device tests check rendered intro and lifecycle. |
@@ -51,7 +51,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `SessionWriteTest` | Android storage: snapshot writes and board cache | Keep; protects persistence integrity. |
 | `SmokeTest` | Android UI: launch, new game, pause to menu, continue | Keep; runs on every app change and in full release regression. |
 | `StatisticsResetTest` | Android UI/storage: confirm versus cancel | Keep; protects destructive settings action. |
-| `VictoryThemeIntegrationTest` | Compose/model: victory continuation, palettes, hints, large font | Keep; covers state and presentation together. |
+| `VictoryThemeIntegrationTest` | Compose/model: victory continuation, random round themes, manual override, persistence, palettes, hints and large fonts | Keep; covers state and presentation together. |
 | `UpdateDownloadTest` | JVM: complete downloads, truncation, oversize, corruption, cancellation and untrusted URLs | Keep; verifies that partial or foreign downloads cannot become installable APKs. |
 | `AppUpdatesTest` | Android: release metadata and update entry points | Keep; validates JSON/platform parsing and manual check visibility. |
 | `UpdateApkTest` | Android: package/version and malformed APK rejection | Keep; uses the real package parser. |
