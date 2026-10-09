@@ -31,7 +31,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `AbsoluteVictoryUiTest` | Compose: name entry and postcard across portrait/landscape viewports and larger fonts | Keep; saves renders and verifies reachable actions. |
 | `BrandNavigationTest` | Android UI: menu order, compact layout, contacts and intent failure | Keep; needs Compose and platform intents. |
 | `EnergyScenarioTest` | Android measurement: repeatable gameplay workload | Keep opt-in; its real-time sleep is for measurement, never a normal correctness assertion. |
-| `ForegroundUiTest` | Android lifecycle: notification shade, task reuse, insets | Keep; requires system UI and Activity state. |
+| `ForegroundUiTest` | Android lifecycle: locked portrait board bounds, notification shade, task reuse, insets | Keep; requires system UI and Activity state. |
 | `GameFeedbackIntegrationTest` | Android integration: sound/vibration settings and single-event behavior | Keep; complements pure feedback rules. |
 | `VibrationSettingsTest` | Compose UI: 0/50/100% slider input, persisted intensity, narrow/landscape screens and large fonts | Keep; covers the accessible settings control separately from motor parameters. |
 | `GameTimerTest` | Android model: injected scheduler, pause remainder, clear and terminal deadlines | Keep; deterministic despite Android model construction. |
