@@ -26,6 +26,9 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `RecordHistoryTest` | JVM: strict records per difficulty and legacy group | Keep; UI results test checks persistence and entry. |
 | `RewardsTest` | JVM: fruit thresholds, fixed line reward, cell-based gesture steps | Keep; all three are current rules, though the gesture case spans two areas. |
 | `VictoryRulesTest` | JVM: threshold, overshoot, second round, victory over loss | Keep; state transitions are independent of the victory UI test. |
+| `AbsoluteVictoryRulesTest` | JVM: terminal score cap, exact/overshot boundaries, frozen commands, queue and next-round guard | Keep; preserves scoring and line counters below and at 999 999. |
+| `AbsoluteVictoryIntegrationTest` | Android: terminal journal, name validation, restored postcard phase, static PNG bytes and read-only URI | Keep; checks platform serialization and image sharing independently of layout. |
+| `AbsoluteVictoryUiTest` | Compose: name entry and postcard across portrait/landscape viewports and larger fonts | Keep; saves renders and verifies reachable actions. |
 | `BrandNavigationTest` | Android UI: menu order, compact layout, contacts and intent failure | Keep; needs Compose and platform intents. |
 | `EnergyScenarioTest` | Android measurement: repeatable gameplay workload | Keep opt-in; its real-time sleep is for measurement, never a normal correctness assertion. |
 | `ForegroundUiTest` | Android lifecycle: notification shade, task reuse, insets | Keep; requires system UI and Activity state. |

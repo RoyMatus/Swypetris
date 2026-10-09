@@ -7,6 +7,7 @@ private const val GRAVITY_FLOOR_STEP = 18
 private const val GRAVITY_BASE_SECONDS = 0.8
 private const val GRAVITY_STEP_SECONDS = 0.007
 private const val NANOS_PER_SECOND = 1_000_000_000
+internal const val MAX_PLAYER_NAME_LENGTH = 40
 
 
 /** Shared version-6 rules for engine, HUD, and help; thresholds avoid Int overflow. */
@@ -19,6 +20,7 @@ object GameRules {
     const val MIN_GRAVITY_NANOS = 833_334L
     const val FRUIT_STEP = 10_000
     const val ROUND_SCORE = FRUIT_STEP * 8
+    const val MAX_SCORE = 999_999
 
     const val LINES_PER_LEVEL = 10
     const val GRAVITY_PROGRESSION_STRETCH = 3.0
@@ -97,3 +99,6 @@ object GameRules {
     fun gravityMillis(level: Int, startingLevel: Int = 1): Long =
         (gravityNanos(level, startingLevel) + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI
 }
+
+/** Only score is capped at absolute victory; line counters retain their own overflow bound. */
+internal fun GameRules.addScore(score: Int, points: Int): Int = add(score, points).coerceAtMost(MAX_SCORE)

@@ -30,6 +30,11 @@
             </intent-filter>
         </activity>
         <receiver android:name=".UpdateInstallReceiver" android:exported="false" />
+        <provider android:name=".PostcardProvider"
+                  android:authorities="${applicationId}.postcards"
+                  android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/postcard_paths" />
+        </provider>
     </application>
 
 </manifest>

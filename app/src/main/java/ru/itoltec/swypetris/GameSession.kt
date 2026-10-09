@@ -20,7 +20,9 @@ internal data class GameSession(
     val recordAtStart: Int,
     val finishedAt: Long = 0L,
     val lockFractionNanos: Long = 0L,
-    val clearFractionNanos: Long = 0L
+    val clearFractionNanos: Long = 0L,
+    val absoluteName: String = "",
+    val postcardReady: Boolean = false
 )
 
 /** SharedPreferences applies ordered, atomic file replacements off the UI thread.
@@ -97,7 +99,8 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 .put("clearMillis", session.clearMillis).put("gravityRemainingNanos", session.gravityRemainingNanos)
                 .put("lockFractionNanos", session.lockFractionNanos).put("clearFractionNanos",
                     session.clearFractionNanos)
-                .put("recordAtStart", session.recordAtStart).put("finishedAt", session.finishedAt).toString()
+                .put("recordAtStart", session.recordAtStart).put("finishedAt", session.finishedAt)
+                .put("absoluteName", session.absoluteName).put("postcardReady", session.postcardReady).toString()
                 .dropLast(1) + ",\"board\":" + board + "}"
         }
 
@@ -136,7 +139,8 @@ internal class SessionStore(private val preferences: SharedPreferences) {
             val session = GameSession(root.getString("id"), state, bag, root.getLong("playedMillis"),
                 root.getLong("clearMillis"), root.getLong("gravityRemainingNanos"), root.getInt("recordAtStart"),
                     root.getLong("finishedAt"),
-                root.getLong("lockFractionNanos"), root.getLong("clearFractionNanos"))
+                root.getLong("lockFractionNanos"), root.getLong("clearFractionNanos"),
+                root.optString("absoluteName", ""), root.optBoolean("postcardReady", false))
             validateSessionClocks(session)
             return session
         }
@@ -176,9 +180,13 @@ private fun validateSessionState(state: GameState) {
     require(state.lockRemaining in 0..LockRules.DELAY_MILLIS && state.lockResets in 0..LockRules.MAX_RESETS)
     require(state.score >= 0 && state.lines >= 0 && state.generation >= 0 && state.completedClears >= 0)
     require(state.completedRounds in 0..(state.score / GameRules.ROUND_SCORE))
-    require(!state.victoryPending || (!state.gameOver && clearing.isEmpty() &&
-        state.roundFruits == Fruit.entries.size))
+    validateSessionVictory(state)
     require(state.gameOver || state.victoryPending || clearing.isNotEmpty() || GameEngine().fits(state, piece))
+}
+
+private fun validateSessionVictory(state: GameState) {
+    require(!state.victoryPending || (!state.gameOver && state.clearingRows.isEmpty() &&
+        (state.absoluteVictory || state.roundFruits == Fruit.entries.size)))
 }
 
 private fun validateSessionClocks(session: GameSession) {
@@ -191,6 +199,8 @@ private fun validateSessionClocks(session: GameSession) {
     require(state.lockRemaining > 0 || session.lockFractionNanos == 0L)
     require(session.clearMillis < LineClearAnimation.TOTAL_MILLIS || session.clearFractionNanos == 0L)
     require(!state.gameOver || session.finishedAt > 0)
+    require(session.absoluteName.length <= MAX_PLAYER_NAME_LENGTH)
+    require(!session.postcardReady || (state.absoluteVictory && session.absoluteName.isNotBlank()))
 }
 
 private fun validateSessionPlacement(placement: PlacementResult?) {

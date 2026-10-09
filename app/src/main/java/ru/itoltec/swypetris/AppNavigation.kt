@@ -18,6 +18,8 @@ internal fun AppScreen(model: GameViewModel, updates: AppUpdates?, onExit: () ->
         onCheckUpdates = { updates?.check(true) }, automaticUpdates = updates?.automaticEnabled == true,
         onAutomaticUpdatesChange = { updates?.requestAutomatic(it) })
     else if (model.screen == GameScreen.VICTORY) VictoryScreen(model)
+    else if (model.screen == GameScreen.ABSOLUTE_VICTORY || model.screen == GameScreen.POSTCARD)
+        AbsoluteVictoryScreen(model)
     else if (model.screen == GameScreen.RECORD) RecordScreen(model)
     else if (model.screen in listOf(GameScreen.GAME_OVER, GameScreen.RESULTS)) ResultsScreen(model)
     else model.game?.let { GameContent(model, it) }
