@@ -23,6 +23,11 @@ private const val THREE_QUARTER_TURN = 270f
 
 internal data class BackgroundImage(val file: File, val bitmap: Bitmap)
 
+/** Cleanup is best-effort: a failed deletion must not invalidate a successfully saved background. */
+internal fun deleteBackgroundCopy(file: File) {
+    if (file.exists() && !file.delete()) android.util.Log.w("CustomBackground", "Cannot delete unused private image")
+}
+
 /** App-private normalized copies need neither storage permissions nor persistent provider grants. */
 internal class BackgroundStore(private val directory: File, private val preferences: SharedPreferences,
     private val stagingDirectory: File = File(directory, "pending")) {
@@ -46,8 +51,8 @@ internal class BackgroundStore(private val directory: File, private val preferen
                 saved.outputStream().use { check(normalized.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, it)) }
                 completed = true
                 return BackgroundImage(saved, normalized)
-            } finally { if (!completed) saved.delete() }
-        } finally { input.delete() }
+            } finally { if (!completed) deleteBackgroundCopy(saved) }
+        } finally { deleteBackgroundCopy(input) }
     }
 
     private fun copyInput(resolver: ContentResolver, uri: Uri, destination: File) {
@@ -112,11 +117,11 @@ internal class BackgroundStore(private val directory: File, private val preferen
             check(preferences.edit().putString("background_file", saved.name)
                 .putFloat("background_zoom", normalized.zoom).putFloat("background_x", normalized.centerX)
                 .putFloat("background_y", normalized.centerY).putBoolean("background_enabled", true).commit())
-        } catch (error: IOException) { saved.delete(); throw error }
-        catch (error: IllegalStateException) { saved.delete(); throw error }
+        } catch (error: IOException) { deleteBackgroundCopy(saved); throw error }
+        catch (error: IllegalStateException) { deleteBackgroundCopy(saved); throw error }
         if (old?.matches(Regex("[a-f0-9-]{36}\\.png")) == true)
-            File(directory, old).delete()
-        image.file.delete()
+            deleteBackgroundCopy(File(directory, old))
+        deleteBackgroundCopy(image.file)
         return image.copy(file = saved)
     }
 }

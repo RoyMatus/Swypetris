@@ -59,6 +59,11 @@ class BackgroundStorageTest {
     @Test fun failedImportAndCorruptOrMissingSavedCopyFailSafely() {
         val selected = store.importImage(application.contentResolver, Uri.fromFile(image("source.png")))
         val saved = store.save(selected, BackgroundCrop())
+        val nonEmpty = File(directory, "cleanup-failure").apply { mkdirs() }
+        val child = File(nonEmpty, "retain.png").apply { writeText("retained") }
+        deleteBackgroundCopy(nonEmpty)
+        assertTrue(child.isFile)
+        assertNotNull(store.restore())
         val corrupt = File(directory, "bad.png").apply { writeText("not an image") }
         try {
             store.importImage(application.contentResolver, Uri.fromFile(corrupt))

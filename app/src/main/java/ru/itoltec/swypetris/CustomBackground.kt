@@ -88,7 +88,7 @@ internal class CustomBackground(private val store: BackgroundStore, private val 
         if (busy) return
         val discarded = draft
         draft = null
-        scope.launch { withContext(ioDispatcher) { discarded?.file?.delete() } }
+        scope.launch { withContext(ioDispatcher) { discarded?.file?.let(::deleteBackgroundCopy) } }
     }
 
     private fun failed() { error = "Не удалось открыть или сохранить изображение. Прежний фон сохранён." }
