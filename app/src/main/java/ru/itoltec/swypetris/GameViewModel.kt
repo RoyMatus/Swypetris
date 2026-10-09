@@ -9,7 +9,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 
 /** A paused game is owned by the model while the ordinary menu is displayed. */
-enum class GameScreen { MENU, SETTINGS, HELP, CONTACTS, PRIVACY, LEGAL, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY }
+enum class GameScreen {
+    MENU, SETTINGS, HELP, CONTACTS, PRIVACY, LEGAL, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY,
+    ABSOLUTE_VICTORY, POSTCARD
+}
 
 /**
  * Владелец партии: соединяет движок, жесты, анимацию и рекорд; переживает пересоздание Activity.
@@ -31,6 +34,7 @@ class GameViewModel internal constructor(
     internal val options = Options()
     internal val statistics = Statistics()
     internal val navigation = Navigation()
+    internal val absolute = AbsoluteVictory()
 
     /** The standard Android constructor uses a monotonic clock and an automatic game loop. */
     constructor(application: Application) : this(application, null, SystemClock::uptimeMillis, true)
@@ -56,6 +60,12 @@ class GameViewModel internal constructor(
     var requestRecordName by mutableStateOf(false)
         private set
     var playerName by mutableStateOf(preferences.getString("player_name", "") ?: "")
+        private set
+    var absoluteName by mutableStateOf(restored?.absoluteName ?: "")
+        private set
+    var postcardReady by mutableStateOf(restored?.postcardReady ?: false)
+        private set
+    var absoluteNameError by mutableStateOf(false)
         private set
     var musicSelection by mutableStateOf(MusicSelection.restore(preferences.getString("music_selection", null),
         preferences.getBoolean("music", true)))
@@ -107,6 +117,14 @@ class GameViewModel internal constructor(
 
     init {
         restored?.let { engine.restoreBag(it.bag) }
+        game?.takeIf { it.absoluteVictory }?.let {
+            game = engine.checkVictory(it)
+            if (finishedAt == 0L) finishedAt = System.currentTimeMillis()
+            statistics.saveResult(game!!, clock())
+            requestRecordName = false
+            if (initialState != null) screen = absolute.destination()
+            simulation.saveSession()
+        }
         gestures.setEnabled(game?.clearingRows?.isEmpty() != false)
         if (restored?.state?.gameOver == true) {
             statistics.saveResult(restored.state, clock())
@@ -120,8 +138,50 @@ class GameViewModel internal constructor(
 
     /** Retains the looping celebration phase across Activity recreation and pauses. */
     fun advanceVictoryAnimation(delta: Long) {
-        if (activeForeground && screen == GameScreen.VICTORY)
+        if (activeForeground && screen in listOf(GameScreen.VICTORY, GameScreen.ABSOLUTE_VICTORY, GameScreen.POSTCARD))
             victoryAnimationMillis = VictoryMotion.advance(victoryAnimationMillis, delta)
+    }
+
+    /** Terminal flow operations share the model's session and journal; they never resume play. */
+    internal inner class AbsoluteVictory {
+        fun destination(): GameScreen = if (postcardReady) GameScreen.POSTCARD else GameScreen.ABSOLUTE_VICTORY
+
+        /** The terminal flow persists input independently of whether its Activity is visible. */
+        fun changeName(name: String) {
+            if (screen != GameScreen.ABSOLUTE_VICTORY) return
+            absoluteName = name.replace('\n', ' ').replace('\r', ' ').take(MAX_PLAYER_NAME_LENGTH)
+            absoluteNameError = false
+            simulation.saveSession()
+        }
+
+        /** Validation never substitutes a default name for a missing postcard recipient. */
+        fun preparePostcard() {
+            if (!activeForeground || screen != GameScreen.ABSOLUTE_VICTORY) return
+            val entered = absoluteName.trim()
+            if (entered.isEmpty()) { absoluteNameError = true; return }
+            absoluteName = entered
+            playerName = entered
+            preferences.edit().putString("player_name", entered).apply()
+            results = results.map { if (it.id == currentResultId) it.copy(name = entered) else it }
+            latestResult = latestResult?.copy(name = entered)
+            resultStore.write(results)
+            postcardReady = true
+            screen = GameScreen.POSTCARD
+            simulation.saveSession()
+        }
+
+        fun finish(state: GameState, now: Long) {
+            finishedAt = System.currentTimeMillis()
+            simulation.saveSession()
+            statistics.saveResult(state, now)
+            requestRecordName = false
+            gestures.cancel()
+            feedback.stop()
+            music?.setPlaying(false)
+            screen = GameScreen.ABSOLUTE_VICTORY
+            victoryAnimationMillis = 0L
+            if (musicEnabled) music?.setMode(MusicMode.RECORD)
+        }
     }
 
     /** Retains intro progress across Activity recreation; background time does not advance it. */
@@ -163,6 +223,9 @@ class GameViewModel internal constructor(
         currentResultId = null
         latestResult = null
         requestRecordName = false
+        absoluteName = ""
+        absoluteNameError = false
+        postcardReady = false
         feedback.stop()
         gestures.cancel()
         game = engine.newGame(startingLevel)
@@ -181,7 +244,9 @@ class GameViewModel internal constructor(
     fun resume() {
         if (!activeForeground || screen == GameScreen.PLAYING) return
         if (game == null || game?.gameOver == true) return
-        if (game?.victoryPending == true) {
+        if (game?.absoluteVictory == true) {
+            screen = absolute.destination()
+        } else if (game?.victoryPending == true) {
             screen = GameScreen.VICTORY
         } else {
             if (game?.clearingRows?.isNotEmpty() == true) feedback
@@ -206,7 +271,8 @@ class GameViewModel internal constructor(
             lastGameFrame = now
             clearElapsedMillis = timeline.clearMillis
             screen = GameScreen.MENU
-        } else if (screen == GameScreen.VICTORY) screen = GameScreen.MENU
+        } else if (screen in listOf(GameScreen.VICTORY, GameScreen.ABSOLUTE_VICTORY, GameScreen.POSTCARD))
+            screen = GameScreen.MENU
         simulation.syncOrdinaryMusic()
         feedback.stop()
         gestures.cancel()
@@ -380,7 +446,8 @@ class GameViewModel internal constructor(
             val state = game ?: return
             sessionStore.write(GameSession(sessionId, state, engine.remainingBag(), playedMillis,
                 timeline.clearMillis, timeline.gravityRemainingNanos, recordAtStart, finishedAt,
-                timeline.lockFractionNanos, timeline.clearElapsedNanos % GameRules.NANOS_PER_MILLI))
+                timeline.lockFractionNanos, timeline.clearElapsedNanos % GameRules.NANOS_PER_MILLI,
+                absoluteName, postcardReady))
         }
 
         /** Publishes and checkpoints state; a spawn rebases the pointer instead of canceling it. */
@@ -395,7 +462,18 @@ class GameViewModel internal constructor(
                 gestures.setEnabled(updated.clearingRows.isEmpty())
                 clearElapsedMillis = 0L
             }
-            if (updated.victoryPending && !previous.victoryPending) {
+            acceptConclusion(previous, updated, now)
+            if (!advancing) {
+                clearElapsedMillis = timeline.clearMillis
+                if (updated != previous && !updated.gameOver) saveSession()
+                scheduleNextEvent()
+            }
+        }
+
+        private fun acceptConclusion(previous: GameState, updated: GameState, now: Long) {
+            if (updated.absoluteVictory && !previous.absoluteVictory) {
+                absolute.finish(updated, now)
+            } else if (updated.victoryPending && !previous.victoryPending) {
                 playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
                 lastPlayFrame = now
                 gestures.cancel()
@@ -413,11 +491,6 @@ class GameViewModel internal constructor(
                 gestures.cancel()
                 screen = if (requestRecordName) GameScreen.RECORD else GameScreen.GAME_OVER
                 if (requestRecordName && musicEnabled) music?.setMode(MusicMode.RECORD)
-            }
-            if (!advancing) {
-                clearElapsedMillis = timeline.clearMillis
-                if (updated != previous && !updated.gameOver) saveSession()
-                scheduleNextEvent()
             }
         }
     }

@@ -63,7 +63,7 @@ class ProgressionTest {
         assertEquals(won.gravityMillis, next.gravityMillis)
         val completed = engine.finishClear(engine.apply(clearStart(4,Int.MAX_VALUE-1), GameCommand.HARD_DROP))
         assertEquals(Int.MAX_VALUE, completed.lines)
-        assertEquals(Int.MAX_VALUE, completed.score)
+        assertEquals(GameRules.MAX_SCORE, completed.score)
         assertEquals(214748365, completed.level)
     }
     @Test fun higherStartsWaitForCumulativeFirstGoalAndKeepPreClearScoring() {

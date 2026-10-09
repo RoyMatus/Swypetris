@@ -82,6 +82,8 @@ data class GameState(
     val startingLevel: Int = 1
 ) {
     init { require(startingLevel in GameRules.MIN_STARTING_LEVEL..GameRules.MAX_STARTING_LEVEL) }
+    /** Terminal victory is distinct from collecting the eight fruits in an ordinary round. */
+    val absoluteVictory: Boolean get() = score >= GameRules.MAX_SCORE
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * Fruit.entries.size).coerceIn(0,
         Fruit.entries.size)
@@ -132,7 +134,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Clears the board after victory while keeping score and speed. */
     fun nextRound(state: GameState): GameState {
-        if (!state.victoryPending) return state
+        if (!state.victoryPending || state.absoluteVictory) return state
         val fresh = newGame(state.startingLevel)
         return fresh.copy(score = state.score, lines = state.lines,
             generation = state.generation + 1, completedClears = state.completedClears,
@@ -141,7 +143,10 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Marks victory after scoring; victory takes precedence over spawn-blocked loss. */
     internal fun checkVictory(state: GameState): GameState =
-        if (state.clearingRows.isEmpty() && state.roundFruits == Fruit.entries.size)
+        if (state.absoluteVictory)
+            state.copy(score = GameRules.MAX_SCORE, victoryPending = true, gameOver = false, topOut = null,
+                clearingRows = emptyList())
+        else if (state.clearingRows.isEmpty() && state.roundFruits == Fruit.entries.size)
             state.copy(victoryPending = true, gameOver = false) else state
 
     /** Checks that every cell of [piece] is inside the board and unoccupied. */
@@ -161,8 +166,9 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Airborne time never consumes the clock or replenishes its reset budget. */
     fun advanceLock(state: GameState, elapsed: Long, allowLock: Boolean = true): GameState {
-        if (state.gameOver || state.victoryPending || state.clearingRows.isNotEmpty()) return state
-        return if (!grounded(state)) state else {
+        if (state.absoluteVictory) return checkVictory(state)
+        return if (state.gameOver || state.victoryPending || state.clearingRows.isNotEmpty()) state
+        else if (!grounded(state)) state else {
         val timed = state.copy(lockRemaining = (state.lockRemaining - elapsed.coerceAtLeast(0)).coerceAtLeast(0))
         if (allowLock && timed.lockRemaining == 0L) checkVictory(placements.lock(timed)) else timed
         }
@@ -170,8 +176,9 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Applies one command; invalid movement and commands after loss leave state unchanged. */
     fun apply(state: GameState, command: GameCommand): GameState {
-        if (state.gameOver || state.victoryPending || state.clearingRows.isNotEmpty()) return state
-        return checkVictory(commands.apply(state, command))
+        if (state.absoluteVictory) return checkVictory(state)
+        return if (state.gameOver || state.victoryPending || state.clearingRows.isNotEmpty()) state
+        else checkVictory(commands.apply(state, command))
     }
 
     /** Applies commands while keeping movement reset state with the engine. */
@@ -194,7 +201,7 @@ class GameEngine(private val random: Random = Random.Default) {
                 }
                 GameCommand.TICK, GameCommand.SOFT_DROP -> {
                     val moved = piece.copy(y = piece.y + 1)
-                    if (fits(state, moved)) state.copy(active = moved, score = GameRules.add(state.score,
+                    if (fits(state, moved)) state.copy(active = moved, score = GameRules.addScore(state.score,
                         GameRules.dropScore(command, 1)),
                         accelerated = state.accelerated || command == GameCommand.SOFT_DROP,
                         lastRotationKick = -1,
@@ -204,10 +211,11 @@ class GameEngine(private val random: Random = Random.Default) {
                 GameCommand.HARD_DROP -> {
                     val landed = ghost(state)
                     val distance = landed.y - piece.y
-                    placements.lock(state.copy(active = landed, score = GameRules.add(state.score,
+                    val dropped = state.copy(active = landed, score = GameRules.addScore(state.score,
                         GameRules.dropScore(command,
                         distance)),
-                        hardDropCells = distance, lastRotationKick = if (distance == 0) state.lastRotationKick else -1))
+                        hardDropCells = distance, lastRotationKick = if (distance == 0) state.lastRotationKick else -1)
+                    if (dropped.absoluteVictory) dropped else placements.lock(dropped)
                 }
                 GameCommand.HOLD -> {
                     hold(state)
@@ -246,7 +254,8 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Removes marked rows and awards points exactly once after the animation. */
     fun finishClear(state: GameState): GameState {
-        if (state.clearingRows.isEmpty()) return state
+        if (state.absoluteVictory || state.clearingRows.isEmpty())
+            return if (state.absoluteVictory) checkVictory(state) else state
         val cleared = state.clearingRows.size
         val remaining = state.board.filterIndexed { index, _ -> index !in state.clearingRows }
         val board = List(cleared) { List<Tetromino?>(10) { null } } + remaining
@@ -254,7 +263,7 @@ class GameEngine(private val random: Random = Random.Default) {
             .copy(perfectClear = board.all { row -> row.all { it == null } })
         return checkVictory(placements.spawnNext(state.copy(
             board = board, placement = event,
-            score = GameRules.add(state.score, GameRules.placementScore(event)),
+            score = GameRules.addScore(state.score, GameRules.placementScore(event)),
             lines = GameRules.add(state.lines, cleared), clearingRows = emptyList(),
                 completedClears = state.completedClears + 1
         )))
@@ -277,13 +286,14 @@ class GameEngine(private val random: Random = Random.Default) {
                 softDropCells = state.softDropCells, hardDropCells = state.hardDropCells, level = state.level)
             val locked = state.copy(board = board, clearingRows = rows, combo = combo, placement = event,
                 backToBack = if (rows.isEmpty()) state.backToBack else difficult,
-                score = if (rows.isEmpty()) GameRules.add(state.score,
+                score = if (rows.isEmpty()) GameRules.addScore(state.score,
                     GameRules.placementScore(event)) else state.score)
             return if (rows.isEmpty()) spawnNext(locked) else locked
         }
 
         /** Spawns the next piece after locking without a clear or once a clear finishes. */
         fun spawnNext(state: GameState): GameState {
+            if (state.absoluteVictory) return checkVictory(state)
             val nextState = state.copy(active = spawnPiece(state.next), next = pieces.draw(),
                 generation = state.generation + 1,
                 accelerated = false, lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0, holdUsed = false,

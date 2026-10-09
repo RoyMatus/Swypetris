@@ -114,6 +114,12 @@ private fun VictoryFruitCollection(counts: List<Int>) {
 internal fun VictoryScreen(model: GameViewModel) {
     val state = model.game ?: return
     val palette = LocalGamePalette.current
+    VictoryScene(model) { VictoryContent(state, palette, model::nextRound) }
+}
+
+/** Shared, lifecycle-aware celebration; terminal victory replaces only the foreground content. */
+@Composable
+internal fun VictoryScene(model: GameViewModel, content: @Composable () -> Unit) {
     val animate = rememberVictoryAnimation(model)
     Box(Modifier.fillMaxSize().testTag("victoryScene")) {
         Image(painterResource(R.drawable.victory_trophy), "Кубок из блоков и восемь фруктов",
@@ -123,7 +129,7 @@ internal fun VictoryScreen(model: GameViewModel) {
         Box(Modifier.fillMaxSize().alpha(OVERLAY_ALPHA).background(Brush.verticalGradient(
             0f to Color.Transparent, GRADIENT_CLEAR_END to Color.Transparent,
             GRADIENT_DARK_START to Color(GRADIENT_DARK), 1f to Color(GRADIENT_BOTTOM))))
-        VictoryContent(state, palette, model::nextRound)
+        content()
     }
 }
 
