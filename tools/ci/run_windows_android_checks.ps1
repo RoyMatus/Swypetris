@@ -47,24 +47,27 @@ try {
     & $adb -s $serial install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
     if ($LASTEXITCODE -ne 0) { throw 'Android test APK installation failed.' }
 
-    $instrumentArgs = @('-s', $serial, 'shell', 'am', 'instrument', '-w', '-r')
-    if ($CheckMode -eq 'selected') {
-        $instrumentArgs += @('-e', 'class', $AndroidClasses)
-    }
-    $instrumentArgs += 'ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner'
     $report = 'app/build/outputs/androidTest-results/windows/instrumentation.txt'
     New-Item -ItemType Directory -Force -Path (Split-Path $report) | Out-Null
     # Never let a report from an earlier checkout/attempt serve as release evidence.
     Remove-Item -LiteralPath 'app/build/outputs/androidTest-results/windows/environment.json' -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath 'app/build/outputs/androidTest-results/windows/smoke.txt' -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $report -ErrorAction SilentlyContinue
+    # Fail on a broken launcher before spending time on instrumentation.
+    & $adb -s $serial shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1 |
+        Tee-Object -FilePath 'app/build/outputs/androidTest-results/windows/smoke.txt'
+    if ($LASTEXITCODE -ne 0) { throw 'Launcher smoke test failed.' }
+
+    $instrumentArgs = @('-s', $serial, 'shell', 'am', 'instrument', '-w', '-r')
+    if ($CheckMode -eq 'selected') {
+        $instrumentArgs += @('-e', 'class', $AndroidClasses)
+    }
+    $instrumentArgs += 'ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner'
     & $adb @instrumentArgs | Tee-Object -FilePath $report
     if ($LASTEXITCODE -ne 0) { throw "Android instrumentation command failed ($LASTEXITCODE)." }
     & python3 tools/ci/verify_instrumentation_output.py $CheckMode $AndroidClasses $report
     if ($LASTEXITCODE -ne 0) { throw "Android instrumentation verification failed ($LASTEXITCODE)." }
 
-    & $adb -s $serial shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1 |
-        Tee-Object -FilePath 'app/build/outputs/androidTest-results/windows/smoke.txt'
-    if ($LASTEXITCODE -ne 0) { throw 'Launcher smoke test failed.' }
     $environment = @{
         os = 'Windows'; mode = $CheckMode; android_classes = $AndroidClasses
         serial = $serial; avd = $avd; instrumentation = 'success'; smoke = 'success'
