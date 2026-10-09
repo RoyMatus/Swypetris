@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.core.content.edit
+import androidx.lifecycle.viewModelScope
 
 /** A paused game is owned by the model while the ordinary menu is displayed. */
 enum class GameScreen {
@@ -41,6 +42,8 @@ class GameViewModel internal constructor(
     /** The standard Android constructor uses a monotonic clock and an automatic game loop. */
     constructor(application: Application) : this(application, null, SystemClock::uptimeMillis, true)
     private val preferences = GameStorage.preferences(application).also(GameStorage::migrate)
+    internal val background = CustomBackground(BackgroundStore(java.io.File(application.filesDir, "backgrounds"),
+        preferences, java.io.File(application.cacheDir, "background-import")), viewModelScope)
     private val resultStore = ResultStore(preferences)
     private val sessionStore = SessionStore(GameStorage.sessionPreferences(application))
     private val restored = if (initialState == null) sessionStore.read() else null

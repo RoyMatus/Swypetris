@@ -47,7 +47,7 @@ internal const val GAME_GRID_ROWS = BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_R
 
 /** Draws the grid across the entire gameplay surface without outer gutters. */
 @Composable
-private fun GameGridBackground(geometry: GameplayGeometry) {
+internal fun GameGridBackground(geometry: GameplayGeometry) {
     val palette = LocalGamePalette.current
     Canvas(Modifier.fillMaxSize().testTag("gridBackground")) {
         for (column in 0..BoardGeometry.WIDTH) {
@@ -88,6 +88,7 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
                 val spawnBandHeight = with(localDensity) { (geometry.cellHeight * SPAWN_DISPLAY_ROWS).toDp() }
                 LaunchedEffect(boardWidth) { model.input.setBoardWidth(boardWidth.value) }
 
+                if (model.background.enabled) BackgroundImageLayer(model.background.image, model.background.crop)
                 GameGridBackground(geometry)
                 Box(Modifier.fillMaxSize()) {
                     Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis }, geometry = geometry,
@@ -100,7 +101,8 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
                     .consumeWindowInsets(PaddingValues(top = safeTop))) {
                     GameHud(state, spawnBandHeight,
                         WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues(),
-                        with(localDensity) { WindowInsets.safeDrawing.getBottom(this).toDp() }) {
+                        with(localDensity) { WindowInsets.safeDrawing.getBottom(this).toDp() },
+                        scoreBackdrop = model.background.enabled && model.background.image != null) {
                         ActivePiece(state, geometry.copy(safeTop = 0f))
                     }
                 }

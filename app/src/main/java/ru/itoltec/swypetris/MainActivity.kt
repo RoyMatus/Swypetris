@@ -121,6 +121,7 @@ private const val SCORE_FONT_FIT_STEPS = 12
 private const val SCORE_PULSE_LEG_MILLIS = 110
 private const val FRUIT_COLUMNS = 2
 private const val MAX_HUD_FRUIT_SIZE_DP = 30f
+private const val PHOTO_SCORE_BACKDROP_ALPHA = .72f
 
 
 /** Current score scale exposed for testing a single pulse with a controlled Compose clock. */
@@ -229,19 +230,22 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
         if (updateWindowActive) updates?.installAutomaticallyIfReady(model)
     }
     BackHandler(enabled = model.launchIntroPending || model.screen != GameScreen.MENU) {
-        model.navigation.back()
+        if (model.background.draft != null) model.background.cancel() else model.navigation.back()
     }
     val palette = GamePalettes.find(model.paletteId)
     CompositionLocalProvider(LocalGamePalette provides palette) {
     MaterialTheme(colorScheme = palette.scheme(), typography = MaterialTheme.typography) {
     Surface(color = palette.background, contentColor = palette.text, modifier = Modifier.fillMaxSize()) {
         val safeInsets = WindowInsets.safeDrawing
-        val fullBleed = model.screen == GameScreen.PLAYING || model.screen == GameScreen.VICTORY
+        val fullBleed = model.screen == GameScreen.PLAYING || model.screen == GameScreen.VICTORY ||
+            model.background.draft != null
         Box(Modifier.fillMaxSize().then(if (fullBleed) Modifier else Modifier.windowInsetsPadding(safeInsets))) {
-            if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
-                LaunchIntroMotion.approachProgress(model.launchIntroMillis))
-            key(model.screen) {
-            AppScreen(model, updates, onExit)
+            if (model.background.draft != null) BackgroundCropPreview(model.background) else {
+                if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
+                    LaunchIntroMotion.approachProgress(model.launchIntroMillis))
+                key(model.screen) {
+                    AppScreen(model, updates, onExit)
+                }
             }
         }
     }
@@ -287,6 +291,7 @@ private fun fittedHudFont(text: String, preferred: TextUnit, width: Dp, height: 
 @Composable
 internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
     horizontalInsets: PaddingValues = PaddingValues(0.dp), bottomInset: Dp = 0.dp,
+    scoreBackdrop: Boolean = false,
     pieceOverlay: @Composable () -> Unit = {}) {
     val displayed = displayScore(state.score)
     val scale = rememberScorePulse(state)
@@ -327,6 +332,8 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
                     scaleX = scale.value
                     scaleY = scale.value
                 }
+                .then(if (scoreBackdrop) Modifier.background(Color.Black.copy(alpha = PHOTO_SCORE_BACKDROP_ALPHA))
+                    else Modifier)
                 .semantics {
                     this[ScorePulseScale] = scale.value
                     contentDescription = "Очки $displayed"
