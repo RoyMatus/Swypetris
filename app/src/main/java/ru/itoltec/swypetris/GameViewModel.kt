@@ -7,6 +7,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.core.content.edit
 
 /** A paused game is owned by the model while the ordinary menu is displayed. */
 enum class GameScreen {
@@ -161,7 +162,7 @@ class GameViewModel internal constructor(
             if (entered.isEmpty()) { absoluteNameError = true; return }
             absoluteName = entered
             playerName = entered
-            preferences.edit().putString("player_name", entered).apply()
+            preferences.edit { putString("player_name", entered) }
             results = results.map { if (it.id == currentResultId) it.copy(name = entered) else it }
             latestResult = latestResult?.copy(name = entered)
             resultStore.write(results)
@@ -471,26 +472,28 @@ class GameViewModel internal constructor(
         }
 
         private fun acceptConclusion(previous: GameState, updated: GameState, now: Long) {
-            if (updated.absoluteVictory && !previous.absoluteVictory) {
-                absolute.finish(updated, now)
-            } else if (updated.victoryPending && !previous.victoryPending) {
-                playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
-                lastPlayFrame = now
-                gestures.cancel()
-                feedback.stop()
-                music?.setPlaying(false)
-                screen = GameScreen.VICTORY
-                victoryAnimationMillis = 0L
-                if (musicEnabled) music?.setMode(MusicMode.RECORD)
-            } else if (updated.gameOver) {
-                finishedAt = System.currentTimeMillis()
-                // Journal before the history write, so a process death cannot lose or duplicate a record.
-                saveSession()
-                music?.setPlaying(false)
-                statistics.saveResult(updated, now)
-                gestures.cancel()
-                screen = if (requestRecordName) GameScreen.RECORD else GameScreen.GAME_OVER
-                if (requestRecordName && musicEnabled) music?.setMode(MusicMode.RECORD)
+            when {
+                updated.absoluteVictory && !previous.absoluteVictory -> absolute.finish(updated, now)
+                updated.victoryPending && !previous.victoryPending -> {
+                    playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
+                    lastPlayFrame = now
+                    gestures.cancel()
+                    feedback.stop()
+                    music?.setPlaying(false)
+                    screen = GameScreen.VICTORY
+                    victoryAnimationMillis = 0L
+                    if (musicEnabled) music?.setMode(MusicMode.RECORD)
+                }
+                updated.gameOver -> {
+                    finishedAt = System.currentTimeMillis()
+                    // Journal before the history write, so a process death cannot lose or duplicate a record.
+                    saveSession()
+                    music?.setPlaying(false)
+                    statistics.saveResult(updated, now)
+                    gestures.cancel()
+                    screen = if (requestRecordName) GameScreen.RECORD else GameScreen.GAME_OVER
+                    if (requestRecordName && musicEnabled) music?.setMode(MusicMode.RECORD)
+                }
             }
         }
     }

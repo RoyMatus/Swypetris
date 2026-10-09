@@ -16,6 +16,8 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.FileProvider
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withTranslation
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -47,7 +49,7 @@ class PostcardProvider : FileProvider()
 internal object AbsolutePostcard {
     fun create(context: Context, name: String): Bitmap {
         require(name.isNotBlank() && name.length <= MAX_PLAYER_NAME_LENGTH)
-        val result = Bitmap.createBitmap(POSTCARD_WIDTH, POSTCARD_HEIGHT, Bitmap.Config.ARGB_8888)
+        val result = createBitmap(POSTCARD_WIDTH, POSTCARD_HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
         canvas.drawColor(POSTCARD_BACKGROUND)
         val artwork = BitmapFactory.decodeResource(context.resources, R.drawable.victory_trophy)
@@ -78,10 +80,7 @@ internal object AbsolutePostcard {
         }
         val layout = StaticLayout.Builder.obtain(value, 0, value.length, paint, POSTCARD_TEXT_WIDTH)
             .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).build()
-        canvas.save()
-        canvas.translate((POSTCARD_WIDTH - POSTCARD_TEXT_WIDTH) / 2f, top)
-        layout.draw(canvas)
-        canvas.restore()
+        canvas.withTranslation((POSTCARD_WIDTH - POSTCARD_TEXT_WIDTH) / 2f, top) { layout.draw(this) }
     }
 
     /** Share the same bitmap as the preview, with a read-only grant for a narrowly scoped content URI. */
@@ -99,7 +98,7 @@ internal object AbsolutePostcard {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         } catch (error: IOException) {
-            file.delete()
+            if (file.exists() && !file.delete()) error.addSuppressed(IOException("Cannot remove partial postcard"))
             throw error
         }
     }

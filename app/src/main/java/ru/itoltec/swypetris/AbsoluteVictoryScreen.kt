@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -102,14 +103,15 @@ private fun AbsoluteNameEntry(model: GameViewModel) {
 }
 
 @Composable
-private fun PostcardContent(name: String, previewHeight: Dp) {
+private fun PostcardContent(name: String, previewHeight: Dp,
+    imageDispatcher: CoroutineDispatcher = Dispatchers.Default, shareDispatcher: CoroutineDispatcher = Dispatchers.IO) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var bitmap by remember(name) { mutableStateOf<Bitmap?>(null) }
     var error by remember(name) { mutableStateOf(false) }
     var sharing by remember { mutableStateOf(false) }
     LaunchedEffect(name) {
-        bitmap = withContext(Dispatchers.Default) { AbsolutePostcard.create(context, name) }
+        bitmap = withContext(imageDispatcher) { AbsolutePostcard.create(context, name) }
     }
     androidx.compose.foundation.layout.Column(Modifier.widthIn(max = 440.dp).fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -125,7 +127,7 @@ private fun PostcardContent(name: String, previewHeight: Dp) {
                     sharing = true
                     error = false
                     try {
-                        val send = withContext(Dispatchers.IO) { AbsolutePostcard.shareIntent(context, image) }
+                        val send = withContext(shareDispatcher) { AbsolutePostcard.shareIntent(context, image) }
                         context.startActivity(Intent.createChooser(send, "Поделиться открыткой"))
                     } catch (_: IOException) { error = true }
                     catch (_: ActivityNotFoundException) { error = true }
