@@ -22,6 +22,13 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     private val drop: Int
     private val clear: Int
+    private var vibrationStrength = MAX_VIBRATION_STRENGTH
+
+    override fun setVibrationStrength(percent: Int) {
+        require(percent in 0..MAX_VIBRATION_STRENGTH)
+        vibrationStrength = percent
+        if (percent == 0) stopVibration()
+    }
 
     init {
         pool.setOnLoadCompleteListener { _, id, status -> if (status == 0) loaded.add(id) }
@@ -53,9 +60,8 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
     /** Chooses an amplitude supported by the device and respects system vibration settings. */
     @Suppress("DEPRECATION")
     private fun vibrate(pulse: HapticPulse, vibration: Boolean) {
-        val motor = vibrator ?: return
-        if (pulse.duration <= 0 || !vibration || !motor.hasVibrator()) return
-        val softened = pulse.softened()
+        val motor = vibrator?.takeIf { vibration && it.hasVibrator() } ?: return
+        val softened = pulse.softened().scaled(vibrationStrength) ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val amplitudeControl = motor.hasAmplitudeControl()
             val amplitude = if (amplitudeControl) softened.amplitude else VibrationEffect.DEFAULT_AMPLITUDE

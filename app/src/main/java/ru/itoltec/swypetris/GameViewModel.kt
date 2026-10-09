@@ -89,6 +89,10 @@ class GameViewModel internal constructor(
         private set
     var vibrationEnabled by mutableStateOf(preferences.getBoolean("vibration", true))
         private set
+    var vibrationStrength by mutableStateOf(preferences.getInt("vibration_strength", MAX_VIBRATION_STRENGTH)
+        .coerceIn(0, MAX_VIBRATION_STRENGTH))
+        private set
+    private val vibrationAllowed: Boolean get() = vibrationEnabled && vibrationStrength > 0
     var hintsEnabled by mutableStateOf(preferences.getBoolean("hints", false))
         private set
     var paletteId by mutableStateOf(GamePalettes.find(preferences.getString("palette", null)).id)
@@ -103,7 +107,7 @@ class GameViewModel internal constructor(
     var record by mutableStateOf(statistics.bestFor())
         private set
     private val holdFeedbackAllowed: Boolean get() =
-        vibrationEnabled && activeForeground && screen == GameScreen.PLAYING
+        vibrationAllowed && activeForeground && screen == GameScreen.PLAYING
     private var gestures = input.createGestures(GestureConfig())
     private var lastGameFrame = clock()
     private var timeline = GameTimeline(restored?.gravityRemainingNanos ?: (game?.gravityNanos ?:
@@ -117,6 +121,7 @@ class GameViewModel internal constructor(
     private var scheduledAt: Long? = null
 
     init {
+        this.feedback.setVibrationStrength(vibrationStrength)
         restored?.let { engine.restoreBag(it.bag) }
         game?.takeIf { it.absoluteVictory }?.let {
             game = engine.checkVictory(it)
@@ -252,7 +257,7 @@ class GameViewModel internal constructor(
             screen = GameScreen.VICTORY
         } else {
             if (game?.clearingRows?.isNotEmpty() == true) feedback
-                .resumeClear(LineClearAnimation.TOTAL_MILLIS - clearElapsedMillis, vibrationEnabled)
+                .resumeClear(LineClearAnimation.TOTAL_MILLIS - clearElapsedMillis, vibrationAllowed)
             gestures.cancel()
             gestures.setEnabled(game?.clearingRows?.isEmpty() == true)
             lastGameFrame = clock()
@@ -340,7 +345,7 @@ class GameViewModel internal constructor(
                     simulation.acceptState(previous, updated, now)
                     if (screen == GameScreen.PLAYING)
                         feedbackEvent(previous, updated, command)?.let {
-                            feedback.play(it, soundEnabled, vibrationEnabled)
+                            feedback.play(it, soundEnabled, vibrationAllowed)
                         }
                 }
             }
@@ -435,7 +440,7 @@ class GameViewModel internal constructor(
                     acceptState(previous, updated, now)
                     if (screen == GameScreen.PLAYING)
                         feedbackEvent(previous, updated, GameCommand.TICK)?.let { feedback.play(it, soundEnabled,
-                            vibrationEnabled) }
+                            vibrationAllowed) }
                 }
             } finally { advancing = false }
             playedMillis = playedBefore + timeline.advancedNanos / GameRules.NANOS_PER_MILLI
@@ -527,7 +532,15 @@ class GameViewModel internal constructor(
             vibrationEnabled = enabled
             preferences.edit().putBoolean("vibration", enabled).apply()
             if (!enabled) feedback.stopVibration()
-            else if (!wasEnabled) feedback.previewVibration()
+            else if (!wasEnabled && vibrationAllowed) feedback.previewVibration()
+        }
+
+        /** Takes effect immediately while keeping the separate vibration toggle intact. */
+        fun setVibrationStrength(percent: Int) {
+            require(percent in 0..MAX_VIBRATION_STRENGTH)
+            vibrationStrength = percent
+            preferences.edit { putInt("vibration_strength", percent) }
+            feedback.setVibrationStrength(percent)
         }
 
         /** Applies a known palette without altering the game. */

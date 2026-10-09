@@ -58,6 +58,10 @@ class GameFeedbackIntegrationTest {
 
     /** Запоминает параметры эффектов и остановки для проверки настроек и паузы. */
     private class Recorder : GameFeedback {
+        val strengths = mutableListOf<Int>()
+        override fun setVibrationStrength(percent: Int) { strengths += percent }
+        var holdPulses = 0
+        override fun holdReady() { holdPulses++ }
         val calls = mutableListOf<Triple<FeedbackEvent, Boolean, Boolean>>()
         var stops = 0
         var previews = 0
@@ -80,6 +84,56 @@ class GameFeedbackIntegrationTest {
         override fun stop() { stops++ }
         /** Не владеет устройствами и не требует освобождения. */
         override fun release() = Unit
+    }
+
+    @Test fun strengthAppliesImmediatelyPersistsAndZeroGatesDropPreviewAndHold() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val recorder = Recorder()
+        var now = 1000L
+        val model = GameViewModel(app, GameState(active = Piece(Tetromino.O), next = Tetromino.T),
+            { now }, false, recorder)
+        assertEquals(listOf(100), recorder.strengths)
+        model.options.setVibrationStrength(50)
+        assertEquals(50, recorder.strengths.last())
+        assertEquals(50, GameViewModel(app, null, { 1000L }, false).vibrationStrength)
+        model.options.setVibrationStrength(0)
+        model.options.setVibration(false)
+        model.options.setVibration(true)
+        assertEquals(0, recorder.previews)
+        model.input.pointerDown(100f, 200f, now)
+        now += 300
+        model.simulation.advanceFrame(now)
+        model.input.cancelGesture()
+        assertEquals(0, recorder.holdPulses)
+        model.input.command(GameCommand.HARD_DROP)
+        assertEquals(false, recorder.calls.last().third)
+        model.options.setVibrationStrength(100)
+        model.input.command(GameCommand.HARD_DROP)
+        assertEquals(true, recorder.calls.last().third)
+        model.options.setVibration(false)
+        model.options.setVibrationStrength(50)
+        model.input.command(GameCommand.HARD_DROP)
+        assertEquals(false, recorder.calls.last().third)
+        assertFalse(model.vibrationEnabled)
+        assertEquals(50, GameViewModel(app, null, { 1000L }, false).vibrationStrength)
+    }
+
+    @Test fun zeroStrengthGatesClearAndResumeAndCorruptStoredStrengthIsClamped() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        GameStorage.preferences(app).edit().putInt("vibration_strength", 500).commit()
+        val board = List(BoardGeometry.TOTAL_ROWS) { row -> List<Tetromino?>(10) { x ->
+            if (row == BoardGeometry.row(19) && x !in 4..5) Tetromino.J else null } }
+        val recorder = Recorder()
+        val model = GameViewModel(app, GameState(board = board, active = Piece(Tetromino.O, y = 18),
+            next = Tetromino.T), { 1000L }, false, recorder)
+        assertEquals(100, model.vibrationStrength)
+        model.options.setVibrationStrength(0)
+        model.input.command(GameCommand.HARD_DROP)
+        assertEquals(Triple(FeedbackEvent.CLEAR, true, false), recorder.calls.last())
+        model.pause()
+        model.resume()
+        assertTrue(recorder.remaining.isEmpty())
+        assertEquals(0, GameViewModel(app, null, { 1000L }, false).vibrationStrength)
     }
 
     /** Включение даёт один импульс; повтор значения и загрузка настройки не вибрируют. */
@@ -140,6 +194,4 @@ class GameFeedbackIntegrationTest {
         }
     }
 }
-
-
 

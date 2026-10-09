@@ -6,6 +6,28 @@ import org.junit.Test
 
 /** Проверяет выбор событий без динамика и вибромотора. */
 class GameFeedbackTest {
+    @Test fun globalStrengthPreservesBaseEffectsAndScalesAmplitudeAndFallback() {
+        for (pulse in listOf(HapticPulse.Drop, HapticPulse.Clear, HapticPulse.Preview,
+            HapticPulse.HoldReady, HapticPulse.clear(220))) {
+            val base = pulse.softened()
+            assertEquals(base, base.scaled(100))
+            assertNull(base.scaled(0))
+            val half = base.scaled(50)!!
+            assertEquals(base.duration, half.durationFor(true))
+            assertEquals((base.amplitude + 1) / 2, half.amplitude)
+            assertEquals((base.fallbackDuration / 2).coerceAtLeast(1), half.durationFor(false))
+            org.junit.Assert.assertTrue(base.scaled(1)!!.amplitude >= 1)
+        }
+        assertEquals(64, HapticPulse(100, 128).scaled(50)!!.amplitude)
+        assertNull(HapticPulse(0, 128).scaled(100))
+    }
+
+    @Test fun globalStrengthRejectsOutOfRangeValues() {
+        for (value in listOf(-1, 101)) org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            HapticPulse.Drop.scaled(value)
+        }
+    }
+
     /** Обычное приземление тихое, бросок вызывает удар, очистка заменяет удар одним эффектом. */
     @Test fun feedbackOnlyForDropAndClearStart() {
         val engine = GameEngine()

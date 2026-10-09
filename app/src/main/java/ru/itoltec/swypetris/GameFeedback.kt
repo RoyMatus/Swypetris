@@ -13,6 +13,8 @@ fun feedbackEvent(before: GameState, after: GameState, command: GameCommand): Fe
 
 /** Boundary between game rules and device effects; replaceable with a recorder in tests. */
 interface GameFeedback {
+    /** Applies the global user intensity to every motor effect, including future effects. */
+    fun setVibrationStrength(percent: Int) = Unit
     /** Plays only the sound and vibration enabled by user settings. */
     fun play(event: FeedbackEvent, sound: Boolean, vibration: Boolean)
     /** Resumes only the remaining clear vibration without replaying the sound. */
