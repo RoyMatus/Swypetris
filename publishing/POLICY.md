@@ -20,6 +20,8 @@ This document assigns rules to their enforcing owner. CI scope/commands live in 
 
 ## API delivery and protection maintenance
 
+Before every major/substantial game release, complete the simultaneous RuStore and GitHub review in [RELEASE-COMPLIANCE.md](RELEASE-COMPLIANCE.md), opening current official sources and recording findings for the exact intended artifacts. Its report and resolution of mandatory violations/unverified items are publication prerequisites alongside CI, not new Actions checks. The linked policy defines the trigger, maintenance-patch scope and release-owner resolution of external or material decisions.
+
 Use project API scripts, not browser UI. Inspect effective `rules/branches/main` and classic `branches/main/protection` before changes. Preserve enforcement/bypass scope, check source and strict policy. Remove classic protection only after confirming the active ruleset covers all its restrictions. `Manage-PullRequest.ps1` reads both protection mechanisms; only a genuine classic 404 means no classic rule, other errors fail closed.
 
 Automatic branch deletion does not clean local checkouts. Never remove another process's branch/worktree or unmerged work. Repository auto-merge, reviewer approval, access grants and secrets are outside this policy migration.
