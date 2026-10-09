@@ -65,6 +65,10 @@ class AbsoluteVictoryIntegrationTest {
         first.absolute.changeName("Я".repeat(MAX_PLAYER_NAME_LENGTH + 1))
         assertEquals(MAX_PLAYER_NAME_LENGTH, first.absoluteName.length)
         assertFalse(first.absoluteNameError)
+        // The UTF-16 length limit must not retain half of an emoji at the truncation boundary.
+        val prefix = "Я".repeat(MAX_PLAYER_NAME_LENGTH - 1)
+        first.absolute.changeName(prefix + "😀")
+        assertEquals(prefix, first.absoluteName)
         first.onBackground()
         first.absolute.preparePostcard()
         assertFalse(first.postcardReady)

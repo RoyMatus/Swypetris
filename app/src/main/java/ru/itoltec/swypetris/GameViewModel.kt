@@ -150,7 +150,8 @@ class GameViewModel internal constructor(
         /** The terminal flow persists input independently of whether its Activity is visible. */
         fun changeName(name: String) {
             if (screen != GameScreen.ABSOLUTE_VICTORY) return
-            absoluteName = name.replace('\n', ' ').replace('\r', ' ').take(MAX_PLAYER_NAME_LENGTH)
+            val limited = name.replace('\n', ' ').replace('\r', ' ').take(MAX_PLAYER_NAME_LENGTH)
+            absoluteName = if (limited.lastOrNull()?.isHighSurrogate() == true) limited.dropLast(1) else limited
             absoluteNameError = false
             simulation.saveSession()
         }
