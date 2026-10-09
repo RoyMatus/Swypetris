@@ -99,11 +99,22 @@ class AbsoluteVictoryUiTest {
         val chooser = Intent.createChooser(Intent(Intent.ACTION_SEND).setType("image/png"), "Share")
         val resolver = app.packageManager.resolveActivity(chooser, 0)!!.activityInfo.packageName
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val serviceInfo = automation.serviceInfo
+        val originalFlags = serviceInfo.flags
+        serviceInfo.flags = originalFlags or
+            android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        automation.serviceInfo = serviceInfo
         try {
-            compose.onNodeWithTag("sharePostcard").performScrollTo().performClick()
+            val opened = automation.executeAndWaitForEvent({
+                compose.onNodeWithTag("sharePostcard").performScrollTo().performClick()
+            }, { event -> event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+                event.packageName?.toString() == resolver }, 10000)
+            @Suppress("DEPRECATION")
+            opened.recycle()
             compose.waitUntil(timeoutMillis = 10000) {
-                automation.rootInActiveWindow?.packageName?.toString() == resolver
+                automation.windows.any { it.root?.packageName?.toString() == resolver }
             }
+            automation.waitForIdle(500, 5000)
             val directory = File(app.getExternalFilesDir(null), "absolute-victory-screenshots").apply { mkdirs() }
             val screenshot = automation.takeScreenshot()
             try {
@@ -111,7 +122,11 @@ class AbsoluteVictoryUiTest {
                     assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it))
                 }
             } finally { screenshot.recycle() }
-        } finally { automation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK) }
+        } finally {
+            automation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+            serviceInfo.flags = originalFlags
+            automation.serviceInfo = serviceInfo
+        }
     }
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)

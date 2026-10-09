@@ -14,7 +14,8 @@ Project policy: [publishing/POLICY.md](publishing/POLICY.md). CI selection and c
 ## Scope, design and gameplay
 
 - Existing layout/design is protected. Change only requested visual elements; preserve adjacent placement, proportions, spacing, colors, typography, icons, textures and animations. Material product/design decisions outside authorization belong to the user.
-- Derive UI geometry from available space/insets; use dp/sp bounds and accessibility minimums. Verify relevant screen sizes, aspect ratios, orientations and font scales; avoid device-specific pixels.
+- The game always uses portrait orientation. Preserve the portrait Activity lock; do not enable or force landscape orientation in application code or tests. Verify UI on relevant portrait screen sizes, aspect ratios and font scales.
+- Derive UI geometry from available space/insets; use dp/sp bounds and accessibility minimums; avoid device-specific pixels.
 - Keep gameplay logic and tunable rules in their existing single owners. Preserve state across navigation, backgrounding and configuration changes; avoid duplicate sources of truth.
 - Check affected interactions among scoring, spawning, collision, merging, progression, victory and loss. Preserve unrelated mechanics. Difficulty remains Easy / Medium / Hard with centralized parameters and balanced early pacing.
 - Pause returns to the main menu with Continue; do not add a pause screen. Game indicators stay near the upper-left with a small consistent inset-aware margin.

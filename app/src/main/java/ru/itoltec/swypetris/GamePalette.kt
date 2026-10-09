@@ -162,6 +162,10 @@ object GamePalettes {
     )
     /** Maps unknown or legacy IDs to the classic palette. */
     fun find(id: String?): GamePalette = all.firstOrNull { it.id == id } ?: all.first()
+
+    /** Pick independently of piece generation; a round changes away from the current theme. */
+    internal fun randomId(current: String, random: kotlin.random.Random): String =
+        all.filterNot { it.id == current }.random(random).id
 }
 
 val LocalGamePalette = staticCompositionLocalOf { GamePalettes.all.first() }

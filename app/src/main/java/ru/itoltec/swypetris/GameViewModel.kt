@@ -28,7 +28,8 @@ class GameViewModel internal constructor(
     feedback: GameFeedback? = null,
     musicPlayback: MusicPlayback? = null,
     showLaunchIntro: Boolean = autoTick && initialState == null,
-    timer: GameTimer? = null
+    timer: GameTimer? = null,
+    private val paletteRandom: kotlin.random.Random = kotlin.random.Random(System.nanoTime())
 ) : AndroidViewModel(application) {
     internal val input = Input()
     internal val simulation = Simulation()
@@ -96,6 +97,8 @@ class GameViewModel internal constructor(
     var hintsEnabled by mutableStateOf(preferences.getBoolean("hints", false))
         private set
     var paletteId by mutableStateOf(GamePalettes.find(preferences.getString("palette", null)).id)
+        private set
+    var randomThemeEnabled by mutableStateOf(preferences.getBoolean("random_theme", false))
         private set
     var victoryAnimationMillis by mutableStateOf(0L)
         private set
@@ -204,6 +207,7 @@ class GameViewModel internal constructor(
         val state = game ?: return
         if (state.victoryPending) {
             game = engine.nextRound(state)
+            options.randomizeRoundTheme()
             gestures.cancel()
             gestures.setEnabled(true)
             feedback.stop()
@@ -236,6 +240,7 @@ class GameViewModel internal constructor(
         feedback.stop()
         gestures.cancel()
         game = engine.newGame(startingLevel)
+        options.randomizeRoundTheme()
         gestures.setEnabled(true)
         clearElapsedMillis = 0L
         lastGameFrame = clock()
@@ -545,8 +550,22 @@ class GameViewModel internal constructor(
 
         /** Applies a known palette without altering the game. */
         fun setPalette(id: String) {
+            setRandomTheme(false)
             paletteId = GamePalettes.find(id).id
             preferences.edit().putString("palette", paletteId).apply()
+        }
+
+        /** Enabling takes effect at the next round, never mid-game or on resume. */
+        fun setRandomTheme(enabled: Boolean) {
+            randomThemeEnabled = enabled
+            preferences.edit { putBoolean("random_theme", enabled) }
+        }
+
+        fun randomizeRoundTheme() {
+            if (randomThemeEnabled) {
+                paletteId = GamePalettes.randomId(paletteId, paletteRandom)
+                preferences.edit { putString("palette", paletteId) }
+            }
         }
 
         /** Persists the selection; ordinary menus retain their theme and gameplay uses the playlist. */
