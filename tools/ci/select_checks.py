@@ -64,6 +64,7 @@ SOURCE_GROUPS = {
 
 # Cross-cutting state and composition are intentionally full-regression inputs.
 FULL_SOURCES = {
+    "AbsolutePostcard.kt", "AbsoluteVictoryScreen.kt",
     "GameContent.kt", "GameBoard.kt",
     "MainMenu.kt", "MenuAction.kt", "AppNavigation.kt",
     "GameSession.kt", "GameTimeline.kt", "GameViewModel.kt", "MainActivity.kt",
@@ -193,6 +194,9 @@ def select(paths: list[str]) -> dict[str, str]:
         full = True
     if full:
         mode = "full"
+        # Full mode runs unfiltered instrumentation. Do not expose accumulated
+        # selected classes as a filter in its environment or release evidence.
+        android.clear()
     elif app:
         mode = "selected"
         android.add(SMOKE)

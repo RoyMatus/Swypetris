@@ -32,6 +32,16 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual("full", workflow["mode"])
         self.assertEqual("true", workflow["ci_scripts"])
 
+    def test_full_mode_discards_accumulated_android_filter_in_any_path_order(self):
+        paths = ["app/src/main/java/ru/itoltec/swypetris/GameEngine.kt",
+                 "app/src/androidTest/java/ru/itoltec/swypetris/AbsoluteVictoryUiTest.kt",
+                 "app/src/main/AndroidManifest.xml"]
+        for changes in (paths, list(reversed(paths))):
+            with self.subTest(changes=changes):
+                result = select(changes)
+                self.assertEqual("full", result["mode"])
+                self.assertEqual("", result["android"])
+
     def test_digital_score_runs_layout_and_pixel_checks(self):
         result = select(["app/src/main/java/ru/itoltec/swypetris/DigitalScore.kt"])
         self.assertEqual("selected", result["mode"])

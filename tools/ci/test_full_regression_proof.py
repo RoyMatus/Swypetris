@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import full_regression_proof as proof
 from wait_for_android_ci import ArtifactRedirect, verify_latest
+from select_checks import select
 
 REPOSITORY = "RoyMatus/Swypetris"
 SHA = "a" * 40
@@ -72,6 +73,28 @@ class FullRegressionProofTests(unittest.TestCase):
 
     def test_complete_evidence_passes(self):
         self.assertEqual(2, self.validate()["attempt"])
+
+    def test_mixed_full_selection_can_produce_complete_evidence(self):
+        outputs = select(["app/src/main/AndroidManifest.xml",
+                          "app/src/main/java/ru/itoltec/swypetris/GameEngine.kt"])
+        steps = {name: {"outcome": "success"} for name in
+                 ("changes", "detekt", "build", "jvm", "quality_reports", "sonar", "device")}
+        environment = {"CHECK_OUTPUTS": json.dumps(outputs), "CHECK_STEPS": json.dumps(steps),
+                       "GITHUB_SHA": SHA, "GITHUB_REPOSITORY": REPOSITORY,
+                       "GITHUB_WORKFLOW_REF": self.evidence["workflow_ref"],
+                       "GITHUB_EVENT_NAME": "push", "GITHUB_REF": "refs/heads/main",
+                       "GITHUB_RUN_ID": "7", "GITHUB_RUN_ATTEMPT": "2"}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, relative in proof.FILES.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(self.payload[name])
+            with patch.dict("os.environ", environment), patch.object(proof.subprocess, "check_output", return_value=SHA):
+                proof.create(root, root / "evidence")
+            result = json.loads((root / "evidence/evidence.json").read_text())
+            self.assertEqual("full", result["mode"])
+            self.assertEqual("", result["android_classes"])
 
     def test_windows_crlf_report_passes_without_changing_hashed_bytes(self):
         self.payload['instrumentation.txt'] = self.payload['instrumentation.txt'].replace(b'\n', b'\r\n')
