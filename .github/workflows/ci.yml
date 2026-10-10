@@ -16,9 +16,16 @@ permissions:
 
 jobs:
   android:
-    runs-on: [self-hosted, windows, X64, swypetris-android]
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: pwsh
     timeout-minutes: 35
     steps:
+      - name: Configure platform Gradle launcher
+        run: |
+          $launcher = if ($IsWindows) { './gradlew.bat' } else { './gradlew' }
+          "GRADLE_LAUNCHER=$launcher" >> $env:GITHUB_ENV
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -59,14 +66,19 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+      - name: Make Linux Gradle launcher executable
+        if: runner.os == 'Linux'
+        run: chmod +x gradlew
       - name: Analyze Kotlin
         id: detekt
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
-        run: ./gradlew.bat :app:detekt --console=plain
+        run: |
+          & $env:GRADLE_LAUNCHER :app:detekt --console=plain
       - name: Build and lint app
         id: build
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
-        run: ./gradlew.bat :app:assembleDebug :app:lintDebug --build-cache --console=plain
+        run: |
+          & $env:GRADLE_LAUNCHER :app:assembleDebug :app:lintDebug --build-cache --console=plain
       - name: Run JVM tests and coverage
         id: jvm
         if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
@@ -74,9 +86,9 @@ jobs:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
         run: |
           if ($env:CHECK_MODE -eq 'full') {
-            ./gradlew.bat :app:test :app:jacocoDebugUnitTestReport --console=plain
+            & $env:GRADLE_LAUNCHER :app:test :app:jacocoDebugUnitTestReport --console=plain
           } else {
-            ./gradlew.bat :app:jacocoDebugUnitTestReport --console=plain
+            & $env:GRADLE_LAUNCHER :app:jacocoDebugUnitTestReport --console=plain
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate quality reports
@@ -99,15 +111,45 @@ jobs:
           if (-not $env:SONAR_ORGANIZATION -or -not $env:SONAR_PROJECT_KEY -or -not $env:SONAR_TOKEN) {
             throw 'App changes require SONAR_ORGANIZATION, SONAR_PROJECT_KEY, and SONAR_TOKEN.'
           }
-          ./gradlew.bat sonar '-Dsonar.qualitygate.wait=true' --console=plain
+          & $env:GRADLE_LAUNCHER sonar '-Dsonar.qualitygate.wait=true' --console=plain
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare cloud test APKs
+        if: ${{ success() && runner.os == 'Linux' && steps.changes.outputs.mode != 'none' }}
+        run: |
+          & $env:GRADLE_LAUNCHER :app:assembleDebugAndroidTest --build-cache --console=plain
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:GRADLE_LAUNCHER --stop
+      - name: Save cloud debug APKs for Pixel verification
+        if: success() && steps.changes.outputs.mode != 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-debug-apks
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+      - name: Enable cloud emulator acceleration
+        if: ${{ success() && runner.os == 'Linux' && steps.changes.outputs.mode != 'none' }}
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       - name: Run affected Android tests and smoke
         id: device
-        if: ${{ success() && steps.changes.outputs.mode != 'none' }}
+        if: ${{ success() && runner.os == 'Linux' && steps.changes.outputs.mode != 'none' }}
         env:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
           ANDROID_CLASSES: ${{ steps.changes.outputs.android }}
-        run: ./tools/ci/run_windows_android_checks.ps1 -CheckMode $env:CHECK_MODE -AndroidClasses $env:ANDROID_CLASSES
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: x86_64
+          avd-name: SwypetrisCI35
+          emulator-port: 5556
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -wipe-data
+          script: bash tools/ci/run_cloud_android_checks.sh
       - name: Build full regression evidence
         if: ${{ success() && steps.changes.outputs.mode == 'full' }}
         env:
@@ -121,6 +163,28 @@ jobs:
           name: full-regression-${{ github.run_id }}-${{ github.run_attempt }}
           path: app/build/ci/full-regression-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: error
+      - name: Save cloud host failure diagnostics
+        if: failure() && steps.changes.outputs.mode != 'none'
+        shell: bash
+        run: |
+          report_dir=app/build/outputs/androidTest-results/windows
+          mkdir -p "$report_dir"
+          {
+            free -m
+            ps -eo pid,comm,rss --sort=-rss | head -n 25
+            sudo dmesg --ctime | tail -n 100
+            cat /sys/fs/cgroup/memory.events 2>/dev/null || true
+          } > "$report_dir/cloud-host.txt" 2>&1
+          shopt -s nullglob
+          crash_reports=(/tmp/android-runner/emu-crash-*.db)
+          if ((${#crash_reports[@]})); then
+            size_mb=$(du -sm -c "${crash_reports[@]}" | tail -n 1 | cut -f 1)
+            if ((size_mb <= 64)); then
+              tar -czf "$report_dir/emulator-crash-reports.tar.gz" "${crash_reports[@]}"
+            else
+              echo "Emulator crash reports exceed 64 MiB: $size_mb" >> "$report_dir/cloud-host.txt"
+            fi
+          fi
       - name: Save test, lint, and coverage reports
         if: always() && steps.changes.outputs.mode != 'none'
         uses: actions/upload-artifact@v4

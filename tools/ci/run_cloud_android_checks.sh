@@ -30,6 +30,7 @@ rm -f "$report_dir/environment.json" "$report_dir/smoke.txt" "$report_dir/instru
 adb -s "$serial" install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s "$serial" install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb -s "$serial" shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1 | tee "$report_dir/smoke.txt"
+grep -Eq '^Events injected: 1[[:space:]]*$' "$report_dir/smoke.txt"
 # Exercise a fresh picker's drawer before full regression exercises its remembered
 # image directory. Both executions select a unique fixture and verify the crop result.
 if [ "$CHECK_MODE" = full ]; then

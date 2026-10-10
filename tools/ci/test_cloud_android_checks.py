@@ -20,7 +20,7 @@ class CloudAndroidChecksTests(unittest.TestCase):
             "INSTRUMENTATION_STATUS_CODE: 0",
             "OK (1 test)", "INSTRUMENTATION_CODE: -1", "",
         ))
-        for case in ("complete", "incomplete", "stall"):
+        for case in ("complete", "incomplete", "stall", "smoke_failure"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as workspace:
                 root = Path(workspace)
                 commands = root / "bin"
@@ -39,7 +39,9 @@ case "$*" in
     if [ "$MOCK_CASE" = complete ]; then cat complete.txt
     elif [ "$MOCK_CASE" = stall ]; then echo 'INSTRUMENTATION_STATUS: current=1'; exec sleep 30
     else echo 'INSTRUMENTATION_STATUS: current=1'; fi ;;
-  *'shell monkey'*) echo 'Events injected: 1' ;;
+  *'shell monkey'*)
+    if [ "$MOCK_CASE" = smoke_failure ]; then echo 'Events injected: 0'
+    else echo 'Events injected: 1'; fi ;;
   *'getprop ro.build.version.sdk'*) echo 35 ;;
   *'getprop ro.product.cpu.abi'*) echo x86_64 ;;
   *'getprop ro.build.fingerprint'*) echo test/cloud ;;
