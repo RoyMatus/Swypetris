@@ -56,27 +56,7 @@ class BackgroundPickerTest {
             compose.waitUntil(10000) { !model.background.busy }
             compose.onNodeWithTag("chooseBackground").performScrollTo().performClick()
             automation.waitForIdle(500, 5000)
-            var document: AccessibilityNodeInfo? = null
-            var rootsOpened = false
-            var imagesOpened = false
-            var folderOpened = false
-            compose.waitUntil(10000) {
-                val root = automation.rootInActiveWindow
-                // Package visibility may hide DocumentsUI from resolveActivity even though it launches.
-                if (root != null && root.packageName?.toString() != compose.activity.packageName) {
-                    document = root.findAccessibilityNodeInfosByText(name).firstOrNull()
-                    // A fresh DocumentsUI can have an empty Recent page. Browse the fixture's folder.
-                    if (document == null) {
-                        when {
-                            !rootsOpened -> rootsOpened = clickPickerItem(automation, root, "Show roots")
-                            !imagesOpened -> imagesOpened = clickPickerItem(automation, root, "Images", "Изображения")
-                            !folderOpened -> folderOpened = clickPickerItem(automation, root, "SwypetrisTest")
-                        }
-                    }
-                }
-                document != null
-            }
-            selectDocument(checkNotNull(document))
+            selectDocument(awaitPickerDocument(automation, name))
             compose.waitUntil(10000) { model.background.draft != null && !model.background.busy }
             compose.onNodeWithTag("backgroundCropPreview").assertExists()
             assertNotNull(model.background.draft)
@@ -92,9 +72,36 @@ class BackgroundPickerTest {
         }
     }
 
+    private fun awaitPickerDocument(automation: UiAutomation, name: String): AccessibilityNodeInfo {
+        var document: AccessibilityNodeInfo? = null
+        var rootsOpened = false
+        var imagesOpened = false
+        var folderOpened = false
+        compose.waitUntil(10000) {
+            if (android.os.Build.VERSION.SDK_INT >= 34) automation.clearCache()
+            val root = automation.rootInActiveWindow
+            // Package visibility may hide DocumentsUI from resolveActivity even though it launches.
+            if (root != null && root.packageName?.toString() != compose.activity.packageName) {
+                document = root.findAccessibilityNodeInfosByText(name).firstOrNull()
+                // Browse the fixture folder from either Recent or the previously visited image root.
+                if (document == null) {
+                    when {
+                        folderOpened -> Unit
+                        clickPickerItem(automation, root, "SwypetrisTest") -> folderOpened = true
+                        !rootsOpened -> rootsOpened = clickPickerItem(automation, root, "Show roots")
+                        !imagesOpened -> imagesOpened = clickPickerItem(automation, root, "Images", "Изображения")
+                    }
+                }
+            }
+            document != null
+        }
+        return checkNotNull(document)
+    }
+
     private fun clickPickerItem(automation: UiAutomation, root: AccessibilityNodeInfo,
                                vararg labels: String): Boolean {
-        val node = labels.firstNotNullOfOrNull { root.findAccessibilityNodeInfosByText(it).firstOrNull() }
+        // A drawer root can repeat the current toolbar title; its item follows the toolbar in the tree.
+        val node = labels.firstNotNullOfOrNull { root.findAccessibilityNodeInfosByText(it).lastOrNull() }
             ?: return false
         val bounds = Rect().apply { node.getBoundsInScreen(this) }
         val downTime = SystemClock.uptimeMillis()
