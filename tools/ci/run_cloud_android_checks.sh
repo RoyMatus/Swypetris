@@ -5,6 +5,25 @@ set -euo pipefail
 serial=emulator-5556
 report_dir=app/build/outputs/androidTest-results/windows
 mkdir -p "$report_dir"
+# sys.boot_completed can precede an adbd reconnect and package-service readiness.
+# Require three consecutive successful probes before installing, without retrying
+# any APK installation or test failure.
+deadline=$((SECONDS + 120))
+ready=0
+while ((SECONDS < deadline && ready < 3)); do
+  if timeout 5s adb -s "$serial" shell pm path android > "$report_dir/boot-readiness.txt" 2>&1 &&
+      grep -q '^package:' "$report_dir/boot-readiness.txt"; then
+    ready=$((ready + 1))
+  else
+    ready=0
+  fi
+  sleep 2
+done
+if ((ready < 3)); then
+  cat "$report_dir/boot-readiness.txt"
+  echo 'Package Manager did not become ready within 120 seconds.' >&2
+  exit 1
+fi
 # Keep device logs already received even if the emulator disconnects mid-test.
 adb -s "$serial" logcat -v threadtime > "$report_dir/logcat-stream.txt" 2>&1 &
 logcat_pid=$!
@@ -27,8 +46,8 @@ export SWYPETRIS_CI_EMULATOR_VERSION
 SWYPETRIS_CI_EMULATOR_VERSION="$(grep '^Pkg.Revision=' "$ANDROID_HOME/emulator/source.properties")"
 test -n "$SWYPETRIS_CI_EMULATOR_VERSION"
 rm -f "$report_dir/environment.json" "$report_dir/smoke.txt" "$report_dir/instrumentation.txt"
-adb -s "$serial" install -r app/build/outputs/apk/debug/app-debug.apk
-adb -s "$serial" install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+timeout 120s adb -s "$serial" install --no-streaming -r app/build/outputs/apk/debug/app-debug.apk
+timeout 120s adb -s "$serial" install --no-streaming -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb -s "$serial" shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1 | tee "$report_dir/smoke.txt"
 grep -Eq '^Events injected: 1[[:space:]]*$' "$report_dir/smoke.txt"
 # Exercise a fresh picker's drawer before full regression exercises its remembered
