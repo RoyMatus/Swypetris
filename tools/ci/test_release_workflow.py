@@ -39,7 +39,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         return re.search(r'^        if: (.+)$', block, re.M)[1]
 
     def test_main_gate_and_tag_manual_regression_are_exclusive(self):
-        gate = self.step_condition('Verify same-commit full Windows regression')
+        gate = self.step_condition('Verify same-commit full cloud regression')
         regression = self.step_condition('Android instrumentation and launch smoke test')
         for event, ref, main in (
             ('push', 'refs/heads/main', True), ('push', 'refs/tags/v1.2.3', False),

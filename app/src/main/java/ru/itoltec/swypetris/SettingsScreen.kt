@@ -95,6 +95,9 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
                 RandomThemeSetting(model)
                 PalettePicker(model)
             }
+            SettingsPanel("ВЫБРАТЬ ФОН", "Изображение игрового поля", Icons.Outlined.Palette, appearance) {
+                BackgroundPicker(model.background)
+            }
             SettingsPanel("О ПРИЛОЖЕНИИ", "Версия и обновления", Icons.Outlined.Lightbulb, assistance) {
                 SettingsToggle("Автоматические обновления", "Загрузка и установка из меню после согласия",
                     "automaticUpdates", automaticUpdates, onAutomaticUpdatesChange)

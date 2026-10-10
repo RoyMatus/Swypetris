@@ -14,6 +14,11 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 
 | Test class | Level and behavior checked | Decision |
 | --- | --- | --- |
+| `BackgroundCropTest` | JVM: aspect-preserving cover, pinch anchor, clamping and portrait viewport dimensions | Keep; catches numeric crop bounds without an emulator. |
+| `BackgroundStorageTest` | Android: bounded image import, private copy, persisted crop/toggle and invalid/missing content | Keep; exercises real bitmap and storage APIs. |
+| `BackgroundUiTest` | Android UI: pinch/drag, crop save/cancel, recreation and restored image | Keep; protects retained settings and game state. |
+| `BackgroundPickerTest` | Android UI: real DocumentsUI selection and result callback | Keep; scoped MediaStore fixture requires API 29+, picker supports app minSdk. |
+| `BackgroundRenderingTest` | Compose: portrait sizes, font scale, light/dark backgrounds and unchanged geometry/piece pixels | Keep; saves renders for inspection. |
 | `DifficultyTest` | JVM: Easy/Medium/Hard curves, late-game bounds, selected difficulty across rounds | Keep; covers current three-mode progression. |
 | `GameEngineTest` | JVM: movement, collision, rotation, drops, line clears, game over, bag, gravity | Add stacked-board ghost case; the original ghost check used an empty board. |
 | `GameFeedbackTest` | JVM: command-to-feedback rules, global intensity, zero suppression and fixed-strength fallback | Keep; integration feedback test checks playback effects separately. |

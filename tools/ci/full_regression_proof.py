@@ -1,4 +1,4 @@
-"""Produce and verify attempt-bound evidence of the Windows full debug regression."""
+"""Produce and verify attempt-bound evidence of the cloud full debug regression."""
 
 import hashlib
 import io
@@ -80,7 +80,7 @@ def verify_inventory(report: str, root: Path) -> None:
 
 
 def validate_payload(proof: dict, payload: dict[str, bytes], root: Path) -> None:
-    if proof.get("schema") != 1 or proof.get("mode") != "full" or proof.get("android_classes") != "":
+    if proof.get("schema") != 2 or proof.get("mode") != "full" or proof.get("android_classes") != "":
         raise ValueError("Evidence is not an unfiltered full regression")
     if proof.get("instrumentation") != "success" or proof.get("smoke") != "success":
         raise ValueError("Instrumentation/smoke did not succeed")
@@ -100,11 +100,11 @@ def validate_payload(proof: dict, payload: dict[str, bytes], root: Path) -> None
     if not re.search(r"(?m)^Events injected: 1\s*$", payload["smoke.txt"].decode("utf-8-sig")):
         raise ValueError("Launcher smoke report is incomplete")
     env = json.loads(payload["environment.json"])
-    expected = dict(os="Windows", api="35", abi="x86_64", serial="emulator-5556",
+    expected = dict(os="Linux", api="35", abi="x86_64", serial="emulator-5556",
                     avd="SwypetrisCI35", mode="full", android_classes="",
                     instrumentation="success", smoke="success")
     if any(env.get(key) != value for key, value in expected.items()):
-        raise ValueError("Unexpected Windows regression environment")
+        raise ValueError("Unexpected cloud regression environment")
     for key in ("java", "emulator", "fingerprint", "instrumentation_command", "emulator_options"):
         if not env.get(key):
             raise ValueError(f"Missing environment detail: {key}")
@@ -126,7 +126,7 @@ def create(root: Path, destination: Path) -> None:
         raise ValueError("Checkout differs from the workflow SHA")
     payload = {name: (root / path).read_bytes() for name, path in FILES.items()}
     payload["configuration.json"] = json.dumps(configuration(root), sort_keys=True).encode()
-    proof = dict(schema=1, repository=os.environ["GITHUB_REPOSITORY"], workflow=WORKFLOW,
+    proof = dict(schema=2, repository=os.environ["GITHUB_REPOSITORY"], workflow=WORKFLOW,
                  workflow_ref=os.environ["GITHUB_WORKFLOW_REF"], sha=sha,
                  event=os.environ["GITHUB_EVENT_NAME"], ref=os.environ["GITHUB_REF"],
                  run_id=int(os.environ["GITHUB_RUN_ID"]), attempt=int(os.environ["GITHUB_RUN_ATTEMPT"]),
@@ -160,8 +160,8 @@ def validate_archive(data: bytes, artifact: dict, run: dict, jobs: list[dict],
     job = android[0]
     if (job.get("run_id") != run["id"] or job.get("run_attempt") != run["run_attempt"]
             or job.get("status") != "completed" or job.get("conclusion") != "success"
-            or not {"self-hosted", "windows", "X64", "swypetris-android"} <= set(job.get("labels", []))):
-        raise ValueError("Wrong attempt or unsuccessful Windows job")
+            or set(job.get("labels", [])) != {"ubuntu-24.04"}):
+        raise ValueError("Wrong attempt or unsuccessful Ubuntu job")
     for name in REQUIRED_STEPS:
         steps = [step for step in job.get("steps", []) if step.get("name") == name]
         if len(steps) != 1 or steps[0].get("status") != "completed" or steps[0].get("conclusion") != "success":

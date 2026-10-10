@@ -63,13 +63,14 @@ class AbsoluteVictoryUiTest {
         compose.onNodeWithTag("absoluteName").performScrollTo().performTextInput("Александра")
         compose.onNodeWithTag("preparePostcard").performScrollTo().performClick()
         compose.waitUntil(timeoutMillis = 10000) { model.postcardReady }
-        compose.waitUntil(timeoutMillis = 10000) {
-            compose.onAllNodes(hasTestTag("postcardPreview")).fetchSemanticsNodes().isNotEmpty()
-        }
         for (size in viewports()) {
             viewport = size
             fontScale = 2f
             compose.waitForIdle()
+            // Configuration overrides can restart the background image generation.
+            compose.waitUntil(timeoutMillis = 10000) {
+                compose.onAllNodes(hasTestTag("postcardPreview")).fetchSemanticsNodes().isNotEmpty()
+            }
             compose.onNodeWithTag("absoluteVictoryPage").performScrollToNode(hasTestTag("postcardPreview"))
             compose.onNodeWithTag("postcardPreview").assertIsDisplayed()
             screenshot("postcard-${size.width.value}-${size.height.value}.png")

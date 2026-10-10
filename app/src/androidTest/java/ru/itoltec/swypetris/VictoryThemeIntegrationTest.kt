@@ -134,6 +134,8 @@ class VictoryThemeIntegrationTest {
         }
         compose.mainClock.advanceTimeBy(250)
         compose.runOnIdle { assertTrue(model.victoryAnimationMillis != paused) }
+        // Scroll gestures need clock progression when the action is outside a short viewport.
+        compose.mainClock.autoAdvance = true
         compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
         compose.onNodeWithTag("nextRound").assertIsDisplayed()
     }

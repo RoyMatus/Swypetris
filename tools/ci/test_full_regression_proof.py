@@ -32,10 +32,10 @@ class FullRegressionProofTests(unittest.TestCase):
                         repository=dict(full_name=REPOSITORY), head_sha=SHA,
                         event="push", head_branch="main", status="completed", conclusion="success")
         self.jobs = [dict(name="android", run_id=7, run_attempt=2, status="completed",
-                          conclusion="success", labels=["self-hosted", "windows", "X64", "swypetris-android"],
+                          conclusion="success", labels=["ubuntu-24.04"],
                           steps=[dict(name=name, status="completed", conclusion="success")
                                  for name in proof.REQUIRED_STEPS])]
-        environment = dict(os="Windows", api="35", abi="x86_64", serial="emulator-5556",
+        environment = dict(os="Linux", api="35", abi="x86_64", serial="emulator-5556",
                            avd="SwypetrisCI35", mode="full", android_classes="",
                            instrumentation="success", smoke="success", java="21", emulator="35.6",
                            fingerprint="android/test", emulator_options="-no-window -wipe-data",
@@ -48,7 +48,7 @@ class FullRegressionProofTests(unittest.TestCase):
             "app-debug.apk": zip_bytes({"AndroidManifest.xml": b"manifest"}),
             "app-debug-androidTest.apk": zip_bytes({"AndroidManifest.xml": b"manifest"}),
         }
-        self.evidence = dict(schema=1, repository=REPOSITORY, workflow=proof.WORKFLOW,
+        self.evidence = dict(schema=2, repository=REPOSITORY, workflow=proof.WORKFLOW,
                              workflow_ref=f"{REPOSITORY}/{proof.WORKFLOW}@refs/heads/main",
                              sha=SHA, event="push", ref="refs/heads/main", run_id=7, attempt=2,
                              mode="full", android_classes="", instrumentation="success", smoke="success")
@@ -154,7 +154,7 @@ class FullRegressionProofTests(unittest.TestCase):
         for name, data in (
             ('smoke.txt', b''),
             ('instrumentation.txt', original['instrumentation.txt'].replace(b'STATUS_CODE: 0', b'STATUS_CODE: -4')),
-            ('environment.json', original['environment.json'].replace(b'Windows', b'Linux')),
+            ('environment.json', original['environment.json'].replace(b'Linux', b'Windows')),
             ('configuration.json', b'{}'),
         ):
             with self.subTest(name=name), self.assertRaises(ValueError):
@@ -177,6 +177,29 @@ class FullRegressionProofTests(unittest.TestCase):
                 step['conclusion'] = 'skipped'
                 self.validate()
             step['conclusion'] = 'success'
+
+    def test_legacy_schema_and_wrong_runner_labels_rejected(self):
+        self.evidence['schema'] = 1
+        with self.assertRaises(ValueError):
+            self.validate()
+        self.evidence['schema'] = 2
+        for labels in ([], ['ubuntu-22.04'], ['self-hosted', 'ubuntu-24.04'],
+                       ['self-hosted', 'windows', 'X64', 'swypetris-android']):
+            with self.subTest(labels=labels), self.assertRaises(ValueError):
+                self.jobs[0]['labels'] = labels
+                self.validate()
+        self.jobs[0]['labels'] = ['ubuntu-24.04']
+
+    def test_cloud_environment_requires_exact_api_abi_and_emulator(self):
+        original = self.payload['environment.json']
+        for key, value in (('api', '37'), ('abi', 'arm64-v8a'),
+                           ('serial', 'pixel-7'), ('avd', 'other')):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                environment = json.loads(original)
+                environment[key] = value
+                self.payload['environment.json'] = json.dumps(environment).encode()
+                self.validate()
+            self.payload['environment.json'] = original
 
     def test_corrupt_expired_wrong_attempt_artifacts(self):
         data = self.archive()

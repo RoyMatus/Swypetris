@@ -1,4 +1,4 @@
-"""Fail-closed release gate for the latest same-SHA full Windows CI attempt."""
+"""Fail-closed release gate for the latest same-SHA full cloud CI attempt."""
 
 import json
 import os
@@ -111,7 +111,7 @@ def main() -> None:
             destination = Path("app/build/ci/verified-main-regression.json")
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-            print(f"Verified full Windows regression and Quality Gate: run {result['run_id']}, attempt {result['attempt']}")
+            print(f"Verified full cloud regression and Quality Gate: run {result['run_id']}, attempt {result['attempt']}")
             return
         time.sleep(30)
     raise ValueError("Timed out waiting for same-commit main Android CI")
