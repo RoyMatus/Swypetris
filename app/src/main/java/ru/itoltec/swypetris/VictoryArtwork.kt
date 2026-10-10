@@ -43,6 +43,7 @@ private const val FLOOR_DEPTH_FRACTION = .05f
 private const val FLOOR_CONVERGENCE = .4f
 private const val ACTION_HEIGHT_DP = 64
 private const val ACTION_SHADOW_DP = 4
+private const val ACTION_BEVEL_END = .18f
 private val FLOOR_COLOR = Color(0xFF145DA4)
 private val ACTION_HIGHLIGHT = Color(0xFF48CF38)
 private val ACTION_FACE = Color(0xFF007E23)
@@ -111,7 +112,7 @@ internal fun VictoryForeground(layout: VictoryLayout) {
 internal fun VictoryActionButton(label: String, modifier: Modifier, onClick: () -> Unit) {
     val shape = CutCornerShape(8.dp)
     Button(onClick, modifier.heightIn(min = ACTION_HEIGHT_DP.dp).shadow(ACTION_SHADOW_DP.dp, shape)
-        .background(Brush.verticalGradient(0f to ACTION_HIGHLIGHT, .18f to ACTION_FACE,
+        .background(Brush.verticalGradient(0f to ACTION_HIGHLIGHT, ACTION_BEVEL_END to ACTION_FACE,
             1f to ACTION_BOTTOM), shape), shape = shape,
         border = BorderStroke(3.dp, Brush.verticalGradient(ACTION_EDGE)),
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White),
