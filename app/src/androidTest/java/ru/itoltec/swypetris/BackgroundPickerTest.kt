@@ -104,8 +104,8 @@ class BackgroundPickerTest {
         // instead of mistaking an injected touch during drawer animation for a click.
         val target = generateSequence(node) { it.parent }.firstOrNull { candidate ->
             candidate.isEnabled && candidate.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
-        } ?: return false
-        return target.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        }
+        return target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
     }
 
     /** GridView item delegates advertise ACTION_CLICK even when isClickable is false. */
