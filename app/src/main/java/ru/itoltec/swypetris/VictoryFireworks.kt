@@ -20,19 +20,32 @@ private const val SPARK_PIXEL_DP = 3
 private const val ROCKET_TRAIL = 9
 private val WARM_SPARKS = listOf(Color(0xFFFFD44A), Color(0xFFFF8A32), Color(0xFFFF4267))
 private val COOL_SPARKS = listOf(Color(0xFF62EEFF), Color(0xFF249AFF), Color(0xFFFFD44A))
+private val PINK_SPARKS = listOf(Color(0xFFFFE875), Color(0xFFFF428A), Color(0xFFFF2262))
+private const val ABSOLUTE_BURST_RADIUS = .19f
+private const val ROUND_BURST_RADIUS = .28f
+private val ABSOLUTE_CENTERS = listOf(.18f, .5f, .82f)
+
+internal enum class VictoryCelebration { ROUND, ABSOLUTE, POSTCARD }
 
 /** Approved orange/blue launches, expanding trails and falling embers, behind the fixed foreground. */
 @Composable
-internal fun VictoryFireworks(time: () -> Long) {
+internal fun VictoryFireworks(celebration: VictoryCelebration = VictoryCelebration.ROUND, time: () -> Long) {
     Canvas(Modifier.fillMaxSize().testTag("victoryFireworks")) {
-        val elapsed = time()
-        repeat(2) { burst ->
-            val age = VictoryMotion.age(elapsed, burst)
-            val center = Offset(size.width * if (burst == 0) .23f else .77f, size.height * .13f)
-            val colors = if (burst == 0) WARM_SPARKS else COOL_SPARKS
-            if (age < VictoryMotion.LAUNCH_FRACTION) drawRocket(center, age, burst, colors)
-            else drawBurst(center, VictoryMotion.expansion(age), colors)
-        }
+        drawVictoryFireworks(time(), celebration)
+    }
+}
+
+internal fun DrawScope.drawVictoryFireworks(elapsed: Long, celebration: VictoryCelebration,
+    centers: List<Offset>? = null) {
+    val absolute = celebration != VictoryCelebration.ROUND
+    repeat(if (absolute) ABSOLUTE_CENTERS.size else 2) { burst ->
+        val age = VictoryMotion.age(elapsed, burst)
+        val center = centers?.get(burst) ?: Offset(size.width *
+            if (absolute) ABSOLUTE_CENTERS[burst] else if (burst == 0) .23f else .77f, size.height * .13f)
+        val colors = when (burst) { 0 -> WARM_SPARKS; 1 -> COOL_SPARKS; else -> PINK_SPARKS }
+        if (age < VictoryMotion.LAUNCH_FRACTION) drawRocket(center, age, burst, colors)
+        else drawBurst(center, VictoryMotion.expansion(age), colors,
+            if (absolute) ABSOLUTE_BURST_RADIUS else ROUND_BURST_RADIUS)
     }
 }
 
@@ -48,9 +61,9 @@ private fun DrawScope.drawRocket(center: Offset, age: Float, burst: Int, colors:
     }
 }
 
-private fun DrawScope.drawBurst(center: Offset, progress: Float, colors: List<Color>) {
+private fun DrawScope.drawBurst(center: Offset, progress: Float, colors: List<Color>, radiusFraction: Float) {
     val growth = (progress / .45f).coerceIn(0f, 1f)
-    val radius = size.width * .28f * (1 - (1 - growth) * (1 - growth))
+    val radius = size.width * radiusFraction * (1 - (1 - growth) * (1 - growth))
     val alpha = VictoryMotion.opacity(progress)
     val pixel = SPARK_PIXEL_DP.dp.toPx()
     repeat(FIREWORK_RAYS) { ray ->
