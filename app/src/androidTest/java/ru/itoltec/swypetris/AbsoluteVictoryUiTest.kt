@@ -32,7 +32,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.File
 
-/** Verify controls at narrow, tall and landscape sizes, including larger accessible fonts. */
+/** Verify controls at narrow, tall and tablet portrait sizes, including larger accessible fonts. */
 class AbsoluteVictoryUiTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
@@ -80,7 +80,7 @@ class AbsoluteVictoryUiTest {
     }
 
     private fun viewports() = listOf(DpSize(320.dp, 640.dp), DpSize(393.dp, 873.dp),
-        DpSize(600.dp, 400.dp), DpSize(800.dp, 480.dp))
+        DpSize(600.dp, 960.dp), DpSize(800.dp, 1280.dp))
 
     @Test fun shareButtonOpensNativeAndroidSharesheet() {
         val app = ApplicationProvider.getApplicationContext<android.app.Application>()

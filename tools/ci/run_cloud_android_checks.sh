@@ -37,10 +37,11 @@ if [ "$CHECK_MODE" = full ]; then
   timeout --signal=INT --kill-after=15s 8m adb -s "$serial" shell am instrument -w -r -e class ru.itoltec.swypetris.BackgroundPickerTest \
     ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner | tee "$report_dir/picker-preflight.txt"
   python3 tools/ci/verify_instrumentation_output.py selected ru.itoltec.swypetris.BackgroundPickerTest "$report_dir/picker-preflight.txt"
-  focused=ru.itoltec.swypetris.AbsoluteVictoryUiTest,ru.itoltec.swypetris.SmokeTest
+  focused=ru.itoltec.swypetris.AbsoluteVictoryUiTest,ru.itoltec.swypetris.VictoryThemeIntegrationTest,ru.itoltec.swypetris.SmokeTest
   timeout --signal=INT --kill-after=15s 8m adb -s "$serial" shell am instrument -w -r -e class "$focused" \
     ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner | tee "$report_dir/ui-preflight.txt"
   python3 tools/ci/verify_instrumentation_output.py selected "$focused" "$report_dir/ui-preflight.txt"
+  timeout 30s adb -s "$serial" pull /sdcard/Android/data/ru.itoltec.swypetris/files "$report_dir/device-files-preflight"
 fi
 args=(-s "$serial" shell am instrument -w -r)
 if [ "$CHECK_MODE" = selected ]; then
@@ -74,7 +75,7 @@ environment = dict(
     fingerprint=command('adb', '-s', serial, 'shell', 'getprop', 'ro.build.fingerprint'),
     java=command('java', '-version'),
     emulator=os.environ['SWYPETRIS_CI_EMULATOR_VERSION'],
-    emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -wipe-data',
+    emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -wipe-data',
     instrumentation_command='adb -s emulator-5556 shell am instrument -w -r '
         + (f"-e class {os.environ['ANDROID_CLASSES']} " if os.environ['CHECK_MODE'] == 'selected' else '')
         + 'ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner',
