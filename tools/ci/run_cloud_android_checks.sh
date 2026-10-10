@@ -114,7 +114,7 @@ environment = dict(
     fingerprint=command('adb', '-s', serial, 'shell', 'getprop', 'ro.build.fingerprint'),
     java=command('java', '-version'),
     emulator=os.environ['SWYPETRIS_CI_EMULATOR_VERSION'],
-    emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -wipe-data',
+    emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu swangle -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -wipe-data',
     instrumentation_command='adb -s emulator-5556 shell am instrument -w -r '
         + (f"-e class {os.environ['ANDROID_CLASSES']} " if os.environ['CHECK_MODE'] == 'selected' else '')
         + 'ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner',
