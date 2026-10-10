@@ -2,8 +2,12 @@ package ru.itoltec.swypetris
 
 import android.content.ContentValues
 import android.graphics.Bitmap
+import android.graphics.Rect
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.InputDevice
+import android.view.MotionEvent
 import android.app.UiAutomation
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -53,11 +57,23 @@ class BackgroundPickerTest {
             compose.onNodeWithTag("chooseBackground").performScrollTo().performClick()
             automation.waitForIdle(500, 5000)
             var document: AccessibilityNodeInfo? = null
+            var rootsOpened = false
+            var imagesOpened = false
+            var folderOpened = false
             compose.waitUntil(10000) {
                 val root = automation.rootInActiveWindow
                 // Package visibility may hide DocumentsUI from resolveActivity even though it launches.
-                if (root != null && root.packageName?.toString() != compose.activity.packageName)
+                if (root != null && root.packageName?.toString() != compose.activity.packageName) {
                     document = root.findAccessibilityNodeInfosByText(name).firstOrNull()
+                    // A fresh DocumentsUI can have an empty Recent page. Browse the fixture's folder.
+                    if (document == null) {
+                        when {
+                            !rootsOpened -> rootsOpened = clickPickerItem(automation, root, "Show roots")
+                            !imagesOpened -> imagesOpened = clickPickerItem(automation, root, "Images", "Изображения")
+                            !folderOpened -> folderOpened = clickPickerItem(automation, root, "SwypetrisTest")
+                        }
+                    }
+                }
                 document != null
             }
             selectDocument(checkNotNull(document))
@@ -74,6 +90,22 @@ class BackgroundPickerTest {
         } finally {
             resolver.delete(uri, null, null)
         }
+    }
+
+    private fun clickPickerItem(automation: UiAutomation, root: AccessibilityNodeInfo,
+                               vararg labels: String): Boolean {
+        val node = labels.firstNotNullOfOrNull { root.findAccessibilityNodeInfosByText(it).firstOrNull() }
+            ?: return false
+        val bounds = Rect().apply { node.getBoundsInScreen(this) }
+        val downTime = SystemClock.uptimeMillis()
+        // DocumentsUI labels can omit click actions; tap their current screen bounds instead.
+        return node.isVisibleToUser && !bounds.isEmpty &&
+            listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP).all { action ->
+                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
+                    bounds.exactCenterX(), bounds.exactCenterY(), 0)
+                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                try { automation.injectInputEvent(event, true) } finally { event.recycle() }
+            }
     }
 
     /** GridView item delegates advertise ACTION_CLICK even when isClickable is false. */
