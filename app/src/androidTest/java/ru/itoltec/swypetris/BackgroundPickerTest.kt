@@ -2,12 +2,8 @@ package ru.itoltec.swypetris
 
 import android.content.ContentValues
 import android.graphics.Bitmap
-import android.graphics.Rect
-import android.os.SystemClock
 import android.provider.MediaStore
 import android.view.accessibility.AccessibilityNodeInfo
-import android.view.InputDevice
-import android.view.MotionEvent
 import android.app.UiAutomation
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -87,9 +83,9 @@ class BackgroundPickerTest {
                 if (document == null) {
                     when {
                         folderOpened -> Unit
-                        clickPickerItem(automation, root, "SwypetrisTest") -> folderOpened = true
-                        !rootsOpened -> rootsOpened = clickPickerItem(automation, root, "Show roots")
-                        !imagesOpened -> imagesOpened = clickPickerItem(automation, root, "Images", "Изображения")
+                        clickPickerItem(root, "SwypetrisTest") -> folderOpened = true
+                        !rootsOpened -> rootsOpened = clickPickerItem(root, "Show roots")
+                        !imagesOpened -> imagesOpened = clickPickerItem(root, "Images", "Изображения")
                     }
                 }
             }
@@ -98,21 +94,18 @@ class BackgroundPickerTest {
         return checkNotNull(document)
     }
 
-    private fun clickPickerItem(automation: UiAutomation, root: AccessibilityNodeInfo,
-                               vararg labels: String): Boolean {
+    private fun clickPickerItem(root: AccessibilityNodeInfo, vararg labels: String): Boolean {
         // A drawer root can repeat the current toolbar title; its item follows the toolbar in the tree.
-        val node = labels.firstNotNullOfOrNull { root.findAccessibilityNodeInfosByText(it).lastOrNull() }
+        val node = labels.firstNotNullOfOrNull { label ->
+            root.findAccessibilityNodeInfosByText(label).lastOrNull { it.isVisibleToUser }
+        }
             ?: return false
-        val bounds = Rect().apply { node.getBoundsInScreen(this) }
-        val downTime = SystemClock.uptimeMillis()
-        // DocumentsUI labels can omit click actions; tap their current screen bounds instead.
-        return node.isVisibleToUser && !bounds.isEmpty &&
-            listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP).all { action ->
-                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
-                    bounds.exactCenterX(), bounds.exactCenterY(), 0)
-                event.source = InputDevice.SOURCE_TOUCHSCREEN
-                try { automation.injectInputEvent(event, true) } finally { event.recycle() }
-            }
+        // Drawer labels belong to clickable rows. Invoke their advertised action
+        // instead of mistaking an injected touch during drawer animation for a click.
+        val target = generateSequence(node) { it.parent }.firstOrNull { candidate ->
+            candidate.isEnabled && candidate.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
+        } ?: return false
+        return target.performAction(AccessibilityNodeInfo.ACTION_CLICK)
     }
 
     /** GridView item delegates advertise ACTION_CLICK even when isClickable is false. */
