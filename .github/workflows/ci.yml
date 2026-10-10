@@ -147,6 +147,8 @@ jobs:
           arch: x86_64
           avd-name: SwypetrisCI35
           emulator-port: 5556
+          # Isolate silent 37.2.12 engine exits with the preceding stable binary.
+          emulator-build: '15917651' # 37.1.11, official archive (2026-07-30)
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -wipe-data
           script: bash tools/ci/run_cloud_android_checks.sh

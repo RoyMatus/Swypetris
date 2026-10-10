@@ -20,7 +20,7 @@ class CloudAndroidChecksTests(unittest.TestCase):
             "INSTRUMENTATION_STATUS_CODE: 0",
             "OK (1 test)", "INSTRUMENTATION_CODE: -1", "",
         ))
-        for case in ("complete", "reconnect", "incomplete", "stall", "smoke_failure"):
+        for case in ("complete", "reconnect", "incomplete", "stall", "smoke_failure", "corrupt_apk"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as workspace:
                 root = Path(workspace)
                 commands = root / "bin"
@@ -41,10 +41,15 @@ case "$*" in
     echo "$count" > probes.txt
     if [ "$MOCK_CASE" = reconnect ] && [ "$count" = 2 ]; then exit 1; fi
     echo 'package:/system/framework/framework-res.apk' ;;
-  *'install --no-streaming'*)
+  *'push -Z'*) cp "$5" "$(basename "$6")" ;;
+  *'shell sha256sum'*)
+    if [ "$MOCK_CASE" = corrupt_apk ]; then echo 'invalid-digest'
+    else sha256sum "$(basename "$5")"; fi ;;
+  *'shell pm install'*)
     required=3
     if [ "$MOCK_CASE" = reconnect ]; then required=5; fi
-    [ "$(cat probes.txt)" -ge "$required" ] || exit 99 ;;
+    [ "$(cat probes.txt)" -ge "$required" ] || exit 99
+    echo Success ;;
   *'shell am instrument'*)
     if [ "$MOCK_CASE" = complete ] || [ "$MOCK_CASE" = reconnect ]; then cat complete.txt
     elif [ "$MOCK_CASE" = stall ]; then echo 'INSTRUMENTATION_STATUS: current=1'; exec sleep 30
@@ -67,6 +72,11 @@ esac
                 (commands / "java").chmod(0o755)
                 tools = root / "tools/ci"
                 tools.mkdir(parents=True)
+                for directory, name in (("debug", "app-debug.apk"),
+                                        ("androidTest/debug", "app-debug-androidTest.apk")):
+                    apk = root / "app/build/outputs/apk" / directory / name
+                    apk.parent.mkdir(parents=True, exist_ok=True)
+                    apk.write_bytes(b"fixture APK bytes")
                 shutil.copy(Path(__file__).with_name("verify_instrumentation_output.py"), tools)
                 script = root / "checks.sh"
                 script.write_text(source.replace("8m", "0.2s"))

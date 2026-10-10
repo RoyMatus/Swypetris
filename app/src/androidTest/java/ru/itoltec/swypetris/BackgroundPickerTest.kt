@@ -74,11 +74,17 @@ class BackgroundPickerTest {
         var imagesOpened = false
         var folderOpened = false
         compose.waitUntil(10000) {
+            // Folder navigation replaces GridView children while exposing their old actions.
+            // Wait for its accessibility events to settle before obtaining the action target.
+            automation.waitForIdle(500, 5000)
             if (android.os.Build.VERSION.SDK_INT >= 34) automation.clearCache()
             val root = automation.rootInActiveWindow
             // Package visibility may hide DocumentsUI from resolveActivity even though it launches.
             if (root != null && root.packageName?.toString() != compose.activity.packageName) {
-                document = root.findAccessibilityNodeInfosByText(name).firstOrNull()
+                document = root.findAccessibilityNodeInfosByText(name).firstOrNull { candidate ->
+                    candidate.refresh() && candidate.isVisibleToUser && candidate.isEnabled &&
+                        candidate.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
+                }
                 // Browse the fixture folder from either Recent or the previously visited image root.
                 if (document == null) {
                     when {

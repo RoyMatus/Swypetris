@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -36,6 +37,64 @@ import java.io.File
 class AbsoluteVictoryUiTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
+
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
+    @Test fun bothScreensAnimateBehindAStaticPostcardAndVisibleActions() {
+        val model = GameViewModel(ApplicationProvider.getApplicationContext(),
+            GameState(active = Piece(Tetromino.O), next = Tetromino.T,
+                score = GameRules.MAX_SCORE - 1, completedRounds = 12), { 1000L }, false)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(393.dp, 873.dp))) {
+                SwypetrisApp(model) {}
+            }
+        }
+        compose.runOnIdle {
+            model.input.command(GameCommand.SOFT_DROP)
+            model.absolute.changeName("Roy")
+        }
+        val entry = animatedFrames("absolute-name")
+        assertMovingSky(entry)
+        compose.onNodeWithTag("preparePostcard").assertIsDisplayed()
+        compose.runOnIdle { model.absolute.preparePostcard() }
+        compose.waitUntil(timeoutMillis = 10000) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.onAllNodes(hasTestTag("postcardPreview")).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.runOnIdle {
+            model.advanceVictoryAnimation(VictoryMotion.PERIOD_MILLIS - model.victoryAnimationMillis)
+        }
+        val postcard = compose.onNodeWithTag("postcardPreview").captureToImage().asAndroidBitmap()
+        val ready = animatedFrames("absolute-share") {
+            assertTrue("Postcard pixels must stay static while the sky animates",
+                postcard.sameAs(compose.onNodeWithTag("postcardPreview").captureToImage().asAndroidBitmap()))
+        }
+        assertMovingSky(ready)
+        compose.onNodeWithTag("sharePostcard").assertIsDisplayed()
+        compose.onNodeWithTag("nextRound").assertDoesNotExist()
+    }
+
+    @androidx.annotation.RequiresApi(26)
+    private fun animatedFrames(prefix: String, check: () -> Unit = {}): List<Bitmap> {
+        return listOf(300L to "launch", 2000L to "burst", 1700L to "fade").map { (duration, stage) ->
+            compose.mainClock.advanceTimeBy(duration)
+            compose.waitForIdle()
+            check()
+            screenshot("$prefix-$stage.png")
+        }
+    }
+
+    private fun assertMovingSky(frames: List<Bitmap>) {
+        val first = frames.first()
+        val sky = Bitmap.createBitmap(first, 0, 0, first.width, first.height / 7)
+        try {
+            frames.drop(1).forEach { frame ->
+                val other = Bitmap.createBitmap(frame, 0, 0, frame.width, frame.height / 7)
+                try { assertFalse("Fireworks must change above the foreground", sky.sameAs(other)) }
+                finally { other.recycle() }
+            }
+        } finally { sky.recycle() }
+    }
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun nameEntryAndPostcardFitMultipleSizesAndFontScales() {
@@ -55,13 +114,13 @@ class AbsoluteVictoryUiTest {
             viewport = size
             compose.waitForIdle()
             compose.onNodeWithTag("absoluteName").performScrollTo().assertIsDisplayed()
-            compose.onNodeWithTag("preparePostcard").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("preparePostcard").assertIsDisplayed()
             screenshot("entry-${size.width.value}-${size.height.value}.png")
         }
         compose.onNodeWithTag("preparePostcard").performClick()
         compose.runOnIdle { assertEquals(true, model.absoluteNameError) }
         compose.onNodeWithTag("absoluteName").performScrollTo().performTextInput("Александра")
-        compose.onNodeWithTag("preparePostcard").performScrollTo().performClick()
+        compose.onNodeWithTag("preparePostcard").performClick()
         compose.waitUntil(timeoutMillis = 10000) { model.postcardReady }
         for (size in viewports()) {
             viewport = size
@@ -74,7 +133,7 @@ class AbsoluteVictoryUiTest {
             compose.onNodeWithTag("absoluteVictoryPage").performScrollToNode(hasTestTag("postcardPreview"))
             compose.onNodeWithTag("postcardPreview").assertIsDisplayed()
             screenshot("postcard-${size.width.value}-${size.height.value}.png")
-            compose.onNodeWithTag("sharePostcard").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("sharePostcard").assertIsDisplayed()
         }
         compose.onNodeWithTag("nextRound").assertDoesNotExist()
     }
@@ -107,7 +166,7 @@ class AbsoluteVictoryUiTest {
         automation.serviceInfo = serviceInfo
         try {
             val opened = automation.executeAndWaitForEvent({
-                compose.onNodeWithTag("sharePostcard").performScrollTo().performClick()
+                compose.onNodeWithTag("sharePostcard").performClick()
             }, { event -> event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
                 event.packageName?.toString() == resolver }, 10000)
             @Suppress("DEPRECATION")
@@ -131,11 +190,11 @@ class AbsoluteVictoryUiTest {
     }
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
-    private fun screenshot(name: String) {
+    private fun screenshot(name: String): Bitmap {
         val context = ApplicationProvider.getApplicationContext<android.app.Application>()
         val directory = File(context.getExternalFilesDir(null), "absolute-victory-screenshots").apply { mkdirs() }
-        File(directory, name).outputStream().use {
-            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        return compose.onRoot().captureToImage().asAndroidBitmap().also { bitmap ->
+            File(directory, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
     }
 }

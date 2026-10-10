@@ -63,6 +63,7 @@ private const val GRADIENT_BOTTOM = 0xF8001020
 private const val TEXT_SHADOW_RADIUS = 4f
 private const val COMPACT_TITLE_SP = 28f
 private const val REGULAR_TITLE_SP = 32f
+private const val ROUND_HEADING_WIDTH = 8.2f
 private val VICTORY_TITLE_COLORS = listOf(Color(0xFFFFF0A0), Color(0xFFFFCC36), Color(0xFFED9700))
 private val VICTORY_TITLE_SHADOW = Color(0xFF7E4400)
 
@@ -112,13 +113,14 @@ internal fun VictoryScreen(model: GameViewModel) {
 
 /** Shared, lifecycle-aware celebration; terminal victory replaces only the foreground content. */
 @Composable
-internal fun VictoryScene(model: GameViewModel, content: @Composable (VictoryLayout) -> Unit) {
+internal fun VictoryScene(model: GameViewModel, celebration: VictoryCelebration = VictoryCelebration.ROUND,
+    content: @Composable (VictoryLayout) -> Unit) {
     val animate = rememberVictoryAnimation(model)
     BoxWithConstraints(Modifier.fillMaxSize().testTag("victoryScene")) {
         val layout = VictoryLayout.forHeight(maxHeight)
         VictoryBackdrop(layout)
-        VictoryFireworks { if (animate) model.victoryAnimationMillis else STATIC_FIREWORK_MILLIS }
-        VictoryForeground(layout)
+        VictoryFireworks(celebration) { if (animate) model.victoryAnimationMillis else STATIC_FIREWORK_MILLIS }
+        if (celebration != VictoryCelebration.POSTCARD) VictoryForeground(layout)
         Box(Modifier.fillMaxSize().alpha(OVERLAY_ALPHA).background(Brush.verticalGradient(
             0f to Color.Transparent, GRADIENT_CLEAR_END to Color.Transparent,
             GRADIENT_DARK_START to Color(GRADIENT_DARK), 1f to Color(GRADIENT_BOTTOM))))
@@ -190,13 +192,19 @@ private fun VictoryContent(state: GameState, onNextRound: () -> Unit,
 
 @Composable
 private fun VictoryTitle(layout: VictoryLayout) {
+    VictoryHeading("ПОЗДРАВЛЯЕМ!\nПОБЕДА!", layout, Modifier.testTag("victoryTitle"))
+}
+
+@Composable
+internal fun VictoryHeading(text: String, layout: VictoryLayout, modifier: Modifier,
+    widthDivisor: Float = ROUND_HEADING_WIDTH) {
     val textShadow = TextStyle(brush = Brush.verticalGradient(VICTORY_TITLE_COLORS),
         shadow = Shadow(VICTORY_TITLE_SHADOW, Offset(1f, 2f), TEXT_SHADOW_RADIUS))
     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         val font = minOf(if (layout.compact) COMPACT_TITLE_SP else REGULAR_TITLE_SP,
-            maxWidth.value / 8.2f / LocalDensity.current.fontScale).sp
-        Text("ПОЗДРАВЛЯЕМ!\nПОБЕДА!", fontSize = font, lineHeight = font * 1.3f,
+            maxWidth.value / widthDivisor / LocalDensity.current.fontScale).sp
+        Text(text, fontSize = font, lineHeight = font * 1.3f,
             fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
-            style = textShadow, modifier = Modifier.testTag("victoryTitle"))
+            style = textShadow, modifier = modifier)
     }
 }

@@ -97,9 +97,24 @@ class AbsoluteVictoryIntegrationTest {
         val postcard = AbsolutePostcard.create(app, "Roy")
         val again = AbsolutePostcard.create(app, "Roy")
         val different = AbsolutePostcard.create(app, "Анна")
+        val longName = AbsolutePostcard.create(app, "Я".repeat(MAX_PLAYER_NAME_LENGTH))
         try {
             assertTrue(postcard.sameAs(again))
             assertFalse(postcard.sameAs(different))
+            // Name fitting must not move or overwrite the trophy, decorations or score.
+            for (y in postcard.height / 3 until postcard.height step 12) {
+                for (x in 0 until postcard.width step 12) {
+                    assertEquals(postcard.getPixel(x, y), longName.getPixel(x, y))
+                }
+            }
+            val directory = java.io.File(app.getExternalFilesDir(null), "absolute-victory-screenshots")
+                .apply { mkdirs() }
+            java.io.File(directory, "postcard-export.png").outputStream().use {
+                assertTrue(postcard.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+            }
+            java.io.File(directory, "postcard-long-name.png").outputStream().use {
+                assertTrue(longName.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+            }
             val send = AbsolutePostcard.shareIntent(app, postcard)
             assertEquals(Intent.ACTION_SEND, send.action)
             assertEquals("image/png", send.type)
@@ -119,6 +134,7 @@ class AbsoluteVictoryIntegrationTest {
             postcard.recycle()
             again.recycle()
             different.recycle()
+            longName.recycle()
         }
     }
 
