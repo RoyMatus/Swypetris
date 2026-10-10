@@ -1,0 +1,169 @@
+name: Cloud Android verification
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  cloud-android:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: pwsh
+    timeout-minutes: 35
+    steps:
+      - name: Configure platform Gradle launcher
+        run: |
+          $launcher = if ($IsWindows) { './gradlew.bat' } else { './gradlew' }
+          "GRADLE_LAUNCHER=$launcher" >> $env:GITHUB_ENV
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select checks for changed files
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: python3 tools/ci/select_checks.py --base $env:BASE_SHA --output $env:GITHUB_OUTPUT
+      - name: Check GitHub API scripts
+        id: github_scripts
+        if: steps.changes.outputs.github_scripts == 'true'
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
+            Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+          $result = Invoke-Pester ./tools/tests/GitHub-Api.Tests.ps1 -PassThru
+          if ($result.FailedCount -gt 0 -or $result.PassedCount -eq 0) { exit 1 }
+      - name: Check release script syntax
+        id: release_scripts
+        if: steps.changes.outputs.release_scripts == 'true'
+        shell: pwsh
+        run: |
+          Get-ChildItem ./tools/release -Filter '*.ps1' | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw "$($_.Name): $($errors -join '; ')" }
+          }
+      - name: Check CI selection scripts
+        id: ci_scripts
+        if: steps.changes.outputs.ci_scripts == 'true'
+        run: python3 -m unittest discover -s tools/ci -p 'test_*.py'
+      - uses: actions/setup-java@v4
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+      - name: Make Linux Gradle launcher executable
+        if: runner.os == 'Linux'
+        run: chmod +x gradlew
+      - name: Analyze Kotlin
+        id: detekt
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        run: |
+          & $env:GRADLE_LAUNCHER :app:detekt --console=plain
+      - name: Build and lint app
+        id: build
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        run: |
+          & $env:GRADLE_LAUNCHER :app:assembleDebug :app:lintDebug --build-cache --console=plain
+      - name: Run JVM tests and coverage
+        id: jvm
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        env:
+          CHECK_MODE: ${{ steps.changes.outputs.mode }}
+        run: |
+          if ($env:CHECK_MODE -eq 'full') {
+            & $env:GRADLE_LAUNCHER :app:test :app:jacocoDebugUnitTestReport --console=plain
+          } else {
+            & $env:GRADLE_LAUNCHER :app:jacocoDebugUnitTestReport --console=plain
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate quality reports
+        id: quality_reports
+        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        run: python3 tools/ci/verify_quality_results.py
+      - name: SonarQube Cloud analysis
+        id: sonar
+        if: ${{ success() && steps.changes.outputs.mode != 'none' }}
+        env:
+          TRUSTED_CONTEXT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_REGION: ${{ vars.SONAR_REGION }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if ($env:TRUSTED_CONTEXT -ne 'true') {
+            throw 'App changes require a trusted branch for token-based Sonar analysis.'
+          }
+          if (-not $env:SONAR_ORGANIZATION -or -not $env:SONAR_PROJECT_KEY -or -not $env:SONAR_TOKEN) {
+            throw 'App changes require SONAR_ORGANIZATION, SONAR_PROJECT_KEY, and SONAR_TOKEN.'
+          }
+          & $env:GRADLE_LAUNCHER sonar '-Dsonar.qualitygate.wait=true' --console=plain
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare cloud test APKs
+        if: ${{ success() && runner.os == 'Linux' && steps.changes.outputs.mode != 'none' }}
+        run: |
+          & $env:GRADLE_LAUNCHER :app:assembleDebugAndroidTest --build-cache --console=plain
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:GRADLE_LAUNCHER --stop
+      - name: Enable cloud emulator acceleration
+        if: ${{ success() && runner.os == 'Linux' && steps.changes.outputs.mode != 'none' }}
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run cloud Android tests and smoke
+        id: device
+        if: ${{ success() && runner.os == 'Linux' && steps.changes.outputs.mode != 'none' }}
+        env:
+          CHECK_MODE: ${{ steps.changes.outputs.mode }}
+          ANDROID_CLASSES: ${{ steps.changes.outputs.android }}
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: x86_64
+          avd-name: SwypetrisCI35
+          emulator-port: 5556
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -wipe-data
+          script: bash tools/ci/run_cloud_android_checks.sh
+      - name: Save cloud debug APKs for Pixel verification
+        if: success() && steps.changes.outputs.mode != 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-debug-apks
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+      - name: Save test, lint, and coverage reports
+        if: always() && steps.changes.outputs.mode != 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reports
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+            app/build/reports/lint-results-*
+            app/build/reports/jacoco/
+            app/build/reports/detekt/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          if-no-files-found: warn
+      - name: Verify required checks executed
+        if: always()
+        env:
+          CHECK_OUTPUTS: ${{ toJSON(steps.changes.outputs) }}
+          CHECK_STEPS: ${{ toJSON(steps) }}
+        run: python3 tools/ci/verify_quality_results.py --steps
