@@ -63,7 +63,8 @@ private const val GRADIENT_BOTTOM = 0xF8001020
 private const val TEXT_SHADOW_RADIUS = 4f
 private const val COMPACT_TITLE_SP = 28f
 private const val REGULAR_TITLE_SP = 32f
-private val VICTORY_TITLE_COLOR = Color(0xFFFFD54F)
+private val VICTORY_TITLE_COLORS = listOf(Color(0xFFFFF0A0), Color(0xFFFFCC36), Color(0xFFED9700))
+private val VICTORY_TITLE_SHADOW = Color(0xFF7E4400)
 
 /** Allows instrumentation to verify the static fallback without changing device settings. */
 internal val LocalVictoryAnimations = staticCompositionLocalOf<Boolean?> { null }
@@ -106,8 +107,7 @@ private fun VictoryFruitCollection(counts: List<Int>) {
 @Composable
 internal fun VictoryScreen(model: GameViewModel) {
     val state = model.game ?: return
-    val palette = LocalGamePalette.current
-    VictoryScene(model) { layout -> VictoryContent(state, palette, model::nextRound, layout) }
+    VictoryScene(model) { layout -> VictoryContent(state, model::nextRound, layout) }
 }
 
 /** Shared, lifecycle-aware celebration; terminal victory replaces only the foreground content. */
@@ -116,7 +116,7 @@ internal fun VictoryScene(model: GameViewModel, content: @Composable (VictoryLay
     val animate = rememberVictoryAnimation(model)
     BoxWithConstraints(Modifier.fillMaxSize().testTag("victoryScene")) {
         val layout = VictoryLayout.forHeight(maxHeight)
-        VictoryBackdrop()
+        VictoryBackdrop(layout)
         VictoryFireworks { if (animate) model.victoryAnimationMillis else STATIC_FIREWORK_MILLIS }
         VictoryForeground(layout)
         Box(Modifier.fillMaxSize().alpha(OVERLAY_ALPHA).background(Brush.verticalGradient(
@@ -155,44 +155,48 @@ private fun rememberVictoryAnimation(model: GameViewModel): Boolean {
 }
 
 @Composable
-private fun VictoryContent(state: GameState, palette: GamePalette, onNextRound: () -> Unit,
+private fun VictoryContent(state: GameState, onNextRound: () -> Unit,
     layout: VictoryLayout) {
-    val textShadow = TextStyle(shadow = Shadow(Color(0xFF001020), Offset(1f, 2f), TEXT_SHADOW_RADIUS))
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
         val topSpace = maxHeight * layout.contentTop
         Column(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("victoryPage"),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topSpace, bottom = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(if (layout.compact) 8.dp else 12.dp, Alignment.Bottom)) {
-            item {
-                BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    val font = minOf(if (layout.compact) COMPACT_TITLE_SP else REGULAR_TITLE_SP,
-                        maxWidth.value / 8.2f / LocalDensity.current.fontScale).sp
-                    Text("ПОЗДРАВЛЯЕМ!\nПОБЕДА!", fontSize = font, lineHeight = font * 1.3f,
-                        fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
-                        color = VICTORY_TITLE_COLOR, style = textShadow, modifier = Modifier.testTag("victoryTitle"))
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("victoryPage"),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topSpace, bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(if (layout.compact) 8.dp else 12.dp, Alignment.Bottom)) {
+                item { VictoryTitle(layout) }
+                item { VictoryFruitCollection(state.fruitCounts) }
+                item {
+                    Text("Круг ${state.completedRounds + 1} пройден", style = MaterialTheme.typography.titleLarge,
+                        color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    Text("${state.score} очков", style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    Text("Все фрукты собраны!\nСледующий круг начнётся на пустом поле.\nСчёт и скорость сохранятся.",
+                        Modifier.widthIn(max = 560.dp), color = Color.White, textAlign = TextAlign.Center)
                 }
             }
-            item { VictoryFruitCollection(state.fruitCounts) }
-            item {
-                Text("Круг ${state.completedRounds + 1} пройден", style = MaterialTheme.typography.titleLarge,
-                    color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                Text("${state.score} очков", style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth())
-            }
-            item {
-                Text("Все фрукты собраны! Следующий круг начнётся на пустом поле. Счёт и скорость сохранятся.",
-                    Modifier.widthIn(max = 560.dp), color = Color.White, textAlign = TextAlign.Center)
-            }
-        }
             Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
                 contentAlignment = Alignment.Center) {
-                AppActionButton("Следующий круг", ActionStyle.PRIMARY,
+                VictoryActionButton("Следующий круг",
                     Modifier.widthIn(max = 440.dp).fillMaxWidth().testTag("nextRound"),
-                    palette.piece(Tetromino.S), onNextRound)
+                    onNextRound)
             }
         }
+    }
+}
+
+@Composable
+private fun VictoryTitle(layout: VictoryLayout) {
+    val textShadow = TextStyle(brush = Brush.verticalGradient(VICTORY_TITLE_COLORS),
+        shadow = Shadow(VICTORY_TITLE_SHADOW, Offset(1f, 2f), TEXT_SHADOW_RADIUS))
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val font = minOf(if (layout.compact) COMPACT_TITLE_SP else REGULAR_TITLE_SP,
+            maxWidth.value / 8.2f / LocalDensity.current.fontScale).sp
+        Text("ПОЗДРАВЛЯЕМ!\nПОБЕДА!", fontSize = font, lineHeight = font * 1.3f,
+            fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
+            style = textShadow, modifier = Modifier.testTag("victoryTitle"))
     }
 }
