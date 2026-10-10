@@ -134,10 +134,55 @@ class VictoryThemeIntegrationTest {
         }
         compose.mainClock.advanceTimeBy(250)
         compose.runOnIdle { assertTrue(model.victoryAnimationMillis != paused) }
-        // Scroll gestures need clock progression when the action is outside a short viewport.
         compose.mainClock.autoAdvance = true
-        compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
         compose.onNodeWithTag("nextRound").assertIsDisplayed()
+    }
+
+    /** Storyboard stages visibly change behind a stable foreground and reachable bottom action. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
+    @Test fun launchBurstAndFadeKeepTrophyAndControlsFixed() {
+        val model = GameViewModel(ApplicationProvider.getApplicationContext(),
+            GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
+            { 1000L }, false)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(393.dp, 873.dp))) {
+                SwypetrisApp(model) {}
+            }
+        }
+        compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
+        val frames = listOf(300L to "victory-launch.png", 2300L to "victory-burst.png",
+            4000L to "victory-fade.png").map { (time, name) ->
+            compose.mainClock.advanceTimeBy(time - compose.mainClock.currentTime)
+            compose.waitForIdle()
+            screenshot(name)
+        }
+        for (frame in frames.drop(1)) {
+            assertTrue("Fireworks must visibly change between storyboard stages",
+                changedPixels(frames.first(), frame, .03f, .38f, .02f, .25f, 4) > 20)
+            assertEquals("Trophy must stay fixed over the animated background", 0,
+                changedPixels(frames.first(), frame, .42f, .58f, .25f, .34f, 4))
+            assertEquals("Victory controls must stay fixed", 0,
+                changedPixels(frames.first(), frame, .08f, .92f, .58f, .95f, 0))
+        }
+        compose.runOnIdle { assertEquals(GameScreen.VICTORY, model.screen) }
+        compose.onNodeWithTag("victoryTitle").assertIsDisplayed()
+        compose.onNodeWithTag("nextRound").assertIsDisplayed()
+    }
+
+    private fun changedPixels(first: Bitmap, second: Bitmap, left: Float, right: Float,
+        top: Float, bottom: Float, tolerance: Int): Int {
+        var changed = 0
+        for (y in (first.height * top).toInt() until (first.height * bottom).toInt() step 3) {
+            for (x in (first.width * left).toInt() until (first.width * right).toInt() step 3) {
+                val before = first.getPixel(x, y)
+                val after = second.getPixel(x, y)
+                if (listOf(0, 8, 16).any { shift ->
+                    kotlin.math.abs(((before shr shift) and 255) - ((after shr shift) and 255)) > tolerance
+                }) changed++
+            }
+        }
+        return changed
     }
 
     /** Disabled animations leave a still celebration while the next round stays operable. */
@@ -155,12 +200,11 @@ class VictoryThemeIntegrationTest {
         compose.runOnIdle { assertEquals(0L, model.victoryAnimationMillis) }
         compose.onNodeWithTag("victoryFireworks").assertExists()
         compose.mainClock.autoAdvance = true
-        compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
-        compose.onNodeWithTag("nextRound").performClick()
+        compose.onNodeWithTag("nextRound").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(GameScreen.PLAYING, model.screen) }
     }
 
-    /** Portrait, narrow and landscape viewports keep the celebration content reachable. */
+    /** Narrow, tall and tablet portrait viewports keep the celebration content reachable. */
     @Test fun victoryContentFitsMultipleViewportShapes() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
@@ -179,7 +223,7 @@ class VictoryThemeIntegrationTest {
         }
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
         for ((width, height) in listOf(320.dp to 640.dp, 393.dp to 873.dp,
-            600.dp to 400.dp, 800.dp to 480.dp)) {
+            600.dp to 960.dp, 800.dp to 1280.dp)) {
             viewport = DpSize(width, height)
             compose.waitForIdle()
             val scene = compose.onNodeWithTag("victoryScene").fetchSemanticsNode().boundsInRoot
@@ -189,11 +233,13 @@ class VictoryThemeIntegrationTest {
             assertEquals(scene, artwork)
             compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("victoryTitle"))
             compose.onNodeWithTag("victoryTitle").assertIsDisplayed()
-            compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
             val button = compose.onNodeWithTag("nextRound").assertIsDisplayed()
                 .fetchSemanticsNode().boundsInRoot
             assertTrue("Button exceeds $width x $height", button.left >= scene.left &&
                 button.right <= scene.right && button.bottom <= scene.bottom)
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                screenshot("victory-portrait-${width.value}-${height.value}.png")
+            }
             compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
                 .assertCountEquals(0)
         }
@@ -252,7 +298,6 @@ class VictoryThemeIntegrationTest {
         compose.mainClock.advanceTimeBy(2000)
         screenshot("victory-light-large-font.png")
         compose.mainClock.autoAdvance = true
-        compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
         compose.onNodeWithTag("nextRound").assertIsDisplayed()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
             .assertCountEquals(0)
@@ -334,10 +379,10 @@ class VictoryThemeIntegrationTest {
 
     /** Сохраняет снимок интерфейса только в файлы тестового эмулятора. */
     @androidx.annotation.RequiresApi(26)
-    private fun screenshot(name: String) {
+    private fun screenshot(name: String): Bitmap {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val file = java.io.File(app.getExternalFilesDir(null), name)
-        compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
+        return compose.onRoot().captureToImage().asAndroidBitmap().also { bitmap ->
             file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
     }

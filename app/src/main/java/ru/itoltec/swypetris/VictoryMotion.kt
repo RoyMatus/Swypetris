@@ -7,7 +7,7 @@ import kotlin.math.sin
 internal object VictoryMotion {
     const val PERIOD_MILLIS = 4200L
     const val STAGGER_MILLIS = 650L
-    private const val LAUNCH_FRACTION = .18f
+    const val LAUNCH_FRACTION = .18f
 
     fun advance(phase: Long, delta: Long): Long =
         (phase.coerceAtLeast(0) % PERIOD_MILLIS + delta.coerceAtLeast(0) % PERIOD_MILLIS) % PERIOD_MILLIS

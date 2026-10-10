@@ -3,18 +3,18 @@
 import android.animation.ValueAnimator
 import android.os.Build
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -33,14 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -53,24 +50,21 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import kotlin.math.cos
-import kotlin.math.sin
 
 private const val UNEARNED_FRUIT_OPACITY = .22f
-private const val STATIC_FIREWORK_MILLIS = 1800L
-private const val FIREWORK_BURSTS = 6
-private const val PARTICLES_PER_BURST = 28
-private const val FIREWORK_OPACITY = .85f
+private const val STATIC_FIREWORK_MILLIS = 2400L
 private const val MAX_FRAME_NANOS = 100_000_000L
 private const val FRUIT_GAP_DP = 7
 private const val OVERLAY_ALPHA = .95f
-private const val GRADIENT_CLEAR_END = .32f
-private const val GRADIENT_DARK_START = .50f
+private const val GRADIENT_CLEAR_END = .48f
+private const val GRADIENT_DARK_START = .56f
 private const val GRADIENT_DARK = 0xD8001020
 private const val GRADIENT_BOTTOM = 0xF8001020
-private const val LAUNCH_FRACTION = .18f
 private const val TEXT_SHADOW_RADIUS = 4f
-private val VICTORY_TITLE_COLOR = Color(0xFFFFD54F)
+private const val COMPACT_TITLE_SP = 28f
+private const val REGULAR_TITLE_SP = 32f
+private val VICTORY_TITLE_COLORS = listOf(Color(0xFFFFF0A0), Color(0xFFFFCC36), Color(0xFFED9700))
+private val VICTORY_TITLE_SHADOW = Color(0xFF7E4400)
 
 /** Allows instrumentation to verify the static fallback without changing device settings. */
 internal val LocalVictoryAnimations = staticCompositionLocalOf<Boolean?> { null }
@@ -113,23 +107,22 @@ private fun VictoryFruitCollection(counts: List<Int>) {
 @Composable
 internal fun VictoryScreen(model: GameViewModel) {
     val state = model.game ?: return
-    val palette = LocalGamePalette.current
-    VictoryScene(model) { VictoryContent(state, palette, model::nextRound) }
+    VictoryScene(model) { layout -> VictoryContent(state, model::nextRound, layout) }
 }
 
 /** Shared, lifecycle-aware celebration; terminal victory replaces only the foreground content. */
 @Composable
-internal fun VictoryScene(model: GameViewModel, content: @Composable () -> Unit) {
+internal fun VictoryScene(model: GameViewModel, content: @Composable (VictoryLayout) -> Unit) {
     val animate = rememberVictoryAnimation(model)
-    Box(Modifier.fillMaxSize().testTag("victoryScene")) {
-        Image(painterResource(R.drawable.victory_trophy), "Кубок из блоков и восемь фруктов",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize().testTag("victoryArtwork"))
+    BoxWithConstraints(Modifier.fillMaxSize().testTag("victoryScene")) {
+        val layout = VictoryLayout.forHeight(maxHeight)
+        VictoryBackdrop(layout)
         VictoryFireworks { if (animate) model.victoryAnimationMillis else STATIC_FIREWORK_MILLIS }
+        VictoryForeground(layout)
         Box(Modifier.fillMaxSize().alpha(OVERLAY_ALPHA).background(Brush.verticalGradient(
             0f to Color.Transparent, GRADIENT_CLEAR_END to Color.Transparent,
             GRADIENT_DARK_START to Color(GRADIENT_DARK), 1f to Color(GRADIENT_BOTTOM))))
-        content()
+        content(layout)
     }
 }
 
@@ -162,72 +155,48 @@ private fun rememberVictoryAnimation(model: GameViewModel): Boolean {
 }
 
 @Composable
-private fun VictoryContent(state: GameState, palette: GamePalette, onNextRound: () -> Unit) {
-    val textShadow = TextStyle(shadow = Shadow(Color(0xFF001020), Offset(1f, 2f), TEXT_SHADOW_RADIUS))
+private fun VictoryContent(state: GameState, onNextRound: () -> Unit,
+    layout: VictoryLayout) {
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
-        val topSpace = maxHeight * .43f
-        LazyColumn(Modifier.fillMaxSize().testTag("victoryPage"),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topSpace, bottom = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Bottom)) {
-            item {
-                BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    val font = minOf(32f, maxWidth.value / 8.2f / LocalDensity.current.fontScale).sp
-                    Text("ПОЗДРАВЛЯЕМ!\nПОБЕДА!", fontSize = font, lineHeight = font * 1.3f,
-                        fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
-                        color = VICTORY_TITLE_COLOR, style = textShadow, modifier = Modifier.testTag("victoryTitle"))
+        val topSpace = maxHeight * layout.contentTop
+        Column(Modifier.fillMaxSize()) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("victoryPage"),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topSpace, bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(if (layout.compact) 8.dp else 12.dp, Alignment.Bottom)) {
+                item { VictoryTitle(layout) }
+                item { VictoryFruitCollection(state.fruitCounts) }
+                item {
+                    Text("Круг ${state.completedRounds + 1} пройден", style = MaterialTheme.typography.titleLarge,
+                        color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    Text("${state.score} очков", style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    Text("Все фрукты собраны!\nСледующий круг начнётся на пустом поле.\nСчёт и скорость сохранятся.",
+                        Modifier.widthIn(max = 560.dp), color = Color.White, textAlign = TextAlign.Center)
                 }
             }
-            item { VictoryFruitCollection(state.fruitCounts) }
-            item {
-                Text("Круг ${state.completedRounds + 1} пройден", style = MaterialTheme.typography.titleLarge,
-                    color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                Text("${state.score} очков", style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth())
-            }
-            item {
-                Text("Все фрукты собраны! Следующий круг начнётся на пустом поле. Счёт и скорость сохранятся.",
-                    Modifier.widthIn(max = 560.dp), color = Color.White, textAlign = TextAlign.Center)
-            }
-            item {
-                AppActionButton("Следующий круг", ActionStyle.PRIMARY,
+            Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
+                contentAlignment = Alignment.Center) {
+                VictoryActionButton("Следующий круг",
                     Modifier.widthIn(max = 440.dp).fillMaxWidth().testTag("nextRound"),
-                    palette.piece(Tetromino.S), onNextRound)
+                    onNextRound)
             }
         }
     }
 }
 
-/** Pixel fireworks launch, burst and fade in staggered continuous loops. */
 @Composable
-private fun VictoryFireworks(time: () -> Long) {
-    val colors = LocalGamePalette.current.pieces
-    Canvas(Modifier.fillMaxSize().testTag("victoryFireworks")) {
-        val elapsed = time()
-        repeat(FIREWORK_BURSTS) { burst ->
-            val age = VictoryMotion.age(elapsed, burst)
-            val launch = VictoryMotion.launch(age)
-            val expansion = VictoryMotion.expansion(age)
-            val center = Offset(size.width * (.10f + (burst * 37 % 80) / 100f),
-                size.height * (.10f + (burst % 3) * .10f))
-            val start = Offset(center.x, center.y + size.height * .30f)
-            if (age < LAUNCH_FRACTION) {
-                drawRect(colors[burst % colors.size].copy(alpha = VictoryMotion.opacity(launch)),
-                    Offset(start.x, start.y + (center.y - start.y) * launch),
-                    Size(3.dp.toPx(), 8.dp.toPx()))
-                return@repeat
-            }
-            val opacity = VictoryMotion.opacity(expansion) * FIREWORK_OPACITY
-            repeat(PARTICLES_PER_BURST) { particle ->
-                val angle = particle * 2.0 * Math.PI / PARTICLES_PER_BURST
-                val radius = size.width * .26f * expansion * (if (particle % 2 == 0) 1f else .65f)
-                val point = center + Offset(cos(angle).toFloat() * radius,
-                    sin(angle).toFloat() * radius + expansion * expansion * 65.dp.toPx())
-                drawRect(colors[(particle + burst) % colors.size].copy(alpha = opacity),
-                    point, Size(3.dp.toPx(),
-                    3.dp.toPx()))
-            }
-        }
+private fun VictoryTitle(layout: VictoryLayout) {
+    val textShadow = TextStyle(brush = Brush.verticalGradient(VICTORY_TITLE_COLORS),
+        shadow = Shadow(VICTORY_TITLE_SHADOW, Offset(1f, 2f), TEXT_SHADOW_RADIUS))
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val font = minOf(if (layout.compact) COMPACT_TITLE_SP else REGULAR_TITLE_SP,
+            maxWidth.value / 8.2f / LocalDensity.current.fontScale).sp
+        Text("ПОЗДРАВЛЯЕМ!\nПОБЕДА!", fontSize = font, lineHeight = font * 1.3f,
+            fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
+            style = textShadow, modifier = Modifier.testTag("victoryTitle"))
     }
 }

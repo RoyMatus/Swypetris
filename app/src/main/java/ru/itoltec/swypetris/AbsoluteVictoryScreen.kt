@@ -55,9 +55,9 @@ private val ABSOLUTE_TITLE_COLOR = Color(0xFFFFD54F)
 /** Shares the ordinary victory's artwork and motion, keeping the generated image static. */
 @Composable
 internal fun AbsoluteVictoryScreen(model: GameViewModel) {
-    VictoryScene(model) {
+    VictoryScene(model) { layout ->
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
-            val topSpace = if (model.postcardReady) 12.dp else maxHeight * .40f
+            val topSpace = if (model.postcardReady) 12.dp else maxHeight * layout.contentTop
             LazyColumn(Modifier.fillMaxSize().testTag("absoluteVictoryPage"),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topSpace, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,

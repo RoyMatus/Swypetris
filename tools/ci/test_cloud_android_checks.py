@@ -20,7 +20,7 @@ class CloudAndroidChecksTests(unittest.TestCase):
             "INSTRUMENTATION_STATUS_CODE: 0",
             "OK (1 test)", "INSTRUMENTATION_CODE: -1", "",
         ))
-        for case in ("complete", "incomplete", "stall", "smoke_failure"):
+        for case in ("complete", "reconnect", "incomplete", "stall", "smoke_failure"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as workspace:
                 root = Path(workspace)
                 commands = root / "bin"
@@ -35,8 +35,18 @@ class CloudAndroidChecksTests(unittest.TestCase):
                 (commands / "adb").write_text('''#!/usr/bin/env bash
 set -eu
 case "$*" in
+  *'shell pm path android'*)
+    count=$(cat probes.txt 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > probes.txt
+    if [ "$MOCK_CASE" = reconnect ] && [ "$count" = 2 ]; then exit 1; fi
+    echo 'package:/system/framework/framework-res.apk' ;;
+  *'install --no-streaming'*)
+    required=3
+    if [ "$MOCK_CASE" = reconnect ]; then required=5; fi
+    [ "$(cat probes.txt)" -ge "$required" ] || exit 99 ;;
   *'shell am instrument'*)
-    if [ "$MOCK_CASE" = complete ]; then cat complete.txt
+    if [ "$MOCK_CASE" = complete ] || [ "$MOCK_CASE" = reconnect ]; then cat complete.txt
     elif [ "$MOCK_CASE" = stall ]; then echo 'INSTRUMENTATION_STATUS: current=1'; exec sleep 30
     else echo 'INSTRUMENTATION_STATUS: current=1'; fi ;;
   *'shell monkey'*)
@@ -49,6 +59,10 @@ case "$*" in
 esac
 ''')
                 (commands / "adb").chmod(0o755)
+                # Compress polling intervals only; instrumentation stall stays real.
+                (commands / "sleep").write_text(
+                    '#!/bin/sh\nif [ "$1" = 2 ]; then exit 0; fi\nexec /bin/sleep "$@"\n')
+                (commands / "sleep").chmod(0o755)
                 (commands / "java").write_text('#!/bin/sh\necho "fixture Java21"\n')
                 (commands / "java").chmod(0o755)
                 tools = root / "tools/ci"
@@ -65,7 +79,7 @@ esac
                                         CHECK_MODE="selected", ANDROID_CLASSES="ru.itoltec.swypetris.SmokeTest",
                                         MOCK_CASE=case))
                 self.assertTrue((report / "logcat-stream.txt").exists())
-                if case == "complete":
+                if case in ("complete", "reconnect"):
                     self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                     environment = json.loads((report / "environment.json").read_text())
                     self.assertEqual("Pkg.Revision=37.2.12", environment["emulator"])
