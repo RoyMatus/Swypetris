@@ -37,7 +37,8 @@
       "items": [
         {"title": "AndroidX и Jetpack Compose", "credit": "Android Open Source Project / Google · Apache License 2.0", "source": "https://github.com/androidx/androidx", "licenseAsset": "tokyo-night.txt"},
         {"title": "Kotlin", "credit": "JetBrains и участники проекта Kotlin · Apache License 2.0", "source": "https://github.com/JetBrains/kotlin/blob/master/license/README.md", "licenseAsset": "tokyo-night.txt"},
-        {"title": "ZXing Core", "credit": "ZXing authors · Apache License 2.0; создание QR-кода", "source": "https://github.com/zxing/zxing", "licenseAsset": "tokyo-night.txt"}
+        {"title": "ZXing Core", "credit": "ZXing authors · Apache License 2.0; создание QR-кода", "source": "https://github.com/zxing/zxing", "licenseAsset": "tokyo-night.txt"},
+        {"title": "RuStore In-app updates SDK 10.5.1", "credit": "RuStore / ВК. Обновления для установок из RuStore; SDK включает технические модули analytics и metrics.", "source": "https://www.rustore.ru/help/sdk/updates/kotlin-java/10-5-1"}
       ]
     }
   ]
