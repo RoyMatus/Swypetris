@@ -1,4 +1,10 @@
 # Add project specific ProGuard rules here.
+# Preserve the existing game/state/update owners and RuStore SDK API/reflective
+# implementation. Shrink unused dependency code and resources without renaming
+# these integration boundaries in the first optimized distribution release.
+-keep class ru.itoltec.swypetris.** { *; }
+-keep class ru.rustore.** { *; }
+-keep class ru.vk.** { *; }
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 #
