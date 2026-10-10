@@ -134,20 +134,22 @@ class VictoryThemeIntegrationTest {
         }
         compose.mainClock.advanceTimeBy(250)
         compose.runOnIdle { assertTrue(model.victoryAnimationMillis != paused) }
-        // Scroll gestures need clock progression when the action is outside a short viewport.
         compose.mainClock.autoAdvance = true
-        compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
         compose.onNodeWithTag("nextRound").assertIsDisplayed()
     }
 
-    /** Disabled animations leave a still celebration while the next round stays operable. */
+    /** Storyboard stages visibly change behind a stable foreground and reachable bottom action. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun launchBurstAndFadeKeepTrophyAndControlsFixed() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 79999, lines = 100),
             { 1000L }, false)
         compose.mainClock.autoAdvance = false
-        compose.setContent { SwypetrisApp(model) {} }
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(393.dp, 873.dp))) {
+                SwypetrisApp(model) {}
+            }
+        }
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
         val frames = listOf(300L to "victory-launch.png", 2300L to "victory-burst.png",
             4000L to "victory-fade.png").map { (time, name) ->
@@ -165,6 +167,7 @@ class VictoryThemeIntegrationTest {
         }
         compose.runOnIdle { assertEquals(GameScreen.VICTORY, model.screen) }
         compose.onNodeWithTag("victoryTitle").assertIsDisplayed()
+        compose.onNodeWithTag("nextRound").assertIsDisplayed()
     }
 
     private fun changedPixels(first: Bitmap, second: Bitmap, left: Float, right: Float,
@@ -197,8 +200,7 @@ class VictoryThemeIntegrationTest {
         compose.runOnIdle { assertEquals(0L, model.victoryAnimationMillis) }
         compose.onNodeWithTag("victoryFireworks").assertExists()
         compose.mainClock.autoAdvance = true
-        compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
-        compose.onNodeWithTag("nextRound").performClick()
+        compose.onNodeWithTag("nextRound").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(GameScreen.PLAYING, model.screen) }
     }
 
@@ -231,11 +233,13 @@ class VictoryThemeIntegrationTest {
             assertEquals(scene, artwork)
             compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("victoryTitle"))
             compose.onNodeWithTag("victoryTitle").assertIsDisplayed()
-            compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
             val button = compose.onNodeWithTag("nextRound").assertIsDisplayed()
                 .fetchSemanticsNode().boundsInRoot
             assertTrue("Button exceeds $width x $height", button.left >= scene.left &&
                 button.right <= scene.right && button.bottom <= scene.bottom)
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                screenshot("victory-portrait-${width.value}-${height.value}.png")
+            }
             compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
                 .assertCountEquals(0)
         }
@@ -294,7 +298,6 @@ class VictoryThemeIntegrationTest {
         compose.mainClock.advanceTimeBy(2000)
         screenshot("victory-light-large-font.png")
         compose.mainClock.autoAdvance = true
-        compose.onNodeWithTag("victoryPage").performScrollToNode(hasTestTag("nextRound"))
         compose.onNodeWithTag("nextRound").assertIsDisplayed()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
             .assertCountEquals(0)

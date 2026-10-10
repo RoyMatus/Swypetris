@@ -20,8 +20,6 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
 private const val STAR_COUNT = 48
-private const val ARTWORK_HEIGHT_FRACTION = .39f
-private const val ARTWORK_TOP_FRACTION = .115f
 private const val STAR_CROSS_PIXELS = 3
 private val SKY_TOP = Color(0xFF001333)
 private val SKY_BOTTOM = Color(0xFF001020)
@@ -31,7 +29,7 @@ private val SKY_BOTTOM = Color(0xFF001020)
 internal fun VictoryBackdrop() {
     Canvas(Modifier.fillMaxSize().testTag("victoryBackdrop")) {
         drawRect(Brush.verticalGradient(listOf(SKY_TOP, SKY_BOTTOM)))
-        val pixel = 1.dp.toPx()
+        val pixel = 2.dp.toPx()
         repeat(STAR_COUNT) { star ->
             val point = Offset(size.width * ((star * 37 % 97 + 1) / 100f),
                 size.height * ((star * 19 % 55 + 2) / 100f))
@@ -48,17 +46,17 @@ internal fun VictoryBackdrop() {
 
 /** Fit the complete transparent trophy/fruit sprite; no fruit is lost to portrait cropping. */
 @Composable
-internal fun VictoryForeground() {
+internal fun VictoryForeground(layout: VictoryLayout) {
     val artwork = ImageBitmap.imageResource(R.drawable.victory_foreground)
     Canvas(Modifier.fillMaxSize().testTag("victoryArtwork").semantics {
         contentDescription = "Кубок из блоков и восемь фруктов"
     }) {
         val scale = minOf(size.width / artwork.width,
-            size.height * ARTWORK_HEIGHT_FRACTION / artwork.height)
+            size.height * layout.artworkHeight / artwork.height)
         val width = (artwork.width * scale).roundToInt().coerceAtLeast(1)
         val height = (artwork.height * scale).roundToInt().coerceAtLeast(1)
         drawImage(artwork, dstOffset = IntOffset(((size.width - width) / 2).roundToInt(),
-            (size.height * ARTWORK_TOP_FRACTION).roundToInt()), dstSize = IntSize(width, height),
+            (size.height * layout.artworkTop).roundToInt()), dstSize = IntSize(width, height),
             filterQuality = FilterQuality.None)
     }
 }

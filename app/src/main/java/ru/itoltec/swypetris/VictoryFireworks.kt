@@ -15,7 +15,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private const val FIREWORK_RAYS = 24
-private const val SPARKS_PER_RAY = 5
+private const val SPARKS_PER_RAY = 9
+private const val SPARK_PIXEL_DP = 3
 private const val ROCKET_TRAIL = 9
 private val WARM_SPARKS = listOf(Color(0xFFFFD44A), Color(0xFFFF8A32), Color(0xFFFF4267))
 private val COOL_SPARKS = listOf(Color(0xFF62EEFF), Color(0xFF249AFF), Color(0xFFFFD44A))
@@ -51,13 +52,20 @@ private fun DrawScope.drawBurst(center: Offset, progress: Float, colors: List<Co
     val growth = (progress / .45f).coerceIn(0f, 1f)
     val radius = size.width * .28f * (1 - (1 - growth) * (1 - growth))
     val alpha = VictoryMotion.opacity(progress)
-    val pixel = 2.dp.toPx()
+    val pixel = SPARK_PIXEL_DP.dp.toPx()
     repeat(FIREWORK_RAYS) { ray ->
         val angle = ray * 2.0 * PI / FIREWORK_RAYS
+        var previous: Offset? = null
         repeat(SPARKS_PER_RAY) { spark ->
             val distance = radius * (1 - spark * .09f) * if (ray % 2 == 0) 1f else .83f
-            val point = center + Offset(cos(angle).toFloat() * distance,
-                sin(angle).toFloat() * distance + size.width * .14f * progress * progress)
+            val trailAngle = angle + spark * .035f * if (ray % 2 == 0) 1 else -1
+            val point = center + Offset(cos(trailAngle).toFloat() * distance,
+                sin(trailAngle).toFloat() * distance + size.width * .14f * progress * progress)
+            previous?.let { outer ->
+                drawLine(colors[(ray + spark) % colors.size].copy(alpha = alpha * (1 - progress)),
+                    outer, point, strokeWidth = pixel * .6f)
+            }
+            previous = point
             drawRect(colors[(ray + spark) % colors.size].copy(alpha = alpha * (1 - spark * .12f)),
                 point, Size(pixel, pixel))
         }
