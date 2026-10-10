@@ -1,0 +1,61 @@
+package ru.itoltec.swypetris
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
+
+private const val STAR_COUNT = 48
+private const val ARTWORK_HEIGHT_FRACTION = .39f
+private const val ARTWORK_TOP_FRACTION = .115f
+
+/** Full-screen night sky stays fixed beneath the two animated fireworks. */
+@Composable
+internal fun VictoryBackdrop() {
+    Canvas(Modifier.fillMaxSize().testTag("victoryBackdrop")) {
+        drawRect(Brush.verticalGradient(listOf(Color(0xFF001333), Color(0xFF001020))))
+        val pixel = 1.dp.toPx()
+        repeat(STAR_COUNT) { star ->
+            val point = Offset(size.width * ((star * 37 % 97 + 1) / 100f),
+                size.height * ((star * 19 % 55 + 2) / 100f))
+            val bright = star % 3 == 0
+            val color = if (bright) Color(0xFFFFCB54) else Color(0xFF327BD4)
+            drawRect(color.copy(alpha = if (bright) .9f else .35f), point, Size(pixel, pixel))
+            if (bright) {
+                drawRect(color.copy(alpha = .6f), point - Offset(pixel, 0f), Size(pixel * 3, pixel))
+                drawRect(color.copy(alpha = .6f), point - Offset(0f, pixel), Size(pixel, pixel * 3))
+            }
+        }
+    }
+}
+
+/** Fit the complete transparent trophy/fruit sprite; no fruit is lost to portrait cropping. */
+@Composable
+internal fun VictoryForeground() {
+    val artwork = ImageBitmap.imageResource(R.drawable.victory_foreground)
+    Canvas(Modifier.fillMaxSize().testTag("victoryArtwork").semantics {
+        contentDescription = "Кубок из блоков и восемь фруктов"
+    }) {
+        val scale = minOf(size.width / artwork.width,
+            size.height * ARTWORK_HEIGHT_FRACTION / artwork.height)
+        val width = (artwork.width * scale).roundToInt().coerceAtLeast(1)
+        val height = (artwork.height * scale).roundToInt().coerceAtLeast(1)
+        drawImage(artwork, dstOffset = IntOffset(((size.width - width) / 2).roundToInt(),
+            (size.height * ARTWORK_TOP_FRACTION).roundToInt()), dstSize = IntSize(width, height),
+            filterQuality = FilterQuality.None)
+    }
+}

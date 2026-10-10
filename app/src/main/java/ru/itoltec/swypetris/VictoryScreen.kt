@@ -3,8 +3,6 @@
 import android.animation.ValueAnimator
 import android.os.Build
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,14 +31,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -53,14 +48,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import kotlin.math.cos
-import kotlin.math.sin
 
 private const val UNEARNED_FRUIT_OPACITY = .22f
-private const val STATIC_FIREWORK_MILLIS = 1800L
-private const val FIREWORK_BURSTS = 6
-private const val PARTICLES_PER_BURST = 28
-private const val FIREWORK_OPACITY = .85f
+private const val STATIC_FIREWORK_MILLIS = 2400L
 private const val MAX_FRAME_NANOS = 100_000_000L
 private const val FRUIT_GAP_DP = 7
 private const val OVERLAY_ALPHA = .95f
@@ -68,7 +58,6 @@ private const val GRADIENT_CLEAR_END = .32f
 private const val GRADIENT_DARK_START = .50f
 private const val GRADIENT_DARK = 0xD8001020
 private const val GRADIENT_BOTTOM = 0xF8001020
-private const val LAUNCH_FRACTION = .18f
 private const val TEXT_SHADOW_RADIUS = 4f
 private val VICTORY_TITLE_COLOR = Color(0xFFFFD54F)
 
@@ -122,10 +111,9 @@ internal fun VictoryScreen(model: GameViewModel) {
 internal fun VictoryScene(model: GameViewModel, content: @Composable () -> Unit) {
     val animate = rememberVictoryAnimation(model)
     Box(Modifier.fillMaxSize().testTag("victoryScene")) {
-        Image(painterResource(R.drawable.victory_trophy), "Кубок из блоков и восемь фруктов",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize().testTag("victoryArtwork"))
+        VictoryBackdrop()
         VictoryFireworks { if (animate) model.victoryAnimationMillis else STATIC_FIREWORK_MILLIS }
+        VictoryForeground()
         Box(Modifier.fillMaxSize().alpha(OVERLAY_ALPHA).background(Brush.verticalGradient(
             0f to Color.Transparent, GRADIENT_CLEAR_END to Color.Transparent,
             GRADIENT_DARK_START to Color(GRADIENT_DARK), 1f to Color(GRADIENT_BOTTOM))))
@@ -165,7 +153,7 @@ private fun rememberVictoryAnimation(model: GameViewModel): Boolean {
 private fun VictoryContent(state: GameState, palette: GamePalette, onNextRound: () -> Unit) {
     val textShadow = TextStyle(shadow = Shadow(Color(0xFF001020), Offset(1f, 2f), TEXT_SHADOW_RADIUS))
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
-        val topSpace = maxHeight * .43f
+        val topSpace = maxHeight * .50f
         LazyColumn(Modifier.fillMaxSize().testTag("victoryPage"),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = topSpace, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -194,39 +182,6 @@ private fun VictoryContent(state: GameState, palette: GamePalette, onNextRound: 
                 AppActionButton("Следующий круг", ActionStyle.PRIMARY,
                     Modifier.widthIn(max = 440.dp).fillMaxWidth().testTag("nextRound"),
                     palette.piece(Tetromino.S), onNextRound)
-            }
-        }
-    }
-}
-
-/** Pixel fireworks launch, burst and fade in staggered continuous loops. */
-@Composable
-private fun VictoryFireworks(time: () -> Long) {
-    val colors = LocalGamePalette.current.pieces
-    Canvas(Modifier.fillMaxSize().testTag("victoryFireworks")) {
-        val elapsed = time()
-        repeat(FIREWORK_BURSTS) { burst ->
-            val age = VictoryMotion.age(elapsed, burst)
-            val launch = VictoryMotion.launch(age)
-            val expansion = VictoryMotion.expansion(age)
-            val center = Offset(size.width * (.10f + (burst * 37 % 80) / 100f),
-                size.height * (.10f + (burst % 3) * .10f))
-            val start = Offset(center.x, center.y + size.height * .30f)
-            if (age < LAUNCH_FRACTION) {
-                drawRect(colors[burst % colors.size].copy(alpha = VictoryMotion.opacity(launch)),
-                    Offset(start.x, start.y + (center.y - start.y) * launch),
-                    Size(3.dp.toPx(), 8.dp.toPx()))
-                return@repeat
-            }
-            val opacity = VictoryMotion.opacity(expansion) * FIREWORK_OPACITY
-            repeat(PARTICLES_PER_BURST) { particle ->
-                val angle = particle * 2.0 * Math.PI / PARTICLES_PER_BURST
-                val radius = size.width * .26f * expansion * (if (particle % 2 == 0) 1f else .65f)
-                val point = center + Offset(cos(angle).toFloat() * radius,
-                    sin(angle).toFloat() * radius + expansion * expansion * 65.dp.toPx())
-                drawRect(colors[(particle + burst) % colors.size].copy(alpha = opacity),
-                    point, Size(3.dp.toPx(),
-                    3.dp.toPx()))
             }
         }
     }

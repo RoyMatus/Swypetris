@@ -53,6 +53,9 @@ fi
 args+=(ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner)
 timeout --signal=INT --kill-after=15s 8m adb "${args[@]}" | tee "$report_dir/instrumentation.txt"
 python3 tools/ci/verify_instrumentation_output.py "$CHECK_MODE" "$ANDROID_CLASSES" "$report_dir/instrumentation.txt"
+if [ "$CHECK_MODE" = full ]; then
+  timeout 30s adb -s "$serial" pull /sdcard/Android/data/ru.itoltec.swypetris/files "$report_dir/device-files"
+fi
 python3 - <<'PY'
 import json
 import os
