@@ -68,7 +68,8 @@ internal object AbsolutePostcard {
         val artwork = BitmapFactory.decodeResource(context.resources, R.drawable.victory_foreground)
         try {
             CanvasDrawScope().draw(Density(POSTCARD_DENSITY), LayoutDirection.Ltr,
-                androidx.compose.ui.graphics.Canvas(canvas), Size(POSTCARD_WIDTH.toFloat(), POSTCARD_HEIGHT.toFloat())) {
+                androidx.compose.ui.graphics.Canvas(canvas),
+                Size(POSTCARD_WIDTH.toFloat(), POSTCARD_HEIGHT.toFloat())) {
                 drawVictoryBackdrop(POSTCARD_LAYOUT)
                 drawVictoryFireworks(STATIC_POSTCARD_MILLIS, VictoryCelebration.POSTCARD,
                     POSTCARD_BURSTS.map { Offset(it.x * size.width, it.y * size.height) })

@@ -61,11 +61,12 @@ internal fun AbsoluteVictoryScreen(model: GameViewModel) {
     val celebration = if (model.postcardReady) VictoryCelebration.POSTCARD else VictoryCelebration.ABSOLUTE
     VictoryScene(model, celebration) { layout ->
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
+            val topSpace = maxHeight * layout.contentTop
             if (model.postcardReady) PostcardContent(model.absoluteName, maxHeight, layout)
             else Column(Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("absoluteVictoryPage"),
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp,
-                        top = maxHeight * layout.contentTop, bottom = 8.dp),
+                        top = topSpace, bottom = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(if (layout.compact) 8.dp else 12.dp, Alignment.Bottom)) {
                     item {
