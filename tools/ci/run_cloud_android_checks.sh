@@ -15,6 +15,10 @@ capture_failure() {
   exit "$result"
 }
 trap capture_failure EXIT
+# Select the same headless backend used by the action. The GUI backend may lack
+# Qt/XCB libraries even though headless boot and all instrumentation succeeded.
+export SWYPETRIS_CI_EMULATOR_VERSION
+SWYPETRIS_CI_EMULATOR_VERSION="$("$ANDROID_HOME/emulator/emulator" -no-window -version)"
 rm -f "$report_dir/environment.json" "$report_dir/smoke.txt" "$report_dir/instrumentation.txt"
 adb -s "$serial" install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s "$serial" install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
@@ -54,7 +58,7 @@ environment = dict(
     abi=command('adb', '-s', serial, 'shell', 'getprop', 'ro.product.cpu.abi'),
     fingerprint=command('adb', '-s', serial, 'shell', 'getprop', 'ro.build.fingerprint'),
     java=command('java', '-version'),
-    emulator=command(str(Path(os.environ['ANDROID_HOME']) / 'emulator/emulator'), '-version'),
+    emulator=os.environ['SWYPETRIS_CI_EMULATOR_VERSION'],
     emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -wipe-data',
     instrumentation_command='adb -s emulator-5556 shell am instrument -w -r '
         + (f"-e class {os.environ['ANDROID_CLASSES']} " if os.environ['CHECK_MODE'] == 'selected' else '')
