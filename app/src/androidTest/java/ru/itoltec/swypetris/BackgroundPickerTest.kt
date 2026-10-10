@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.provider.MediaStore
 import android.view.accessibility.AccessibilityNodeInfo
 import android.app.UiAutomation
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -51,14 +50,13 @@ class BackgroundPickerTest {
         try {
             compose.runOnIdle { model.navigation.finishLaunchIntro(); model.navigation.settings() }
             compose.waitUntil(10000) { !model.background.busy }
-            val intent = ActivityResultContracts.OpenDocument().createIntent(compose.activity, arrayOf("image/*"))
-            val pickerPackage = checkNotNull(intent.resolveActivity(compose.activity.packageManager)).packageName
             compose.onNodeWithTag("chooseBackground").performScrollTo().performClick()
             automation.waitForIdle(500, 5000)
             var document: AccessibilityNodeInfo? = null
             compose.waitUntil(10000) {
                 val root = automation.rootInActiveWindow
-                if (root?.packageName?.toString() == pickerPackage)
+                // Package visibility may hide DocumentsUI from resolveActivity even though it launches.
+                if (root != null && root.packageName?.toString() != compose.activity.packageName)
                     document = root.findAccessibilityNodeInfosByText(name).firstOrNull()
                 document != null
             }
