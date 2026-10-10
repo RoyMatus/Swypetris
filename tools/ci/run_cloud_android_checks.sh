@@ -36,6 +36,11 @@ capture_failure() {
     timeout 15s adb -s "$serial" logcat -d > "$report_dir/logcat.txt" 2>&1 || true
     timeout 15s adb -s "$serial" shell dumpsys window > "$report_dir/window.txt" 2>&1 || true
     timeout 30s adb -s "$serial" pull /sdcard/Android/data/ru.itoltec.swypetris/files "$report_dir/device-files" >/dev/null 2>&1 || true
+    for server_log in /tmp/adb.*.log; do
+      if [ -f "$server_log" ] && [ "$(wc -c < "$server_log")" -le 10485760 ]; then
+        cp "$server_log" "$report_dir/adb-server.log"
+      fi
+    done
   fi
   exit "$result"
 }
@@ -46,8 +51,23 @@ export SWYPETRIS_CI_EMULATOR_VERSION
 SWYPETRIS_CI_EMULATOR_VERSION="$(grep '^Pkg.Revision=' "$ANDROID_HOME/emulator/source.properties")"
 test -n "$SWYPETRIS_CI_EMULATOR_VERSION"
 rm -f "$report_dir/environment.json" "$report_dir/smoke.txt" "$report_dir/instrumentation.txt"
-timeout 120s adb -s "$serial" install --no-streaming -r app/build/outputs/apk/debug/app-debug.apk
-timeout 120s adb -s "$serial" install --no-streaming -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+install_cloud_apk() {
+  local apk="$1" name="$2" remote="/data/local/tmp/swypetris-ci-$2.apk" expected actual
+  expected=$(sha256sum "$apk" | cut -d ' ' -f 1)
+  # Avoid negotiated sync compression, and verify the complete transferred bytes
+  # before Package Manager sees them. Failed transfers/installations are not retried.
+  timeout 120s adb -s "$serial" push -Z "$apk" "$remote" | tee "$report_dir/transfer-$name.txt"
+  actual=$(timeout 15s adb -s "$serial" shell sha256sum "$remote" | tr -d '\r' | cut -d ' ' -f 1)
+  if [ "$actual" != "$expected" ]; then
+    echo "Transferred $name APK checksum mismatch." >&2
+    return 1
+  fi
+  timeout 120s adb -s "$serial" shell pm install -r "$remote" | tee "$report_dir/install-$name.txt"
+  grep -Eq '^Success[[:space:]]*$' "$report_dir/install-$name.txt"
+  timeout 15s adb -s "$serial" shell rm "$remote"
+}
+install_cloud_apk app/build/outputs/apk/debug/app-debug.apk app
+install_cloud_apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk test
 adb -s "$serial" shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1 | tee "$report_dir/smoke.txt"
 grep -Eq '^Events injected: 1[[:space:]]*$' "$report_dir/smoke.txt"
 # Exercise a fresh picker's drawer before full regression exercises its remembered
