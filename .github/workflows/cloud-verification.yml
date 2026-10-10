@@ -136,7 +136,7 @@ jobs:
           avd-name: SwypetrisCI35
           emulator-port: 5556
           disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -wipe-data
+          emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim -wipe-data
           script: bash tools/ci/run_cloud_android_checks.sh
       - name: Save cloud debug APKs for Pixel verification
         if: success() && steps.changes.outputs.mode != 'none'

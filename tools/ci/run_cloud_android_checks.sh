@@ -8,17 +8,19 @@ mkdir -p "$report_dir"
 capture_failure() {
   result=$?
   if [ "$result" -ne 0 ]; then
-    adb -s "$serial" logcat -d > "$report_dir/logcat.txt" 2>&1 || true
-    adb -s "$serial" shell dumpsys window > "$report_dir/window.txt" 2>&1 || true
-    adb -s "$serial" pull /sdcard/Android/data/ru.itoltec.swypetris/files "$report_dir/device-files" >/dev/null 2>&1 || true
+    timeout 20s adb -s "$serial" shell 'pid=$(pidof ru.itoltec.swypetris); if [ -n "$pid" ]; then run-as ru.itoltec.swypetris debuggerd -b "$pid"; fi' > "$report_dir/app-stacks.txt" 2>&1 || true
+    timeout 15s adb -s "$serial" logcat -d > "$report_dir/logcat.txt" 2>&1 || true
+    timeout 15s adb -s "$serial" shell dumpsys window > "$report_dir/window.txt" 2>&1 || true
+    timeout 30s adb -s "$serial" pull /sdcard/Android/data/ru.itoltec.swypetris/files "$report_dir/device-files" >/dev/null 2>&1 || true
   fi
   exit "$result"
 }
 trap capture_failure EXIT
-# Select the same headless backend used by the action. The GUI backend may lack
-# Qt/XCB libraries even though headless boot and all instrumentation succeeded.
+# Read installed SDK metadata without launching another emulator process while
+# the test AVD is rendering. Missing metadata is still a real setup failure.
 export SWYPETRIS_CI_EMULATOR_VERSION
-SWYPETRIS_CI_EMULATOR_VERSION="$("$ANDROID_HOME/emulator/emulator" -no-window -version)"
+SWYPETRIS_CI_EMULATOR_VERSION="$(grep '^Pkg.Revision=' "$ANDROID_HOME/emulator/source.properties")"
+test -n "$SWYPETRIS_CI_EMULATOR_VERSION"
 rm -f "$report_dir/environment.json" "$report_dir/smoke.txt" "$report_dir/instrumentation.txt"
 adb -s "$serial" install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s "$serial" install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
@@ -26,9 +28,13 @@ adb -s "$serial" shell monkey -p ru.itoltec.swypetris -c android.intent.category
 # Exercise a fresh picker's drawer before full regression exercises its remembered
 # image directory. Both executions select a unique fixture and verify the crop result.
 if [ "$CHECK_MODE" = full ]; then
-  adb -s "$serial" shell am instrument -w -r -e class ru.itoltec.swypetris.BackgroundPickerTest \
+  timeout --signal=INT --kill-after=15s 8m adb -s "$serial" shell am instrument -w -r -e class ru.itoltec.swypetris.BackgroundPickerTest \
     ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner | tee "$report_dir/picker-preflight.txt"
   python3 tools/ci/verify_instrumentation_output.py selected ru.itoltec.swypetris.BackgroundPickerTest "$report_dir/picker-preflight.txt"
+  focused=ru.itoltec.swypetris.AbsoluteVictoryUiTest,ru.itoltec.swypetris.SmokeTest
+  timeout --signal=INT --kill-after=15s 8m adb -s "$serial" shell am instrument -w -r -e class "$focused" \
+    ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner | tee "$report_dir/ui-preflight.txt"
+  python3 tools/ci/verify_instrumentation_output.py selected "$focused" "$report_dir/ui-preflight.txt"
 fi
 args=(-s "$serial" shell am instrument -w -r)
 if [ "$CHECK_MODE" = selected ]; then
@@ -39,7 +45,7 @@ elif [ "$CHECK_MODE" != full ]; then
   exit 1
 fi
 args+=(ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner)
-adb "${args[@]}" | tee "$report_dir/instrumentation.txt"
+timeout --signal=INT --kill-after=15s 8m adb "${args[@]}" | tee "$report_dir/instrumentation.txt"
 python3 tools/ci/verify_instrumentation_output.py "$CHECK_MODE" "$ANDROID_CLASSES" "$report_dir/instrumentation.txt"
 python3 - <<'PY'
 import json
@@ -59,7 +65,7 @@ environment = dict(
     fingerprint=command('adb', '-s', serial, 'shell', 'getprop', 'ro.build.fingerprint'),
     java=command('java', '-version'),
     emulator=os.environ['SWYPETRIS_CI_EMULATOR_VERSION'],
-    emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -wipe-data',
+    emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu software -no-snapshot -noaudio -no-boot-anim -wipe-data',
     instrumentation_command='adb -s emulator-5556 shell am instrument -w -r '
         + (f"-e class {os.environ['ANDROID_CLASSES']} " if os.environ['CHECK_MODE'] == 'selected' else '')
         + 'ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner',
