@@ -136,8 +136,20 @@ jobs:
           avd-name: SwypetrisCI35
           emulator-port: 5556
           disable-animations: false
-          emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim -wipe-data
+          emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -wipe-data
           script: bash tools/ci/run_cloud_android_checks.sh
+      - name: Save cloud host failure diagnostics
+        if: failure() && steps.changes.outputs.mode != 'none'
+        shell: bash
+        run: |
+          report_dir=app/build/outputs/androidTest-results/windows
+          mkdir -p "$report_dir"
+          {
+            free -m
+            ps -eo pid,comm,rss --sort=-rss | head -n 25
+            sudo dmesg --ctime | tail -n 100
+            cat /sys/fs/cgroup/memory.events 2>/dev/null || true
+          } > "$report_dir/cloud-host.txt" 2>&1
       - name: Save cloud debug APKs for Pixel verification
         if: success() && steps.changes.outputs.mode != 'none'
         uses: actions/upload-artifact@v4

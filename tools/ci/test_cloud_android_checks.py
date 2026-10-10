@@ -62,6 +62,7 @@ esac
                                         PATH=f"{commands}:{os.environ['PATH']}", ANDROID_HOME=str(root / "sdk"),
                                         CHECK_MODE="selected", ANDROID_CLASSES="ru.itoltec.swypetris.SmokeTest",
                                         MOCK_CASE=case))
+                self.assertTrue((report / "logcat-stream.txt").exists())
                 if case == "complete":
                     self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                     environment = json.loads((report / "environment.json").read_text())

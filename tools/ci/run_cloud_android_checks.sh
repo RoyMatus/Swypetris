@@ -5,8 +5,13 @@ set -euo pipefail
 serial=emulator-5556
 report_dir=app/build/outputs/androidTest-results/windows
 mkdir -p "$report_dir"
+# Keep device logs already received even if the emulator disconnects mid-test.
+adb -s "$serial" logcat -v threadtime > "$report_dir/logcat-stream.txt" 2>&1 &
+logcat_pid=$!
 capture_failure() {
   result=$?
+  kill "$logcat_pid" 2>/dev/null || true
+  wait "$logcat_pid" 2>/dev/null || true
   if [ "$result" -ne 0 ]; then
     timeout 20s adb -s "$serial" shell 'pid=$(pidof ru.itoltec.swypetris); if [ -n "$pid" ]; then run-as ru.itoltec.swypetris debuggerd -b "$pid"; fi' > "$report_dir/app-stacks.txt" 2>&1 || true
     timeout 15s adb -s "$serial" logcat -d > "$report_dir/logcat.txt" 2>&1 || true
@@ -65,7 +70,7 @@ environment = dict(
     fingerprint=command('adb', '-s', serial, 'shell', 'getprop', 'ro.build.fingerprint'),
     java=command('java', '-version'),
     emulator=os.environ['SWYPETRIS_CI_EMULATOR_VERSION'],
-    emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu software -no-snapshot -noaudio -no-boot-anim -wipe-data',
+    emulator_options='@SwypetrisCI35 -port 5556 -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -wipe-data',
     instrumentation_command='adb -s emulator-5556 shell am instrument -w -r '
         + (f"-e class {os.environ['ANDROID_CLASSES']} " if os.environ['CHECK_MODE'] == 'selected' else '')
         + 'ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner',
