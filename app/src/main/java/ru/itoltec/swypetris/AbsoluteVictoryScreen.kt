@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -64,9 +65,10 @@ internal fun AbsoluteVictoryScreen(model: GameViewModel) {
             val topSpace = maxHeight * layout.contentTop
             if (model.postcardReady) PostcardContent(model.absoluteName, maxHeight, layout)
             else Column(Modifier.fillMaxSize()) {
-                LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("absoluteVictoryPage"),
+                LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(top = topSpace)
+                    .clipToBounds().testTag("absoluteVictoryPage"),
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp,
-                        top = topSpace, bottom = 8.dp),
+                        bottom = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(if (layout.compact) 8.dp else 12.dp, Alignment.Bottom)) {
                     item {
