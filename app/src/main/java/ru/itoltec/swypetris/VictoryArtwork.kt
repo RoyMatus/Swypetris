@@ -40,7 +40,9 @@ private const val FLOOR_LINES = 6
 private const val FLOOR_COLUMNS = 10
 private const val SPRITE_BASE_FRACTION = .905f
 private const val FLOOR_DEPTH_FRACTION = .05f
+private const val FLOOR_CONVERGENCE = .4f
 private const val ACTION_HEIGHT_DP = 64
+private const val ACTION_SHADOW_DP = 4
 private val FLOOR_COLOR = Color(0xFF145DA4)
 private val ACTION_HIGHLIGHT = Color(0xFF48CF38)
 private val ACTION_FACE = Color(0xFF007E23)
@@ -73,7 +75,7 @@ internal fun VictoryBackdrop(layout: VictoryLayout) {
         }
         repeat(FLOOR_COLUMNS + 1) { column ->
             val x = size.width * (column / FLOOR_COLUMNS.toFloat() - .5f)
-            drawLine(FLOOR_COLOR.copy(alpha = .3f), Offset(size.width / 2 + x * .4f, floorTop),
+            drawLine(FLOOR_COLOR.copy(alpha = .3f), Offset(size.width / 2 + x * FLOOR_CONVERGENCE, floorTop),
                 Offset(size.width / 2 + x, floorTop + floorDepth), 1.dp.toPx())
         }
     }
@@ -108,7 +110,7 @@ internal fun VictoryForeground(layout: VictoryLayout) {
 @Composable
 internal fun VictoryActionButton(label: String, modifier: Modifier, onClick: () -> Unit) {
     val shape = CutCornerShape(8.dp)
-    Button(onClick, modifier.heightIn(min = ACTION_HEIGHT_DP.dp).shadow(4.dp, shape)
+    Button(onClick, modifier.heightIn(min = ACTION_HEIGHT_DP.dp).shadow(ACTION_SHADOW_DP.dp, shape)
         .background(Brush.verticalGradient(0f to ACTION_HIGHLIGHT, .18f to ACTION_FACE,
             1f to ACTION_BOTTOM), shape), shape = shape,
         border = BorderStroke(3.dp, Brush.verticalGradient(ACTION_EDGE)),
