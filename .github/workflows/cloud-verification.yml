@@ -116,6 +116,15 @@ jobs:
           & $env:GRADLE_LAUNCHER :app:assembleDebugAndroidTest --build-cache --console=plain
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:GRADLE_LAUNCHER --stop
+      - name: Save cloud debug APKs for Pixel verification
+        if: success() && steps.changes.outputs.mode != 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-debug-apks
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
       - name: Enable cloud emulator acceleration
         if: ${{ success() && runner.os == 'Linux' && steps.changes.outputs.mode != 'none' }}
         shell: bash
@@ -150,15 +159,16 @@ jobs:
             sudo dmesg --ctime | tail -n 100
             cat /sys/fs/cgroup/memory.events 2>/dev/null || true
           } > "$report_dir/cloud-host.txt" 2>&1
-      - name: Save cloud debug APKs for Pixel verification
-        if: success() && steps.changes.outputs.mode != 'none'
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloud-debug-apks
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-          if-no-files-found: error
+          shopt -s nullglob
+          crash_reports=(/tmp/android-runner/emu-crash-*.db)
+          if ((${#crash_reports[@]})); then
+            size_mb=$(du -sm -c "${crash_reports[@]}" | tail -n 1 | cut -f 1)
+            if ((size_mb <= 64)); then
+              tar -czf "$report_dir/emulator-crash-reports.tar.gz" "${crash_reports[@]}"
+            else
+              echo "Emulator crash reports exceed 64 MiB: $size_mb" >> "$report_dir/cloud-host.txt"
+            fi
+          fi
       - name: Save test, lint, and coverage reports
         if: always() && steps.changes.outputs.mode != 'none'
         uses: actions/upload-artifact@v4
