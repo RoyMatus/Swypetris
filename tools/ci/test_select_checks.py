@@ -42,6 +42,13 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual("full", workflow["mode"])
         self.assertEqual("true", workflow["ci_scripts"])
 
+    def test_menu_audio_changes_cover_asynchronous_preparation(self):
+        for source in ("GameMusic.kt", "MenuTheme.kt"):
+            with self.subTest(source=source):
+                result = select(["app/src/main/java/ru/itoltec/swypetris/" + source])
+                self.assertEqual("selected", result["mode"])
+                self.assertIn("ru.itoltec.swypetris.MenuPreparationTest", result["android"].split(","))
+
     def test_full_mode_discards_accumulated_android_filter_in_any_path_order(self):
         paths = ["app/src/main/java/ru/itoltec/swypetris/GameEngine.kt",
                  "app/src/androidTest/java/ru/itoltec/swypetris/AbsoluteVictoryUiTest.kt",

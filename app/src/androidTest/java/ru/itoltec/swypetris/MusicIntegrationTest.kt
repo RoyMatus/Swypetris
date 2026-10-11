@@ -131,11 +131,14 @@ class MusicIntegrationTest {
             music = GameMusic(app)
             model = GameViewModel(app, null, android.os.SystemClock::uptimeMillis, false, musicPlayback = music)
             model.onForeground()
-            track = menuTrack(music)
-            assertEquals(MenuTheme.SAMPLE_RATE, track.sampleRate)
-            assertEquals(2, track.channelCount)
         }
         try {
+            awaitMenu(music)
+            compose.runOnIdle {
+                track = menuTrack(music)
+                assertEquals(MenuTheme.SAMPLE_RATE, track.sampleRate)
+                assertEquals(2, track.channelCount)
+            }
             val started = android.os.SystemClock.uptimeMillis()
             var previous = 0L
             val navigation = listOf(model.navigation::settings, model.navigation::help, model.navigation::contacts,
@@ -178,10 +181,14 @@ class MusicIntegrationTest {
 
     @Test fun focusAndHeadphoneGatesPauseAllMusicSources() {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        compose.runOnIdle {
-            val music = GameMusic(app)
-            try {
+        lateinit var music: GameMusic
+        compose.runOnIdle { music = GameMusic(app) }
+        try {
+            compose.runOnIdle {
                 music.setMode(MusicMode.MENU)
+            }
+            awaitMenu(music)
+            compose.runOnIdle {
                 val track = menuTrack(music)
                 val listener = field(music, "listener") as AudioManager.OnAudioFocusChangeListener
                 listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
@@ -200,7 +207,17 @@ class MusicIntegrationTest {
                 assertFalse((field(music, "recordPlayer") as MediaPlayer).isPlaying)
                 listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
                 assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
-            } finally { music.release() }
+            }
+        } finally { compose.runOnIdle { music.release() } }
+    }
+
+    private fun awaitMenu(music: GameMusic) {
+        compose.waitUntil(timeoutMillis = 10000) {
+            var ready = false
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                ready = field(music, "menuPlayer") != null
+            }
+            ready
         }
     }
 

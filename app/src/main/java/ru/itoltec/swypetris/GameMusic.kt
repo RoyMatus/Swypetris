@@ -13,6 +13,15 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val GAME_EFFECT_VOLUME = .4f
 
@@ -33,12 +42,20 @@ interface MusicPlayback {
 }
 
 /** Plays eight full tracks with gaps, saved position, and audio-focus handling. */
-class GameMusic(private val context: Context) : MusicPlayback {
+class GameMusic internal constructor(private val context: Context,
+    private val preparationDispatcher: CoroutineDispatcher,
+    private val prepareMenu: (Context, AudioAttributes) -> MenuPlayback) : MusicPlayback {
+    constructor(context: Context) : this(context, Dispatchers.IO,
+        { owner, attributes -> MenuThemePlayer.create(owner, attributes) })
+
     private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val handler = Handler(Looper.getMainLooper())
     private val resources = Song.entries.map { it.resource }
     private val playlist = PlaylistClock(resources.size, clock = SystemClock::uptimeMillis)
-    private var menuPlayer: MenuThemePlayer? = null
+    private var menuPlayer: MenuPlayback? = null
+    private val preparationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var menuPreparing = false
+    private var menuPreparationFailed = false
     private var gamePlayer: MediaPlayer? = null
     private var gameOccurrence = -1L
     private var selection: MusicSelection = MusicSelection.ShuffleAll
@@ -99,6 +116,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
         gamePlayer?.pause()
         recordPlayer?.pause()
         mode = target
+        if (target == MusicMode.MENU) menuPreparationFailed = false
         if (target == MusicMode.SILENT) {
             hasFocus = false
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) focusRequest?.let(audio::abandonAudioFocusRequest)
@@ -128,13 +146,46 @@ class GameMusic(private val context: Context) : MusicPlayback {
         pauseInactivePlayers(allowed)
         if (allowed) when (mode) {
             MusicMode.MENU -> {
-                if (menuPlayer == null) menuPlayer = MenuThemePlayer.create(context, attributes)
+                if (menuPlayer == null) prepareMenuPlayer()
                 menuPlayer?.play()
             }
             MusicMode.RECORD -> recordPlayer?.start()
             MusicMode.GAME -> synchronizeGamePlayback()
             MusicMode.SILENT -> Unit
         }
+    }
+
+    /** Keep the resource reachable even when cancellation discards the IO dispatch's return value. */
+    private fun prepareMenuPlayer() {
+        if (menuPreparing || menuPreparationFailed) return
+        menuPreparing = true
+        preparationScope.launch {
+            var prepared: MenuPlayback? = null
+            var adopted = false
+            try {
+                withContext(preparationDispatcher) { prepared = prepareMenu(context, attributes) }
+                menuPlayer = prepared
+                prepared = null
+                adopted = true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: IOException) {
+                menuPreparationFailure(failure)
+            } catch (failure: IllegalArgumentException) {
+                menuPreparationFailure(failure)
+            } catch (failure: IllegalStateException) {
+                menuPreparationFailure(failure)
+            } finally {
+                prepared?.release()
+                menuPreparing = false
+            }
+            if (adopted) synchronizePlayback()
+        }
+    }
+
+    private fun menuPreparationFailure(failure: Exception) {
+        menuPreparationFailed = true
+        android.util.Log.w("SwypetrisMusic", "Menu audio preparation failed", failure)
     }
 
     private fun synchronizeGamePlayback() {
@@ -174,6 +225,7 @@ class GameMusic(private val context: Context) : MusicPlayback {
         if (released) return
         setMode(MusicMode.SILENT)
         released = true
+        preparationScope.cancel()
         handler.removeCallbacks(timer)
         context.unregisterReceiver(noisyReceiver)
         menuPlayer?.release()
