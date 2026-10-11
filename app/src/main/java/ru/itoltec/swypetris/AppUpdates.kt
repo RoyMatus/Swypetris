@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -21,6 +22,8 @@ import ru.rustore.sdk.appupdate.model.UpdateAvailability
 internal const val GITHUB_RELEASE_API = "https://api.github.com/repos/RoyMatus/Swypetris/releases/latest"
 private const val RUSTORE_INSTALLER = "ru.vk.store"
 private const val REMIND_INTERVAL_MS = 24L * 60 * 60 * 1000
+
+private enum class AutomaticPreflight { PERMITTED, NOT_DUE, PERSISTENCE_FAILED }
 
 internal data class AvailableUpdate(val versionCode: Long, val versionName: String,
     val apkUrl: String?, val fromRuStore: Boolean,
@@ -112,53 +115,74 @@ internal class AppUpdates(private val activity: ComponentActivity,
         } else {
         val now = clock()
         val fromStore = isRuStoreInstall(activity)
-        if (!fromStore && !githubChecks.allowed(manual, now)) return
+        if (!fromStore && !githubChecks.cooldownAllows(manual, now)) return
         checking = true
         manualRequested = manual
         if (fromStore) storeChecks.check(now)
-        else githubChecks.check(now)
+        else githubChecks.check(now, manual)
         }
     }
 
     private inner class GitHubChecks {
-        fun allowed(manual: Boolean, now: Long): Boolean {
+        fun cooldownAllows(manual: Boolean, now: Long): Boolean {
             val retryAt = preferences.getLong("retry_at", Long.MIN_VALUE)
             if (now < retryAt) {
                 if (manual) notice = UpdateNotice.RateLimited(retryAt)
                 return false
             }
-            return if (manual) true else allowAutomaticCheck(now)
+            return true
         }
 
-        private fun allowAutomaticCheck(now: Long): Boolean {
+        private suspend fun automaticPreflight(now: Long): AutomaticPreflight = withContext(Dispatchers.IO) {
             val last = if (preferences.contains("last_check")) preferences.getLong("last_check", 0) else null
             val rebased = last?.coerceAtMost(now)
             val rebasedSaved = last == rebased || preferences.edit().putLong("last_check", rebased!!).commit()
-            if (!rebasedSaved || !automaticCheckDue(now, rebased)) return false
+            if (!rebasedSaved) return@withContext AutomaticPreflight.PERSISTENCE_FAILED
+            if (!automaticCheckDue(now, rebased)) return@withContext AutomaticPreflight.NOT_DUE
             // Persist before requesting so Activity/process death or an HTTP failure cannot cause a launch storm.
-            return preferences.edit().putLong("last_check", now).commit()
+            if (preferences.edit().putLong("last_check", now).commit()) AutomaticPreflight.PERMITTED
+            else AutomaticPreflight.PERSISTENCE_FAILED
         }
 
-        fun check(now: Long) {
+        fun check(now: Long, manualAtStart: Boolean) {
             activity.lifecycleScope.launch {
-                val result = withContext(Dispatchers.IO) { runCatching { githubUpdate() } }
-                val update = result.getOrNull()
-                checking = false
-                val manual = manualRequested
-                manualRequested = false
-                if (update == null) {
-                    val failure = result.exceptionOrNull() as? UpdateRateLimitException
-                    val persisted = failure == null || preferences.edit().putLong("retry_at",
-                        failure.retryAtMillis).commit()
-                    if (manual) notice = if (persisted &&
-                        failure != null) UpdateNotice.RateLimited(failure.retryAtMillis)
-                        else UpdateNotice.Failed
-                    return@launch
+                try {
+                    if (!manualAtStart) {
+                        when (automaticPreflight(now)) {
+                            AutomaticPreflight.PERSISTENCE_FAILED -> {
+                                if (manualRequested) notice = UpdateNotice.Failed
+                                return@launch
+                            }
+                            AutomaticPreflight.NOT_DUE -> if (!manualRequested) return@launch
+                            AutomaticPreflight.PERMITTED -> Unit
+                        }
+                    }
+                    completeCheck(now)
+                } finally {
+                    checking = false
+                    manualRequested = false
                 }
-                preferences.edit().putLong("last_check", now).remove("retry_at").apply()
-                if (newerVersion(update.versionCode, installedVersionCode())) showAvailable(update, manual)
-                else if (manual) notice = UpdateNotice.Current
             }
+        }
+
+        private suspend fun completeCheck(now: Long) {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { githubUpdate() }.onFailure { if (it is CancellationException) throw it }
+            }
+            val update = result.getOrNull()
+            if (update == null) {
+                val failure = result.exceptionOrNull() as? UpdateRateLimitException
+                val persisted = failure == null || withContext(Dispatchers.IO) {
+                    preferences.edit().putLong("retry_at", failure.retryAtMillis).commit()
+                }
+                if (manualRequested) notice = if (persisted &&
+                    failure != null) UpdateNotice.RateLimited(failure.retryAtMillis)
+                    else UpdateNotice.Failed
+                return
+            }
+            preferences.edit().putLong("last_check", now).remove("retry_at").apply()
+            if (newerVersion(update.versionCode, installedVersionCode())) showAvailable(update, manualRequested)
+            else if (manualRequested) notice = UpdateNotice.Current
         }
     }
 

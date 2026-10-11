@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.platform.app.InstrumentationRegistry
 import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -33,8 +34,14 @@ class UpdateCheckTest {
         compose.waitUntil(5000) { calls.get() == count && !checking(updates) }
     }
 
-    private fun checking(updates: AppUpdates): Boolean = AppUpdates::class.java.getDeclaredField("checking")
-        .apply { isAccessible = true }.getBoolean(updates)
+    private fun checking(updates: AppUpdates): Boolean {
+        var value = false
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            value = AppUpdates::class.java.getDeclaredField("checking")
+                .apply { isAccessible = true }.getBoolean(updates)
+        }
+        return value
+    }
 
     @Test fun failedAutomaticAttemptIsPersistedAcrossRecreationButManualCanBypassInterval() {
         val calls = AtomicInteger()
@@ -69,10 +76,16 @@ class UpdateCheckTest {
                 assertNull(updates.notice)
                 now -= 24 * 60 * 60 * 1000L
                 updates.check(false)
+            }
+            compose.waitUntil(5000) { !checking(updates) }
+            compose.runOnIdle {
                 assertEquals(now, preferences.getLong("last_check", -1))
                 assertEquals(3, calls.get())
                 now += AUTO_CHECK_INTERVAL_MS - 1
                 updates.check(false)
+            }
+            compose.waitUntil(5000) { !checking(updates) }
+            compose.runOnIdle {
                 assertEquals(3, calls.get())
                 now++
                 updates.check(false)

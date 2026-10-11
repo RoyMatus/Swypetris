@@ -83,7 +83,7 @@ FULL_SOURCES = {
 
 GROUP_TESTS = {
     "score": ((), ("BorderlessHudTest", "HudLayeringTest", "GameUiTest")),
-    "updates": (("UpdateCheckPolicyTest", "UpdateDownloadTest"), ("AppUpdatesTest", "UpdateCheckTest")),
+    "updates": (("UpdateCheckPolicyTest", "UpdateDownloadTest"), ("AppUpdatesTest", "UpdateCheckTest", "UpdatePersistenceTest")),
     "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),
                ("GameTimerTest", "GameUiTest", "SessionLifecycleTest", "VictorySessionIntegrationTest", "VictoryThemeIntegrationTest")),
     "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
