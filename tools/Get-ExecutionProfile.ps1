@@ -16,6 +16,7 @@ $facts = [ordered]@{
     logicalProcessors=[Environment]::ProcessorCount; totalMemoryGiB=$null; availableMemoryGiB=$null
     freeDiskGiB=$null; cpuLoadPercent=$null; javaReady=$false; sdkReady=$false
     emulatorReady=$false; accelerationReady=$false
+    hostArchitecture=[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
 }
 $errors = @()
 try {
@@ -78,7 +79,7 @@ try {
 } catch { $errors += $_.Exception.Message }
 $emulator = Join-Path $SdkDirectory $(if ($IsWindows) { 'emulator/emulator.exe' } else { 'emulator/emulator' })
 $facts.emulatorReady = (Test-Path -LiteralPath $emulator) -and
-    @(Get-ChildItem -LiteralPath (Join-Path $SdkDirectory 'system-images/android-35') -Filter 'system.img' -Recurse -File -ErrorAction SilentlyContinue).Count -gt 0
+    (Test-CompatibleEmulatorImage -SdkDirectory $SdkDirectory -Architecture $facts.hostArchitecture)
 if (Test-Path -LiteralPath $emulator) {
     try {
     $result = Invoke-BoundedDiagnostic -Executable $emulator -Arguments @('-accel-check') -OutputFile (Join-Path $directory 'acceleration.log')

@@ -61,4 +61,25 @@ Describe 'Resource-aware work placement' {
         Get-ProjectAndroidPlatform 'compileSdk = 36' | Should -Be 'android-36'
         { Get-ProjectAndroidPlatform 'compileSdk = libs.versions.androidSdk.get()' } | Should -Throw
     }
+    It 'rejects a foreign image and accepts only an installed host-compatible API 35 image' {
+        $sdk = Join-Path $TestDrive 'sdk'
+        $armImage = Join-Path $sdk 'system-images/android-35/google_apis/arm64-v8a'
+        New-Item -ItemType Directory -Path $armImage -Force | Out-Null
+        Set-Content (Join-Path $armImage 'system.img') 'fixture'
+        Test-CompatibleEmulatorImage $sdk X64 | Should -BeFalse
+        Test-CompatibleEmulatorImage $sdk Arm64 | Should -BeTrue
+        $x64Image = Join-Path $sdk 'system-images/android-35/google_apis/x86_64'
+        New-Item -ItemType Directory -Path $x64Image -Force | Out-Null
+        Set-Content (Join-Path $x64Image 'system.img') 'fixture'
+        Test-CompatibleEmulatorImage $sdk X64 | Should -BeTrue
+        Test-CompatibleEmulatorImage $sdk Unknown | Should -BeFalse
+    }
+    It 'does not treat an image for a different API level as a usable API 35 image' {
+        $sdk = Join-Path $TestDrive 'other-api-sdk'
+        $image = Join-Path $sdk 'system-images/android-34/google_apis/x86_64'
+        New-Item -ItemType Directory -Path $image -Force | Out-Null
+        Set-Content (Join-Path $image 'system.img') 'fixture'
+        Test-CompatibleEmulatorImage $sdk X64 | Should -BeFalse
+        Test-CompatibleEmulatorImage "$TestDrive/missing-sdk" X64 | Should -BeFalse
+    }
 }

@@ -25,7 +25,7 @@ The complete thresholds, commands, check matrix, limitations and reusable task p
 
 ## Research and adopted practices
 
-Sources accessed 2026-10-11; Context7 was unavailable because of its quota, so official documentation was used directly.
+Sources accessed 2026-10-11. During initial preparation the separate Context7 MCP endpoint returned a quota error, so official documentation was used directly. The authenticated plugin was subsequently verified and used for the revalidation below.
 
 - **Measure before tuning, preserve compatible caches and bound parallel work.** [Android build optimization](https://developer.android.com/build/optimize-your-build) and [Gradle performance guidance](https://docs.gradle.org/current/userguide/performance.html) support profiling and targeted cache/parallelism improvements. Current Gradle documentation is newer than this project's 9.3.1; no version-specific new feature or dependency upgrade was applied. Heap/parallelism changes need this workload's measurements.
 - **Use accelerated emulators and appropriate test levels.** [Android emulator acceleration](https://developer.android.com/studio/run/emulator-acceleration) and [testing strategy](https://developer.android.com/training/testing/fundamentals/strategies) support checking acceleration and using focused lower-level feedback where it covers the behavior. Platform/Compose behavior still needs device tests; faster JVM tests do not replace that coverage.
@@ -49,6 +49,23 @@ Tests exercise host decisions, unknown/constrained/container resources, actual m
 The new optional hosted workflow was not dispatched on this capable machine. Its syntax, input guards and argument binding were tested locally; actual hosted focused execution remains unverified until it is needed after merge. Direct UI dispatch can bypass the wrapper's open-PR guard; use the wrapper and policy. Mandatory CI/release workflows retain their independent evidence requirements. Native host probes support Windows/Linux, not complete macOS capacity discovery; image presence/acceleration does not prove a successful emulator boot.
 
 The first required PR run, [38133026307](https://github.com/RoyMatus/Swypetris/actions/runs/38133026307), failed in the new Unix launcher fixture before app tests. Repository attributes force CRLF for PowerShell files even on Linux; the fixture's embedded shell script inherited those endings. Normalize that generated shell script to LF and expose the runner's diagnostic output. The failed job log was retained locally. Windows has no installed WSL/container executor, so confirmation of the Linux fixture uses the next required PR run rather than an additional optional workflow. This failure is part of the audit evidence, not a passed local Linux check.
+
+## Context7 revalidation and resulting correction
+
+After the user reported payment, the authenticated Context7 plugin successfully resolved libraries and returned documentation; the separate legacy MCP endpoint still returned a monthly quota error. This proves the plugin works, not that billing details are visible. AGENTS.md now prefers the working authenticated plugin and requires checking returned version/API applicability instead of repeatedly retrying an exhausted connection.
+
+Revalidated the current audit's code and rules, including the attached Build-Release.ps1, rather than treating a documentation provider's failure as evidence that all earlier code was wrong:
+
+| Area | Context7 evidence and disposition |
+| --- | --- |
+| Gradle worker budget, verification/release runners | `/websites/gradle_current_userguide` returned the official [worker option contract](https://docs.gradle.org/current/userguide/command_line_interface.html). Explicit `--max-workers` forwarding is appropriate; do not adopt unrelated newer Tooling API settings or heap changes. No runner correction needed. |
+| PowerShell probes, native arguments and environment restoration | `/microsoftdocs/powershell-docs` confirmed CIM is Windows-only and separate argv/splatting is appropriate. Returned environment-variable material included PowerShell 7.7; the existing explicit provider removal preserves unset variables without relying on newer empty-string semantics. Windows tests and the required Linux fixture provide actual execution evidence. |
+| GitHub workflow and wrapper | `/websites/github_en_actions` confirmed branch/ref dispatch, event SHA, environment-based input handling, minimum permissions and failure artifact upload. Independent bounded review found no concrete mismatch. `cancel-in-progress: false` does not guarantee preservation of every pending run in the same group; avoid duplicate dispatches as documented. |
+| Host/emulator readiness | `/websites/developer_android` returned the [acceleration requirement](https://developer.android.com/studio/run/emulator-acceleration) that the image match host CPU architecture. Initial automation accepted any API 35 image and left compatibility to a manual pre-boot check. Now the probe itself requires x86/x86_64 on X64 or arm64-v8a on Arm64; foreign images and unknown host architectures do not establish local device readiness. |
+
+Context7 also returned unrelated Kotlin Multiplatform APIs; these were not applied to this Android application. The actual minor compile SDK declaration was cross-checked against the official [Android 16 QPR2 SDK instructions](https://developer.android.com/about/versions/16/qpr2/setup-sdk), which require platform 36.1 for minor level 1. Resource thresholds remain project heuristics, not vendor recommendations.
+
+The corrected profile passed **10 focused Pester tests in 1.329 seconds**, including foreign image, missing image/API and unknown architecture cases. The real host still selects Local with four workers. The selector chooses tool checks only for this follow-up; no duplicate Android build was run. [PR #237](https://github.com/RoyMatus/Swypetris/pull/237)'s final full CI [38133181711](https://github.com/RoyMatus/Swypetris/actions/runs/38133181711) had already passed in **724 seconds (12m04s)**: 59 Linux Pester passed/two platform skips, all 63 Python cases passed, 149 JVM cases passed, and 156 Android cases passed/two opt-in skips. That full result validates the CI/workflow changes; the subsequent host-only correction has its own proportional required check.
 
 ## Measure the next epic
 
