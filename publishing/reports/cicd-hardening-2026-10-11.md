@@ -31,6 +31,8 @@ The execution profile selected Local: eight logical CPUs, approximately 48 GiB R
 
 An initial `python` invocation during the audit resolved to a Windows Store alias, not an interpreter. Implementation reused the existing embedded Python 3.13.15 runtime. Python test messages about instrumentation are synthetic report fixtures, not device-test claims. Required PR CI supplies Linux shell execution and full real app regression; its final result is reported on the PR rather than preclaimed here.
 
+The first PR CI run [38136586384](https://github.com/RoyMatus/Swypetris/actions/runs/38136586384) passed its Windows job (39 seconds), but Linux Pester exposed six transaction failures: `Get-Item` required `-Force` for dot-prefixed staging directories. The failed android job lasted 57 seconds; its complete log was preserved in ignored verification output. Both root and transaction-path inspection now include `-Force`. An added Windows Hidden-attribute reproduction covers root/staging/destination promotion and cleanup; the focused transaction suite passed 7/7 in 1.87 seconds. Linux confirmation uses the required CI on the corrected commit, not an optional duplicate run.
+
 The real signing experiment supports removing the global AAB `--rerun-tasks` for the current Gradle/AGP configuration. It does **not** establish a Linux speedup or compare cold/warm builds causally. Baseline run 38128435349 spent 293 seconds in duplicate regression and 673 seconds in an evidence-wait step. Removing these costs primarily reduces runner usage; delayed signing after source CI may increase end-to-end release latency. Measure comparable future releases separately.
 
 ## Activation and remaining limits

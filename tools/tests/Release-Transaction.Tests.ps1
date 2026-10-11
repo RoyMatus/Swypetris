@@ -66,4 +66,22 @@ Describe 'Local release transactions' {
         $outside = Join-Path $project 'outside'
         { Assert-ReleaseTransactionPath -Transaction $transaction -Path $outside } | Should -Throw '*escapes dist*'
     }
+    It 'supports hidden root, staging and destination directories on Windows' -Skip:(!$IsWindows) {
+        # Unix dot-prefixed staging directories are hidden automatically; reproduce
+        # that provider behavior explicitly on Windows as well.
+        foreach ($path in @($transaction.Root, $transaction.Stage, $transaction.Destination)) {
+            $item = Get-Item -LiteralPath $path -Force
+            $item.Attributes = $item.Attributes -bor [IO.FileAttributes]::Hidden
+        }
+        Write-FixtureRelease $transaction.Stage
+        Complete-ReleaseTransaction -Transaction $transaction -Version '1.0.0'
+        Get-Content -LiteralPath (Join-Path $transaction.Destination 'Swypetris.apk') | Should -Be 'new-Swypetris.apk'
+        Test-Path -LiteralPath $transaction.Backup | Should -BeFalse
+        Close-ReleaseTransaction -Transaction $transaction
+        $transaction = New-ReleaseTransaction -Project $project -Version '1.0.0'
+        $stage = Get-Item -LiteralPath $transaction.Stage -Force
+        $stage.Attributes = $stage.Attributes -bor [IO.FileAttributes]::Hidden
+        Close-ReleaseTransaction -Transaction $transaction
+        Test-Path -LiteralPath $transaction.Stage | Should -BeFalse
+    }
 }

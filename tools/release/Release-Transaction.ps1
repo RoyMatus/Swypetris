@@ -2,7 +2,7 @@ function New-ReleaseTransaction {
     param([Parameter(Mandatory)][string]$Project, [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version)
     $root = [IO.Path]::GetFullPath((Join-Path $Project 'dist'))
     New-Item -ItemType Directory -Force -Path $root | Out-Null
-    if ((Get-Item -LiteralPath $root).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Release root must not be a link.' }
+    if ((Get-Item -LiteralPath $root -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Release root must not be a link.' }
     # Keep the lock file: deleting it after close races with the next holder on Unix.
     $lock = $null
     try {
@@ -26,7 +26,7 @@ function Assert-ReleaseTransactionPath {
     param([object]$Transaction, [string]$Path)
     $absolute = [IO.Path]::GetFullPath($Path)
     if ([IO.Path]::GetDirectoryName($absolute) -cne $Transaction.Root) { throw 'Release transaction path escapes dist.' }
-    if ((Test-Path -LiteralPath $absolute) -and ((Get-Item -LiteralPath $absolute).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+    if ((Test-Path -LiteralPath $absolute) -and ((Get-Item -LiteralPath $absolute -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
         throw 'Release transaction directory must not be a link.'
     }
 }
