@@ -9,7 +9,7 @@ The repository has one Android Gradle module, `:app`. It uses AGP 9.1.1, Gradle 
 | Pull request to `main` changing an app component | Debug APK build, strict `lintDebug` including test sources, `detekt`, all debug JVM tests and JaCoCo, mapped Android test classes and `SmokeTest` on an API 35 emulator; SonarQube Cloud analysis and Quality Gate |
 | Push to `main` changing `gradle.properties` for a version/release | Full cloud Android CI for the exact release commit; release verification reuses its instrumentation/smoke evidence. Release JVM/lint and signed APK/AAB checks remain independent |
 | Shared or unmapped build input | Debug build, lint, detekt, full JVM and Android regression, JaCoCo, smoke, and Sonar analysis |
-| Documentation or AI instruction/script-only change | Path classification only; no Java/Gradle setup, Android build, tests, or Sonar analysis |
+| Repository Markdown or AI instruction-only change | Path classification only; no Java/Gradle setup, Android build, tests, or Sonar analysis |
 | GitHub API or release script-only change | Pester or PowerShell syntax respectively; no Android build or tests |
 | CI script-only change | Selector/gate unit tests and full app regression |
 | `v*` tag or manual release verification | All JVM, Android, and CI/tool correctness tests, debug/release lint, detekt, JaCoCo, Sonar, launcher smoke, signed APK/AAB builds, signature and archive checks |
@@ -23,6 +23,10 @@ New production Kotlin files must be registered in `SOURCE_GROUPS` or `FULL_SOURC
 The cloud device script runs launcher smoke (`adb shell monkey` with one launcher event) immediately after installing the app/test APKs, before instrumentation. A failed launcher stops the device step; stale device reports are removed first. Full-regression evidence is written only after instrumentation and its report validation also succeed. This launcher check is separate from the `SmokeTest` instrumentation class, which exercises new game, pause and Continue. A launcher event alone does not verify changed gameplay, rendering, persistence or platform behavior.
 
 Use the existing selector instead of running full Android regression for every PR. For example, a JVM-test-only change selects `SmokeTest` as the only Android class while retaining JVM/quality/Sonar checks; repository documentation selects no Android tests. A launcher event alone is not an exemption for production code. The table and selector above remain the source of truth for affected checks.
+
+The settings group includes `VibrationSettingsTest`, so `SettingsScreen`, difficulty and palette changes exercise the persisted vibration slider as well as the existing game/music/reset flows. The verified current inventory is 149 debug JVM cases and 158 Android cases (two opt-in skips); see TESTING.md for dated evidence and historical figures. Pester discovers all `tools/tests/*.Tests.ps1` in the existing script-check steps. Unknown tool paths still conservatively select full app regression.
+
+Local `Verify-Tests.ps1` offers `FocusedJvm`/`FocusedAndroid` with `-TestClass`, plus the original Fast/Android modes and timed JSON summaries. Fast includes debug build/lint/JVM/JaCoCo, not detekt/Sonar/device tests. Focused JVM checks do not generate whole-app coverage; mandatory app CI retains full JVM coverage even with selective Android classes. Prefer these local checkpoints on available hardware and avoid additional cloud/manual verification runs unless release/signing/platform evidence requires them. The existing required hosted CI and release evidence contract remain mandatory.
 
 ### Short feedback loop without reducing verification
 

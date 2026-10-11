@@ -12,9 +12,17 @@ Every completed Gradle invocation writes a timestamped log and JSON summary in i
 
 Agree acceptance criteria and material visual/audio references before implementation. Run focused checks at meaningful checkpoints; after a failure, diagnose and exercise the failed scenario before broader checks. Prepare final code, tests, documentation and English PR text before its required CI; API-only description edits need no new code commit. Do not repeat successful unchanged full suites after each small edit. Use full local regression for cross-system risk or unresolved failures. Build the final signed candidate after the feature set is complete; earlier signed candidates are warranted for signing, self-update, release shrinking or packaging changes. Preserve per-issue PR checks and same-commit main release gates.
 
-PR and `main` CI use the explicit source-to-test map in `tools/ci/select_checks.py` to run affected JVM and Android classes plus `SmokeTest` on an API 35 emulator. Cross-cutting or unmapped inputs run full regression. Selective runs do not publish whole-app JaCoCo coverage. The release verification workflow runs all JVM, Android, and CI/tool correctness tests, coverage, lint, Sonar, and signed-artifact checks. The `EnergyScenarioTest` workload is opt-in via `energyScenario=true`; it is skipped in the normal and release correctness suites.
+PR and release-version `main` CI use the explicit source-to-test map in `tools/ci/select_checks.py` for affected Android classes plus `SmokeTest` on an API 35 emulator. Every app CI runs the complete debug JVM suite and its JaCoCo report, even when Android selection is narrow. Cross-cutting or unmapped inputs run full regression. Ordinary non-version main merges do not repeat the PR suite. The release verification workflow runs all configured JVM tests, Android regression, CI/tool correctness tests, coverage, lint, Sonar, and signed-artifact checks; main publication reuses its exact-commit CI Android evidence. Existing required CI executes on GitHub-hosted Ubuntu 24.04/API 35 x86_64. Local development uses the available computer and an isolated explicit emulator first; use the phone only for device-specific behavior.
 
-## Inventory and decisions
+## Current verified inventory
+
+The 2026-10-10 [signed-candidate reports](https://github.com/RoyMatus/Swypetris/actions/runs/38077678547) contain **149 JVM cases in 30 classes**, all passed, and **158 Android cases in 45 classes**, 156 passed and two opt-in skips. The application/test sources are unchanged by the verification-tool improvements. These are case counts, not the number of assertions, portrait/font fixtures or repeated executions. The two default Android skips are `EnergyScenarioTest` (measurement) and `SignedUpdateScenarioTest` (explicit signed-install fixture); normal green CI does not exercise them.
+
+Full PR CI additionally runs the one-case picker preflight and a 14-case UI preflight before the complete inventory. Those 15 cases are repeated in the full run, not 15 extra unique tests. The signed APK has a separate menu/settings/new-game/pause/Continue runtime smoke; full instrumentation exercises the debug target. JVM coverage measures debug production code executed by JVM tests and does not include Android/Compose coverage.
+
+The original #62 counts and coverage figures below are historical snapshots, not the current inventory. Use actual XML and invocation outcome for each new run; Gradle cached/up-to-date results do not represent fresh test execution. Settings selection now includes `VibrationSettingsTest` alongside the existing game/music/reset flows and `SmokeTest`.
+
+## Historical audit and decisions (#62)
 
 Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android test classes with 71 methods, plus the `IsolatedStorageRule` fixture. These counts predate the CI `SmokeTest` added later. The following review compares each class with current game behavior. Tests marked **keep** have a distinct regression purpose; no class was removed merely to reduce the count.
 
@@ -70,7 +78,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 
 The audit found no proven obsolete or interchangeable test group to remove. The Android classes need framework services or verify actual Compose behavior; moving them to JVM would require an Android simulator or duplicating the UI mechanism. Newly added `SessionQueueBehaviorSpec` covers ordered seven-bag restoration and rejection of a corrupt queue, which the previous tests did not exercise directly. Its `Given/When/Then` structure makes the saved-session transition explicit.
 
-## Coverage and limits
+## Historical coverage and limits (#62)
 
 Before this change, JVM JaCoCo recorded 362/2,562 lines (14.1%) and 253/1,524 branches (16.6%) across compiled debug production classes. This includes Compose rendering and Android code that the JVM suite cannot execute. Use class-level misses to find candidate logic, not the overall percentage as a target. Android instrumentation coverage is not merged into this report.
 
