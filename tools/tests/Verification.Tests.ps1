@@ -59,6 +59,29 @@ Describe 'Verification evidence' {
         $report = Write-TestXml "$TestDrive/skipped.xml" ($passing -replace '/></testsuite>', '><skipped/></testcase></testsuite>')
         { Read-VerificationReports @($report) @() (Get-Date) $false } | Should -Throw
     }
+    It 'rejects a selected class with only skipped cases even when another class passes' {
+        $report = Write-TestXml "$TestDrive/selected-skipped.xml" '<testsuite tests="2" failures="0" errors="0"><testcase classname="A" name="passes"/><testcase classname="B" name="optional"><skipped/></testcase></testsuite>'
+        { Read-VerificationReports @($report) @('A', 'B') (Get-Date) $false } | Should -Throw '*requested class: B*'
+    }
+    It 'accepts multiple selected classes with a passing case in each' {
+        $report = Write-TestXml "$TestDrive/selected-passing.xml" '<testsuite tests="2" failures="0" errors="0"><testcase classname="A" name="passes"/><testcase classname="B" name="passes"/></testsuite>'
+        $result = Read-VerificationReports @($report) @('A', 'B') (Get-Date) $false
+        $result.passed | Should -Be 2
+        $result.skipped | Should -Be 0
+    }
+    It 'accepts partial skips within a selected class that also passes' {
+        $report = Write-TestXml "$TestDrive/selected-partial.xml" '<testsuite tests="3" failures="0" errors="0"><testcase classname="A" name="passes"/><testcase classname="B" name="passes"/><testcase classname="B" name="optional"><skipped/></testcase></testsuite>'
+        $result = Read-VerificationReports @($report) @('A', 'B') (Get-Date) $false
+        $result.passed | Should -Be 2
+        $result.skipped | Should -Be 1
+    }
+    It 'retains optional all-skipped classes in an unfiltered run with passing tests' {
+        $report = Write-TestXml "$TestDrive/unfiltered-skips.xml" '<testsuite tests="2" failures="0" errors="0"><testcase classname="A" name="passes"/><testcase classname="B" name="optional"><skipped/></testcase></testsuite>'
+        $result = Read-VerificationReports @($report) @() (Get-Date) $false
+        $result.passed | Should -Be 1
+        $result.skipped | Should -Be 1
+        $result.classes | Should -Contain 'B'
+    }
     It 'detects execution and rejects an absent task' {
         Set-Content "$TestDrive/executed.log" '> Task :app:testDebugUnitTest'
         Get-VerificationTaskOutcome "$TestDrive/executed.log" ':app:testDebugUnitTest' | Should -Be 'EXECUTED'

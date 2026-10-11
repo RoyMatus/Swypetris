@@ -65,6 +65,11 @@ function Read-VerificationReports {
     if ($Classes.Count -and @(Compare-Object $Classes $actualClasses).Count) { throw 'XML classes do not match the requested classes.' }
     $skipped = @($cases | Where-Object { $null -ne $_.skipped }).Count
     if ($skipped -eq $cases.Count) { throw 'No test case passed; all cases were skipped.' }
+    foreach ($name in $Classes) {
+        if (!@($cases | Where-Object { $_.classname -eq $name -and $null -eq $_.skipped }).Count) {
+            throw "No test case passed in requested class: $name"
+        }
+    }
     [pscustomobject]@{ tests = $cases.Count; passed = $cases.Count - $skipped; skipped = $skipped; failures = 0; classes = $actualClasses }
 }
 function New-VerificationSummary {
