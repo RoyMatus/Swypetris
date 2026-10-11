@@ -150,3 +150,19 @@ Describe 'Mandatory CI evidence' {
         @(Get-GitHubRequiredChecks -Client @{} -Branch main).Count | Should -Be 2
     }
 }
+Describe 'Local evidence integration with GitHub protection' {
+    It 'accepts no cloud checks only after local verification' {
+        Assert-GitHubPullRequestReady -PullRequest (New-ReadyPullRequest) -LocalVerificationPassed
+    }
+    It 'does not waive repository required checks for local evidence' {
+        { Assert-GitHubPullRequestReady -PullRequest (New-ReadyPullRequest) -LocalVerificationPassed -RequiredChecks @([pscustomobject]@{context='android';app_id=15368}) } | Should -Throw '*missing required check*'
+    }
+    It 'does not waive failed remote checks for local evidence' {
+        { Assert-GitHubPullRequestReady -PullRequest (New-ReadyPullRequest) -LocalVerificationPassed -Checks @([pscustomobject]@{name='scan';status='completed';conclusion='failure'}) } | Should -Throw '*failed checks*'
+    }
+    It 'does not waive merge conflict or draft state for local evidence' {
+        $pr = New-ReadyPullRequest
+        $pr.draft = $true
+        { Assert-GitHubPullRequestReady -PullRequest $pr -LocalVerificationPassed } | Should -Throw '*draft*'
+    }
+}

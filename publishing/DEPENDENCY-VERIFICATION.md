@@ -23,11 +23,11 @@ Gradle files; verification does not lock or upgrade the dependency graph.
    not evidence that the bootstrap cache was trustworthy.
 4. Remove the metadata-writing option and run the affected checks in strict
    mode, retaining `--refresh-dependencies` for this validation of refreshed
-   resolution. Ordinary builds keep normal caching. Preserve required PR CI and
+   resolution. Ordinary builds keep normal caching. Preserve required local PR and
    signed release gates. Review the metadata
    diff together with the dependency change before merging.
 
-Do not automatically regenerate hashes in CI or when verification fails. Do not
+Do not automatically regenerate hashes during verification or when verification fails. Do not
 add broad trusted-artifact exceptions or switch to lenient/off mode to make a
 build pass. A publisher reusing a version with different bytes needs explicit
 investigation, not automatic acceptance of an additional hash.

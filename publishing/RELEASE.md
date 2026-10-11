@@ -1,3 +1,31 @@
+# Current local release process
+
+All release builds and checks run locally. Verification and publication are separate commands; neither a version edit nor a merge automatically publishes anything. Complete the applicable [release compliance review](RELEASE-COMPLIANCE.md) before publication.
+
+1. Check out the clean exact current remote `main` commit and finish `tools/Invoke-LocalChecks.ps1 -Mode Full` with all required local platform evidence and Sonar Quality Gate. See [CI.md](CI.md).
+2. Verify the signed candidate on an explicitly selected isolated emulator:
+
+```powershell
+./tools/release/Verify-LocalRelease.ps1 -EvidencePath '<full-local-evidence.json>' `
+  -Serial emulator-5560 -Python '<python executable>' -JavaHome '<JDK 21>' -MaxWorkers 4
+```
+
+The verifier checks full evidence, APK/AAB signatures and public certificate fingerprints, then resets only Swypetris on the selected emulator for signed runtime smoke. This can erase that emulator's Swypetris data. It produces an immutable snapshot and `local-release-provenance.json` under ignored verification output, binding the exact commit/version, artifact/report hashes, certificates and diagnostics. It does not publish or replace physical-device/store acceptance.
+
+3. Only when publication is explicitly authorized, review English notes and preview the separate publisher:
+
+```powershell
+./tools/release/Publish-LocalRelease.ps1 -ProvenancePath '<local-release-provenance.json>' `
+  -NotesFile '<reviewed English release notes>' -JavaHome '<JDK 21>' -Python '<python executable>' -WhatIf
+# Remove -WhatIf only for the authorized publication.
+```
+
+The publisher refuses an existing release/tag, stages assets as a draft and publishes only after validation. Never overwrite protected tags or a release after a partial failure; inspect and preserve diagnostics before recovery. After publication, use `Verify-PublishedRelease.ps1 -Tag v<version> -LocalProvenance -JavaHome <JDK>` to validate public files. The historical `-ReleaseRunId` path remains available for releases published by the former cloud process.
+
+Signing material remains outside the repository in `$env:USERPROFILE/.swypetris-signing` by default (`-SigningDirectory` can select an authorized alternative). Preserve the separate app/upload keys and DPAPI credentials. Never print/upload keys or credentials. `Build-Release.ps1` alone builds and verifies artifact signatures but does not provide full regression/runtime evidence or authorize publication. Backup instructions below remain applicable; the version-specific store text is historical.
+
+---
+
 # Выпуск Swypetris 1.4.1
 
 Этот документ описывает исторический выпуск 1.4.1. Для каждого нового существенного релиза сначала выполните [единый актуальный аудит RuStore и GitHub](RELEASE-COMPLIANCE.md) и заполните [отчёт](templates/RELEASE-COMPLIANCE-REPORT.md) по точным файлам кандидата. Читайте полные текущие требования RuStore и актуальные источники GitHub; старый текст ниже не подтверждает соответствие нового выпуска. Не публикуйте при обязательных нарушениях или непроверенных обязательных пунктах. Технические проверки описаны в [CI.md](CI.md).
@@ -55,7 +83,7 @@ APK публикуется как asset `Swypetris.apk` публичного Git
 
 Скрипт собирает полный комплект во временном каталоге внутри `dist` на том же диске. Блокировка версии исключает одновременную сборку одного выпуска. После успешных проверок APK и AAB он формирует контрольные суммы только для `Swypetris.apk`, `Swypetris-<version>.aab`, `update.json` и `RuStore-icon.png`, затем заменяет `dist/<version>` с резервным переименованием предыдущего каталога. Ошибка сборки сохраняет предыдущий комплект; ошибка переноса вызывает восстановление. При принудительном завершении процесса между переименованиями может остаться каталог `.backup`: сохраните его и проверьте комплект перед ручным восстановлением. Это не гарантия восстановления после аварийного отключения питания.
 
-Для нового выпуска измените `swypetrisVersion` в `gradle.properties` и увеличьте `versionCode` в `app/build.gradle.kts`. После прохождения обязательного CI в `main` автоматический выпуск использует процесс из [CI.md](CI.md): проверенные `Swypetris.apk`, `update.json` и `SHA256SUMS.txt` публикуются в новый GitHub Release `v<version>`. Локальная сборка сама ничего не публикует. Без `update.json` приложение не сможет подтвердить доступность обновления. Проверьте публичные ссылки без авторизации до распространения сборки.
+Для нового выпуска измените `swypetrisVersion` в `gradle.properties` и увеличьте `versionCode` в `app/build.gradle.kts`. После локальной проверки точного коммита `main` публикация выполняется отдельной явно разрешённой командой, описанной выше. Автоматического выпуска больше нет. Локальная сборка сама ничего не публикует. Без `update.json` приложение не сможет подтвердить доступность обновления. Проверьте публичные ссылки без авторизации до распространения сборки.
 
 Ключи находятся вне проекта, в `$env:USERPROFILE/.swypetris-signing`. `swypetris-app.p12` — неизменная идентичность приложения; `swypetris-upload.p12` — ключ загрузки Google Play. Пароли в `app.clixml` и `upload.clixml` защищены Windows DPAPI и читаются только тем же пользователем на этой Windows. Не сохраняйте эти файлы в Git, общие папки или релизы GitHub.
 

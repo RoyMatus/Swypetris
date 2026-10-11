@@ -1,20 +1,20 @@
 # Efficient development with evidence
 
-Choose local, hybrid or cloud work from the actual host using [EXECUTION-PROFILES.md](EXECUTION-PROFILES.md). Diagnose before an epic, continuation on another machine or standalone ticket; share its profile and resource budget across agents. Prefer capable local resources and use an available cloud executor for unsuitable/missing local capacity. The required PR status and exact-main release gates remain mandatory. See CI.md and TESTING.md for actual scope.
+Run verification locally using [EXECUTION-PROFILES.md](EXECUTION-PROFILES.md). Diagnose before an epic, continuation on another machine or standalone ticket; share its profile and budget across agents. Missing local capacity blocks required checks and never authorizes cloud execution. SonarQube Cloud remains the explicit analysis-service exception. Exact-head local PR evidence and exact-main signed release gates remain mandatory. See CI.md and TESTING.md for scope.
 
 ## One issue at a time
 
 1. Inspect affected behavior and list the risk each selected check covers. Use focused JVM checks for rules and focused emulator checks for UI/platform integration at meaningful checkpoints on the selected executor. One owner schedules heavy checks; reuse valid evidence across agents. Tool/instruction changes do not justify an app build by themselves.
 2. Keep compatible caches in the owned worktree through sequential issues. Preserve others' worktrees/processes. Do not clean or force rerun without evidence.
-3. Before the final push, finish code, tests, review, PR text, notes and measurements belonging in the PR. Do not repeat an unchanged full local suite before the mandatory PR run. Wait for the required check on that final SHA; any subsequent meaningful change needs its own final check. With an open PR, use its CI rather than also dispatching optional developer checks.
-4. While CI runs, prepare completion text and inspect evidence without modifying the tested commit. Do not start implementation of the next epic issue before merge/closure.
+3. Before the final push, finish code, tests, review, PR text, notes and measurements belonging in the PR. Reuse valid unchanged local evidence. Complete the local gate for the final clean SHA and current main base; subsequent meaningful changes require applicable revalidation. Merge through Manage-PullRequest.ps1 with validated evidence; never dispatch cloud checks.
+4. While local checks run, prepare completion text and inspect evidence without modifying the tested commit. Do not start implementation of the next epic issue before merge/closure.
 5. After a failure, preserve the full log and device snapshot, diagnose the cause, then verify the failed scenario and affected neighbors. No automatic retry-to-green. `Verify-Tests.ps1` captures bounded emulator diagnostics on device readiness/test failures; manual capture is also available:
 
 ```powershell
 ./tools/release/Save-EmulatorDiagnostics.ps1 -Serial emulator-5560
 ```
 
-Each adb command has a ten-second bound. Snapshots contain selected device properties, app memory and host emulator process IDs/memory/CPU; they neither restart a device nor assert an OOM/root cause. They do not collect arbitrary environment variables, process command lines or global logcat. Full test logs remain necessary. CI host failures still use existing workflow diagnostics.
+Each adb command has a ten-second bound. Snapshots contain selected device properties, app memory and host emulator process IDs/memory/CPU; they neither restart a device nor assert an OOM/root cause. They do not collect arbitrary environment variables, process command lines or global logcat. Full test logs remain necessary. Local failures retain the selected runner/device diagnostics.
 
 Record the reason in the existing runner's JSON (omit sensitive details):
 
@@ -55,6 +55,6 @@ Review scope, failures, inferences and limitations, then write `publishing/repor
   -JavaHome 'C:/Users/pilig/.jdks/jbr-21.0.11'
 ```
 
-This read-only command resolves the tag (including annotated tags), checks the successful main publication workflow SHA, downloads all three public assets without authentication, checks API size/digest and checksum entries, validates update metadata against the APK package/version, and reuses the existing original-certificate signature verifier. Logs/downloads/JSON stay ignored. A failure is never a passed summary. It performs no build, installation, instrumentation, publication or Project operation and does not replace the existing exact-main proof gate or manual device/store acceptance. Windows PowerShell 7, Android build-tools and a JDK are required for native APK verification.
+This read-only command resolves the tag (including annotated tags), checks publication provenance bound to the release commit, downloads all three public assets without authentication, checks API size/digest and checksum entries, validates update metadata against the APK package/version, and reuses the existing original-certificate signature verifier. Logs/downloads/JSON stay ignored. A failure is never a passed summary. It performs no build, installation, instrumentation, publication or Project operation and does not replace the existing exact-main proof gate or manual device/store acceptance. For locally published releases use `-LocalProvenance`; retain `-ReleaseRunId` only for historical cloud publications. PowerShell 7, Android build-tools and a JDK are required for native APK verification.
 
 Implementation references: [PowerShell web downloads](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/invoke-webrequest), [JSON parsing](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/convertfrom-json). Context7 was unavailable during preparation; official documentation was reviewed instead.

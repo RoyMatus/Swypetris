@@ -170,7 +170,13 @@ Describe 'Workflow-run publication provenance' {
             { Assert-PublicationRun $run $sha $bad $source $workflow $artifact } | Should -Throw
         }
     }
-    It 'rejects failed, rerun, foreign or inactive source CI' {
+    It 'accepts retired known workflow while keeping historical run identity checks' {
+        foreach ($state in @('disabled_manually','disabled_inactivity','deleted')) {
+            $retired = $workflow.Clone(); $retired.state = $state
+            { Assert-PublicationRun $run $sha $proof $source $retired $artifact } | Should -Not -Throw
+        }
+    }
+    It 'rejects failed, rerun, foreign or unknown source CI' {
         foreach ($key in $source.Keys) {
             $bad = $source.Clone()
             $bad[$key] = if ($source[$key] -is [int]) { 999 } else { 'wrong' }
@@ -222,7 +228,7 @@ Describe 'Workflow-run publication provenance' {
             switch ($Path) {
                 'actions/runs/10/artifacts?per_page=100&page=1' { return @{artifacts=@($publicationArtifact)} }
                 'actions/runs/20/attempts/3' { return $source }
-                'actions/workflows/ci.yml' { return $workflow }
+                'actions/workflows/40' { return $workflow }
                 'actions/artifacts/30' { return $sourceArtifactFixture }
                 default { throw "Unexpected API request: $Path" }
             }

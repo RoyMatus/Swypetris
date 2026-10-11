@@ -1,49 +1,33 @@
 # Project policy and enforcement
 
-This document assigns rules to their enforcing owner. CI scope/commands live in [CI.md](CI.md) and `tools/ci/select_checks.py`; agent behavior lives in [AGENTS.md](../AGENTS.md). Do not duplicate executable path/test matrices in skills or role profiles.
+Current verification runs locally. [CI.md](CI.md) and `tools/ci/select_checks.py` own check scope; [AGENTS.md](../AGENTS.md) owns agent behavior. Do not duplicate executable matrices in skills or roles.
 
-| Rule | GitHub mechanism / owner | Instruction retained for the agent |
+| Rule | Enforcing owner | Required behavior |
 | --- | --- | --- |
-| Changes enter main through a PR | Native active `Protect main` ruleset; zero required approvals, no CODEOWNERS approval | Prepare focused code/body locally; use Manage-PullRequest.ps1; verify the merge |
-| Required CI is current and trusted | Native required `android`, GitHub Actions integration 15368, strict up-to-date policy | Update only your branch from current main, preserving local work; wait for the new commit's CI |
-| No force push, deletion or bypass of main | Native non_fast_forward/deletion rules, empty bypass actors | Never weaken protection to merge |
-| App/tool verification and reports | Custom Android CI, selector and result validators | Select proportional local checks; diagnose actual failures; retain evidence |
-| Sonar Quality Gate | Custom scanner step inside android for app changes | Review findings; do not infer analyzer results or require an absent documentation-only Sonar check |
-| Release publication | Trusted successful main CI completion for a version change; Environment-gated signing and exact-SHA evidence | Authorize a version release explicitly; inspect actual published artifacts and hashes |
-| Close an implemented issue | Native `Closes #N` when its PR merges into the default branch | Confirm closure; add one final comment with behavior, checks and PR URL |
-| Delete merged remote branches | Native delete_branch_on_merge; GitHub preserves branches still needed by open PRs | Check ownership/open PRs before manual cleanup; local worktrees and branches still need inspection |
-| Project closed/merged item -> Done | Native Projects built-in automation where enabled; API does not expose its workflow configuration | Confirm observed Status; repair only a mismatch, never infer automation is enabled |
-| Open issue membership, archive recovery, stale/missing Status | Custom project-sync reconciliation; see tools/PROJECT-SYNC.md | Preserve reconciliation until an equivalent replacement is verified |
-| Priority, Work Type, Testing, dependencies | Agent/user judgment; Update-Issue.ps1 applies chosen metadata | Choose from evidence and actual progress; do not invent automatic selection rules |
-| Scope, visual design, gameplay decisions | Agent/user judgment; tests cover only specified behavior | Preserve AGENTS.md product constraints; resolve material decisions within task authorization |
-| Device selection, secrets, truthful reporting | Agent responsibility; explicit runner targets and evidence | Use headless isolated emulator first, phone only for device-specific needs; never expose secrets or claim unrun checks |
+| Changes enter main through a PR | GitHub main ruleset | Use Manage-PullRequest.ps1 with reviewed code/body and valid local evidence |
+| Exact head/current base and passing checks | Local gate and merge script | Reject dirty, stale, incomplete, failed or modified evidence; merge with expected head SHA |
+| No force push/deletion/bypass of main | GitHub integrity rules | Preserve restrictions and empty bypass actors |
+| App/tool checks and diagnostics | Local selector, runners and validators | Preserve quality thresholds, required platform checks and failure evidence |
+| Sonar Quality Gate | Local scanner plus SonarQube Cloud | This is the sole remote analysis exception; credentials or gate failure block applicable checks |
+| Signed release | Exact-main local full regression and signed verification | Preserve certificates, runtime smoke and artifact hashes; verification never publishes |
+| Publication | Explicit local publisher | Require authorization, compliance and provenance; never overwrite a release/tag |
+| Release tag integrity | GitHub protected v* tags | Preserve no-update/no-delete rules and no bypass actors |
+| Issue closure | Closes #N on merged PR | Confirm closure and add one final evidence comment |
+| Project membership/status | Local Sync-IssueProject.ps1 and observed native automation | Inspect/repair via API; never infer built-in automation is enabled |
+| Product, device and credential decisions | Agent/user | Preserve design/gameplay, explicit emulator selection and private keys |
 
-## API delivery and protection maintenance
+## Trust boundary and migration
 
-Before every major/substantial game release, complete the simultaneous RuStore and GitHub review in [RELEASE-COMPLIANCE.md](RELEASE-COMPLIANCE.md), opening current official sources and recording findings for the exact intended artifacts. Its report and resolution of mandatory violations/unverified items are publication prerequisites alongside CI, not new Actions checks. The linked policy defines the trigger, maintenance-patch scope and release-owner resolution of external or material decisions.
+There is no required GitHub Actions `android` check in the target local policy. GitHub still requires PRs and protects main/tags; local evidence is enforced by the repository merge script. GitHub UI and independent API clients can bypass that local test gate. Local reports are not independently authenticated GitHub results and cannot defend against an operator deliberately forging both reports and source. Use the approved script for delivery and report this limitation honestly.
 
-Use project API scripts, not browser UI. Inspect effective `rules/branches/main` and classic `branches/main/protection` before changes. Preserve enforcement/bypass scope, check source and strict policy. Remove classic protection only after confirming the active ruleset covers all its restrictions. `Manage-PullRequest.ps1` reads both protection mechanisms; only a genuine classic 404 means no classic rule, other errors fail closed.
+Inspect effective branch rules and classic protection before maintenance, preserve PR/no-force/no-delete/bypass scope, and read settings back afterward. Remove the former hosted check requirement only after validating the local replacement; do not claim that a document edit changed the remote setting. A genuine classic 404 means no classic protection; other API errors fail closed. No review/access/secrets expansion is part of this migration.
 
-Automatic branch deletion does not clean local checkouts. Never remove another process's branch/worktree or unmerged work. Repository auto-merge, reviewer approval, access grants and secrets are outside this policy migration.
+GitHub Actions definitions are archived outside `.github/workflows`; cloud dispatch entrypoints reject execution. No Actions or Dependabot Actions schedule is the approved path. Without a suitable local executor, required verification remains blocked. Do not add a self-hosted Actions runner as a workaround.
 
-## Current quality audit boundary
+The former `release-signing` Environment and stored secrets are historical configuration; preserve them unless separately assigned. Local signing uses the existing private keys and protected local credentials. Historical published-release provenance remains verifiable; it does not authorize new cloud execution. Existing dated reports describe their measured past configuration and are not current instructions.
 
-At the initial 2026-10-08 inspection, main was 19e42bb; audit PR #200 and feature PR #201 were open, so the detekt/lint audit was not yet on main. The separate quality_reports diagnostic step and focused negative tests already exist in PR #202 (036b57e), inherited by #201. Do not duplicate that pending work here. Its actual application findings remain failing; this policy change adds no baseline, rule disablement, reduced threshold or application refactor. After that PR merges, CI.md must describe its final executable scope.
+## Delivery and compliance
 
-References: [rulesets API](https://docs.github.com/en/rest/repos/rules), [branch protection API](https://docs.github.com/en/rest/branches/branch-protection), [Projects built-in automation](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-built-in-automations), [automatic branch deletion](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-the-automatic-deletion-of-branches).
+Before a major/substantial release, complete [RELEASE-COMPLIANCE.md](RELEASE-COMPLIANCE.md) for exact intended artifacts using current official RuStore and GitHub requirements. Mandatory violations or unverified owner items block publication independently of technical checks.
 
-## Confirmed repository configuration (2026-10-08)
-
-Ruleset `Protect main` #24704305 is active for refs/heads/main: required PR with zero approvals and no CODEOWNERS/last-push/extra-unattributed approval, required android from Actions integration 15368, strict=true, deletion/non-fast-forward prohibited, no bypass actors. Classic protection was removed only after comparing its restrictions and reading effective rules back. Classic strict was already true; ruleset strict was false and was aligned. Repository delete_branch_on_merge changed false -> true; allow_auto_merge remains false. Existing open PR branches #200/#201/#202 were preserved. Full API snapshots are retained outside tracked source.
-
-Project membership/status inspection found no missing or stale open items. Built-in workflow configuration is not exposed by the documented Projects API and was not changed or claimed enabled. Keep project-sync's recovery and reconciliation; verify Done after issue closure and repair a mismatch through Update-Issue.ps1 only if necessary.
-
-## CI/CD hardening configuration (2026-10-11)
-
-The `release-signing` Environment permits deployments from the `main` branch only, without additional manual approval. Its six signing secret names were read back after migration; corresponding repository signing secrets were deleted. Secret values remain private. The old main workflow temporarily cannot sign until the Environment-aware workflow is merged.
-
-Active ruleset `Protect release tags` #24877707 prohibits updating or deleting `v*` tags, with no bypass actors. Creation remains permitted for publication. The publisher checks an existing lightweight or annotated tag's final commit against the verified candidate SHA and never overwrites an existing Release.
-
-Automatic release verification follows trusted successful `main` push CI through `workflow_run`, after checking the version configuration change. Manual dispatch from `main` verifies main or an existing version tag on main history without publishing; tag pushes do not sign. Control scripts use the workflow's pinned main SHA and validate the separate candidate SHA before signing. Schema 3 evidence and publication provenance bind source and release run attempts. See [CI.md](CI.md) for executable gates and [RELEASE.md](RELEASE.md) for local artifact preparation.
-
-Workflow Actions are pinned to full SHAs and receive weekly Dependabot updates. Repository-wide SHA-pinning enforcement remains deferred until the updated workflows reach main. The required `android` check, source integration and strict main protection remain in force; its Windows release-tool prerequisite fails closed when selected.
+Automatic remote branch deletion does not clean local worktrees. Inspect ownership, open PRs, unmerged work and artifacts before cleanup; never remove another process's work. Reconcile Projects locally with [tools/PROJECT-SYNC.md](../tools/PROJECT-SYNC.md); after ProjectAccessError stop Project operations until credentials change.

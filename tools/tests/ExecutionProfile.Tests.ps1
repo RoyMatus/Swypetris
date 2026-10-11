@@ -13,29 +13,29 @@ Describe 'Resource-aware work placement' {
         $decision.maxGradleProcesses | Should -Be 1
         $decision.maxEmulators | Should -Be 1
     }
-    It 'routes only device work to cloud when acceleration or the image is unavailable' {
+    It 'blocks only device work when local acceleration or the image is unavailable' {
         foreach ($missing in @('accelerationReady','emulatorReady')) {
             $facts = New-CapableHost; $facts[$missing]=$false
             $decision = Get-ExecutionDecision $facts
-            $decision.mode | Should -Be Hybrid
+            $decision.mode | Should -Be ConstrainedLocal
             $decision.buildLocation | Should -Be Local
-            $decision.deviceLocation | Should -Be Cloud
+            $decision.deviceLocation | Should -Be Blocked
         }
     }
-    It 'routes heavy work to cloud for inadequate or unknown resources and missing toolchains' {
+    It 'blocks heavy work for inadequate or unknown local resources and missing toolchains' {
         foreach ($field in @('logicalProcessors','totalMemoryGiB','availableMemoryGiB','freeDiskGiB','javaReady','sdkReady')) {
             $facts=New-CapableHost; $facts[$field]=0
-            (Get-ExecutionDecision $facts).mode | Should -Be Cloud
+            (Get-ExecutionDecision $facts).mode | Should -Be Blocked
         }
         foreach ($unknown in @($null,[double]::NaN,[double]::PositiveInfinity)) {
             $facts=New-CapableHost; $facts.availableMemoryGiB=$unknown
-            (Get-ExecutionDecision $facts).mode | Should -Be Cloud
+            (Get-ExecutionDecision $facts).mode | Should -Be Blocked
         }
     }
     It 'supports light local builds on a constrained machine without starting an emulator' {
         $facts=New-CapableHost; $facts.logicalProcessors=4; $facts.totalMemoryGiB=8; $facts.availableMemoryGiB=4
         $decision=Get-ExecutionDecision $facts
-        $decision.mode | Should -Be Hybrid
+        $decision.mode | Should -Be ConstrainedLocal
         $decision.maxWorkers | Should -Be 2
         $decision.maxEmulators | Should -Be 0
     }

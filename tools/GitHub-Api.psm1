@@ -77,7 +77,8 @@ function Get-GitHubPullRequestBlockers {
         [Parameter(Mandatory)]$PullRequest,
         [array]$Checks = @(),
         [array]$Statuses = @(),
-        [array]$RequiredChecks = @()
+        [array]$RequiredChecks = @(),
+        [switch]$LocalVerificationPassed
     )
 
     $number = $PullRequest.number
@@ -96,7 +97,7 @@ function Get-GitHubPullRequestBlockers {
     if ($PullRequest.mergeable -ne $true -or $PullRequest.mergeable_state -ne 'clean') {
         $blockers.Add("PR #$number is not ready to merge (state: $($PullRequest.mergeable_state)).")
     }
-    if ($Checks.Count -eq 0 -and $Statuses.Count -eq 0) {
+    if (!$LocalVerificationPassed -and $Checks.Count -eq 0 -and $Statuses.Count -eq 0) {
         $blockers.Add("PR #$number has no check runs or commit statuses; refusing to merge without CI evidence.")
     }
     $badChecks = @($Checks | Where-Object { $_.status -ne 'completed' -or $_.conclusion -notin @('success', 'neutral', 'skipped') })
@@ -132,10 +133,11 @@ function Assert-GitHubPullRequestReady {
         [Parameter(Mandatory)]$PullRequest,
         [array]$Checks = @(),
         [array]$Statuses = @(),
-        [array]$RequiredChecks = @()
+        [array]$RequiredChecks = @(),
+        [switch]$LocalVerificationPassed
     )
 
-    $blockers = @(Get-GitHubPullRequestBlockers -PullRequest $PullRequest -Checks $Checks -Statuses $Statuses -RequiredChecks $RequiredChecks)
+    $blockers = @(Get-GitHubPullRequestBlockers -PullRequest $PullRequest -Checks $Checks -Statuses $Statuses -RequiredChecks $RequiredChecks -LocalVerificationPassed:$LocalVerificationPassed)
     if ($blockers.Count -gt 0) { throw ($blockers -join '; ') }
 }
 

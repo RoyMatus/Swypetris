@@ -1,6 +1,6 @@
 # Recurring release compliance review
 
-This is the publication prerequisite owned by [POLICY.md](POLICY.md), alongside technical gates in [CI.md](CI.md). It adds no workflow, permission or publication authorization. Passing CI does not establish platform compliance or guarantee RuStore moderation approval.
+This is the publication prerequisite owned by [POLICY.md](POLICY.md), alongside technical gates in [CI.md](CI.md). It adds no workflow, permission or publication authorization. Passing local technical gates does not establish platform compliance or guarantee RuStore moderation approval.
 
 ## Review trigger
 
