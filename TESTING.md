@@ -8,6 +8,13 @@ Use JDK 21 and the Android SDK. With PowerShell 7 on Windows/Linux, `./tools/Ver
 
 JVM tests use JUnit 4 for concise rule checks and Kotest BehaviorSpec for multi-step state behavior. Gradle runs both through JUnit Platform and Vintage. Android framework, activity lifecycle, media decoding, and Compose interactions remain in `androidTest` with AndroidX JUnit 4 and Compose test APIs. New tests should use controlled clocks and seeded or injected random sources; a sleep or an actual device belongs only in an explicitly opt-in measurement scenario.
 
+Graphics and audio tests assert measurable properties: pixels, bounds, clipping,
+PCM data, decoder/player state and playback position. Passing them is not an
+aesthetic judgment or a listening assessment. Ordinary tests keep bitmap captures
+in memory when assertions consume them; successful-run PNG exports solely for
+manual inspection are omitted. Failure diagnostics, publication-media generation
+and explicit numeric measurement exports retain their separate purposes.
+
 For development checkpoints, use `./tools/Verify-Tests.ps1 -Suite FocusedJvm -TestClass BackgroundCropTest,GameEngineTest` or `-Suite FocusedAndroid -TestClass SmokeTest -Serial emulator-5554`. Short and fully qualified class names are accepted; methods, wildcards, missing classes and empty selections are rejected. Focused JVM runs do not generate whole-app coverage. The original `Fast` and `Android` modes remain available; Fast builds debug, runs debug lint/JVM/JaCoCo, but does not run detekt, Sonar or device tests and does not replace mandatory CI.
 
 Every completed Gradle invocation writes a timestamped log and JSON summary in ignored `app/build/verification/`: elapsed seconds, source commit/dirty flag, selected classes, Java/PowerShell/OS and explicit emulator identity when applicable. XML reports must be complete, successful and match a focused selection. Fresh execution rejects stale reports. JVM `UP-TO-DATE` and `FROM-CACHE` results are explicitly labelled reused rather than freshly executed; device tests must execute. Failed invocations retain their log and failed summary. No environment dump or signing credentials are recorded.
@@ -18,7 +25,7 @@ PR and release-version `main` CI use the explicit source-to-test map in `tools/c
 
 ## Current verified inventory
 
-The 2026-10-10 [signed-candidate reports](https://github.com/RoyMatus/Swypetris/actions/runs/38077678547) contain **149 JVM cases in 30 classes**, all passed, and **158 Android cases in 45 classes**, 156 passed and two opt-in skips. The application/test sources are unchanged by the verification-tool improvements. These are case counts, not the number of assertions, portrait/font fixtures or repeated executions. The two default Android skips are `EnergyScenarioTest` (measurement) and `SignedUpdateScenarioTest` (explicit signed-install fixture); normal green CI does not exercise them.
+The 2026-10-11 [required CI run](https://github.com/RoyMatus/Swypetris/actions/runs/38146828578) passed with **152 JVM cases** and **161 Android cases**, 158 passed and three opt-in skips. These are case counts, not the number of assertions, portrait/font fixtures or repeated executions. The default Android skips are `EnergyScenarioTest` (measurement), `SignedUpdateScenarioTest` (explicit signed-install fixture) and `FireworkRenderingTest` (numeric before/after frame export); normal green CI does not exercise them.
 
 Full PR CI additionally runs the one-case picker preflight and a 14-case UI preflight before the complete inventory. Those 15 cases are repeated in the full run, not 15 extra unique tests. The signed APK has a separate menu/settings/new-game/pause/Continue runtime smoke; full instrumentation exercises the debug target. JVM coverage measures debug production code executed by JVM tests and does not include Android/Compose coverage.
 

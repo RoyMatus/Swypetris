@@ -66,10 +66,5 @@ class ShareDialogInteractionTest {
         compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).assertCountEquals(1)
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
             .assertCountEquals(0)
-        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.app.Application>()
-        java.io.File(context.getExternalFilesDir(null), "share-dialog-large-font.png").outputStream().use {
-            requireNotNull(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
-                .uiAutomation.takeScreenshot()).compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-        }
     }
 }

@@ -1,7 +1,6 @@
 ﻿package ru.itoltec.swypetris
 
 import android.app.Application
-import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
@@ -12,12 +11,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.bottom
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.center
 import androidx.compose.ui.test.left
 import androidx.compose.ui.test.onNodeWithTag
@@ -90,7 +87,6 @@ class MusicSettingsFruitTest {
             assertFalse(GameViewModel(app,null,{1000L},false).musicEnabled)
             assertTrue(model.results.isEmpty())
         }
-        screenshot("music-settings-off.png")
     }
 
     /** Музыка и сетка тем доступны при 320 dp и двойном шрифте. */
@@ -108,7 +104,6 @@ class MusicSettingsFruitTest {
             compose.onNodeWithTag("musicPicker").performScrollTo().performClick()
             compose.onNodeWithTag("music_sugar_plum").performScrollTo().performClick()
             compose.onNodeWithTag("musicPicker").assertIsDisplayed()
-            screenshot("music-large-$theme.png")
             compose.onNodeWithTag("paletteGrid").performScrollTo().assertIsDisplayed()
         }
     }
@@ -153,7 +148,6 @@ class MusicSettingsFruitTest {
                 assertEquals(score.left, fruits.left, 1f)
                 assertEquals(score.right, fruits.right, 1f)
                 assertTrue(hold.right <= score.left + 1f)
-                screenshot("fruits-row-$n.png")
             }
         }
     }
@@ -173,12 +167,4 @@ class MusicSettingsFruitTest {
         compose.runOnIdle { assertTrue(model.game!!.active.x<initialX) }
     }
 
-    /** Сохраняет снимок только в каталоге приложения тестового эмулятора. */
-    @androidx.annotation.RequiresApi(26)
-    private fun screenshot(name:String) {
-        val app=ApplicationProvider.getApplicationContext<Application>()
-        java.io.File(app.getExternalFilesDir(null),name).outputStream().use {
-            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG,100,it)
-        }
-    }
 }

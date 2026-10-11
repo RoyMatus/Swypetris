@@ -12,7 +12,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
@@ -25,7 +24,6 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.height
 import androidx.compose.ui.test.left
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.right
 import androidx.compose.ui.test.top
 import androidx.compose.ui.test.width
@@ -167,11 +165,6 @@ class NextQueueTest {
                     assertEquals(state, model.game)
                     assertTrue(model.engine.remainingBag().isEmpty())
                 }
-            }
-            val file = java.io.File(app.getExternalFilesDir(null), "spawn-grid-$w.png")
-            file.outputStream().use {
-                compose.onRoot().captureToImage().asAndroidBitmap()
-                    .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }
         }
     }

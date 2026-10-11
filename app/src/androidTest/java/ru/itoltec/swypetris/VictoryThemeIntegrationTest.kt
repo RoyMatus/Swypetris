@@ -123,7 +123,6 @@ class VictoryThemeIntegrationTest {
         assertEquals(scene.height, artwork.height, 1f)
         compose.mainClock.advanceTimeBy(9000)
         compose.runOnIdle { assertTrue(model.victoryAnimationMillis in 1 until VictoryMotion.PERIOD_MILLIS) }
-        screenshot("victory-loop.png")
         var paused = 0L
         compose.runOnIdle { model.onBackground(); paused = model.victoryAnimationMillis }
         compose.mainClock.advanceTimeBy(1500)
@@ -151,11 +150,10 @@ class VictoryThemeIntegrationTest {
             }
         }
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
-        val frames = listOf(300L to "victory-launch.png", 2300L to "victory-burst.png",
-            4000L to "victory-fade.png").map { (time, name) ->
+        val frames = listOf(300L, 2300L, 4000L).map { time ->
             compose.mainClock.advanceTimeBy(time - compose.mainClock.currentTime)
             compose.waitForIdle()
-            screenshot(name)
+            capture()
         }
         for (frame in frames.drop(1)) {
             assertTrue("Fireworks must visibly change between storyboard stages",
@@ -237,9 +235,6 @@ class VictoryThemeIntegrationTest {
                 .fetchSemanticsNode().boundsInRoot
             assertTrue("Button exceeds $width x $height", button.left >= scene.left &&
                 button.right <= scene.right && button.bottom <= scene.bottom)
-            if (android.os.Build.VERSION.SDK_INT >= 26) {
-                screenshot("victory-portrait-${width.value}-${height.value}.png")
-            }
             compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
                 .assertCountEquals(0)
         }
@@ -257,7 +252,6 @@ class VictoryThemeIntegrationTest {
             compose.runOnIdle { model.options.setPalette(palette.id); model.options.setHints(true) }
             compose.onNodeWithTag("board").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription,
                 listOf("Игровое поле, очки 0, линии 0. Следующая фигура T Запас: пусто, обмен доступен.")))
-            screenshot("board-${palette.id}.png")
             compose.runOnIdle {
                 val state = model.game
                 val fresh = GameViewModel(app, null, { 1000L }, false)
@@ -273,13 +267,9 @@ class VictoryThemeIntegrationTest {
             model.navigation.settings() }
         compose.onNodeWithTag("palette_github_light_preview").performScrollTo().performClick()
         compose.runOnIdle { assertEquals("github_light", model.paletteId) }
-        screenshot("settings-github-light.png")
         compose.runOnIdle { model.navigation.menu() }
-        screenshot("menu-github-light.png")
         compose.runOnIdle { model.options.setPalette("solarized_dark") }
-        screenshot("menu-solarized-dark.png")
         compose.runOnIdle { model.options.setPalette("synthwave_84") }
-        screenshot("menu-synthwave-84.png")
     }
 
     /** Поздравление и кнопки доступны при ширине 320 dp и двойном шрифте. */
@@ -296,12 +286,10 @@ class VictoryThemeIntegrationTest {
             }
         }
         compose.mainClock.advanceTimeBy(2000)
-        screenshot("victory-light-large-font.png")
         compose.mainClock.autoAdvance = true
         compose.onNodeWithTag("nextRound").assertIsDisplayed()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
             .assertCountEquals(0)
-        screenshot("victory-light-buttons.png")
     }
 
     /** Все темы доступны без горизонтальной прокрутки при ширине 320 dp и двойном шрифте. */
@@ -323,7 +311,6 @@ class VictoryThemeIntegrationTest {
             val checkbox = compose.onNodeWithTag("randomThemeBox", useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             assertTrue(checkbox.left > bounds.center.x)
-            screenshot("random-theme-${size.width.value}-${size.height.value}.png")
         }
         compose.onNodeWithTag("randomTheme").performClick()
         compose.runOnIdle { assertTrue(model.randomThemeEnabled) }
@@ -344,7 +331,6 @@ class VictoryThemeIntegrationTest {
         compose.onNodeWithTag("palette_catppuccin_preview").assert(
             SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
         compose.onNodeWithTag("paletteGrid").assertExists()
-        screenshot("settings-large-font.png")
     }
 
     /** Названия тем полностью видны и отделены от превью на узком экране при обычном и двойном шрифте. */
@@ -377,13 +363,7 @@ class VictoryThemeIntegrationTest {
         }
     }
 
-    /** Сохраняет снимок интерфейса только в файлы тестового эмулятора. */
+    /** Captures animation frames for pixel assertions without exporting inspection artifacts. */
     @androidx.annotation.RequiresApi(26)
-    private fun screenshot(name: String): Bitmap {
-        val app = ApplicationProvider.getApplicationContext<Application>()
-        val file = java.io.File(app.getExternalFilesDir(null), name)
-        return compose.onRoot().captureToImage().asAndroidBitmap().also { bitmap ->
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        }
-    }
+    private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
 }

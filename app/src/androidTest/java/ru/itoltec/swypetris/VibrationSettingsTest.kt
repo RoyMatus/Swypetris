@@ -1,22 +1,18 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
-import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.ForcedSize
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.then
@@ -26,7 +22,6 @@ import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 /** Exercise accessible slider input and settings reachability across screen/font sizes. */
 class VibrationSettingsTest {
@@ -56,10 +51,6 @@ class VibrationSettingsTest {
                 }
             }
             compose.onNodeWithText("Сила вибрации: 100%").performScrollTo().assertIsDisplayed()
-            val directory = File(app.getExternalFilesDir(null), "vibration-screenshots").apply { mkdirs() }
-            File(directory, "strength-${size.width.value}-${size.height.value}.png").outputStream().use {
-                compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
-            }
         }
     }
 }

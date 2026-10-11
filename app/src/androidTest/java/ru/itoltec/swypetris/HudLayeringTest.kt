@@ -1,7 +1,6 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
-import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
@@ -12,7 +11,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
@@ -72,7 +70,6 @@ class HudLayeringTest {
                 val icon = compose.onNodeWithTag("earnedFruitIcon_${fruit.name}").fetchSemanticsNode().boundsInRoot
                 assertTrue("Fruit icons must remain visibly larger", icon.width >= 16 * density)
             }
-            save("hud-$w-ordinary.png")
             val unobscured = compose.onRoot().captureToImage().toPixelMap()
             val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
             val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
@@ -82,7 +79,6 @@ class HudLayeringTest {
             for (row in 0..5) {
                 compose.runOnIdle { state = state.copy(active = Piece(Tetromino.I, x = 6, y = row - 2)) }
                 val covered = compose.onRoot().captureToImage().toPixelMap()
-                if (row == 2) save("hud-$w-overlap.png")
                 val labels = Fruit.entries.map {
                     compose.onNodeWithTag("earnedFruitCount_${it.name}").assertTextEquals("3 ×")
                         .fetchSemanticsNode().boundsInRoot
@@ -117,15 +113,6 @@ class HudLayeringTest {
         assertEquals(eight[x, y].red, eight[x, y].green, .01f)
         assertEquals(eight[x, y].red, eight[x, y].blue, .01f)
         assertTrue(eight[x, y].red > one[x, y].red)
-    }
-
-    @androidx.annotation.RequiresApi(26)
-    private fun save(name: String) {
-        val app = ApplicationProvider.getApplicationContext<Application>()
-        val file = java.io.File(app.getExternalFilesDir(null), name)
-        compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        }
     }
 
     private class HudOverlap(val fruits: androidx.compose.ui.geometry.Rect,

@@ -10,7 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
@@ -109,8 +108,6 @@ class BackgroundRenderingTest {
                     assertNotEquals(before[after.width / 20, after.height / 2],
                         after[after.width / 20, after.height / 2])
                     assertSame(state, model.game)
-                    saveScreenshot(app, "${theme.id}-${size.width.value}-${size.height.value}.png",
-                        image.asAndroidBitmap())
                     compose.runOnIdle { model.background.changeEnabled(false) }
                     compose.onNodeWithTag("customBackground").assertDoesNotExist()
                 }
@@ -130,8 +127,4 @@ class BackgroundRenderingTest {
         return input
     }
 
-    private fun saveScreenshot(app: Application, name: String, bitmap: Bitmap) {
-        val directory = File(app.getExternalFilesDir(null), "background-screenshots").apply { mkdirs() }
-        File(directory, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-    }
 }
