@@ -7,11 +7,29 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
+def verify_dependencies(outputs: dict, needs: dict) -> None:
+    selected = outputs.get("windows_release_tools")
+    if selected not in {"true", "false"}:
+        raise ValueError("CI selector did not produce a valid windows_release_tools flag")
+    selection = needs.get("selection", {})
+    if selection.get("result") != "success":
+        raise ValueError("CI preselection job did not succeed")
+    if selection.get("outputs", {}).get("windows_release_tools") != selected:
+        raise ValueError("CI selection disagrees with preselection")
+    expected = "success" if selected == "true" else "skipped"
+    if needs.get("windows-release-tools", {}).get("result") != expected:
+        raise ValueError(f"Windows release tools must be {expected}")
+
+
 def verify_steps(outputs: dict, steps: dict) -> None:
     mode = outputs.get("mode")
     if mode not in {"none", "selected", "full"}:
         raise ValueError("CI selector did not produce a valid mode")
     required = {"changes"}
+    if "windows_release_tools" in outputs:
+        if outputs["windows_release_tools"] not in {"true", "false"}:
+            raise ValueError("CI selector did not produce a valid windows_release_tools flag")
+        required.add("dependencies")
     for key in ("github_scripts", "release_scripts", "ci_scripts"):
         if outputs.get(key) not in {"true", "false"}:
             raise ValueError(f"CI selector did not produce a valid {key} flag")
@@ -55,6 +73,8 @@ if __name__ == "__main__":
     try:
         if sys.argv[1:] == ["--steps"]:
             verify_steps(json.loads(os.environ["CHECK_OUTPUTS"]), json.loads(os.environ["CHECK_STEPS"]))
+        elif sys.argv[1:] == ["--dependencies"]:
+            verify_dependencies(json.loads(os.environ["CHECK_OUTPUTS"]), json.loads(os.environ["CHECK_NEEDS"]))
         else:
             verify_reports(Path("app/build"))
     except (ValueError, KeyError, OSError, ET.ParseError) as error:

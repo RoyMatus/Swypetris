@@ -9,7 +9,7 @@ This document assigns rules to their enforcing owner. CI scope/commands live in 
 | No force push, deletion or bypass of main | Native non_fast_forward/deletion rules, empty bypass actors | Never weaken protection to merge |
 | App/tool verification and reports | Custom Android CI, selector and result validators | Select proportional local checks; diagnose actual failures; retain evidence |
 | Sonar Quality Gate | Custom scanner step inside android for app changes | Review findings; do not infer analyzer results or require an absent documentation-only Sonar check |
-| Release publication | Custom release-check main version-change path, gated signing/verification | Authorize a version release explicitly; inspect actual published artifacts and hashes |
+| Release publication | Trusted successful main CI completion for a version change; Environment-gated signing and exact-SHA evidence | Authorize a version release explicitly; inspect actual published artifacts and hashes |
 | Close an implemented issue | Native `Closes #N` when its PR merges into the default branch | Confirm closure; add one final comment with behavior, checks and PR URL |
 | Delete merged remote branches | Native delete_branch_on_merge; GitHub preserves branches still needed by open PRs | Check ownership/open PRs before manual cleanup; local worktrees and branches still need inspection |
 | Project closed/merged item -> Done | Native Projects built-in automation where enabled; API does not expose its workflow configuration | Confirm observed Status; repair only a mismatch, never infer automation is enabled |
@@ -37,3 +37,13 @@ References: [rulesets API](https://docs.github.com/en/rest/repos/rules), [branch
 Ruleset `Protect main` #24704305 is active for refs/heads/main: required PR with zero approvals and no CODEOWNERS/last-push/extra-unattributed approval, required android from Actions integration 15368, strict=true, deletion/non-fast-forward prohibited, no bypass actors. Classic protection was removed only after comparing its restrictions and reading effective rules back. Classic strict was already true; ruleset strict was false and was aligned. Repository delete_branch_on_merge changed false -> true; allow_auto_merge remains false. Existing open PR branches #200/#201/#202 were preserved. Full API snapshots are retained outside tracked source.
 
 Project membership/status inspection found no missing or stale open items. Built-in workflow configuration is not exposed by the documented Projects API and was not changed or claimed enabled. Keep project-sync's recovery and reconciliation; verify Done after issue closure and repair a mismatch through Update-Issue.ps1 only if necessary.
+
+## CI/CD hardening configuration (2026-10-11)
+
+The `release-signing` Environment permits deployments from the `main` branch only, without additional manual approval. Its six signing secret names were read back after migration; corresponding repository signing secrets were deleted. Secret values remain private. The old main workflow temporarily cannot sign until the Environment-aware workflow is merged.
+
+Active ruleset `Protect release tags` #24877707 prohibits updating or deleting `v*` tags, with no bypass actors. Creation remains permitted for publication. The publisher checks an existing lightweight or annotated tag's final commit against the verified candidate SHA and never overwrites an existing Release.
+
+Automatic release verification follows trusted successful `main` push CI through `workflow_run`, after checking the version configuration change. Manual dispatch from `main` verifies main or an existing version tag on main history without publishing; tag pushes do not sign. Control scripts use the workflow's pinned main SHA and validate the separate candidate SHA before signing. Schema 3 evidence and publication provenance bind source and release run attempts. See [CI.md](CI.md) for executable gates and [RELEASE.md](RELEASE.md) for local artifact preparation.
+
+Workflow Actions are pinned to full SHAs and receive weekly Dependabot updates. Repository-wide SHA-pinning enforcement remains deferred until the updated workflows reach main. The required `android` check, source integration and strict main protection remain in force; its Windows release-tool prerequisite fails closed when selected.

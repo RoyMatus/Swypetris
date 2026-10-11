@@ -124,6 +124,7 @@ def select(paths: list[str]) -> dict[str, str]:
     github_scripts = False
     release_scripts = False
     ci_scripts = False
+    windows_release_tools = False
     for raw_path in paths:
         path = raw_path.replace("\\", "/")
         name = Path(path).name
@@ -131,6 +132,8 @@ def select(paths: list[str]) -> dict[str, str]:
             path.endswith(".md") and not path.startswith("app/")
         ):
             continue
+        if path.startswith(("tools/release/", "tools/tests/", "tools/ci/", ".github/workflows/")) or path == "unresolved-change-set":
+            windows_release_tools = True
         if path.startswith("tools/"):
             if path.startswith("tools/ci/"):
                 ci_scripts = True
@@ -222,6 +225,7 @@ def select(paths: list[str]) -> dict[str, str]:
         "github_scripts": str(github_scripts).lower(),
         "release_scripts": str(release_scripts).lower(),
         "ci_scripts": str(ci_scripts).lower(),
+        "windows_release_tools": str(windows_release_tools).lower(),
     }
 
 

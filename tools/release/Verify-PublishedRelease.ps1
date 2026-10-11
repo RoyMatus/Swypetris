@@ -6,6 +6,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Release-Verification.ps1')
+. (Join-Path $PSScriptRoot 'Publication-Provenance.ps1')
 $project = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 Import-Module (Join-Path $project 'tools/GitHub-Api.psm1') -Force
 $client = New-GitHubClient -Repository 'RoyMatus/Swypetris'
@@ -27,7 +28,11 @@ try {
     }
     if ($object.type -ne 'commit') { throw 'Release tag does not resolve to a commit.' }
     $run = Invoke-GitHubRest -Client $client -Method Get -Path "actions/runs/$ReleaseRunId"
-    Assert-PublicationRun -Run $run -Commit $object.sha
+    if ($run.event -ceq 'workflow_run') {
+        $summary.provenance = Get-PublicationProvenance -Client $client -Run $run -Commit $object.sha
+    } else {
+        Assert-PublicationRun -Run $run -Commit $object.sha
+    }
     foreach ($name in @('Swypetris.apk','update.json','SHA256SUMS.txt')) {
         $assets = @($release.assets | Where-Object name -CEQ $name)
         if ($assets.Count -ne 1) { throw "Missing or duplicate public asset: $name" }

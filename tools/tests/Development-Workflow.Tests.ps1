@@ -140,3 +140,99 @@ Describe 'Work journal and draft command integration' {
         Test-Path (Join-Path $root 'publishing/reports/epic-187-development-review.md') | Should -BeFalse
     }
 }
+Describe 'Workflow-run publication provenance' {
+    BeforeAll {
+        . (Join-Path $PSScriptRoot '../release/Publication-Provenance.ps1')
+        function Invoke-GitHubRest { param($Client,$Method,$Path) throw 'Unexpected API request' }
+    }
+    BeforeEach {
+        $sha = 'a' * 40
+        $digest = 'sha256:' + ('b' * 64)
+        $repo = @{full_name='RoyMatus/Swypetris'}
+        $run = @{id=10; run_attempt=2; status='completed'; conclusion='success'; path='.github/workflows/release-check.yml'; event='workflow_run'; head_branch='main'; head_sha=('c'*40); repository=$repo}
+        $proof = @{schema=1; repository='RoyMatus/Swypetris'; release_run_id=10; release_run_attempt=2; sha=$sha; source_run_id=20; source_run_attempt=3; source_artifact_id=30; source_artifact_digest=$digest}
+        $source = @{id=20; run_attempt=3; workflow_id=40; path='.github/workflows/ci.yml'; repository=$repo; head_repository=$repo; head_sha=$sha; head_branch='main'; event='push'; status='completed'; conclusion='success'}
+        $workflow = @{id=40; path='.github/workflows/ci.yml'; state='active'}
+        $artifact = @{id=30; expired=$false; name='full-regression-20-3'; digest=$digest; workflow_run=@{id=20; head_sha=$sha; head_branch='main'}}
+    }
+    It 'binds candidate SHA independently from release workflow control SHA' {
+        { Assert-PublicationRun $run $sha $proof $source $workflow $artifact } | Should -Not -Throw
+        { Assert-PublicationRun $run $sha } | Should -Throw
+    }
+    It 'rejects every mismatched provenance identity and malformed identifier' {
+        foreach ($key in $proof.Keys) {
+            $bad = $proof.Clone()
+            $bad[$key] = if ($proof[$key] -is [int]) { 999 } else { 'wrong' }
+            { Assert-PublicationRun $run $sha $bad $source $workflow $artifact } | Should -Throw
+        }
+        foreach ($value in @('20', 20.5, 0, -1)) {
+            $bad = $proof.Clone(); $bad.source_run_id = $value
+            { Assert-PublicationRun $run $sha $bad $source $workflow $artifact } | Should -Throw
+        }
+    }
+    It 'rejects failed, rerun, foreign or inactive source CI' {
+        foreach ($key in $source.Keys) {
+            $bad = $source.Clone()
+            $bad[$key] = if ($source[$key] -is [int]) { 999 } else { 'wrong' }
+            { Assert-PublicationRun $run $sha $proof $bad $workflow $artifact } | Should -Throw
+        }
+        foreach ($key in $workflow.Keys) {
+            $bad = $workflow.Clone(); $bad[$key] = 'wrong'
+            { Assert-PublicationRun $run $sha $proof $source $bad $artifact } | Should -Throw
+        }
+    }
+    It 'rejects altered, expired, wrong-attempt and wrong-SHA source artifacts' {
+        foreach ($key in @('id','name','digest','workflow_run','expired')) {
+            $bad = $artifact.Clone(); $bad[$key] = 'wrong'
+            { Assert-PublicationRun $run $sha $proof $source $workflow $bad } | Should -Throw
+        }
+        foreach ($key in @('id','head_sha','head_branch')) {
+            $bad = $artifact.Clone(); $bad.workflow_run = $artifact.workflow_run.Clone(); $bad.workflow_run[$key] = 'wrong'
+            { Assert-PublicationRun $run $sha $proof $source $workflow $bad } | Should -Throw
+        }
+    }
+    It 'reads only the single expected JSON entry and verifies archive digest' {
+        $json = $proof | ConvertTo-Json -Compress
+        $stream = [IO.MemoryStream]::new()
+        $zip = [IO.Compression.ZipArchive]::new($stream, [IO.Compression.ZipArchiveMode]::Create, $true)
+        $writer = [IO.StreamWriter]::new($zip.CreateEntry('publication-provenance.json').Open())
+        $writer.Write($json); $writer.Dispose(); $zip.Dispose()
+        $bytes = $stream.ToArray(); $stream.Dispose()
+        $metadata = @{size_in_bytes=$bytes.Length; digest=('sha256:' + [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant())}
+        (Read-PublicationProvenanceArchive $bytes $metadata).sha | Should -BeExactly $sha
+        $metadata.digest = 'sha256:' + ('0'*64)
+        { Read-PublicationProvenanceArchive $bytes $metadata } | Should -Throw
+        $metadata.size_in_bytes = 1
+        { Read-PublicationProvenanceArchive $bytes $metadata } | Should -Throw
+    }
+    It 'rejects traversal and additional entries even with a matching archive hash' {
+        foreach ($names in @(@('../publication-provenance.json'), @('publication-provenance.json','unexpected.txt'))) {
+            $stream = [IO.MemoryStream]::new()
+            $zip = [IO.Compression.ZipArchive]::new($stream, [IO.Compression.ZipArchiveMode]::Create, $true)
+            foreach ($name in $names) { $writer = [IO.StreamWriter]::new($zip.CreateEntry($name).Open()); $writer.Write('{}'); $writer.Dispose() }
+            $zip.Dispose(); $bytes=$stream.ToArray(); $stream.Dispose()
+            $metadata=@{size_in_bytes=$bytes.Length; digest=('sha256:' + [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant())}
+            { Read-PublicationProvenanceArchive $bytes $metadata } | Should -Throw
+        }
+    }
+    It 'retrieves the recorded source attempt and rejects a failed recorded result' {
+        $publicationArtifact = @{id=50; name='publication-provenance-10-2'; expired=$false; size_in_bytes=100; digest=$digest; workflow_run=@{id=10}}
+        $sourceArtifactFixture = $artifact
+        Mock Invoke-GitHubRest {
+            switch ($Path) {
+                'actions/runs/10/artifacts?per_page=100&page=1' { return @{artifacts=@($publicationArtifact)} }
+                'actions/runs/20/attempts/3' { return $source }
+                'actions/workflows/ci.yml' { return $workflow }
+                'actions/artifacts/30' { return $sourceArtifactFixture }
+                default { throw "Unexpected API request: $Path" }
+            }
+        }
+        Mock Get-PublicationArtifactBytes { return ,([byte[]]@(1,2)) }
+        Mock Read-PublicationProvenanceArchive { return $proof }
+        (Get-PublicationProvenance @{} $run $sha).source_run_id | Should -Be 20
+        Should -Invoke Invoke-GitHubRest -Times 1 -Exactly -ParameterFilter { $Path -eq 'actions/runs/20/attempts/3' }
+        Should -Invoke Invoke-GitHubRest -Times 0 -Exactly -ParameterFilter { $Path -eq 'actions/runs/20' }
+        $source.conclusion='failure'
+        { Get-PublicationProvenance @{} $run $sha } | Should -Throw
+    }
+}

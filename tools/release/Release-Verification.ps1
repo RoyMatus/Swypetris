@@ -63,9 +63,38 @@ function Assert-PublishedReleaseFiles {
 }
 
 function Assert-PublicationRun {
-    param([object]$Run, [string]$Commit)
-    if ($Run.status -ne 'completed' -or $Run.conclusion -ne 'success' -or $Run.head_sha -cne $Commit -or
-        $Run.path -ne '.github/workflows/release-check.yml' -or $Run.event -ne 'push' -or $Run.head_branch -ne 'main') {
-        throw 'Publication run must be a successful main release workflow for the tagged commit.'
+    param([object]$Run, [string]$Commit, [object]$Provenance, [object]$SourceRun,
+          [object]$SourceWorkflow, [object]$SourceArtifact)
+    if ($Run.status -cne 'completed' -or $Run.conclusion -cne 'success' -or
+        $Run.path -cne '.github/workflows/release-check.yml' -or $Run.head_branch -cne 'main') {
+        throw 'Publication run must be a successful main release workflow.'
     }
+    if ($Run.event -ceq 'push') {
+        if ($Run.head_sha -cne $Commit) { throw 'Legacy publication commit mismatch.' }
+        return
+    }
+    if ($Run.event -cne 'workflow_run' -or !$Provenance) { throw 'Workflow-run publication requires provenance.' }
+    foreach ($field in @('release_run_id','release_run_attempt','source_run_id','source_run_attempt','source_artifact_id')) {
+        $value = $Provenance.$field
+        if (($value -isnot [long] -and $value -isnot [int]) -or $value -le 0) { throw "Invalid provenance identifier: $field" }
+    }
+    if ($Commit -cnotmatch '^[a-f0-9]{40}$' -or ($Provenance.schema -isnot [int] -and $Provenance.schema -isnot [long]) -or $Provenance.schema -ne 1 -or
+        $Provenance.repository -cne 'RoyMatus/Swypetris' -or $Run.repository.full_name -cne $Provenance.repository -or
+        $Provenance.sha -cne $Commit -or $Provenance.release_run_id -ne $Run.id -or
+        $Provenance.release_run_attempt -ne $Run.run_attempt -or
+        $Provenance.source_artifact_digest -cnotmatch '^sha256:[a-f0-9]{64}$') { throw 'Publication provenance identity mismatch.' }
+    if (!$SourceWorkflow -or $SourceWorkflow.state -cne 'active' -or
+        $SourceWorkflow.path -cne '.github/workflows/ci.yml' -or
+        $SourceRun.workflow_id -ne $SourceWorkflow.id -or $SourceRun.path -cne $SourceWorkflow.path -or
+        $SourceRun.repository.full_name -cne $Provenance.repository -or
+        $SourceRun.head_repository.full_name -cne $Provenance.repository -or
+        $SourceRun.id -ne $Provenance.source_run_id -or $SourceRun.run_attempt -ne $Provenance.source_run_attempt -or
+        $SourceRun.head_sha -cne $Commit -or $SourceRun.head_branch -cne 'main' -or $SourceRun.event -cne 'push' -or
+        $SourceRun.status -cne 'completed' -or $SourceRun.conclusion -cne 'success') { throw 'Source CI identity or result mismatch.' }
+    $expectedName = "full-regression-$($SourceRun.id)-$($SourceRun.run_attempt)"
+    if (!$SourceArtifact -or $SourceArtifact.expired -ne $false -or
+        $SourceArtifact.id -ne $Provenance.source_artifact_id -or $SourceArtifact.name -cne $expectedName -or
+        $SourceArtifact.digest -cne $Provenance.source_artifact_digest -or
+        $SourceArtifact.workflow_run.id -ne $SourceRun.id -or $SourceArtifact.workflow_run.head_sha -cne $Commit -or
+        $SourceArtifact.workflow_run.head_branch -cne 'main') { throw 'Source CI artifact mismatch.' }
 }

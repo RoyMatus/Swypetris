@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 # APKs are built before the action boots its isolated API 35 emulator.
 serial=emulator-5556
@@ -75,11 +76,11 @@ grep -Eq '^Events injected: 1[[:space:]]*$' "$report_dir/smoke.txt"
 if [ "$CHECK_MODE" = full ]; then
   timeout --signal=INT --kill-after=15s 8m adb -s "$serial" shell am instrument -w -r -e class ru.itoltec.swypetris.BackgroundPickerTest \
     ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner | tee "$report_dir/picker-preflight.txt"
-  python3 tools/ci/verify_instrumentation_output.py selected ru.itoltec.swypetris.BackgroundPickerTest "$report_dir/picker-preflight.txt"
+  python3 "$script_dir/verify_instrumentation_output.py" selected ru.itoltec.swypetris.BackgroundPickerTest "$report_dir/picker-preflight.txt"
   focused=ru.itoltec.swypetris.AbsoluteVictoryUiTest,ru.itoltec.swypetris.VictoryThemeIntegrationTest,ru.itoltec.swypetris.SmokeTest
   timeout --signal=INT --kill-after=15s 8m adb -s "$serial" shell am instrument -w -r -e class "$focused" \
     ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner | tee "$report_dir/ui-preflight.txt"
-  python3 tools/ci/verify_instrumentation_output.py selected "$focused" "$report_dir/ui-preflight.txt"
+  python3 "$script_dir/verify_instrumentation_output.py" selected "$focused" "$report_dir/ui-preflight.txt"
   timeout 30s adb -s "$serial" pull /sdcard/Android/data/ru.itoltec.swypetris/files "$report_dir/device-files-preflight"
 fi
 args=(-s "$serial" shell am instrument -w -r)
@@ -92,7 +93,7 @@ elif [ "$CHECK_MODE" != full ]; then
 fi
 args+=(ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner)
 timeout --signal=INT --kill-after=15s 8m adb "${args[@]}" | tee "$report_dir/instrumentation.txt"
-python3 tools/ci/verify_instrumentation_output.py "$CHECK_MODE" "$ANDROID_CLASSES" "$report_dir/instrumentation.txt"
+python3 "$script_dir/verify_instrumentation_output.py" "$CHECK_MODE" "$ANDROID_CLASSES" "$report_dir/instrumentation.txt"
 if [ "$CHECK_MODE" = full ]; then
   timeout 30s adb -s "$serial" pull /sdcard/Android/data/ru.itoltec.swypetris/files "$report_dir/device-files"
 fi

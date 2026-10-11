@@ -14,6 +14,16 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual("none", result["mode"])
         self.assertEqual("", result["android"])
 
+    def test_windows_release_tools_path_selection(self):
+        for path in ("tools/release/Build-Release.ps1", "tools/tests/Release-Verification.Tests.ps1",
+                     "tools/ci/select_checks.py", ".github/workflows/ci.yml", "unresolved-change-set"):
+            with self.subTest(path=path):
+                self.assertEqual("true", select([path])["windows_release_tools"])
+        for path in ("README.md", "tools/release/README.md", "AGENTS.md",
+                     "app/src/main/java/ru/itoltec/swypetris/GameEngine.kt"):
+            with self.subTest(path=path):
+                self.assertEqual("false", select([path])["windows_release_tools"])
+
     def test_app_groups_combine_and_add_smoke(self):
         result = select([
             "app/src/main/java/ru/itoltec/swypetris/GameMusic.kt",

@@ -1,10 +1,11 @@
 """Negative cases for the required-check and report evidence gates."""
 
+import copy
 import tempfile
 import unittest
 from pathlib import Path
 
-from verify_quality_results import verify_reports, verify_steps
+from verify_quality_results import verify_dependencies, verify_reports, verify_steps
 
 
 class RequiredStepTests(unittest.TestCase):
@@ -69,6 +70,55 @@ class RequiredStepTests(unittest.TestCase):
         outputs["github_scripts"] = "true"
         with self.assertRaises(ValueError):
             verify_steps(outputs, {"changes": {"outcome": "success"}})
+
+
+class DependencyTests(unittest.TestCase):
+    def needs(self, selected):
+        return {"selection": {"result": "success", "outputs": {"windows_release_tools": selected}},
+                "windows-release-tools": {"result": "success" if selected == "true" else "skipped"}}
+
+    def test_docs_skip_windows_and_release_changes_require_it(self):
+        for selected in ("true", "false"):
+            verify_dependencies({"windows_release_tools": selected}, self.needs(selected))
+
+    def test_failed_missing_cancelled_or_skipped_required_windows_fails(self):
+        for status in ("failure", "cancelled", "skipped", None):
+            needs = self.needs("true")
+            needs["windows-release-tools"]["result"] = status
+            with self.subTest(status=status), self.assertRaises(ValueError):
+                verify_dependencies({"windows_release_tools": "true"}, needs)
+
+    def test_preselection_must_succeed_and_agree(self):
+        valid = self.needs("false")
+        for status in ("failure", "cancelled", "skipped", None):
+            needs = copy.deepcopy(valid)
+            needs["selection"]["result"] = status
+            with self.assertRaises(ValueError):
+                verify_dependencies({"windows_release_tools": "false"}, needs)
+        with self.assertRaises(ValueError):
+            verify_dependencies({"windows_release_tools": "true"}, valid)
+        with self.assertRaises(ValueError):
+            verify_dependencies({}, valid)
+
+    def test_final_assertion_requires_dependency_step(self):
+        outputs = dict(mode="none", github_scripts="false", release_scripts="false",
+                       ci_scripts="false", windows_release_tools="true")
+        for status in ("failure", "cancelled", "skipped", None):
+            with self.assertRaises(ValueError):
+                verify_steps(outputs, {"changes": {"outcome": "success"}, "dependencies": {"outcome": status}})
+
+    def test_workflow_keeps_stable_check_and_fail_closed_prerequisite(self):
+        workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+        android = workflow.split("  android:", 1)[1]
+        self.assertIn("needs: [selection, windows-release-tools]", android)
+        self.assertIn("if: always()", android)
+        self.assertIn("id: dependencies", android)
+        self.assertIn("--dependencies", android)
+        self.assertIn("toJSON(needs)", android)
+        windows = workflow.split("  windows-release-tools:", 1)[1].split("  android:", 1)[0]
+        self.assertIn("if: needs.selection.outputs.windows_release_tools == 'true'", windows)
+        self.assertIn("Release*.Tests.ps1", windows)
+        self.assertNotIn("setup-java", windows)
 
 
 class QualityReportTests(unittest.TestCase):
