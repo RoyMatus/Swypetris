@@ -143,3 +143,28 @@ remains enabled. The failed CI logs were preserved before correction.
 Strict validation with refreshed resolution then passed detekt, debug lint and
 JVM task configuration in 67 seconds (35 unchanged tasks reused). A new graph
 export remained byte-identical to the baseline across all 75 configurations.
+
+Merged as [PR #247](https://github.com/RoyMatus/Swypetris/pull/247), main commit
+`2fc95ab399f3956cedc8cbd58ded503cd930e2b9`. Corrected required CI run `38146828578`
+passed in 792 seconds for the Android job, including 158 passing Android cases
+and three opt-in skips (413.119 seconds), quality checks and Sonar. This supplies
+Linux execution evidence for the reviewed verification metadata.
+
+## Remove manual-inspection exports
+
+The owner requested removal of tests whose verdict could only come from human
+eyes or ears. Review found no such subjective verdicts in the inspected test
+suite: pixel/geometry, PCM, decoder and playback-state assertions are automated.
+Fifteen ordinary test files did contain successful-run PNG exports used solely
+for later manual inspection. Removed that export work while retaining test cases,
+product assertions and in-memory bitmaps used in numeric comparisons. Keep
+failure diagnostics, publication assets and explicit measurement exports.
+
+Source comparison confirmed all 55 affected test methods remain. Three removed
+assertions checked only PNG compression for those deleted inspection exports;
+product assertions were retained. Removed the unused icon-preview montage
+generation as well. Local test-APK compilation, lint including test sources and
+detekt passed in 89 seconds (nine tasks executed, 53 reused). These checks cover
+removed helper/import references and static defects; required PR CI executes the
+affected Android cases. No additional local full device regression was repeated
+for this test-output-only change.

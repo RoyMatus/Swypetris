@@ -1,14 +1,12 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
-import android.graphics.Bitmap
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -20,7 +18,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.left
@@ -131,21 +128,10 @@ class ResultsIntegrationTest {
             assertHistoryFits { testDensity = it }
             compose.runOnIdle { testDensity = null; model.options.setPalette("github_light") }
             compose.onNodeWithTag("resultsPage").performScrollToIndex(0)
-            saveScreenshot("results-light.png")
             compose.runOnIdle { testDensity = null }
             assertNextGameDoesNotRequestRecordName(model)
         } finally {
             restorePreferences(preferences, backup)
-        }
-    }
-
-    /** Сохраняет реальный рендер экрана для визуальной проверки после инструментальных тестов. */
-    @androidx.annotation.RequiresApi(26)
-    private fun saveScreenshot(name: String) {
-        val application = ApplicationProvider.getApplicationContext<Application>()
-        val file = java.io.File(application.getExternalFilesDir(null), name)
-        compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
     }
 
@@ -154,9 +140,7 @@ class ResultsIntegrationTest {
         compose.onNodeWithTag("recordPage").assertIsDisplayed()
         compose.onNodeWithTag("resultsPage").assertDoesNotExist()
         compose.onNodeWithTag("board").assertDoesNotExist()
-        saveScreenshot("record.png")
         compose.runOnIdle { model.options.setPalette("github_light") }
-        saveScreenshot("record-light.png")
         compose.runOnIdle { model.options.setPalette("classic") }
         compose.onNodeWithTag("recordName").performTextReplacement("  Алексей  ")
         compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("saveRecord"))
@@ -168,7 +152,6 @@ class ResultsIntegrationTest {
         compose.onNodeWithTag("recordName").assertDoesNotExist()
         compose.onNodeWithTag("newGame").assertDoesNotExist()
         compose.onNodeWithTag("toMenu").assertDoesNotExist()
-        saveScreenshot("results.png")
     }
 
     private fun assertNextGameDoesNotRequestRecordName(model: GameViewModel) {
@@ -205,7 +188,7 @@ class ResultsIntegrationTest {
 
     @androidx.annotation.RequiresApi(26)
     private fun assertHistoryFits(setDensity: (Density) -> Unit) {
-        for ((density, label) in listOf(Density(3.375f, 1.5f) to "narrow", Density(1.35f, 1.2f) to "tablet")) {
+        for ((density, _) in listOf(Density(3.375f, 1.5f) to "narrow", Density(1.35f, 1.2f) to "tablet")) {
             compose.runOnIdle { setDensity(density) }
             compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
                 .assertCountEquals(0)
@@ -213,7 +196,6 @@ class ResultsIntegrationTest {
             val bounds = compose.onNodeWithText("Алексей").fetchSemanticsNode().boundsInRoot
             val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
             assertTrue(bounds.left >= root.left && bounds.right <= root.right)
-            saveScreenshot("results-$label.png")
         }
     }
 

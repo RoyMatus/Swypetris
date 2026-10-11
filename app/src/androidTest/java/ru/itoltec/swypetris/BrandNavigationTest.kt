@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.ActivityNotFoundException
 import android.content.ContextWrapper
 import android.content.Intent
-import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -15,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -23,7 +21,6 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.bottom
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.filter
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.height
@@ -31,7 +28,6 @@ import androidx.compose.ui.test.left
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.right
 import androidx.compose.ui.test.top
@@ -66,7 +62,6 @@ class BrandNavigationTest {
             .map { it.config.getOrElse(SemanticsProperties.TestTag) { "" } }.filter { it.isNotEmpty() }
         assertEquals(expected, observed)
         expected.forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
-        screenshot("menu-brand.png")
         compose.runOnIdle { model.newGame(); model.navigation.menu() }
         compose.onNodeWithTag("resumeGame").assertIsDisplayed()
         val resume = compose.onNodeWithTag("resumeGame").fetchSemanticsNode().boundsInRoot
@@ -112,7 +107,6 @@ class BrandNavigationTest {
         assertTrue(version.top >= viewport.top && version.bottom <= viewport.bottom)
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .assertCountEquals(0)
-        screenshot("menu-compact-large-font.png")
     }
 
     /** Все фрукты и контакты помещаются при ширине 320 dp и двойном размере шрифта. */
@@ -146,7 +140,6 @@ class BrandNavigationTest {
         }
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("helpPage").performScrollToIndex(0)
-        screenshot("help-controls.png")
         compose.runOnIdle { fontScale = 2f; model.navigation.contacts() }
         for ((index, contact) in DeveloperContact.entries.withIndex()) {
             compose.onNodeWithTag("contactsPage").performScrollToIndex(index + 1)
@@ -156,9 +149,7 @@ class BrandNavigationTest {
             .assertCountEquals(0)
         compose.runOnIdle { fontScale = 1f }
         compose.onNodeWithTag("contactsPage").performScrollToIndex(0)
-        screenshot("contacts-brand.png")
         compose.runOnIdle { model.options.setPalette("github_light") }
-        screenshot("contacts-light.png")
         Espresso.pressBack()
         compose.runOnIdle { assertEquals(GameScreen.MENU, model.screen) }
     }
@@ -176,13 +167,4 @@ class BrandNavigationTest {
         assertFalse(openContact(context, DeveloperContact.EMAIL))
     }
 
-    /** Сохраняет снимок для визуального контроля нового оформления. */
-    @androidx.annotation.RequiresApi(26)
-    private fun screenshot(name: String) {
-        val application = ApplicationProvider.getApplicationContext<Application>()
-        val file = java.io.File(application.getExternalFilesDir(null), name)
-        compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        }
-    }
 }

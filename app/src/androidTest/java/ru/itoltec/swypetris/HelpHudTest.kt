@@ -1,7 +1,6 @@
 ﻿package ru.itoltec.swypetris
 
 import android.app.Application
-import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
@@ -11,18 +10,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.test.width
@@ -73,7 +69,6 @@ class HelpHudTest {
         Fruit.entries.forEach { fruit ->
             compose.onNodeWithContentDescription(fruit.title).assertExists()
         }
-        screenshot("help-large-font.png")
         compose.runOnIdle {
             now += 10000
             model.simulation.advanceFrame(now)
@@ -123,16 +118,6 @@ class HelpHudTest {
             compose.mainClock.advanceTimeBy(272)
             compose.onNodeWithTag("score").assertTextEquals("904")
         }
-        screenshot("hud-large-font.png")
     }
 
-    /** Сохраняет изображение проверяемой компоновки в файлы тестового приложения. */
-    @androidx.annotation.RequiresApi(26)
-    private fun screenshot(name: String) {
-        val application = ApplicationProvider.getApplicationContext<Application>()
-        val file = java.io.File(application.getExternalFilesDir(null), name)
-        compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        }
-    }
 }

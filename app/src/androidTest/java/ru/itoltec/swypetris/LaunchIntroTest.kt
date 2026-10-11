@@ -29,7 +29,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 /** Проверяет сборку логотипа, пропуск, тишину и прозрачность на светлом и тёмном фоне. */
 class LaunchIntroTest {
@@ -96,9 +95,7 @@ class LaunchIntroTest {
             }
         }
         compose.mainClock.advanceTimeByFrame()
-        screenshot("intro-0000-light.png")
         advanceTo(model, 500)
-        screenshot("intro-0500-light.png")
         compose.runOnIdle {
             val before = model.launchIntroMillis
             model.onBackground(); model.advanceLaunchIntro(60000)
@@ -106,18 +103,13 @@ class LaunchIntroTest {
             model.onForeground()
         }
         advanceTo(model, 1450)
-        screenshot("intro-1450-light.png")
         advanceTo(model, 2650)
-        screenshot("intro-2650-light.png")
         val assembled = compose.onNodeWithTag("gameLogo").captureToImage().asAndroidBitmap()
         val assembledBounds = compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot
-        save(assembled, "intro-logo-assembled.png")
         compose.runOnIdle { model.navigation.finishLaunchIntro() }
         compose.mainClock.advanceTimeByFrame()
-        screenshot("intro-menu-light.png")
         val menu = compose.onNodeWithTag("gameLogo").captureToImage().asAndroidBitmap()
         assertEquals(assembledBounds, compose.onNodeWithTag("gameLogo").fetchSemanticsNode().boundsInRoot)
-        save(menu, "intro-logo-menu.png")
         assertEquals(assembled.width, menu.width)
         assertEquals(assembled.height, menu.height)
         var changed = 0
@@ -146,7 +138,6 @@ class LaunchIntroTest {
         }
         compose.runOnIdle { model.options.setPalette("monokai") }
         compose.mainClock.advanceTimeByFrame()
-        screenshot("intro-menu-dark.png")
     }
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
@@ -156,16 +147,13 @@ class LaunchIntroTest {
         compose.mainClock.autoAdvance = false
         compose.setContent { SwypetrisApp(model) {} }
         compose.mainClock.advanceTimeByFrame()
-        screenshot("approach-0000.png")
         advanceTo(model, 1000)
-        screenshot("approach-1000.png")
         advanceTo(model, 2000)
-        screenshot("approach-2000.png")
         advanceTo(model, 2650)
-        val finalFrame = screenshot("approach-2650.png")
+        val finalFrame = capture()
         compose.runOnIdle { model.navigation.finishLaunchIntro() }
         compose.mainClock.advanceTimeByFrame()
-        val menuFrame = screenshot("approach-menu.png")
+        val menuFrame = capture()
         assertEquals(finalFrame.width, menuFrame.width)
         assertEquals(finalFrame.height, menuFrame.height)
         compose.onNodeWithTag("gameLogo").assertIsDisplayed()
@@ -193,45 +181,6 @@ class LaunchIntroTest {
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             assertNotNull((icon as android.graphics.drawable.AdaptiveIconDrawable).monochrome)
         }
-        val bitmap = Bitmap.createBitmap(768, 256, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bitmap)
-        canvas.drawColor(android.graphics.Color.WHITE)
-        repeat(3) { index ->
-            canvas.save()
-            canvas.translate(index * 256f, 0f)
-            val path = android.graphics.Path().apply {
-                when (index) {
-                    0 -> addCircle(128f, 128f, 116f, android.graphics.Path.Direction.CW)
-                    1 -> addRoundRect(12f, 12f, 244f, 244f, 48f, 48f, android.graphics.Path.Direction.CW)
-                    else -> addRect(12f, 12f, 244f, 244f, android.graphics.Path.Direction.CW)
-                }
-            }
-            canvas.clipPath(path)
-            if (icon is android.graphics.drawable.AdaptiveIconDrawable) {
-                icon.background.setBounds(0, 0, 256, 256); icon.background.draw(canvas)
-                icon.foreground.setBounds(0, 0, 256, 256); icon.foreground.draw(canvas)
-            } else { icon.setBounds(0, 0, 256, 256); icon.draw(canvas) }
-            canvas.restore()
-        }
-        save(bitmap, "intro-icon-masks.png")
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            val monochrome = (icon as android.graphics.drawable.AdaptiveIconDrawable).monochrome!!.mutate()
-            val themed = Bitmap.createBitmap(512, 256, Bitmap.Config.ARGB_8888)
-            val themedCanvas = android.graphics.Canvas(themed)
-            val backgrounds = intArrayOf(0xFFE9ECF6.toInt(), 0xFF27304A.toInt())
-            val tints = intArrayOf(0xFF26314A.toInt(), 0xFFD5E2FF.toInt())
-            repeat(2) { index ->
-                themedCanvas.save()
-                themedCanvas.translate(index * 256f, 0f)
-                themedCanvas.drawRect(0f, 0f, 256f, 256f,
-                    android.graphics.Paint().apply { color = backgrounds[index] })
-                monochrome.setTint(tints[index])
-                monochrome.setBounds(0, 0, 256, 256)
-                monochrome.draw(themedCanvas)
-                themedCanvas.restore()
-            }
-            save(themed, "intro-icon-themed.png")
-        }
     }
 
     /** Перемещает часы к нужному кадру, сохраняя отключённую автоматическую прокрутку времени. */
@@ -240,15 +189,7 @@ class LaunchIntroTest {
         compose.mainClock.advanceTimeByFrame()
     }
 
-    /** Сохраняет реальный кадр Compose для визуального контроля. */
+    /** Captures the actual Compose frame for automated comparisons. */
     @androidx.annotation.RequiresApi(26)
-    private fun screenshot(name: String): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-        .also { save(it, name) }
-
-    /** Записывает снимок в доступный adb каталог тестового приложения. */
-    private fun save(bitmap: Bitmap, name: String) {
-        val app = ApplicationProvider.getApplicationContext<Application>()
-        File(app.getExternalFilesDir(null), name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,
-            100, it) }
-    }
+    private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
 }

@@ -13,7 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.bottom
@@ -148,7 +147,7 @@ class LineClearUiTest {
                 compose.runOnIdle { state = initial; elapsed = 0; palette = GamePalettes.find(theme); reduced = false }
                 for (phase in listOf(0L, 40L, 80L, 160L, 280L, 360L, 480L, 600L)) {
                     compose.runOnIdle { elapsed = phase }
-                    assertClippedAndSave("shards-$theme-${rows.joinToString("-")}-$phase.png")
+                    assertClipped("shards-$theme-${rows.joinToString("-")}-$phase")
                 }
                 assertSettled { state = GameEngine().finishClear(initial); elapsed = 0 }
             }
@@ -157,7 +156,7 @@ class LineClearUiTest {
         compose.runOnIdle { state = wide; width = 520; height = 340; palette = GamePalettes.find("classic") }
         for (phase in listOf(40L, 160L, 480L, 600L)) {
             compose.runOnIdle { elapsed = phase }
-            assertClippedAndSave("shards-wide-$phase.png")
+            assertClipped("shards-wide-$phase")
         }
         assertSettled { state = GameEngine().finishClear(wide); elapsed = 0 }
         compose.runOnIdle { state = clearFixture(listOf(19)); elapsed = 0; reduced = true }
@@ -170,7 +169,7 @@ class LineClearUiTest {
     }
 
     @androidx.annotation.RequiresApi(26)
-    private fun assertClippedAndSave(name: String) {
+    private fun assertClipped(name: String) {
         val image = compose.onRoot().captureToImage()
         val pixels = image.toPixelMap()
         val bounds = compose.onNodeWithTag("board").fetchSemanticsNode().boundsInRoot
@@ -184,10 +183,6 @@ class LineClearUiTest {
             val outsideVertical = y < top - 1 || y > bottom + 1
             if (outsideHorizontal || outsideVertical)
                 assertEquals("Shard outside board: $name at $x/$y", Color.Magenta, pixels[x, y])
-        }
-        saveArtifact(name) { file ->
-            file.outputStream().use { image.asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG,
-                100, it) }
         }
     }
 
