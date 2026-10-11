@@ -227,3 +227,18 @@ listening or physical-speaker assessment was performed. Nineteen CI selector
 tests passed, including future selection of the new preparation class for either
 menu-audio source file. Required PR CI covers the mapping change with full
 regression; no additional duplicate local full regression was scheduled.
+
+Initial required CI run `38150109028` reached case 154 of 167 and was stopped by
+the existing eight-minute instrumentation deadline. The six new preparation
+cases had passed but consumed 103.4 seconds; logs and diagnostics were preserved
+before correction. A single-case local profile found approximately two seconds
+per `compose.runOnIdle` call despite having no Compose UI under test, while its
+factory gate took 0.784 ms and completion observation 18.867 ms. Replacing only
+these new tests' UI-idle waits with direct main-thread dispatch reduced the same
+passing case from 10.457 to 2.869 seconds. Post-change construction/start/body
+phases measured 52.837/98.554/58.181 ms. Temporary profiling was then removed.
+All assertions, controlled gates, readiness bounds and CI timeouts remain intact;
+the unchanged production/audio measurements and real-media results are reused.
+Final test-APK/lint/detekt checks passed in 18 seconds; all six preparation cases
+then passed in 9.120 seconds. The full required CI is rerun for the corrected
+commit, without changing its eight-minute instrumentation deadline.

@@ -31,7 +31,7 @@ class MenuPreparationTest {
 
     @Test fun preparationLeavesMainResponsiveAndRemainsSingleFlight() {
         withPreparation { fixture ->
-            compose.runOnIdle {
+            onMain {
                 repeat(3) {
                     fixture.music.setMode(MusicMode.MENU)
                     fixture.focus(AudioManager.AUDIOFOCUS_GAIN)
@@ -40,7 +40,7 @@ class MenuPreparationTest {
                 assertEquals(1, fixture.attempts.get())
             }
             fixture.complete()
-            compose.runOnIdle {
+            onMain {
                 assertSame(fixture.player, field(fixture.music, "menuPlayer"))
                 assertTrue(fixture.player.playing)
                 fixture.music.setMode(MusicMode.SILENT)
@@ -55,9 +55,9 @@ class MenuPreparationTest {
     @Test fun completionRespectsModeAndSelectionChangesAndRetainsPreparedPlayer() {
         for (mode in listOf(MusicMode.SILENT, MusicMode.GAME, MusicMode.RECORD)) {
             withPreparation { fixture ->
-                compose.runOnIdle { fixture.music.setMode(mode) }
+                onMain { fixture.music.setMode(mode) }
                 fixture.complete()
-                compose.runOnIdle {
+                onMain {
                     assertEquals(0, fixture.player.plays)
                     fixture.music.setMode(MusicMode.MENU)
                     assertTrue(fixture.player.playing)
@@ -66,9 +66,9 @@ class MenuPreparationTest {
             }
         }
         withPreparation { fixture ->
-            compose.runOnIdle { fixture.music.select(MusicSelection.Off) }
+            onMain { fixture.music.select(MusicSelection.Off) }
             fixture.complete()
-            compose.runOnIdle {
+            onMain {
                 fixture.focus(AudioManager.AUDIOFOCUS_GAIN)
                 assertEquals(0, fixture.player.plays)
                 fixture.music.select(MusicSelection.ShuffleAll)
@@ -81,21 +81,21 @@ class MenuPreparationTest {
 
     @Test fun completionRespectsFocusLossAndHeadphoneGate() {
         withPreparation { fixture ->
-            compose.runOnIdle { fixture.focus(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) }
+            onMain { fixture.focus(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) }
             fixture.complete()
-            compose.runOnIdle {
+            onMain {
                 assertEquals(0, fixture.player.plays)
                 fixture.focus(AudioManager.AUDIOFOCUS_GAIN)
                 assertTrue(fixture.player.playing)
             }
         }
         withPreparation { fixture ->
-            compose.runOnIdle {
+            onMain {
                 val receiver = field(fixture.music, "noisyReceiver") as BroadcastReceiver
                 receiver.onReceive(app, Intent(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
             }
             fixture.complete()
-            compose.runOnIdle {
+            onMain {
                 fixture.focus(AudioManager.AUDIOFOCUS_GAIN)
                 assertEquals(0, fixture.player.plays)
                 fixture.music.setMode(MusicMode.SILENT)
@@ -107,9 +107,9 @@ class MenuPreparationTest {
 
     @Test fun releaseDuringPreparationClosesLateResultWithoutAdoptingOrPlaying() {
         withPreparation { fixture ->
-            compose.runOnIdle { fixture.music.release() }
+            onMain { fixture.music.release() }
             fixture.complete()
-            compose.runOnIdle {
+            onMain {
                 assertNull(field(fixture.music, "menuPlayer"))
                 assertEquals(0, fixture.player.plays)
                 assertEquals(1, fixture.player.releases)
@@ -122,7 +122,7 @@ class MenuPreparationTest {
     @Test fun releaseClosesAdoptedPlayerExactlyOnce() {
         withPreparation { fixture ->
             fixture.complete()
-            compose.runOnIdle {
+            onMain {
                 fixture.music.release()
                 fixture.music.release()
                 assertEquals(1, fixture.player.releases)
@@ -135,7 +135,7 @@ class MenuPreparationTest {
         withPreparation { fixture ->
             fixture.failure.set(IOException("Controlled preparation failure"))
             fixture.complete()
-            compose.runOnIdle {
+            onMain {
                 assertNull(field(fixture.music, "menuPlayer"))
                 repeat(3) {
                     fixture.focus(AudioManager.AUDIOFOCUS_GAIN)
@@ -147,7 +147,7 @@ class MenuPreparationTest {
                 fixture.music.setMode(MusicMode.MENU)
             }
             awaitCompletion(fixture.music)
-            compose.runOnIdle {
+            onMain {
                 assertEquals(2, fixture.attempts.get())
                 assertTrue(fixture.player.playing)
             }
@@ -157,11 +157,11 @@ class MenuPreparationTest {
     private fun withPreparation(check: (Preparation) -> Unit) {
         val fixture = Preparation()
         try {
-            compose.runOnIdle { fixture.music.setMode(MusicMode.MENU) }
+            onMain { fixture.music.setMode(MusicMode.MENU) }
             assertTrue("Factory did not start", fixture.entered.await(10, TimeUnit.SECONDS))
             check(fixture)
         } finally {
-            compose.runOnIdle { fixture.music.release() }
+            onMain { fixture.music.release() }
             fixture.gate.countDown()
             awaitCompletion(fixture.music)
         }
@@ -177,7 +177,7 @@ class MenuPreparationTest {
 
         private fun createMusic(): GameMusic {
             lateinit var created: GameMusic
-            compose.runOnIdle {
+            onMain {
                 created = GameMusic(app, Dispatchers.IO) { _, _ ->
                     assertNotSame("Preparation ran on main", Looper.getMainLooper(), Looper.myLooper())
                     attempts.incrementAndGet()
@@ -221,4 +221,9 @@ class MenuPreparationTest {
 
     private fun field(owner: Any, name: String): Any? = owner.javaClass.getDeclaredField(name)
         .apply { isAccessible = true }.get(owner)
+
+    /** These checks exercise audio ownership, so they need main-thread ordering, not Compose idleness. */
+    private fun onMain(operation: () -> Unit) =
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(operation)
+
 }
