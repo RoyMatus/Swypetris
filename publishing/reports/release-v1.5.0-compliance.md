@@ -68,6 +68,32 @@ Ignored local evidence: `build/local-tools/signed-candidate-38077678547`, `relea
 
 ## Reassessment and publication decision
 
+### Resumed review on 2026-10-11
+
+The owner resumed release work. The complete current RuStore text was read again (sections 1–12), and the linked GitHub Terms, Acceptable Use, releases, licensing, Additional Product Terms, Community Guidelines and Actions limits were reopened/reviewed. Terms retain effective dates 2026-04-27 and 2026-08-27. The earlier section mapping above is historical and inaccurate against the current page; it must not be treated as the current requirement index. No complete earlier source snapshot is available on this computer, so this discrepancy does not establish when the page changed.
+
+Current requirement mapping and reassessment:
+
+| Current RuStore sections | Candidate evidence and applicability | Result |
+| --- | --- | --- |
+| 1.1–1.4 | Native game, owner-authorized GitHub release; no store submission | Shared functionality checked; console duties not applicable to this destination |
+| 2.1–2.16 | Existing puzzle content, owned/provided resources, consent-based update installation; no extremist/sexual/violent/self-harm/tragedy/drug/tobacco/weapon/medical/financial/gambling/VPN/piracy service or political content | No corresponding prohibited content/function identified; security, signing and disclosures remain gated |
+| 3.1–3.2 | No mature content or behavioral advertising; local image/name selection | Content checked; no invented store audience/rating declaration |
+| 3.3–3.4 | No crypto/mining or organization/political publications | Not applicable to app functionality; no invented owner registry/account verification |
+| 3.5–3.6, 4.3, 8.3 | Local private image/name, OS sharing; no hosted user-content or messaging platform | Hosted moderation/account mechanisms not applicable |
+| 4.1–4.2, 4.4–4.6 | Existing provenance/notices and owner publication authorization; independent game identity | No confirmed rights/impersonation finding in inspected content; no new rights assertion |
+| 5.1–5.4, 6.3 | Packaged Russian privacy/credits, scoped permissions, private state and optional sharing/update consent; no account | Existing artifact/code findings retained; store declaration/link fields excluded from GitHub destination |
+| 6.1–6.2, 6.4–6.8 | Free Russian UI, accurate version/notes/contact; store listing remains a draft | GitHub materials checked; store screenshot/video/category/console requirements not represented as completed |
+| 7.1–7.6 | No incentivized ratings, review spam or rating barrier | No prohibited app flow; store review operations not requested |
+| 8.1–8.6 | Working portrait native game; API 35 regressions and signed smoke, no Play Integrity restriction, no mandatory login or service dependency | Technical checks retained. Current 8.1 mentions Android 8.0; GitHub APK intentionally retains minSdk 24/Android 7.0 compatibility. No claim of a new RuStore submission. Submission quotas under 8.6 do not apply here |
+| 9.1–9.9 | No ads, purchases, subscriptions or payment/advertising SDK | Not applicable |
+| 10.1–10.4, 11.1–11.3 | No RuStore upload, sanctions decision or appeal in this release; #215 independent | Destination-specific process not applicable |
+| 12.1–12.2 | Cross-check of applicable content, rights, privacy and stability above | Store checklist/legal summary is not an independent legal opinion or proof of external console/account state |
+
+The three merged process PRs #228/#230/#232 change verification runners, tool tests, settings test selection, local build automation and documentation. The application tree, Gradle build configuration/dependencies, version inputs and public certificates are byte-identical in Git to reviewed input `8eeeed1b9647d41b93c4713937ff2269d6002caa`. Full required CI is rerun on the updated final PR head; the Pester inventory expands, VibrationSettingsTest selection is corrected, and renderer options retain ANGLE. The prior claim that only renderer/report inputs differ no longer describes the final branch. No publication setting or gate was weakened. Local signed 1.4.14 benchmark/smoke validates the new builder only; it is not the final signed 1.5.0 artifact proof.
+
+Applicable GitHub obligations were reassessed against the same application/content and scoped repository automation; no new blocker was identified. Final main APK/AAB and their own hashes/certificates/disclosures still require direct reassessment before publication. The earlier signed candidate identity above remains historical evidence, not a claimed final published hash. Final identity, checks and the post-merge development review will be linked from epic #187.
+
 Both platforms reviewed; shared content/privacy/SDK/permission/artifact findings reassessed against the corrections packaged in this exact candidate. Applicable mandatory platform findings are compliant; excluded destination-specific requirements have reasons above. Recommendations are adopted or explicitly deferred. There is no outstanding platform blocker for this authorized GitHub-only release.
 
 This report is the redacted review evidence for PR #226. The cloud renderer correction changes the CI environment and its recorded options, not application/signing/publication inputs or test coverage. The final PR required check and same-commit main release gates remain mandatory. The main build is reassessed against the reviewed application input tree and final PR CI configuration, actual version, original public certificates, packaged disclosures/resources and its own APK/AAB hashes before publication. Final published identity and successful run links are recorded in the consolidated epic completion comment and GitHub release assets. Never infer an identical artifact hash from a source-only comparison.
