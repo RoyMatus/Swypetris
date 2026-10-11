@@ -52,6 +52,11 @@ jobs:
 
   regression:
     needs: context
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
@@ -154,6 +159,11 @@ jobs:
 
   signed-release:
     needs: [context, regression]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
     environment: release-signing
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -297,6 +307,7 @@ jobs:
     needs: [context, regression, signed-release]
     if: >-
       !cancelled() && github.event_name == 'workflow_run' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
       needs.context.outputs.publish == 'true' &&
       needs.regression.result == 'success' && needs.signed-release.result == 'success'
     runs-on: ubuntu-24.04

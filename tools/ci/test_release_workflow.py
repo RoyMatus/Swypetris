@@ -44,10 +44,17 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertFalse(condition(block, dict(values, **{key: invalid})))
         self.assertTrue(condition(block, dict(values, **{'github.event_name': 'workflow_dispatch'})))
         self.assertFalse(condition(block, dict(values, **{'github.event_name': 'workflow_dispatch', 'github.ref': 'refs/tags/v1.2.3'})))
+        for name in ('regression', 'signed-release'):
+            guarded = job(self.text, name)
+            self.assertTrue(condition(guarded, values))
+            self.assertFalse(condition(guarded, dict(values, **{'github.event.workflow_run.head_repository.full_name': 'fork/repo'})))
+            self.assertFalse(condition(guarded, dict(values, **{'github.event.workflow_run.event': 'pull_request'})))
+            self.assertFalse(condition(guarded, dict(values, **{'github.ref': 'refs/heads/unreviewed'})))
 
     def test_publication_requires_every_gate_and_auto_route(self):
         block = job(self.text, 'publish')
         values = {'github.event_name': 'workflow_run', 'needs.context.outputs.publish': 'true',
+                  'github.event.workflow_run.head_repository.full_name': 'owner/repo', 'github.repository': 'owner/repo',
                   'needs.regression.result': 'success', 'needs.signed-release.result': 'success'}
         self.assertTrue(condition(block, values))
         for dependency in ('regression', 'signed-release'):
@@ -56,6 +63,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertFalse(condition(block, values, cancelled=True))
         self.assertFalse(condition(block, dict(values, **{'github.event_name': 'workflow_dispatch'})))
         self.assertFalse(condition(block, dict(values, **{'needs.context.outputs.publish': 'false'})))
+        self.assertFalse(condition(block, dict(values, **{'github.event.workflow_run.head_repository.full_name': 'fork/repo'})))
         self.assertIn('needs: [context, regression, signed-release]', block)
 
     def test_candidate_control_and_evidence_are_explicit(self):
