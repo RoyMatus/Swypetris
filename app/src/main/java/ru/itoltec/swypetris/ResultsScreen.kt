@@ -79,6 +79,7 @@ private val Muted: Color @Composable get() = LocalGamePalette.current.muted
 
 /** Results and history use menu-style cards that fit the width and scroll only vertically. */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun ResultsScreen(model: GameViewModel) {
     val latest = model.latestResult
     val records = model.recordResults
@@ -111,11 +112,13 @@ fun ResultsScreen(model: GameViewModel) {
                 AccentPanel(Lavender, Modifier.padding(horizontal = 12.dp)) {
                     Text("ИСТОРИЯ РЕКОРДОВ", color = Lavender, style = MaterialTheme.typography.labelLarge)
                     SettingsDivider(Lavender)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Правила ${GameRules.VERSION}", color = palette.text)
+                    FlowRow(Modifier.fillMaxWidth().testTag("recordSummary"),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Лучший результат", color = palette.text)
                         Text("${model.record}", color = Ice, fontWeight = FontWeight.Bold)
                     }
-                    if (model.legacyRecord > 0) Text("Прежние правила: ${model.legacyRecord}", color = Muted,
+                    if (model.legacyRecord > 0) Text("Архивный рекорд: ${model.legacyRecord}", color = Muted,
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -223,10 +226,7 @@ private fun ResultCard(result: GameResult) {
             Text("Уровень: ${result.level}", color = Muted)
             Text(formatDuration(result.durationMillis), color = Muted)
         }
-        Text(result.difficulty?.let { "${it.title} · Правила ${result.rulesVersion}" } ?:
-            if (result.rulesVersion == GameRules.VERSION) "Правила ${result.rulesVersion}"
-                else "Прежние правила ${result.rulesVersion}", color =
-            Muted)
+        result.difficulty?.let { Text(it.title, color = Muted) }
         Box(Modifier.fillMaxWidth()) { FruitCollection(result) }
     }
 }
