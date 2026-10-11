@@ -100,6 +100,11 @@ Changing `swypetrisVersion` on `main` triggers Android CI; its trusted successfu
 
 ## Workflow dependency controls
 
+Gradle dependency artifacts and metadata are checked against reviewed SHA-256
+entries in `gradle/verification-metadata.xml` in strict mode. See
+[dependency verification](DEPENDENCY-VERIFICATION.md) for update review,
+platform coverage and trust limits; CI must not regenerate or bypass checksums.
+
 Actions are pinned to full upstream commit SHAs, with weekly Dependabot PRs for GitHub Actions updates. Checkout does not persist credentials. Pester is fixed at 6.2.0, and the Gradle 9.3.1 distribution is verified using its official SHA-256 checksum. Repository-wide SHA-pinning enforcement remains deferred until these workflow changes are merged; enabling it before then would reject the old main workflows. The active `Protect release tags` ruleset (#24877707) prohibits updates/deletions of `v*` tags without bypass actors; creation remains available to publication.
 
 ## detekt policy
