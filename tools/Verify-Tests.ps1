@@ -4,24 +4,26 @@ param(
     [string[]]$TestClass,
     [string]$Serial,
     [string]$JavaHome,
-    [string]$Reason
+    [string]$Reason,
+    [ValidateRange(1,64)][int]$MaxWorkers
 )
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'Verification.psm1') -Force
 $project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $classes = @(Resolve-VerificationClasses -Project $project -Suite $Suite -TestClass $TestClass | Sort-Object -Unique)
 $deviceSuite = $Suite -in @('Android', 'FocusedAndroid')
-$gradle = Join-Path $project 'gradlew.bat'
+$gradle = Join-Path $project $(if ($IsWindows) { 'gradlew.bat' } else { 'gradlew' })
+$javaBinary = if ($IsWindows) { 'bin/java.exe' } else { 'bin/java' }
 if ($JavaHome) {
-    if (!(Test-Path -LiteralPath (Join-Path $JavaHome 'bin/java.exe'))) { throw "Java was not found under -JavaHome: $JavaHome" }
+    if (!(Test-Path -LiteralPath (Join-Path $JavaHome $javaBinary))) { throw "Java was not found under -JavaHome: $JavaHome" }
     $JavaHome = (Resolve-Path -LiteralPath $JavaHome).Path
 } elseif (!$env:JAVA_HOME -and !(Get-Command java -ErrorAction SilentlyContinue)) {
     throw 'Java is unavailable. Set JAVA_HOME or pass -JavaHome.'
 }
 if ($deviceSuite) {
     if ($Serial -notmatch '^emulator-\d+$') { throw 'Android checks require an explicit emulator serial.' }
-    $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
-    $adb = Join-Path $sdk 'platform-tools/adb.exe'
+    $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($IsWindows) { Join-Path $env:LOCALAPPDATA 'Android/Sdk' } else { Join-Path $env:HOME 'Android/Sdk' }
+    $adb = Join-Path $sdk $(if ($IsWindows) { 'platform-tools/adb.exe' } else { 'platform-tools/adb' })
     if (!(Test-Path -LiteralPath $adb)) { $adb = (Get-Command adb -ErrorAction Stop).Source }
     $devices = & $adb devices -l
     if ($LASTEXITCODE -ne 0 -or !($devices | Where-Object { $_ -match "^$([regex]::Escape($Serial))\s+device\b" })) {
@@ -39,12 +41,13 @@ $timer = [System.Diagnostics.Stopwatch]::StartNew()
 $summary = New-VerificationSummary -Project $project -Suite $Suite -Classes $classes -Serial $Serial -Started $started
 $summary.log = $log
 $summary.reason = if ($Reason) { $Reason } else { 'Not recorded' }
+$summary.maxWorkers = if ($MaxWorkers) { $MaxWorkers } else { $null }
 $previousJavaHome = $env:JAVA_HOME
 $previousSerial = $env:ANDROID_SERIAL
 $exitCode = 1
 try {
     if ($JavaHome) { $env:JAVA_HOME = $JavaHome }
-    $java = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME 'bin/java.exe' } else { (Get-Command java).Source }
+    $java = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME $javaBinary } else { (Get-Command java).Source }
     $javaVersion = @(& $java -version 2>&1)
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read Java version.' }
     $summary.java = $javaVersion[0].ToString()
@@ -56,6 +59,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Cannot read emulator API.' }
     }
     $tasks = @(Get-VerificationTasks -Suite $Suite -Classes $classes)
+    if ($MaxWorkers) { $tasks += "--max-workers=$MaxWorkers" }
     Push-Location $project
     try {
         & $gradle @tasks --build-cache --console=plain *> $log
@@ -102,8 +106,8 @@ try {
         catch { Write-Output "Diagnostic capture failed: $($_.Exception.Message)" }
     }
 } finally {
-    $env:JAVA_HOME = $previousJavaHome
-    $env:ANDROID_SERIAL = $previousSerial
+    if ($null -eq $previousJavaHome) { Remove-Item Env:JAVA_HOME -ErrorAction SilentlyContinue } else { $env:JAVA_HOME = $previousJavaHome }
+    if ($null -eq $previousSerial) { Remove-Item Env:ANDROID_SERIAL -ErrorAction SilentlyContinue } else { $env:ANDROID_SERIAL = $previousSerial }
     $timer.Stop()
     $summary.durationSeconds = [math]::Round($timer.Elapsed.TotalSeconds, 3)
     $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath "$stem.json" -Encoding utf8

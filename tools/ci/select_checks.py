@@ -9,6 +9,14 @@ from pathlib import Path
 PACKAGE = "ru.itoltec.swypetris."
 SMOKE = "SmokeTest"
 
+# Local-only launchers and diagnostics do not execute in required app CI.
+# Their command selection/report/failure behavior is covered by tools/tests.
+LOCAL_VERIFICATION_TOOLS = {
+    "tools/Verify-Tests.ps1", "tools/Verification.psm1",
+    "tools/Get-ExecutionProfile.ps1", "tools/ExecutionProfile.psm1",
+    "tools/Invoke-RemoteChecks.ps1",
+}
+
 # Each entry is deliberately explicit. A new production file gets full regression
 # until its dependencies are reviewed and recorded here.
 SOURCE_GROUPS = {
@@ -128,11 +136,14 @@ def select(paths: list[str]) -> dict[str, str]:
                 ci_scripts = True
                 full = True
                 continue
-            if path in {"tools/GitHub-Api.psm1", "tools/Update-Issue.ps1", "tools/Manage-PullRequest.ps1", "tools/Sync-IssueProject.ps1"} or path.startswith("tools/tests/"):
+            if path in LOCAL_VERIFICATION_TOOLS or path in {"tools/GitHub-Api.psm1", "tools/Update-Issue.ps1", "tools/Manage-PullRequest.ps1", "tools/Sync-IssueProject.ps1"} or path.startswith("tools/tests/"):
                 github_scripts = True
+                if path == "tools/Invoke-RemoteChecks.ps1":
+                    ci_scripts = True  # Dispatch contract tests; no Android app input changed.
                 continue
             if path.startswith("tools/release/"):
                 release_scripts = True
+                github_scripts = True
                 continue
             full = True
             continue

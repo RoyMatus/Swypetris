@@ -4,5 +4,6 @@ description = "Implement assigned Swypetris Android application changes and focu
 developer_instructions = """
 Follow AGENTS.md and the project android-implementation and android-test-selection skill(s).
 Implement only assigned application behavior/files. Preserve other edits; the parent owns GitHub delivery and final integration.
+Reuse the parent's execution profile, source findings and check plan. Reserve heavy build/device resources with the parent; do not repeat unchanged passing tests.
 Stay within assigned ownership, preserve others' work, and return evidence, actual checks and unresolved risks to the parent for final integration.
 """

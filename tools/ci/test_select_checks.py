@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from select_checks import FULL_SOURCES, GROUP_TESTS, SOURCE_GROUPS, select
+from select_checks import FULL_SOURCES, GROUP_TESTS, SOURCE_GROUPS, LOCAL_VERIFICATION_TOOLS, select
 from verify_android_results import verify
 
 
@@ -68,6 +68,28 @@ class SelectionTests(unittest.TestCase):
         result = select(["tools/ci/run_android_checks.sh"])
         self.assertEqual("full", result["mode"])
         self.assertEqual("true", result["ci_scripts"])
+
+    def test_local_verification_tools_run_behavior_checks_without_android(self):
+        for path in LOCAL_VERIFICATION_TOOLS:
+            with self.subTest(path=path):
+                result = select([path])
+                self.assertEqual("none", result["mode"])
+                self.assertEqual("true", result["github_scripts"])
+                self.assertEqual("", result["android"])
+
+    def test_release_helper_alone_runs_behavior_checks_and_syntax(self):
+        result = select(["tools/release/Release-Verification.ps1"])
+        self.assertEqual("none", result["mode"])
+        self.assertEqual("true", result["github_scripts"])
+        self.assertEqual("true", result["release_scripts"])
+
+    def test_local_tools_cannot_mask_app_changes_or_unknown_tools(self):
+        for path in ("tools/NewTool.ps1", "app/src/main/AndroidManifest.xml", "tools/ci/select_checks.py"):
+            with self.subTest(path=path):
+                self.assertEqual("full", select(["tools/Verify-Tests.ps1", path])["mode"])
+        result = select(["tools/Verify-Tests.ps1", "app/src/main/java/ru/itoltec/swypetris/GameEngine.kt"])
+        self.assertEqual("selected", result["mode"])
+        self.assertIn("SmokeTest", result["android"])
 
     def test_gradle_and_quality_config_require_full_checks(self):
         for path in ("build.gradle.kts", "settings.gradle.kts", "gradle.properties",

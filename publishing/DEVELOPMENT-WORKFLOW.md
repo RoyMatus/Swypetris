@@ -1,12 +1,12 @@
 # Efficient development with evidence
 
-Use local resources for implementation and additional verification. The existing required PR status and exact-main release gates remain mandatory. See CI.md and TESTING.md for actual scope; this workflow does not change them.
+Choose local, hybrid or cloud work from the actual host using [EXECUTION-PROFILES.md](EXECUTION-PROFILES.md). Diagnose before an epic, continuation on another machine or standalone ticket; share its profile and resource budget across agents. Prefer capable local resources and use an available cloud executor for unsuitable/missing local capacity. The required PR status and exact-main release gates remain mandatory. See CI.md and TESTING.md for actual scope.
 
 ## One issue at a time
 
-1. Inspect affected behavior and list the risk each selected local check covers. Use focused JVM checks for rules and focused emulator checks for UI/platform integration at meaningful checkpoints.
+1. Inspect affected behavior and list the risk each selected check covers. Use focused JVM checks for rules and focused emulator checks for UI/platform integration at meaningful checkpoints on the selected executor. One owner schedules heavy checks; reuse valid evidence across agents. Tool/instruction changes do not justify an app build by themselves.
 2. Keep compatible caches in the owned worktree through sequential issues. Preserve others' worktrees/processes. Do not clean or force rerun without evidence.
-3. Before the final push, finish code, tests, review, PR text, notes and measurements belonging in the PR. Wait for the required check on that final SHA; any subsequent meaningful change needs its own final check.
+3. Before the final push, finish code, tests, review, PR text, notes and measurements belonging in the PR. Do not repeat an unchanged full local suite before the mandatory PR run. Wait for the required check on that final SHA; any subsequent meaningful change needs its own final check. With an open PR, use its CI rather than also dispatching optional developer checks.
 4. While CI runs, prepare completion text and inspect evidence without modifying the tested commit. Do not start implementation of the next epic issue before merge/closure.
 5. After a failure, preserve the full log and device snapshot, diagnose the cause, then verify the failed scenario and affected neighbors. No automatic retry-to-green. `Verify-Tests.ps1` captures bounded emulator diagnostics on device readiness/test failures; manual capture is also available:
 
