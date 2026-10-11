@@ -29,6 +29,7 @@ Project policy: [publishing/POLICY.md](publishing/POLICY.md). CI selection and c
 
 ## Verification and reporting
 
+- During each epic, record evidence of implementation time, local and CI check durations/counts, reused results, waiting, failures/retries and rework. After every epic merge, create an English report in `publishing/reports/epic-<number>-development-review.md` and link it from the epic. Separate measured facts from inferences and unknowns; identify concrete ways to shorten development without reducing behavior coverage, required gates or release safety. Give each proposed improvement its supporting evidence, expected benefit and quality-preserving validation; do not invent missing timings or claim causality from cold-versus-warm comparisons.
 - Review the diff and choose the smallest checks covering changed behavior using `android-test-selection`; CI selection is not a substitute for local risk assessment. Do not build Android for instruction-only edits. Fix regressions introduced by the task; preserve full failure logs in ignored build output.
 - Before device tests, inspect `adb devices -l` and identify serial/model. Use an isolated headless emulator (`-no-window`) first and always select an explicit serial. Open a window only when required for visual/manual verification.
 - Use the connected Pixel 7 only when real-device behavior is necessary and explain why. Authorized Swypetris uninstall may remove its data; never uninstall unrelated apps. Leave Swypetris installed afterward.
