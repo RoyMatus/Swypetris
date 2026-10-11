@@ -51,7 +51,7 @@ The parent owns final integration. Give delegated work concrete ownership and ex
 
 All builds, Android/JVM/tool checks and signed release verification use local scripts. SonarQube Cloud remains an explicit service exception: the scanner runs locally and waits for the remote Quality Gate. No GitHub Actions dispatch or self-hosted Actions runner is permitted. `Invoke-RemoteChecks.ps1` rejects requests.
 
-A missing local executor, unavailable API 35 emulator, or missing platform needed by a required tool test is a concrete blocker. A Windows run with Linux tests skipped is not Linux coverage. Install/configure an appropriate local environment within authorization or report the incomplete gate; never turn this into cloud fallback. Preserve diagnostics before changing toolchain/environment and then recheck the host profile.
+Windows is the sole mandatory verification platform. A missing Windows executor or required API 35 emulator blocks verification; absence of Linux/WSL does not. Unix helper tests and archived cloud-shell tests are optional, and a Windows run does not claim Linux coverage. Never use a cloud fallback. Preserve diagnostics before changing toolchain/environment and then recheck the host profile.
 
 ## Compact task handoff
 

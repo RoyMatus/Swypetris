@@ -65,7 +65,7 @@ class LocalEvidenceTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.path = self.root / 'evidence.json'
         self.selection = dict(mode='none', android='', jvm='', github_scripts='false', release_scripts='false', ci_scripts='false', windows_release_tools='false')
-        self.doc = dict(schema=1, head='a'*40, base='b'*40, mode='PR', selection=self.selection, result='passed', checks=[dict(name='whitespace', result='passed', log='whitespace.log')], files={'whitespace.log':hashlib.sha256(b'ok').hexdigest()})
+        self.doc = dict(schema=1, platform='Windows', head='a'*40, base='b'*40, mode='PR', selection=self.selection, result='passed', checks=[dict(name='whitespace', result='passed', log='whitespace.log')], files={'whitespace.log':hashlib.sha256(b'ok').hexdigest()})
         (self.root / 'whitespace.log').write_bytes(b'ok')
         self.clean = patch.object(gate, 'clean').start()
         self.choose = patch.object(gate, 'selection', return_value=self.selection).start()
@@ -112,13 +112,29 @@ class LocalEvidenceTests(unittest.TestCase):
         self.doc['mode'] = 'LinuxTools'
         with self.assertRaises(ValueError): self.validate()
 
+    def test_windows_tool_evidence_needs_no_linux_report(self):
+        self.selection['github_scripts'] = 'true'
+        for name in ('python', 'pester'):
+            filename = name + '.log'
+            (self.root / filename).write_bytes(b'passed')
+            self.doc['files'][filename] = hashlib.sha256(b'passed').hexdigest()
+            self.doc['checks'].append(dict(name=name, result='passed', log=filename))
+        self.assertEqual(self.validate()['result'], 'passed')
+        self.doc['checks'].pop()
+        with self.assertRaises(ValueError): self.validate()
+
+    def test_non_windows_or_missing_platform_cannot_authorize_merge(self):
+        for platform in ('Linux', None):
+            self.doc['platform'] = platform
+            with self.assertRaises(ValueError): self.validate()
+
     def test_dirty_tree_rejected(self):
         self.clean.side_effect = ValueError('dirty')
         with self.assertRaisesRegex(ValueError,'dirty'): self.validate()
 
     def test_full_requires_tools_and_android(self):
         selected = dict(self.selection, mode='full')
-        self.assertEqual(gate.required('Full', selected), {'whitespace','python','pester','linux-tools','quality','quality-reports','sonar','android','install-debug','launcher-smoke','picker-preflight','ui-preflight'})
+        self.assertEqual(gate.required('Full', selected), {'whitespace','python','pester','quality','quality-reports','sonar','android','install-debug','launcher-smoke','picker-preflight','ui-preflight'})
 
 
 if __name__ == '__main__':

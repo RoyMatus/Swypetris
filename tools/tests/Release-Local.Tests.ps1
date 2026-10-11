@@ -97,21 +97,19 @@ Describe 'Exact main release prerequisite' {
 }
 
 Describe 'Release regression snapshot relocation' {
-    It 'copies bound report paths and nested Linux evidence without changing evidence bytes' {
+    It 'copies bound Windows report paths without requiring Linux evidence' {
         $source = Join-Path $TestDrive 'source'
         $target = Join-Path $TestDrive 'release/regression'
-        New-Item -ItemType Directory -Path "$source/android", "$source/linux" -Force | Out-Null
+        New-Item -ItemType Directory -Path "$source/android" -Force | Out-Null
         Set-Content "$source/android/result.xml" '<testsuite/>'
-        Set-Content "$source/linux/pester.log" 'passed'
-        @{files=@{'pester.log'=(Get-FileHash "$source/linux/pester.log").Hash.ToLowerInvariant()};checks=@()} |
-            ConvertTo-Json -Depth 6 | Set-Content "$source/linux/evidence.json"
-        @{files=@{'android/result.xml'=(Get-FileHash "$source/android/result.xml").Hash.ToLowerInvariant()};checks=@(@{name='linux-tools'})} |
+        Set-Content "$source/pester.log" 'passed'
+        @{files=@{'android/result.xml'=(Get-FileHash "$source/android/result.xml").Hash.ToLowerInvariant();'pester.log'=(Get-FileHash "$source/pester.log").Hash.ToLowerInvariant()};checks=@(@{name='pester'})} |
             ConvertTo-Json -Depth 6 | Set-Content "$source/evidence.json"
         Copy-LocalReleaseRegression "$source/evidence.json" $target
         (Get-FileHash "$target/evidence.json").Hash | Should -Be (Get-FileHash "$source/evidence.json").Hash
         (Get-FileHash "$target/android/result.xml").Hash | Should -Be (Get-FileHash "$source/android/result.xml").Hash
-        (Get-FileHash "$target/linux/evidence.json").Hash | Should -Be (Get-FileHash "$source/linux/evidence.json").Hash
-        (Get-FileHash "$target/linux/pester.log").Hash | Should -Be (Get-FileHash "$source/linux/pester.log").Hash
+        (Get-FileHash "$target/pester.log").Hash | Should -Be (Get-FileHash "$source/pester.log").Hash
+        Test-Path "$target/linux" | Should -BeFalse
     }
     It 'rejects changed report bytes during copying' {
         $source = Join-Path $TestDrive 'bad'

@@ -60,9 +60,6 @@ function Copy-LocalReleaseRegression {
         New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($outputFile)) -Force | Out-Null
         Copy-Item -LiteralPath $inputFile -Destination $outputFile
     }
-    if (@($document.checks | Where-Object name -EQ 'linux-tools').Count) {
-        Copy-LocalReleaseRegression -EvidencePath (Join-Path $root 'linux/evidence.json') -Destination (Join-Path $Destination 'linux')
-    }
     Copy-Item -LiteralPath $source -Destination (Join-Path $Destination 'evidence.json')
 }
 

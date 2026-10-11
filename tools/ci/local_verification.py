@@ -84,11 +84,9 @@ def selection(root, mode, head, base):
 
 
 def required(mode, selected):
-    if mode == 'LinuxTools':
-        return {'python', 'pester'}
     checks = {'whitespace'}
     if mode == 'Full' or any(selected[k] == 'true' for k in ('github_scripts', 'release_scripts', 'ci_scripts', 'windows_release_tools')):
-        checks |= {'python', 'pester', 'linux-tools'}
+        checks |= {'python', 'pester'}
     if selected['mode'] != 'none':
         checks |= {'quality', 'quality-reports', 'sonar', 'android', 'install-debug', 'launcher-smoke'}
         if selected['mode'] == 'full':
@@ -96,14 +94,16 @@ def required(mode, selected):
     return checks
 
 
-def validate(path, root, head, base, full=False, linux=False):
+def validate(path, root, head, base, full=False):
     clean(root, head, base)
     doc = json.loads(path.read_text(encoding='utf-8-sig'))
     if doc.get('schema') != 1 or doc.get('head') != head or doc.get('base') != base or doc.get('result') != 'passed':
         raise ValueError('Evidence identity/result mismatch')
     mode = doc.get('mode')
-    if mode not in {'PR', 'Full', 'LinuxTools'} or (full and mode != 'Full') or (linux and mode != 'LinuxTools') or (not linux and mode == 'LinuxTools'):
+    if mode not in {'PR', 'Full'} or (full and mode != 'Full'):
         raise ValueError('Evidence scope mismatch')
+    if doc.get('platform') != 'Windows':
+        raise ValueError('Mandatory verification requires Windows evidence')
     expected = selection(root, mode, head, base)
     if doc.get('selection') != expected:
         raise ValueError('Evidence selection mismatch')
@@ -124,13 +124,7 @@ def validate(path, root, head, base, full=False, linux=False):
         raise ValueError('Unbound or missing report files')
     if any(c.get('log') not in files for c in checks):
         raise ValueError('Missing check logs')
-    if mode != 'LinuxTools' and 'linux-tools' in required(mode, expected) and doc.get('platform') != 'Windows':
-        raise ValueError('Main tool coverage requires Windows for DPAPI/signing tests')
-    if linux and doc.get('platform') != 'Linux':
-        raise ValueError('Linux tool coverage requires a Linux host')
-    if 'linux-tools' in required(mode, expected):
-        validate(path.parent / 'linux/evidence.json', root, head, base, linux=True)
-    if expected['mode'] != 'none' and mode != 'LinuxTools':
+    if expected['mode'] != 'none':
         for apk_dir in ('app/build/outputs/apk/debug/', 'app/build/outputs/apk/androidTest/debug/'):
             if not any(n.startswith(apk_dir) and n.endswith('.apk') for n in files):
                 raise ValueError('Missing bound APK artifact: ' + apk_dir)
@@ -163,14 +157,13 @@ def main():
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--head', required=True)
     parser.add_argument('--base', required=True)
-    parser.add_argument('--mode', default='PR', choices=['PR', 'Full', 'LinuxTools'])
+    parser.add_argument('--mode', default='PR', choices=['PR', 'Full'])
     parser.add_argument('--evidence', type=Path)
     parser.add_argument('--full', action='store_true')
-    parser.add_argument('--linux', action='store_true')
     args = parser.parse_args()
     clean(args.root, args.head, args.base)
     if args.action == 'validate':
-        validate(args.evidence, args.root, args.head, args.base, args.full, args.linux)
+        validate(args.evidence, args.root, args.head, args.base, args.full)
     else:
         print(json.dumps(selection(args.root, args.mode, args.head, args.base)))
 

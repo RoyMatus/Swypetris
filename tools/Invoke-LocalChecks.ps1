@@ -1,14 +1,15 @@
 <# Local-only verification. Evidence is created only for a clean commit; no dispatch fallback. #>
 [CmdletBinding()]
 param(
-    [ValidateSet('PR','Full','LinuxTools')][string]$Mode = 'PR',
+    [ValidateSet('PR','Full')][string]$Mode = 'PR',
     [Parameter(Mandatory)][ValidatePattern('^[a-f0-9]{40}$')][string]$BaseSha,
     [string]$Python = 'python', [string]$JavaHome, [string]$Serial,
     [ValidateRange(1,64)][int]$MaxWorkers = 4,
-    [string]$LinuxEvidencePath, [string]$OutputDirectory,
+    [string]$OutputDirectory,
     [int]$PullRequestNumber, [string]$BaseBranch = 'main'
 )
 $ErrorActionPreference = 'Stop'
+if (!$IsWindows) { throw 'Mandatory verification runs on Windows. Unix checks are optional and do not authorize merges.' }
 $project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $headSha = (& git -C $project rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve HEAD.' }
@@ -41,23 +42,13 @@ Push-Location $project
 try {
     if ($JavaHome) { $env:JAVA_HOME = $JavaHome }
     if ($Serial) { $env:ANDROID_SERIAL = $Serial }
-    $toolsRequired = $Mode -in @('Full','LinuxTools') -or @('github_scripts','release_scripts','ci_scripts','windows_release_tools').Where({$selection.$_ -eq 'true'}).Count -gt 0
-    if ($Mode -ne 'LinuxTools') {
-        Invoke-Check 'whitespace' 'git' @('diff','--check',"$BaseSha..$headSha")
-    } elseif (!$IsLinux) { throw 'LinuxTools requires native Linux PowerShell and Python.' }
+    $toolsRequired = $Mode -eq 'Full' -or @('github_scripts','release_scripts','ci_scripts','windows_release_tools').Where({$selection.$_ -eq 'true'}).Count -gt 0
+    Invoke-Check 'whitespace' 'git' @('diff','--check',"$BaseSha..$headSha")
     if ($toolsRequired) {
-        if ($Mode -ne 'LinuxTools') {
-            if (!$IsWindows) { throw 'Main tool verification requires Windows; use LinuxTools for the complementary Linux evidence.' }
-            if (!$LinuxEvidencePath) { throw 'Local Linux tool coverage missing. Run -Mode LinuxTools on a local Linux environment at this exact HEAD/base.' }
-            & $Python $helper validate --root $project --head $headSha --base $BaseSha --evidence $LinuxEvidencePath --linux *> (Join-Path $OutputDirectory 'linux-tools.log')
-            if ($LASTEXITCODE -ne 0) { throw 'Linux tool evidence rejected.' }
-            Copy-Item -LiteralPath (Split-Path -Parent (Resolve-Path $LinuxEvidencePath)) -Destination (Join-Path $OutputDirectory 'linux') -Recurse
-            $checks.Add(@{name='linux-tools'; result='passed'; log='linux-tools.log'; durationSeconds=0})
-        }
         Invoke-Check 'python' $Python @('tools/ci/run_local_tool_tests.py')
         Invoke-Check 'pester' (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $PSScriptRoot 'Invoke-LocalToolTests.ps1'))
     }
-    if ($Mode -ne 'LinuxTools' -and $selection.mode -ne 'none') {
+    if ($selection.mode -ne 'none') {
         if ($Serial -notmatch '^emulator-\d+$') { throw 'An explicit headless emulator serial is required.' }
         foreach ($name in @('SONAR_ORGANIZATION','SONAR_PROJECT_KEY','SONAR_TOKEN')) {
             if (![Environment]::GetEnvironmentVariable($name)) { throw "Missing $name; configure locally without committing credentials." }
@@ -122,13 +113,11 @@ try {
     Get-ChildItem $OutputDirectory -Recurse -File | Where-Object Name -ne 'evidence.json' | ForEach-Object {
         $files[[IO.Path]::GetRelativePath($OutputDirectory,$_.FullName).Replace('\','/')] = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     }
-    if (Test-Path (Join-Path $OutputDirectory 'linux/evidence.json')) { $files['linux/evidence.json'] = (Get-FileHash (Join-Path $OutputDirectory 'linux/evidence.json')).Hash.ToLowerInvariant() }
     $evidence = Join-Path $OutputDirectory 'candidate.json'
-    @{schema=1; head=$headSha; base=$BaseSha; mode=$Mode; selection=$selection; result=$result; checks=@($checks.ToArray()); files=$files; platform=$(if($IsLinux){'Linux'}else{'Windows'}); startedUtc=$started.ToString('o')} | ConvertTo-Json -Depth 12 | Set-Content $evidence -Encoding utf8
+    @{schema=1; head=$headSha; base=$BaseSha; mode=$Mode; selection=$selection; result=$result; checks=@($checks.ToArray()); files=$files; platform='Windows'; startedUtc=$started.ToString('o')} | ConvertTo-Json -Depth 12 | Set-Content $evidence -Encoding utf8
     Write-Host "Evidence: $evidence"
 }
 $validation = @($helper,'validate','--root',$project,'--head',$headSha,'--base',$BaseSha,'--evidence',$evidence)
-if ($Mode -eq 'LinuxTools') { $validation += '--linux' }
 & $Python @validation
 if ($LASTEXITCODE -ne 0) {
     $failed = Get-Content $evidence -Raw | ConvertFrom-Json
