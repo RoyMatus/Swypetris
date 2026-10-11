@@ -49,6 +49,13 @@ class SelectionTests(unittest.TestCase):
                 self.assertEqual("selected", result["mode"])
                 self.assertIn("ru.itoltec.swypetris.MenuPreparationTest", result["android"].split(","))
 
+    def test_update_policy_changes_cover_durable_asynchronous_writes(self):
+        for source in ("AppUpdates.kt", "UpdateCheckPolicy.kt"):
+            with self.subTest(source=source):
+                result = select(["app/src/main/java/ru/itoltec/swypetris/" + source])
+                self.assertEqual("selected", result["mode"])
+                self.assertIn("ru.itoltec.swypetris.UpdatePersistenceTest", result["android"].split(","))
+
     def test_full_mode_discards_accumulated_android_filter_in_any_path_order(self):
         paths = ["app/src/main/java/ru/itoltec/swypetris/GameEngine.kt",
                  "app/src/androidTest/java/ru/itoltec/swypetris/AbsoluteVictoryUiTest.kt",

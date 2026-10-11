@@ -242,3 +242,38 @@ the unchanged production/audio measurements and real-media results are reused.
 Final test-APK/lint/detekt checks passed in 18 seconds; all six preparation cases
 then passed in 9.120 seconds. The full required CI is rerun for the corrected
 commit, without changing its eight-minute instrumentation deadline.
+
+Corrected required CI run `38151584836` passed: 164 Android cases and three
+opt-in skips in 423.759 seconds, plus the picker/UI preflights, JVM, quality and
+tool checks. Its Android job took 860 seconds. Merged as
+[PR #250](https://github.com/RoyMatus/Swypetris/pull/250), main commit
+`5658520d088bdcbf3c013f4702bc153445ab317e`.
+
+## Asynchronous durable update policy writes
+
+GitHub automatic-attempt/clock-rebase and rate-limit commits now run on IO.
+Automatic HTTP remains conditional on successful durable preflight; `commit()`
+return values remain authoritative even if preferences changed in memory.
+`checking` spans preflight, HTTP and cooldown persistence. Joined manual requests
+receive the final result and may bypass the interval only after successful
+preflight, never after a failed required write. Activity cancellation propagates
+across IO return boundaries; late commit completion cannot start replacement
+HTTP or resume a queued manual request. Immediate persisted-cooldown feedback,
+timestamp semantics and the RuStore path are retained.
+
+Seven controlled-preference cases cover successful/failed commits, both changed
+and unchanged backing preferences on failure, clock rollback, manual joining,
+cooldown persistence and destruction while a commit is blocked. Main-thread
+dispatch tests responsiveness without waiting for unrelated Compose idleness.
+Existing update checks now await asynchronous preflight and read readiness on
+main. The source-to-test mapping includes the new persistence class.
+
+Local app/test assembly, debug lint, detekt and the 14 selected update-policy/
+download JVM cases passed in 44 seconds (21 tasks executed, 62 reused). Twenty
+selector cases passed. All 15 selected Android cases passed without skips in
+66.403 seconds: persistence, check policy, manual-check UI and automatic-update
+consent. These cover ordering, durability failures, lifecycle cancellation and
+existing user interactions; no live-network request or disk-speed improvement is
+claimed. Required PR CI runs full regression for the mapping change. Final
+exact-main signed verification remains a separate gate after merge, without a
+version change or publication.

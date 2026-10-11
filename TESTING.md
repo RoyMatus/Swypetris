@@ -25,7 +25,7 @@ PR and release-version `main` CI use the explicit source-to-test map in `tools/c
 
 ## Current verified inventory
 
-The 2026-10-11 [required CI run](https://github.com/RoyMatus/Swypetris/actions/runs/38146828578) passed with **152 JVM cases** and **161 Android cases**, 158 passed and three opt-in skips. These are case counts, not the number of assertions, portrait/font fixtures or repeated executions. The default Android skips are `EnergyScenarioTest` (measurement), `SignedUpdateScenarioTest` (explicit signed-install fixture) and `FireworkRenderingTest` (numeric before/after frame export); normal green CI does not exercise them.
+The 2026-10-11 [required CI run](https://github.com/RoyMatus/Swypetris/actions/runs/38151584836) passed with **152 JVM cases** and **167 Android cases**, 164 passed and three opt-in skips. These are case counts, not the number of assertions, portrait/font fixtures or repeated executions. The default Android skips are `EnergyScenarioTest` (measurement), `SignedUpdateScenarioTest` (explicit signed-install fixture) and `FireworkRenderingTest` (numeric before/after frame export); normal green CI does not exercise them.
 
 Full PR CI additionally runs the one-case picker preflight and a 14-case UI preflight before the complete inventory. Those 15 cases are repeated in the full run, not 15 extra unique tests. The signed APK has a separate menu/settings/new-game/pause/Continue runtime smoke; full instrumentation exercises the debug target. JVM coverage measures debug production code executed by JVM tests and does not include Android/Compose coverage.
 
@@ -73,6 +73,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `MigrationTest` | Android storage: prior history migration | Keep; requires persisted Android data. |
 | `MusicIntegrationTest` | Android media: fanfare mode and packaged audio decoding | Keep; JVM playlist tests cannot decode Android media. |
 | `MenuPreparationTest` | Android audio ownership: asynchronous preparation, cancellation and playback gates | Keep; controlled factory completion checks late resource adoption and release without listening. |
+| `UpdatePersistenceTest` | Android update policy: durable asynchronous writes, manual coalescing and cancellation | Keep; controlled commit outcomes check ordering and main-thread responsiveness without networking. |
 | `MusicSettingsFruitTest` | Compose UI: picker, persistence, fruit visuals and gesture safety | Keep; verifies current UI and interaction rules. |
 | `PublicationTest` | Android UI/assets: offline privacy and store-media export | Keep; validates packaged privacy and generated media. |
 | `ResultsIntegrationTest` | Compose/storage: record name, game-over result and history | Keep; user flow and persistence. |
