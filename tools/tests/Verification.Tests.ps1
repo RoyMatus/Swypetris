@@ -101,16 +101,18 @@ Describe 'Verification runner failure handling' {
         Copy-Item "$project/tools/Verify-Tests.ps1","$project/tools/Verification.psm1" "$fixture/tools"
         Set-Content "$fixture/app/src/test/java/ru/itoltec/swypetris/ExampleTest.kt" "package ru.itoltec.swypetris`nclass ExampleTest { @Test fun works() {} }"
         Set-Content "$fixture/jdk/bin/java" "#!/bin/sh`necho 'openjdk version 21'"
-        Set-Content "$fixture/gradlew" @'
+        $launcher = @'
 #!/bin/sh
 printf '%s\n' "$@" > arguments.txt
 mkdir -p app/build/test-results/testDebugUnitTest
 echo '<testsuite tests="1" failures="0" errors="0"><testcase classname="ru.itoltec.swypetris.ExampleTest" name="works"/></testsuite>' > app/build/test-results/testDebugUnitTest/TEST-ExampleTest.xml
 echo '> Task :app:testDebugUnitTest'
 '@
+        # .gitattributes checks out .ps1 with CRLF even on Linux; shell shebangs require LF.
+        Set-Content "$fixture/gradlew" ($launcher -replace "`r`n", "`n")
         & chmod +x "$fixture/gradlew" "$fixture/jdk/bin/java"
         $previousJava = $env:JAVA_HOME
-        & "$fixture/tools/Verify-Tests.ps1" -Suite FocusedJvm -TestClass ExampleTest -JavaHome "$fixture/jdk" -MaxWorkers 2
+        & "$fixture/tools/Verify-Tests.ps1" -Suite FocusedJvm -TestClass ExampleTest -JavaHome "$fixture/jdk" -MaxWorkers 2 | Out-Host
         $LASTEXITCODE | Should -Be 0
         $env:JAVA_HOME | Should -Be $previousJava
         $arguments = Get-Content "$fixture/arguments.txt"

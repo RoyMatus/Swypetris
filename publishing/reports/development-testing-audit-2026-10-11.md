@@ -48,6 +48,8 @@ Tests exercise host decisions, unknown/constrained/container resources, actual m
 
 The new optional hosted workflow was not dispatched on this capable machine. Its syntax, input guards and argument binding were tested locally; actual hosted focused execution remains unverified until it is needed after merge. Direct UI dispatch can bypass the wrapper's open-PR guard; use the wrapper and policy. Mandatory CI/release workflows retain their independent evidence requirements. Native host probes support Windows/Linux, not complete macOS capacity discovery; image presence/acceleration does not prove a successful emulator boot.
 
+The first required PR run, [38133026307](https://github.com/RoyMatus/Swypetris/actions/runs/38133026307), failed in the new Unix launcher fixture before app tests. Repository attributes force CRLF for PowerShell files even on Linux; the fixture's embedded shell script inherited those endings. Normalize that generated shell script to LF and expose the runner's diagnostic output. The failed job log was retained locally. Windows has no installed WSL/container executor, so confirmation of the Linux fixture uses the next required PR run rather than an additional optional workflow. This failure is part of the audit evidence, not a passed local Linux check.
+
 ## Measure the next epic
 
 Continue the existing phase journal and mandatory post-merge epic report. Record selected host/profile, changed risk, check count and class scope, wall time, fresh versus cached results, retries, waiting and rework. Compare the same scope/environment across several runs; report median/range and separate queue/setup time. Do not infer work hours from commits or add overlapping durations as elapsed epic time.
