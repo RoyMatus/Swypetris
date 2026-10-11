@@ -14,4 +14,18 @@ class RecordHistoryTest {
         assertEquals(listOf("8", "7", "6", "5", "4", "1"), recordHistory(history).map { it.id })
         assertEquals(8, history.size)
     }
+
+    @Test fun equalTimestampsRetainReverseInputTieOrder() {
+        val earlier = result(1, 100).copy(dateMillis = 10)
+        val later = result(2, 200).copy(dateMillis = 10)
+        assertEquals(listOf(later, earlier), recordHistory(listOf(later, earlier)))
+        assertEquals(listOf(later), recordHistory(listOf(earlier, later)))
+    }
+
+    @Test fun repeatedRecordIdsKeepTheFirstInputEntry() {
+        val original = result(1, 100)
+        val between = result(2, 150)
+        val latest = original.copy(dateMillis = 3, name = "Updated", score = 200)
+        assertEquals(listOf(latest, between), recordHistory(listOf(latest, between, original)))
+    }
 }
