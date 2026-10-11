@@ -43,7 +43,14 @@ Describe 'Local release verification' {
         $names = @('SWYPETRIS_STORE_FILE', 'SWYPETRIS_STORE_PASSWORD', 'SWYPETRIS_KEY_ALIAS')
         $before = @{}
         foreach ($name in $names) { $before[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+        $beforeJava = [Environment]::GetEnvironmentVariable('JAVA_HOME', 'Process')
+        $beforeSdk = [Environment]::GetEnvironmentVariable('ANDROID_HOME', 'Process')
+        $fixtureSdk = Join-Path $TestDrive 'sdk'
+        New-Item -ItemType Directory -Force (Join-Path $fixtureSdk 'build-tools/1.0.0') | Out-Null
+        Set-Content (Join-Path $fixtureSdk 'build-tools/1.0.0/aapt.exe') 'not executed: Gradle fails first'
         try {
+            $env:JAVA_HOME = $TestDrive
+            $env:ANDROID_HOME = $fixtureSdk
             { & (Join-Path $release 'Build-Release.ps1') -SigningDirectory $signing } | Should -Throw '*APK build*'
             foreach ($name in $names) {
                 ([Environment]::GetEnvironmentVariable($name, 'Process') -ceq $before[$name]) | Should -BeTrue
@@ -53,6 +60,8 @@ Describe 'Local release verification' {
             $json | Should -Not -Match 'fixture-password'
         } finally {
             foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $before[$name], 'Process') }
+            [Environment]::SetEnvironmentVariable('JAVA_HOME', $beforeJava, 'Process')
+            [Environment]::SetEnvironmentVariable('ANDROID_HOME', $beforeSdk, 'Process')
         }
     }
 }

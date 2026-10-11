@@ -3,7 +3,8 @@ param(
     [ValidateSet('Fast', 'Android', 'FocusedJvm', 'FocusedAndroid')][string]$Suite = 'Fast',
     [string[]]$TestClass,
     [string]$Serial,
-    [string]$JavaHome
+    [string]$JavaHome,
+    [string]$Reason
 )
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'Verification.psm1') -Force
@@ -24,6 +25,8 @@ if ($deviceSuite) {
     if (!(Test-Path -LiteralPath $adb)) { $adb = (Get-Command adb -ErrorAction Stop).Source }
     $devices = & $adb devices -l
     if ($LASTEXITCODE -ne 0 -or !($devices | Where-Object { $_ -match "^$([regex]::Escape($Serial))\s+device\b" })) {
+        try { & (Join-Path $PSScriptRoot 'release/Save-EmulatorDiagnostics.ps1') -Serial $Serial }
+        catch { Write-Output "Diagnostic capture failed: $($_.Exception.Message)" }
         throw "Emulator $Serial is not connected and ready."
     }
 }
@@ -35,6 +38,7 @@ $started = Get-Date
 $timer = [System.Diagnostics.Stopwatch]::StartNew()
 $summary = New-VerificationSummary -Project $project -Suite $Suite -Classes $classes -Serial $Serial -Started $started
 $summary.log = $log
+$summary.reason = if ($Reason) { $Reason } else { 'Not recorded' }
 $previousJavaHome = $env:JAVA_HOME
 $previousSerial = $env:ANDROID_SERIAL
 $exitCode = 1
@@ -93,6 +97,10 @@ try {
     $summary.error = $_.Exception.Message
     Write-Output "Verification failed: $($_.Exception.Message)"
     if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 40 }
+    if ($deviceSuite) {
+        try { & (Join-Path $PSScriptRoot 'release/Save-EmulatorDiagnostics.ps1') -Serial $Serial }
+        catch { Write-Output "Diagnostic capture failed: $($_.Exception.Message)" }
+    }
 } finally {
     $env:JAVA_HOME = $previousJavaHome
     $env:ANDROID_SERIAL = $previousSerial

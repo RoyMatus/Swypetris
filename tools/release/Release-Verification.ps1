@@ -40,3 +40,32 @@ function Assert-ReleaseSignature {
     Assert-ReleaseCertificate -Actual $actual -Expected $expected
     $actual
 }
+
+function Assert-PublishedReleaseFiles {
+    param([string]$Directory, [string]$Version)
+    $apk = Join-Path $Directory 'Swypetris.apk'
+    $metadata = Get-Content -LiteralPath (Join-Path $Directory 'update.json') -Raw | ConvertFrom-Json
+    $digest = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($metadata.versionName -cne $Version -or $metadata.sha256 -cne $digest -or
+        $metadata.versionCode -isnot [long] -and $metadata.versionCode -isnot [int] -or $metadata.versionCode -le 0) {
+        throw 'Public update metadata does not match the APK/version.'
+    }
+    $seen = @{}
+    foreach ($line in (Get-Content -LiteralPath (Join-Path $Directory 'SHA256SUMS.txt'))) {
+        if ($line -notmatch '^([a-f0-9]{64})  (Swypetris\.apk|update\.json)$') { throw 'Unexpected public checksum entry.' }
+        $hash, $name = $Matches[1], $Matches[2]
+        if ($seen.ContainsKey($name)) { throw 'Duplicate public checksum entry.' }
+        $seen[$name] = $true
+        if ((Get-FileHash -LiteralPath (Join-Path $Directory $name) -Algorithm SHA256).Hash.ToLowerInvariant() -cne $hash) { throw 'Public checksum mismatch.' }
+    }
+    if (!$seen.ContainsKey('Swypetris.apk') -or !$seen.ContainsKey('update.json')) { throw 'APK and update metadata checksums are required.' }
+    [pscustomobject]@{ version=$Version; versionCode=$metadata.versionCode; sha256=$digest; bytes=(Get-Item -LiteralPath $apk).Length }
+}
+
+function Assert-PublicationRun {
+    param([object]$Run, [string]$Commit)
+    if ($Run.status -ne 'completed' -or $Run.conclusion -ne 'success' -or $Run.head_sha -cne $Commit -or
+        $Run.path -ne '.github/workflows/release-check.yml' -or $Run.event -ne 'push' -or $Run.head_branch -ne 'main') {
+        throw 'Publication run must be a successful main release workflow for the tagged commit.'
+    }
+}
