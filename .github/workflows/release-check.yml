@@ -271,4 +271,9 @@ jobs:
         run: |
           version=$(python3 -c "import json; print(json.load(open('release/update.json'))['versionName'])")
           (cd release && sha256sum --check SHA256SUMS.txt)
-          gh release create "v$version" --target "$GITHUB_SHA" --title "Swypetris $version" --generate-notes release/Swypetris.apk release/update.json release/SHA256SUMS.txt
+          notes_file="publishing/release-notes-v$version.md"
+          if [ -f "$notes_file" ]; then
+            gh release create "v$version" --target "$GITHUB_SHA" --title "Swypetris $version" --notes-file "$notes_file" release/Swypetris.apk release/update.json release/SHA256SUMS.txt
+          else
+            gh release create "v$version" --target "$GITHUB_SHA" --title "Swypetris $version" --generate-notes release/Swypetris.apk release/update.json release/SHA256SUMS.txt
+          fi

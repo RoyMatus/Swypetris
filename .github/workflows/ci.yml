@@ -150,7 +150,8 @@ jobs:
           # Isolate silent 37.2.12 engine exits with the preceding stable binary.
           emulator-build: '15917651' # 37.1.11, official archive (2026-07-30)
           disable-animations: false
-          emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -wipe-data
+          # Isolate repeated SwiftShader GLES engine exits during the full viewport run.
+          emulator-options: -no-window -gpu swangle -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -wipe-data
           script: bash tools/ci/run_cloud_android_checks.sh
       - name: Build full regression evidence
         if: ${{ success() && steps.changes.outputs.mode == 'full' }}
