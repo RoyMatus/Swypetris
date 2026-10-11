@@ -88,7 +88,15 @@ class ResultsIntegrationTest {
         val node = compose.onNode(matcher).assertIsDisplayed()
         val layouts = mutableListOf<TextLayoutResult>()
         node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        assertFalse("Summary text is clipped", layouts.single().hasVisualOverflow)
+        val layout = layouts.single()
+        assertFalse("Summary text is vertically clipped", layout.didOverflowHeight)
+        // FlowRow can retain a wider paragraph constraint than the actual painted line.
+        // Measure the line coordinates rather than comparing paragraph and node widths.
+        repeat(layout.lineCount) { line ->
+            assertFalse("Summary text is ellipsized", layout.isLineEllipsized(line))
+            assertTrue("Summary line extends outside its text node",
+                layout.getLineLeft(line) >= 0 && layout.getLineRight(line) <= layout.size.width)
+        }
         val bounds = node.fetchSemanticsNode().boundsInRoot
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         assertTrue("Summary extends outside the screen", bounds.left >= root.left && bounds.right <= root.right)
@@ -191,6 +199,8 @@ class ResultsIntegrationTest {
         compose.runOnIdle { model.options.setPalette("github_light") }
         compose.runOnIdle { model.options.setPalette("classic") }
         compose.onNodeWithTag("recordName").performTextReplacement("  Алексей  ")
+        // Finish Android's keyboard animation before scrolling to a coordinate-based click.
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
         compose.onNodeWithTag("recordPage").performScrollToNode(hasTestTag("saveRecord"))
         compose.onNodeWithText("Сохранить").performClick()
         compose.runOnIdle { assertEquals(GameScreen.GAME_OVER, model.screen) }
