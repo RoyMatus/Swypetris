@@ -89,7 +89,7 @@ GROUP_TESTS = {
     "intro": (("LaunchIntroMotionTest",), ("LaunchIntroTest", "LaunchIntroRecreationTest")),
     "visual": (("GameLayoutTest", "MenuSkyMotionTest", "VictoryMotionTest"),
                ("HelpHudTest", "GameUiTest", "VictoryThemeIntegrationTest", "MenuSkyTest")),
-    "settings": (("DifficultyTest", "PlaylistClockTest"), ("GameUiTest", "MusicSettingsFruitTest", "StatisticsResetTest")),
+    "settings": (("DifficultyTest", "PlaylistClockTest"), ("GameUiTest", "MusicSettingsFruitTest", "StatisticsResetTest", "VibrationSettingsTest")),
     "legal": ((), ("LegalScreenTest", "PublicationTest", "ShareAppTest")),
     "results": (("RecordHistoryTest", "VictoryRulesTest", "VictoryMotionTest"),
                 ("ResultsIntegrationTest", "VictorySessionIntegrationTest", "VictoryThemeIntegrationTest")),

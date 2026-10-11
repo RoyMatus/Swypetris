@@ -42,7 +42,7 @@ jobs:
           if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
             Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
           }
-          $result = Invoke-Pester ./tools/tests/GitHub-Api.Tests.ps1 -PassThru
+          $result = Invoke-Pester ./tools/tests -PassThru
           if ($result.FailedCount -gt 0 -or $result.PassedCount -eq 0) { exit 1 }
       - name: Check release script syntax
         id: release_scripts
