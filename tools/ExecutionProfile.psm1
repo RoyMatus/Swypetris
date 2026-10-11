@@ -45,4 +45,15 @@ function Get-ProjectAndroidPlatform {
     if ($BuildScript -match '(?m)^\s*compileSdk\s*=\s*(\d+)\s*$') { return "android-$($Matches[1])" }
     throw 'Unrecognized compileSdk declaration; inspect the project platform instead of guessing.'
 }
-Export-ModuleMember -Function Get-ExecutionDecision, Limit-ExecutionResources, Get-ProjectAndroidPlatform
+function Test-CompatibleEmulatorImage {
+    param([string]$SdkDirectory, [string]$Architecture)
+    # Acceleration requires a system image matching the host CPU architecture.
+    $abis = @(switch ($Architecture) {
+        'X64' { 'x86_64'; 'x86' }
+        'Arm64' { 'arm64-v8a' }
+    })
+    if (!$abis.Count) { return $false }
+    $images = @(Get-ChildItem -LiteralPath (Join-Path $SdkDirectory 'system-images/android-35') -Filter 'system.img' -Recurse -File -ErrorAction SilentlyContinue)
+    @($images | Where-Object { $_.Directory.Name -in $abis }).Count -gt 0
+}
+Export-ModuleMember -Function Get-ExecutionDecision, Limit-ExecutionResources, Get-ProjectAndroidPlatform, Test-CompatibleEmulatorImage
