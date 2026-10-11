@@ -10,7 +10,10 @@ Gradle files; verification does not lock or upgrade the dependency graph.
 1. Review the dependency/version change and publisher source first. Keep the
    original metadata and resolved graph available for comparison.
 2. On a trusted machine, generate candidate entries using Gradle 9.3.1's
-   `--write-verification-metadata sha256` option. `help` covers resolvable
+   `--refresh-dependencies --write-verification-metadata sha256` options.
+   Refresh is necessary because warmed metadata caches can omit parent POM/BOM
+   checksums during bootstrap ([Gradle issue #19228](https://github.com/gradle/gradle/issues/19228)).
+   It reuses unchanged artifact files; do not delete caches. `help` covers resolvable
    configurations; execute the affected build/tool tasks as well because some
    dependencies resolve only during task execution. Include Windows and Linux
    build artifacts where applicable, including AAPT2 classifiers.
@@ -19,7 +22,9 @@ Gradle files; verification does not lock or upgrade the dependency graph.
    Record the source, comparison and limitations; generated hashes alone are
    not evidence that the bootstrap cache was trustworthy.
 4. Remove the metadata-writing option and run the affected checks in strict
-   mode. Preserve required PR CI and signed release gates. Review the metadata
+   mode, retaining `--refresh-dependencies` for this validation of refreshed
+   resolution. Ordinary builds keep normal caching. Preserve required PR CI and
+   signed release gates. Review the metadata
    diff together with the dependency change before merging.
 
 Do not automatically regenerate hashes in CI or when verification fails. Do not

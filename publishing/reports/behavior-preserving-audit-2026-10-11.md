@@ -92,7 +92,7 @@ the CLI/API. It completed without cancellation or retry.
 
 ## Dependency verification
 
-Added SHA-256 verification for 1,177 resolved artifacts and metadata files, with
+Added SHA-256 verification for 1,188 resolved artifacts and metadata files, with
 metadata verification enabled and no broad trust exceptions. Dependency/plugin
 versions and repository declarations are unchanged. Bootstrap covered debug,
 instrumentation APKs, JVM/coverage, detekt, debug/release lint, Dokka and both
@@ -104,7 +104,7 @@ SHA-256 of an HTTPS download from a configured repository:
 | Source | SHA-256 sidecar | Direct artifact download |
 | --- | ---: | ---: |
 | Google Maven | 382 | 10 |
-| Maven Central | 240 | 529 |
+| Maven Central | 248 | 532 |
 | RuStore Maven | 12 | 0 |
 | Gradle Plugin Portal | 0 | 4 |
 
@@ -132,3 +132,14 @@ bytes with the exact artifact name and expected/actual SHA-256 in its report.
 Baseline and rejection each took nine seconds; separate Gradle user homes kept
 shared caches untouched. Evidence, graph exports and provenance checks are in
 ignored `app/build/verification/dependency-audit/`.
+
+Initial Linux CI run `38146267638` failed on eleven missing parent POM/BOM
+metadata hashes, before instrumentation. This exposed a warmed-cache bootstrap
+gap, consistent with Gradle issue #19228. Refreshing dependency resolution added
+exactly those eleven files in 96 seconds; no existing artifact hash changed or
+was removed. All eleven additions matched Maven Central. Maintenance guidance
+now requires refreshed generation and strict validation; metadata verification
+remains enabled. The failed CI logs were preserved before correction.
+Strict validation with refreshed resolution then passed detekt, debug lint and
+JVM task configuration in 67 seconds (35 unchanged tasks reused). A new graph
+export remained byte-identical to the baseline across all 75 configurations.
