@@ -15,7 +15,42 @@ permissions:
   contents: read
 
 jobs:
+  selection:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      windows_release_tools: ${{ steps.changes.outputs.windows_release_tools }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select checks for changed files
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: python3 tools/ci/select_checks.py --base "$BASE_SHA" --output "$GITHUB_OUTPUT"
+  windows-release-tools:
+    needs: selection
+    if: needs.selection.outputs.windows_release_tools == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check release tools on Windows
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -eq '6.2.0')) {
+            Install-Module Pester -RequiredVersion 6.2.0 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+          Import-Module Pester -RequiredVersion 6.2.0
+          $result = Invoke-Pester -Path @('./tools/tests/Release*.Tests.ps1', './tools/tests/Development-Workflow.Tests.ps1') -PassThru
+          if ($result.FailedCount -gt 0 -or $result.PassedCount -eq 0) { exit 1 }
   android:
+    needs: [selection, windows-release-tools]
+    if: always()
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -26,22 +61,30 @@ jobs:
         run: |
           $launcher = if ($IsWindows) { './gradlew.bat' } else { './gradlew' }
           "GRADLE_LAUNCHER=$launcher" >> $env:GITHUB_ENV
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Select checks for changed files
         id: changes
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: python3 tools/ci/select_checks.py --base $env:BASE_SHA --output $env:GITHUB_OUTPUT
+      - name: Verify prerequisite jobs
+        id: dependencies
+        env:
+          CHECK_OUTPUTS: ${{ toJSON(steps.changes.outputs) }}
+          CHECK_NEEDS: ${{ toJSON(needs) }}
+        run: python3 tools/ci/verify_quality_results.py --dependencies
       - name: Check GitHub API scripts
         id: github_scripts
         if: steps.changes.outputs.github_scripts == 'true'
         shell: pwsh
         run: |
-          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
-            Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -eq '6.2.0')) {
+            Install-Module Pester -RequiredVersion 6.2.0 -Scope CurrentUser -Force -SkipPublisherCheck
           }
+          Import-Module Pester -RequiredVersion 6.2.0
           $result = Invoke-Pester ./tools/tests -PassThru
           if ($result.FailedCount -gt 0 -or $result.PassedCount -eq 0) { exit 1 }
       - name: Check release script syntax
@@ -59,29 +102,29 @@ jobs:
         id: ci_scripts
         if: steps.changes.outputs.ci_scripts == 'true'
         run: python3 -m unittest discover -s tools/ci -p 'test_*.py'
-      - uses: actions/setup-java@v4
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.changes.outputs.mode != 'none' }}
         with:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.changes.outputs.mode != 'none' }}
       - name: Make Linux Gradle launcher executable
         if: runner.os == 'Linux'
         run: chmod +x gradlew
       - name: Analyze Kotlin
         id: detekt
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.changes.outputs.mode != 'none' }}
         run: |
           & $env:GRADLE_LAUNCHER :app:detekt --console=plain
       - name: Build and lint app
         id: build
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.changes.outputs.mode != 'none' }}
         run: |
           & $env:GRADLE_LAUNCHER :app:assembleDebug :app:lintDebug --build-cache --console=plain
       - name: Run JVM tests and coverage
         id: jvm
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.changes.outputs.mode != 'none' }}
         env:
           CHECK_MODE: ${{ steps.changes.outputs.mode }}
         run: |
@@ -93,7 +136,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate quality reports
         id: quality_reports
-        if: ${{ !cancelled() && steps.changes.outputs.mode != 'none' }}
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' && steps.changes.outputs.mode != 'none' }}
         run: python3 tools/ci/verify_quality_results.py
       - name: SonarQube Cloud analysis
         id: sonar
@@ -121,7 +164,7 @@ jobs:
           & $env:GRADLE_LAUNCHER --stop
       - name: Save cloud debug APKs for Pixel verification
         if: success() && steps.changes.outputs.mode != 'none'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cloud-debug-apks
           path: |
@@ -161,7 +204,7 @@ jobs:
         run: python3 tools/ci/full_regression_proof.py
       - name: Save full regression evidence
         if: ${{ success() && steps.changes.outputs.mode == 'full' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: full-regression-${{ github.run_id }}-${{ github.run_attempt }}
           path: app/build/ci/full-regression-${{ github.run_id }}-${{ github.run_attempt }}/
@@ -190,7 +233,7 @@ jobs:
           fi
       - name: Save test, lint, and coverage reports
         if: always() && steps.changes.outputs.mode != 'none'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: android-reports
           path: |

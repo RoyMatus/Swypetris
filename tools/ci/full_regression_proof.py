@@ -7,13 +7,15 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
 # Embedded Python on the local Windows runner omits the script directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from verify_instrumentation_output import verify
-from verify_quality_results import verify_steps
+from verify_quality_results import verify_reports, verify_steps
 
 WORKFLOW = ".github/workflows/ci.yml"
 FILES = {
@@ -23,7 +25,68 @@ FILES = {
     "smoke.txt": "app/build/outputs/androidTest-results/windows/smoke.txt",
     "environment.json": "app/build/outputs/androidTest-results/windows/environment.json",
 }
+QUALITY_FILES = {
+    "reports/lint-results-debug.xml",
+    "reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml",
+    "reports/detekt/detekt.html",
+    "reports/detekt/detekt.sarif",
+}
+JVM_VARIANTS = ("testDebugUnitTest", "testReleaseUnitTest")
+
+
+def quality_names(names: set[str]) -> set[str]:
+    """Accept only fixed reports and direct Gradle JVM XML reports, never arbitrary paths."""
+    required = {"quality/" + name for name in QUALITY_FILES}
+    reports = {name for name in names if re.fullmatch(
+        r"quality/test-results/(testDebugUnitTest|testReleaseUnitTest)/TEST-[^/\\:\x00]+\.xml", name)}
+    if not required <= names or any(
+        not any(name.startswith(f"quality/test-results/{variant}/") for name in reports)
+        for variant in JVM_VARIANTS
+    ):
+        raise ValueError("Missing full quality report evidence")
+    return required | reports
+
+
+def validate_quality(payload: dict[str, bytes]) -> None:
+    names = quality_names(set(payload))
+    # Reuse the ordinary CI report contract against the exact hashed archive bytes.
+    with tempfile.TemporaryDirectory(prefix="swypetris-quality-") as directory:
+        build = Path(directory)
+        for name in names:
+            target = build / name.removeprefix("quality/")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(payload[name])
+        verify_reports(build)
+    inventories = []
+    for variant in JVM_VARIANTS:
+        cases = set()
+        passed = set()
+        for name in sorted(names):
+            if not name.startswith(f"quality/test-results/{variant}/"):
+                continue
+            for case in ET.fromstring(payload[name]).iter("testcase"):
+                identity = (case.get("classname"), case.get("name"))
+                if not all(identity) or identity in cases:
+                    raise ValueError("Missing or duplicate JVM test identity")
+                cases.add(identity)
+                if case.find("failure") is not None or case.find("error") is not None:
+                    raise ValueError(f"Failed JVM test in {name}")
+                if case.find("skipped") is None:
+                    passed.add(identity)
+        if not passed:
+            raise ValueError(f"No JVM tests executed for {variant}")
+        inventories.append((cases, passed))
+    if inventories[0] != inventories[1]:
+        raise ValueError("Debug/release JVM test inventories differ")
+    sarif = json.loads(payload["quality/reports/detekt/detekt.sarif"])
+    runs = sarif.get("runs")
+    if not isinstance(runs, list) or not runs:
+        raise ValueError("Missing detekt SARIF runs")
+    if any(result.get("level", "warning") in {"warning", "error"}
+           for run in runs for result in run.get("results", [])):
+        raise ValueError("Detekt SARIF contains warnings or errors")
 REQUIRED_STEPS = {
+    "Verify prerequisite jobs",
     "Select checks for changed files", "Analyze Kotlin", "Build and lint app",
     "Run JVM tests and coverage", "Validate quality reports", "SonarQube Cloud analysis",
     "Run affected Android tests and smoke", "Build full regression evidence",
@@ -80,16 +143,17 @@ def verify_inventory(report: str, root: Path) -> None:
 
 
 def validate_payload(proof: dict, payload: dict[str, bytes], root: Path) -> None:
-    if proof.get("schema") != 2 or proof.get("mode") != "full" or proof.get("android_classes") != "":
+    if proof.get("schema") != 3 or proof.get("mode") != "full" or proof.get("android_classes") != "":
         raise ValueError("Evidence is not an unfiltered full regression")
     if proof.get("instrumentation") != "success" or proof.get("smoke") != "success":
         raise ValueError("Instrumentation/smoke did not succeed")
-    if set(payload) != set(FILES) | {"configuration.json"}:
+    if set(payload) != set(FILES) | {"configuration.json"} | quality_names(set(payload)):
         raise ValueError("Missing or unexpected evidence files")
     if proof.get("sha256") != {name: digest(data) for name, data in payload.items()}:
         raise ValueError("Evidence file hash mismatch")
     if json.loads(payload["configuration.json"]) != configuration(root):
         raise ValueError("Checked configuration differs from the release commit")
+    validate_quality(payload)
     # Keep/hash original bytes, but validate text with the same universal newline
     # handling as Path.read_text in the existing Windows report checker.
     report = "\n".join(payload["instrumentation.txt"].decode("utf-8-sig").splitlines())
@@ -125,8 +189,13 @@ def create(root: Path, destination: Path) -> None:
     if sha != os.environ["GITHUB_SHA"]:
         raise ValueError("Checkout differs from the workflow SHA")
     payload = {name: (root / path).read_bytes() for name, path in FILES.items()}
+    payload.update({"quality/" + name: (root / "app/build" / name).read_bytes()
+                    for name in QUALITY_FILES})
+    for variant in JVM_VARIANTS:
+        for report in sorted((root / "app/build/test-results" / variant).glob("TEST-*.xml")):
+            payload[f"quality/test-results/{variant}/{report.name}"] = report.read_bytes()
     payload["configuration.json"] = json.dumps(configuration(root), sort_keys=True).encode()
-    proof = dict(schema=2, repository=os.environ["GITHUB_REPOSITORY"], workflow=WORKFLOW,
+    proof = dict(schema=3, repository=os.environ["GITHUB_REPOSITORY"], workflow=WORKFLOW,
                  workflow_ref=os.environ["GITHUB_WORKFLOW_REF"], sha=sha,
                  event=os.environ["GITHUB_EVENT_NAME"], ref=os.environ["GITHUB_REF"],
                  run_id=int(os.environ["GITHUB_RUN_ID"]), attempt=int(os.environ["GITHUB_RUN_ATTEMPT"]),
@@ -135,7 +204,9 @@ def create(root: Path, destination: Path) -> None:
     validate_payload(proof, payload, root)
     destination.mkdir(parents=True, exist_ok=False)
     for name, data in payload.items():
-        (destination / name).write_bytes(data)
+        target = destination / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
     (destination / "evidence.json").write_text(json.dumps(proof, indent=2) + "\n", encoding="utf-8")
 
 
@@ -168,7 +239,7 @@ def validate_archive(data: bytes, artifact: dict, run: dict, jobs: list[dict],
             raise ValueError(f"Required evidence step did not succeed: {name}")
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         names = archive.namelist()
-        if len(names) != len(set(names)) or set(names) != set(FILES) | {"configuration.json", "evidence.json"}:
+        if len(names) != len(set(names)) or set(names) != set(FILES) | {"configuration.json", "evidence.json"} | quality_names(set(names)):
             raise ValueError("Missing, duplicate or unexpected archive entries")
         if sum(item.file_size for item in archive.infolist()) > 256 * 1024 * 1024:
             raise ValueError("Evidence archive exceeds size limit")

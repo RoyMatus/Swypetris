@@ -1,5 +1,6 @@
 """Fail-closed release gate for the latest same-SHA full cloud CI attempt."""
 
+import argparse
 import json
 import os
 import re
@@ -99,8 +100,14 @@ def verify_latest(api: GitHub, repository: str, sha: str, root: Path) -> dict | 
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--sha', default=os.environ.get('GITHUB_SHA'))
+    parser.add_argument('--run-id', type=int)
+    parser.add_argument('--attempt', type=int)
+    parser.add_argument('--no-wait', action='store_true')
+    args = parser.parse_args()
     repository = os.environ["GITHUB_REPOSITORY"]
-    sha = os.environ["GITHUB_SHA"]
+    sha = args.sha or ''
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository) or not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("Invalid repository or commit")
     api = GitHub(repository, os.environ["GITHUB_TOKEN"])
@@ -108,11 +115,16 @@ def main() -> None:
     while time.monotonic() < deadline:
         result = verify_latest(api, repository, sha, Path.cwd())
         if result is not None:
+            if (args.run_id is not None and result['run_id'] != args.run_id or
+                    args.attempt is not None and result['attempt'] != args.attempt):
+                raise ValueError('Latest successful CI differs from the triggering run/attempt')
             destination = Path("app/build/ci/verified-main-regression.json")
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
             print(f"Verified full cloud regression and Quality Gate: run {result['run_id']}, attempt {result['attempt']}")
             return
+        if args.no_wait:
+            raise ValueError('No completed successful latest CI evidence; refusing release without waiting')
         time.sleep(30)
     raise ValueError("Timed out waiting for same-commit main Android CI")
 

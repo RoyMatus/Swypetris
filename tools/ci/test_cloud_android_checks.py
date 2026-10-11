@@ -78,7 +78,7 @@ esac
                     apk.parent.mkdir(parents=True, exist_ok=True)
                     apk.write_bytes(b"fixture APK bytes")
                 shutil.copy(Path(__file__).with_name("verify_instrumentation_output.py"), tools)
-                script = root / "checks.sh"
+                script = tools / "checks.sh"
                 script.write_text(source.replace("8m", "0.2s"))
                 report = root / "app/build/outputs/androidTest-results/windows"
                 report.mkdir(parents=True)

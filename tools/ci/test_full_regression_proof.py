@@ -47,8 +47,14 @@ class FullRegressionProofTests(unittest.TestCase):
             "instrumentation.txt": b"INSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS: class=ru.itoltec.swypetris.SmokeTest\nINSTRUMENTATION_STATUS: test=launch\nINSTRUMENTATION_STATUS_CODE: 0\nOK (1 test)\nINSTRUMENTATION_CODE: -1\n",
             "app-debug.apk": zip_bytes({"AndroidManifest.xml": b"manifest"}),
             "app-debug-androidTest.apk": zip_bytes({"AndroidManifest.xml": b"manifest"}),
+            "quality/reports/lint-results-debug.xml": b'<issues/>',
+            "quality/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml": b'<report><counter type="LINE" covered="1" missed="0"/></report>',
+            "quality/reports/detekt/detekt.html": b'<html>detekt</html>',
+            "quality/reports/detekt/detekt.sarif": b'{"version":"2.1.0","runs":[{"results":[]}]}',
         }
-        self.evidence = dict(schema=2, repository=REPOSITORY, workflow=proof.WORKFLOW,
+        for variant in proof.JVM_VARIANTS:
+            self.payload[f'quality/test-results/{variant}/TEST-example.xml'] = b'<testsuite><testcase classname="example.Test" name="passes"/></testsuite>'
+        self.evidence = dict(schema=3, repository=REPOSITORY, workflow=proof.WORKFLOW,
                              workflow_ref=f"{REPOSITORY}/{proof.WORKFLOW}@refs/heads/main",
                              sha=SHA, event="push", ref="refs/heads/main", run_id=7, attempt=2,
                              mode="full", android_classes="", instrumentation="success", smoke="success")
@@ -78,7 +84,7 @@ class FullRegressionProofTests(unittest.TestCase):
         outputs = select(["app/src/main/AndroidManifest.xml",
                           "app/src/main/java/ru/itoltec/swypetris/GameEngine.kt"])
         steps = {name: {"outcome": "success"} for name in
-                 ("changes", "detekt", "build", "jvm", "quality_reports", "sonar", "device")}
+                 ("changes", "dependencies", "detekt", "build", "jvm", "quality_reports", "sonar", "device")}
         environment = {"CHECK_OUTPUTS": json.dumps(outputs), "CHECK_STEPS": json.dumps(steps),
                        "GITHUB_SHA": SHA, "GITHUB_REPOSITORY": REPOSITORY,
                        "GITHUB_WORKFLOW_REF": self.evidence["workflow_ref"],
@@ -90,6 +96,11 @@ class FullRegressionProofTests(unittest.TestCase):
                 path = root / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(self.payload[name])
+            for name, data in self.payload.items():
+                if name.startswith('quality/'):
+                    path = root / 'app/build' / name.removeprefix('quality/')
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(data)
             with patch.dict("os.environ", environment), patch.object(proof.subprocess, "check_output", return_value=SHA):
                 proof.create(root, root / "evidence")
             result = json.loads((root / "evidence/evidence.json").read_text())
@@ -179,10 +190,11 @@ class FullRegressionProofTests(unittest.TestCase):
             step['conclusion'] = 'success'
 
     def test_legacy_schema_and_wrong_runner_labels_rejected(self):
-        self.evidence['schema'] = 1
-        with self.assertRaises(ValueError):
-            self.validate()
-        self.evidence['schema'] = 2
+        for schema in (1, 2):
+            self.evidence['schema'] = schema
+            with self.assertRaises(ValueError):
+                self.validate()
+        self.evidence['schema'] = 3
         for labels in ([], ['ubuntu-22.04'], ['self-hosted', 'ubuntu-24.04'],
                        ['self-hosted', 'windows', 'X64', 'swypetris-android']):
             with self.subTest(labels=labels), self.assertRaises(ValueError):
@@ -214,12 +226,70 @@ class FullRegressionProofTests(unittest.TestCase):
 
     def test_manifest_hash_does_not_accept_changed_apk_or_report(self):
         self.archive()
-        for name in ('app-debug.apk', 'instrumentation.txt'):
+        for name in self.payload:
             previous = self.payload[name]
             self.payload[name] += b'changed'
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'hash mismatch'):
                 proof.validate_payload(self.evidence, self.payload, Path.cwd())
             self.payload[name] = previous
+
+    def test_missing_quality_reports_rejected(self):
+        for name in list(self.payload):
+            if not name.startswith('quality/'):
+                continue
+            previous = self.payload.pop(name)
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                self.validate()
+            self.payload[name] = previous
+
+    def test_failed_empty_or_mismatched_jvm_reports_rejected(self):
+        for variant in proof.JVM_VARIANTS:
+            name = f'quality/test-results/{variant}/TEST-example.xml'
+            previous = self.payload[name]
+            for replacement in (b'<failure/>', b'<error/>', b'<skipped/>'):
+                self.payload[name] = previous.replace(b'/>', b'>' + replacement + b'</testcase>')
+                with self.subTest(variant=variant, replacement=replacement), self.assertRaises(ValueError):
+                    self.validate()
+            self.payload[name] = b'<testsuite/>'
+            with self.assertRaises(ValueError):
+                self.validate()
+            self.payload[name] = previous.replace(b'passes', b'other')
+            with self.assertRaisesRegex(ValueError, 'inventories differ'):
+                self.validate()
+            self.payload[name] = previous
+
+    def test_failed_quality_reports_rejected(self):
+        for name, data in (
+            ('quality/reports/lint-results-debug.xml', b'<issues><issue severity="Fatal"/></issues>'),
+            ('quality/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml', b'<report><counter type="LINE" covered="0"/></report>'),
+            ('quality/reports/detekt/detekt.sarif', b'{"runs":[{"results":[{"level":"warning"}]}]}'),
+            ('quality/reports/detekt/detekt.sarif', b'{"runs":[]}'),
+        ):
+            previous = self.payload[name]
+            self.payload[name] = data
+            with self.subTest(name=name, data=data), self.assertRaises(ValueError):
+                self.validate()
+            self.payload[name] = previous
+
+    def test_partially_skipped_release_inventory_rejected(self):
+        complete = b'<testsuite><testcase classname="example.Test" name="one"/><testcase classname="example.Test" name="two"/></testsuite>'
+        for variant in proof.JVM_VARIANTS:
+            self.payload[f'quality/test-results/{variant}/TEST-example.xml'] = complete
+        self.payload['quality/test-results/testReleaseUnitTest/TEST-example.xml'] = complete.replace(
+            b'name="two"/>', b'name="two"><skipped/></testcase>')
+        with self.assertRaisesRegex(ValueError, 'inventories differ'):
+            self.validate()
+
+    def test_unexpected_quality_paths_and_duplicate_cases_rejected(self):
+        for name in ('quality/../outside.xml', 'quality/test-results/testDebugUnitTest/subdir/TEST-x.xml',
+                     'quality/reports/unknown.xml'):
+            self.payload[name] = b'<testsuite/>'
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                self.validate()
+            del self.payload[name]
+        self.payload['quality/test-results/testDebugUnitTest/TEST-duplicate.xml'] = self.payload['quality/test-results/testDebugUnitTest/TEST-example.xml']
+        with self.assertRaisesRegex(ValueError, 'duplicate JVM'):
+            self.validate()
 
     def test_inventory_handles_bom_and_rejects_unrecognized_declarations(self):
         with tempfile.TemporaryDirectory() as directory:
