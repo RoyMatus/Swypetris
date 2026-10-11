@@ -80,3 +80,66 @@ calculations with identical tested pixels, not a measured frame-rate improvement
 Logs and baseline/export artifacts are retained in ignored
 `app/build/verification/fireworks/`. The artifact exporter is opt-in through
 `fireworkPhase`; ordinary CI retains the deterministic direction-bit test.
+
+Merged as [PR #246](https://github.com/RoyMatus/Swypetris/pull/246), main commit
+`290b19b5331bae506bae17c1a94896da1b616d8f`. Required CI run `38144447756`
+passed; the Android job took 801 seconds. Its full instrumentation suite passed
+158 cases with three opt-in skips in 415.379 seconds, following successful
+one-case picker and fourteen-case UI preflights. Build, lint, detekt, full JVM
+coverage, Sonar quality gate and execution-proof checks passed. The longer run
+was inspected while active; GitHub did not expose unfinished job logs through
+the CLI/API. It completed without cancellation or retry.
+
+## Dependency verification
+
+Added SHA-256 verification for 1,188 resolved artifacts and metadata files, with
+metadata verification enabled and no broad trust exceptions. Dependency/plugin
+versions and repository declarations are unchanged. Bootstrap covered debug,
+instrumentation APKs, JVM/coverage, detekt, debug/release lint, Dokka and both
+Windows/Linux AAPT2. Candidate generation tasks passed in 132 seconds.
+
+Every entry matched a separately retrieved repository SHA-256 sidecar or the
+SHA-256 of an HTTPS download from a configured repository:
+
+| Source | SHA-256 sidecar | Direct artifact download |
+| --- | ---: | ---: |
+| Google Maven | 382 | 10 |
+| Maven Central | 248 | 532 |
+| RuStore Maven | 12 | 0 |
+| Gradle Plugin Portal | 0 | 4 |
+
+There were no local-cache or remote hash mismatches. Twenty-six AndroidX aliases
+required their verified Gradle module metadata to map cached filenames to the
+published artifact URLs. Source URLs are recorded in the verification entries.
+Repository checksums/downloads share repository trust; no independent publisher
+signature verification is claimed. Sonar engine/analyzer downloads outside
+Gradle's resolver are not covered. See [maintenance and trust limits](../DEPENDENCY-VERIFICATION.md).
+
+The graph export records for all 75 configurations were byte-identical before
+and after verification, including 553 distinct component versions. One existing
+`debugImplementationDependenciesMetadata` configuration reports versionless
+Compose tooling/manifest requests; its diagnostic was preserved on both sides,
+not counted as a resolved graph. The other 74 configurations resolved.
+
+Strict local validation passed in 10 seconds, reusing 99 unchanged tasks and
+executing three; the same debug/test/lint/detekt/coverage/Dokka scope was covered.
+The unmodified `Build-Release.ps1` also passed in 177.692 seconds with signed
+APK/AAB certificate checks and all 152 JVM results reused. Its local artifacts
+are not a publication and do not replace final exact-main release verification.
+
+An isolated Gradle 9.3.1 fixture accepted a benign JAR, then rejected modified
+bytes with the exact artifact name and expected/actual SHA-256 in its report.
+Baseline and rejection each took nine seconds; separate Gradle user homes kept
+shared caches untouched. Evidence, graph exports and provenance checks are in
+ignored `app/build/verification/dependency-audit/`.
+
+Initial Linux CI run `38146267638` failed on eleven missing parent POM/BOM
+metadata hashes, before instrumentation. This exposed a warmed-cache bootstrap
+gap, consistent with Gradle issue #19228. Refreshing dependency resolution added
+exactly those eleven files in 96 seconds; no existing artifact hash changed or
+was removed. All eleven additions matched Maven Central. Maintenance guidance
+now requires refreshed generation and strict validation; metadata verification
+remains enabled. The failed CI logs were preserved before correction.
+Strict validation with refreshed resolution then passed detekt, debug lint and
+JVM task configuration in 67 seconds (35 unchanged tasks reused). A new graph
+export remained byte-identical to the baseline across all 75 configurations.
