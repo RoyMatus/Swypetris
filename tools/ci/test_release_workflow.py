@@ -4,7 +4,7 @@ import re
 import unittest
 from pathlib import Path
 
-WORKFLOW = Path(__file__).resolve().parents[2] / '.github/workflows/release-check.yml'
+WORKFLOW = Path(__file__).resolve().parents[2] / 'tools/ci/legacy-workflows/release-check.yml'
 
 
 def job(text, name):

@@ -83,7 +83,8 @@ function Assert-PublicationRun {
         $Provenance.sha -cne $Commit -or $Provenance.release_run_id -ne $Run.id -or
         $Provenance.release_run_attempt -ne $Run.run_attempt -or
         $Provenance.source_artifact_digest -cnotmatch '^sha256:[a-f0-9]{64}$') { throw 'Publication provenance identity mismatch.' }
-    if (!$SourceWorkflow -or $SourceWorkflow.state -cne 'active' -or
+    # Retirement does not invalidate a successful historical run; identity still must match.
+    if (!$SourceWorkflow -or $SourceWorkflow.state -cnotin @('active','disabled_manually','disabled_inactivity','deleted') -or
         $SourceWorkflow.path -cne '.github/workflows/ci.yml' -or
         $SourceRun.workflow_id -ne $SourceWorkflow.id -or $SourceRun.path -cne $SourceWorkflow.path -or
         $SourceRun.repository.full_name -cne $Provenance.repository -or

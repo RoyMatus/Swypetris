@@ -88,7 +88,8 @@ function Get-PublicationProvenance {
         if (($proof.$field -isnot [long] -and $proof.$field -isnot [int]) -or $proof.$field -le 0) { throw 'Invalid source provenance identifier.' }
     }
     $source = Invoke-GitHubRest -Client $Client -Method Get -Path "actions/runs/$($proof.source_run_id)/attempts/$($proof.source_run_attempt)"
-    $workflow = Invoke-GitHubRest -Client $Client -Method Get -Path 'actions/workflows/ci.yml'
+    if (($source.workflow_id -isnot [long] -and $source.workflow_id -isnot [int]) -or $source.workflow_id -le 0) { throw 'Invalid historical workflow identifier.' }
+    $workflow = Invoke-GitHubRest -Client $Client -Method Get -Path "actions/workflows/$($source.workflow_id)"
     $sourceArtifact = Invoke-GitHubRest -Client $Client -Method Get -Path "actions/artifacts/$($proof.source_artifact_id)"
     Assert-PublicationRun -Run $Run -Commit $Commit -Provenance $proof -SourceRun $source -SourceWorkflow $workflow -SourceArtifact $sourceArtifact
     return $proof

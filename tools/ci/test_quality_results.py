@@ -56,7 +56,7 @@ class RequiredStepTests(unittest.TestCase):
                 verify_steps(self.outputs(mode), steps)
 
     def test_workflow_assigns_report_validation_to_its_own_step(self):
-        workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+        workflow = Path("tools/ci/legacy-workflows/ci.yml").read_text(encoding="utf-8")
         jvm = workflow.split("      - name: Run JVM tests and coverage\n", 1)[1].split("      - name:", 1)[0]
         reports = workflow.split("      - name: Validate quality reports\n", 1)[1].split("      - name:", 1)[0]
         self.assertNotIn("verify_quality_results.py", jvm)
@@ -108,7 +108,7 @@ class DependencyTests(unittest.TestCase):
                 verify_steps(outputs, {"changes": {"outcome": "success"}, "dependencies": {"outcome": status}})
 
     def test_workflow_keeps_stable_check_and_fail_closed_prerequisite(self):
-        workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+        workflow = Path("tools/ci/legacy-workflows/ci.yml").read_text(encoding="utf-8")
         android = workflow.split("  android:", 1)[1]
         self.assertIn("needs: [selection, windows-release-tools]", android)
         self.assertIn("if: always()", android)

@@ -14,15 +14,15 @@ function Get-ExecutionDecision {
     $device = $strong -and $Facts.emulatorReady -and $Facts.accelerationReady
     if (!$known) { $reasons += 'Resource measurements incomplete; do not infer local heavy-work capacity.' }
     if (!$Facts.javaReady -or !$Facts.sdkReady) { $reasons += 'JDK 21 or the project Android SDK platform is unavailable or unverified; configure an existing installation before treating this as weak hardware.' }
-    if (!$build) { $reasons += 'Route heavy Android builds/checks to an available cloud executor; lightweight editing/tool tests may remain local.' }
-    elseif (!$device) { $reasons += 'Local builds fit the initial budget; route device checks to cloud until resources/acceleration/image readiness is established.' }
+    if (!$build) { $reasons += 'Heavy Android work is blocked until local resources/toolchains are ready; lightweight editing/tool tests may remain local. No cloud fallback.' }
+    elseif (!$device) { $reasons += 'Local builds fit the initial budget; device checks are blocked until local resources/acceleration/image readiness is established. No cloud fallback.' }
     else { $reasons += 'Resources and accelerated API 35 emulator are available; prefer local build and device feedback.' }
     if ($null -ne $Facts.cpuLoadPercent -and $Facts.cpuLoadPercent -ge 85) { $reasons += 'Host is busy; wait/recheck before heavy work instead of oversubscribing or permanently downgrading it.' }
     $workers = if ($strong) { [int][math]::Min(6, [math]::Floor($Facts.logicalProcessors / 2)) } elseif ($build) { 2 } else { 1 }
     [pscustomobject][ordered]@{
-        mode = $(if ($device) { 'Local' } elseif ($build) { 'Hybrid' } else { 'Cloud' })
-        buildLocation = $(if ($build) { 'Local' } else { 'Cloud' })
-        deviceLocation = $(if ($device) { 'Local' } else { 'Cloud' })
+        mode = $(if ($device) { 'Local' } elseif ($build) { 'ConstrainedLocal' } else { 'Blocked' })
+        buildLocation = $(if ($build) { 'Local' } else { 'Blocked' })
+        deviceLocation = $(if ($device) { 'Local' } else { 'Blocked' })
         toolsLocation = 'Local'; maxWorkers=$workers; maxGradleProcesses=1
         maxEmulators=$(if ($device) { 1 } else { 0 }); reasons=$reasons
     }

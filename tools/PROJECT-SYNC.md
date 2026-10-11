@@ -24,25 +24,10 @@ not reset by the built-in closed-issue workflow.
 It does not change view filters or add closed issues. Use `Update-Issue.ps1`
 for Status, Work Type, and Priority changes after membership is established.
 
-## GitHub Actions setup
+## Local credentials and reconciliation
 
-Add an Actions repository secret named `PROJECT_SYNC_TOKEN` containing a token
-with access to this repository and the user project. A classic personal access
-token requires `repo` and `project` scopes. The ordinary `GITHUB_TOKEN` cannot
-access user projects. Never commit or print credentials.
+Run the script locally after issue creation/reopening or when reconciling an epic; there is no daily GitHub Actions schedule. Use the repository API client's existing authenticated local credential flow with access to the repository and user project. A classic personal access token needs `repo` and `project`; never print or commit credentials or expand access implicitly.
 
-After `project-sync.yml` is on `main`, run **Issue project sync** manually and
-confirm `RemainingIssues` is empty. The workflow then reconciles all open issues
-when an issue is opened, reopened, or transferred into this repository, and daily.
-The daily pass also catches issues created by another workflow using
-`GITHUB_TOKEN`, whose events do not trigger another workflow.
+Confirm `RemainingIssues` is empty after a repair. A restrictive view can still hide existing items, so inspect reported `Views` before changing it. If Project access fails, report it once and stop Project operations until credentials change. Do not dispatch the archived `project-sync.yml` workflow.
 
-If the secret expires or loses project access, the run fails visibly; renew the
-secret and rerun the workflow. A view with a restrictive filter can still show
-fewer items than the repository; inspect the reported `Views` before changing it.
-
-Run the offline membership/status regression checks with
-`pwsh -NoProfile -File tools/tests/Sync-IssueProject.Checks.ps1`.
-
-References: [GitHub project automation with Actions](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/automating-projects-using-actions)
-and [automatic project addition](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/adding-items-automatically).
+Run offline membership/status checks with `pwsh -NoProfile -File tools/tests/Sync-IssueProject.Checks.ps1`.

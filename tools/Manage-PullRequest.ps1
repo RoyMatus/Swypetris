@@ -21,7 +21,10 @@ param(
     [string]$Base = 'main',
     [string]$Title,
     [string]$BodyFile,
-    [ValidateRange(1, 1000000)][int]$PullRequestNumber
+    [ValidateRange(1, 1000000)][int]$PullRequestNumber,
+    [string]$EvidencePath,
+    [string]$Python = 'python',
+    [switch]$Draft
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,7 +62,7 @@ if ($Action -eq 'Create') {
         $body = "$body`n`nCloses #$IssueNumber"
     }
     if ($PSCmdlet.ShouldProcess("$Repository $Head -> $Base", 'Create pull request')) {
-        $pr = Invoke-GitHubRest -Client $client -Method Post -Path 'pulls' -Body @{ title = $Title; head = $Head; base = $Base; body = $body }
+        $pr = Invoke-GitHubRest -Client $client -Method Post -Path 'pulls' -Body @{ title = $Title; head = $Head; base = $Base; body = $body; draft = $Draft.IsPresent }
         [pscustomobject]@{ Number = $pr.number; Url = $pr.html_url; State = $pr.state; Draft = $pr.draft }
     }
     return
@@ -101,7 +104,20 @@ if ($pr.state -eq 'open' -and !$pr.merged) {
     $statuses = @(Get-PullRequestStatuses $pr.head.sha)
     $requiredChecks = @(Get-GitHubRequiredChecks -Client $client -Branch $pr.base.ref)
 }
-$blockers = @(Get-GitHubPullRequestBlockers -PullRequest $pr -Checks $checks -Statuses $statuses -RequiredChecks $requiredChecks)
+$localVerified = $false
+$localError = 'Local verification evidence is required.'
+if ($EvidencePath -and $pr.state -eq 'open' -and !$pr.merged) {
+    try {
+        Import-Module (Join-Path $PSScriptRoot 'LocalVerification.psm1') -Force
+        $project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+        $baseRef = Invoke-GitHubRest -Client $client -Method Get -Path "git/ref/heads/$($pr.base.ref)"
+        $verifiedBase = $baseRef.object.sha
+        $null = Assert-LocalVerificationEvidence -EvidencePath $EvidencePath -Project $project -HeadSha $pr.head.sha -BaseSha $verifiedBase -Python $Python
+        $localVerified = $true
+    } catch { $localError = $_.Exception.Message }
+}
+$blockers = @(Get-GitHubPullRequestBlockers -PullRequest $pr -Checks $checks -Statuses $statuses -RequiredChecks $requiredChecks -LocalVerificationPassed:$localVerified)
+if (!$localVerified) { $blockers += $localError }
 $checkSummary = @($checks | ForEach-Object { "$($_.name): $($_.status)/$($_.conclusion)" })
 $statusSummary = @($statuses | ForEach-Object { "$($_.context): $($_.state)" })
 $requiredSummary = @($requiredChecks | ForEach-Object { if ($null -ne $_.app_id) { "$($_.context) (app $($_.app_id))" } else { $_.context } })
@@ -128,9 +144,14 @@ if ($Action -eq 'Inspect') {
     return
 }
 
-Assert-GitHubPullRequestReady -PullRequest $pr -Checks $checks -Statuses $statuses -RequiredChecks $requiredChecks
+if (!$localVerified) { throw $localError }
+Assert-GitHubPullRequestReady -PullRequest $pr -Checks $checks -Statuses $statuses -RequiredChecks $requiredChecks -LocalVerificationPassed
 
 if ($PSCmdlet.ShouldProcess("$Repository PR #$PullRequestNumber", 'Merge via squash')) {
+    # Recheck the base immediately before merge. GitHub's merge endpoint only supports expected HEAD.
+    $latestBase = Invoke-GitHubRest -Client $client -Method Get -Path "git/ref/heads/$($pr.base.ref)"
+    if ($latestBase.object.sha -ne $verifiedBase) { throw 'Base advanced after local verification; update and verify again.' }
+    $null = Assert-LocalVerificationEvidence -EvidencePath $EvidencePath -Project $project -HeadSha $pr.head.sha -BaseSha $verifiedBase -Python $Python
     $result = Invoke-GitHubRest -Client $client -Method Put -Path "pulls/$PullRequestNumber/merge" -Body @{ merge_method = 'squash'; sha = $pr.head.sha }
     if ($result.merged -ne $true) { throw "GitHub did not confirm the merge of PR #$PullRequestNumber." }
     [pscustomobject]@{ Number = $PullRequestNumber; Merged = $result.merged; Sha = $result.sha; Message = $result.message }

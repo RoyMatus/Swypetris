@@ -1,12 +1,15 @@
 <# Read-only post-publication check. No build, install, publication or credential-bearing asset downloads. #>
+[CmdletBinding(DefaultParameterSetName='Legacy')]
 param(
     [Parameter(Mandatory)][ValidatePattern('^v\d+\.\d+\.\d+$')][string]$Tag,
-    [Parameter(Mandatory)][ValidateRange(1,[long]::MaxValue)][long]$ReleaseRunId,
+    [Parameter(Mandatory, ParameterSetName='Legacy')][ValidateRange(1,[long]::MaxValue)][long]$ReleaseRunId,
+    [Parameter(Mandatory, ParameterSetName='Local')][switch]$LocalProvenance,
     [Parameter(Mandatory)][string]$JavaHome
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Release-Verification.ps1')
 . (Join-Path $PSScriptRoot 'Publication-Provenance.ps1')
+. (Join-Path $PSScriptRoot 'Local-Release.ps1')
 $project = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 Import-Module (Join-Path $project 'tools/GitHub-Api.psm1') -Force
 $client = New-GitHubClient -Repository 'RoyMatus/Swypetris'
@@ -27,16 +30,21 @@ try {
         $object = $annotated.object
     }
     if ($object.type -ne 'commit') { throw 'Release tag does not resolve to a commit.' }
-    $run = Invoke-GitHubRest -Client $client -Method Get -Path "actions/runs/$ReleaseRunId"
-    if ($run.event -ceq 'workflow_run') {
-        $summary.provenance = Get-PublicationProvenance -Client $client -Run $run -Commit $object.sha
-    } else {
-        Assert-PublicationRun -Run $run -Commit $object.sha
+    if (!$LocalProvenance) {
+        $run = Invoke-GitHubRest -Client $client -Method Get -Path "actions/runs/$ReleaseRunId"
+        if ($run.event -ceq 'workflow_run') {
+            $summary.provenance = Get-PublicationProvenance -Client $client -Run $run -Commit $object.sha
+        } else {
+            Assert-PublicationRun -Run $run -Commit $object.sha
+        }
     }
-    foreach ($name in @('Swypetris.apk','update.json','SHA256SUMS.txt')) {
+    $names = @('Swypetris.apk','update.json','SHA256SUMS.txt')
+    if ($LocalProvenance) { $names += 'local-release-provenance.json' }
+    foreach ($name in $names) {
         $assets = @($release.assets | Where-Object name -CEQ $name)
         if ($assets.Count -ne 1) { throw "Missing or duplicate public asset: $name" }
         $asset = $assets[0]
+        if ($name -eq 'local-release-provenance.json' -and ($asset.size -le 0 -or $asset.size -gt 64KB)) { throw 'Invalid local provenance size.' }
         $expectedUrl = "https://github.com/RoyMatus/Swypetris/releases/download/$Tag/$name"
         if ($asset.browser_download_url -cne $expectedUrl) { throw 'Unexpected public asset URL.' }
         $file = Join-Path $directory $name
@@ -44,6 +52,14 @@ try {
         Invoke-WebRequest -Uri $expectedUrl -OutFile $file -ConnectionTimeoutSeconds 20 -OperationTimeoutSeconds 180
         if ((Get-Item -LiteralPath $file).Length -ne $asset.size -or
             $asset.digest -cne ('sha256:' + (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant())) { throw 'Public asset size/API digest mismatch.' }
+    }
+    if ($LocalProvenance) {
+        $proof = Get-Content -LiteralPath (Join-Path $directory 'local-release-provenance.json') -Raw | ConvertFrom-Json
+        Assert-LocalReleaseProvenance $proof $object.sha $Tag.Substring(1)
+        foreach ($name in @('Swypetris.apk','update.json','SHA256SUMS.txt')) {
+            Assert-LocalReleaseArtifact ($proof.artifacts | Where-Object name -CEQ $name) (Join-Path $directory $name)
+        }
+        $summary.provenance = $proof
     }
     $summary.files = Assert-PublishedReleaseFiles -Directory $directory -Version $Tag.Substring(1)
     $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
@@ -53,6 +69,7 @@ try {
     if (!$buildTools) { throw 'Android build-tools required for APK verification.' }
     $apk = Join-Path $directory 'Swypetris.apk'
     $summary.certificateSha256 = Assert-ReleaseSignature -Artifact $apk -Role app -Project $project -JavaHome $JavaHome -BuildTools $buildTools.FullName
+    if ($LocalProvenance -and $summary.certificateSha256 -cne $proof.certificates.app) { throw 'Public APK certificate differs from local provenance.' }
     $badging = @(& (Join-Path $buildTools.FullName 'aapt.exe') dump badging $apk 2>&1)
     if ($LASTEXITCODE -ne 0 -or $badging[0] -notmatch "^package: name='ru\.itoltec\.swypetris' versionCode='(\d+)' versionName='([^']+)'" -or
         $Matches[1] -ne [string]$summary.files.versionCode -or $Matches[2] -cne $summary.files.version) { throw 'Public APK package/version does not match metadata.' }
