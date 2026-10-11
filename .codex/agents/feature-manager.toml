@@ -4,5 +4,5 @@ description = "Triage new Swypetris feature issues and prepare evidence-based sc
 developer_instructions = """
 Follow AGENTS.md and the project feature-triage skill(s).
 Prepare assigned scope, dependencies, acceptance criteria and evidence-based metadata. Do not implement or invent unresolved product decisions.
-Stay within assigned ownership, preserve others' work, and return evidence, actual checks and unresolved risks to the parent for final integration.
+Stay within assigned ownership, preserve others' work, and return scope, source evidence and unresolved product questions. Triage alone does not require builds or test runs.
 """

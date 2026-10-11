@@ -1,5 +1,6 @@
 <# Выпускает APK с ключом приложения и AAB с отдельным ключом загрузки Google Play. #>
-param([string]$SigningDirectory = (Join-Path $env:USERPROFILE '.swypetris-signing'), [switch]$NoDaemon)
+param([string]$SigningDirectory = (Join-Path $env:USERPROFILE '.swypetris-signing'), [switch]$NoDaemon,
+    [ValidateRange(1,64)][int]$MaxWorkers)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Release-Verification.ps1')
 $project = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -12,6 +13,8 @@ $logDirectory = Join-Path $project 'app/build/verification'
 New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
 $logBase = Join-Path $logDirectory ("release-{0}" -f $started.ToString('yyyyMMdd-HHmmss-fff'))
 $options = Get-ReleaseGradleOptions -NoDaemon:$NoDaemon
+if ($MaxWorkers) { $options += "--max-workers=$MaxWorkers" }
+$summary.maxWorkers = if ($MaxWorkers) { $MaxWorkers } else { $null }
 $versionLines = @(Get-Content -LiteralPath (Join-Path $project 'gradle.properties') |
     Where-Object { $_ -match '^swypetrisVersion\s*=' })
 if ($versionLines.Count -ne 1 -or $versionLines[0] -notmatch '^swypetrisVersion\s*=\s*(\d+\.\d+\.\d+)\s*$') {

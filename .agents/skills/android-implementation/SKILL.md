@@ -7,6 +7,8 @@ description: Implement an assigned Swypetris Android gameplay or Compose UI chan
 
 Locate the existing owner of the affected rule, UI state, or persisted session before editing. Follow the current Kotlin/Compose architecture and reuse the project's APIs and dependencies. Consult Context7 for the affected framework or API as required by `AGENTS.md`; if unavailable, state that and use official documentation.
 
+Use the current task's execution profile and check plan; diagnose once at the required AGENTS.md boundary, not once per edit or delegated task. Reuse the parent's source findings and successful test evidence. Reserve heavy Gradle/emulator execution with the verification owner before starting it.
+
 For UI changes, derive placement from available space and insets, and check the affected screen at relevant sizes and font scales. For state changes, preserve the existing source of truth across recomposition, navigation, configuration changes, and saved sessions as applicable. Keep gameplay rules out of the UI when the current architecture permits it.
 
 Check only gameplay interactions touched by the change, such as difficulty, scoring, spawning, collision, progression, victory, or loss. Use `android-test-selection` yourself for proportional verification; do not spawn `tester` or another agent by default. Further delegation must meet the necessity rule in `AGENTS.md`. Return the changed behavior, files, check results, and any unresolved risk to the parent agent.

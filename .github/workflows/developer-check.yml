@@ -1,0 +1,112 @@
+name: Developer focused checks
+run-name: ${{ inputs.suite }} on ${{ github.ref_name }} at ${{ inputs.expected_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Focused feedback when local execution is unavailable or unsuitable
+        required: true
+        type: choice
+        options: [FocusedJvm, FocusedAndroid]
+      test_classes:
+        description: Comma-separated test class names (no methods or wildcards)
+        required: true
+        type: string
+      expected_sha:
+        description: Exact pushed branch commit (40 hexadecimal characters)
+        required: true
+        type: string
+      reason:
+        description: Observed host limitation and risk covered by these classes
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  focused-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CHECK_SUITE: ${{ inputs.suite }}
+      TEST_CLASSES: ${{ inputs.test_classes }}
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      CHECK_REASON: ${{ inputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate focused request
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:CHECK_SUITE -cnotin @('FocusedJvm', 'FocusedAndroid')) {
+            throw 'Only FocusedJvm and FocusedAndroid are supported.'
+          }
+          if ($env:EXPECTED_SHA -notmatch '\A[0-9a-fA-F]{40}\z') {
+            throw 'expected_sha must be a full 40-character commit SHA.'
+          }
+          $actual = & git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_SHA -or $actual -ne $env:GITHUB_SHA) {
+            throw 'The checked-out commit differs from the requested workflow commit; no tests were run.'
+          }
+          if (!$env:GITHUB_REF.StartsWith('refs/heads/')) { throw 'Select a branch, not a tag.' }
+          if ([string]::IsNullOrWhiteSpace($env:CHECK_REASON) -or $env:CHECK_REASON.Length -gt 1000) {
+            throw 'A reason of 1-1000 characters describing the host limitation and covered risk is required.'
+          }
+          Import-Module ./tools/Verification.psm1 -Force
+          $requested = @($env:TEST_CLASSES -split ',' | ForEach-Object { $_.Trim() })
+          $classes = @(Resolve-VerificationClasses -Project (Get-Location).Path -Suite $env:CHECK_SUITE -TestClass $requested)
+          Write-Output "Validated $($classes.Count) focused classes at $actual."
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - name: Make Gradle launcher executable
+        run: chmod +x gradlew
+      - name: Run focused JVM checks
+        if: inputs.suite == 'FocusedJvm'
+        run: |
+          $classes = @($env:TEST_CLASSES -split ',' | ForEach-Object { $_.Trim() })
+          & ./tools/Verify-Tests.ps1 -Suite FocusedJvm -TestClass $classes -MaxWorkers 2 -Reason $env:CHECK_REASON
+      - name: Enable emulator acceleration
+        if: inputs.suite == 'FocusedAndroid'
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run focused Android checks
+        if: inputs.suite == 'FocusedAndroid'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: x86_64
+          avd-name: SwypetrisFocused35
+          emulator-port: 5556
+          emulator-build: '15917651' # Same emulator/backend as required Android CI.
+          disable-animations: false
+          emulator-options: -no-window -gpu swangle -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -wipe-data
+          script: >-
+            pwsh -NoLogo -NoProfile -Command '& ./tools/Verify-Tests.ps1 -Suite FocusedAndroid -TestClass @($env:TEST_CLASSES -split "," | ForEach-Object { $_.Trim() }) -Serial emulator-5556 -MaxWorkers 2 -Reason $env:CHECK_REASON'
+      - name: Save focused results and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: focused-checks-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            app/build/verification/
+            app/build/test-results/
+            app/build/reports/tests/
+            app/build/outputs/androidTest-results/
+            app/build/reports/androidTests/
+          if-no-files-found: warn

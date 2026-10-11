@@ -2,7 +2,9 @@
 
 ## How to run the suites
 
-Use JDK 21 and the Android SDK. On Windows, `./tools/Verify-Tests.ps1 -Suite Fast` runs the PR build, lint, JVM tests, and JaCoCo checks, then prints a short XML-backed summary. For Android tests, start an isolated emulator and run `./tools/Verify-Tests.ps1 -Suite Android -Serial emulator-5554`, replacing the serial with the connected emulator's actual serial. Pass `-JavaHome <JDK21-directory>` if Java is not on `PATH` and `JAVA_HOME` is unset. Complete Gradle logs are saved under ignored `app/build/verification/`. On Linux/macOS use `./gradlew` and `ANDROID_SERIAL=<serial>` directly.
+Before a new epic, a continuation on another machine or standalone ticket, diagnose the execution host and select the budget/place using [publishing/EXECUTION-PROFILES.md](publishing/EXECUTION-PROFILES.md). Tooling-only changes use focused tool tests; documentation-only changes need no Android build.
+
+Use JDK 21 and the Android SDK. With PowerShell 7 on Windows/Linux, `./tools/Verify-Tests.ps1 -Suite Fast` runs debug build, lint, JVM tests, and JaCoCo checks, then prints a short XML-backed summary. For Android tests, start an isolated emulator and run `./tools/Verify-Tests.ps1 -Suite Android -Serial emulator-5554`, replacing the serial with the connected emulator's actual serial. Pass `-JavaHome <JDK21-directory>` if Java is not on `PATH` and `JAVA_HOME` is unset, and `-MaxWorkers <profile-budget>` to bound concurrency. Complete Gradle logs are saved under ignored `app/build/verification/`. Unix hosts can also use `./gradlew` and `ANDROID_SERIAL=<serial>` directly.
 
 JVM tests use JUnit 4 for concise rule checks and Kotest BehaviorSpec for multi-step state behavior. Gradle runs both through JUnit Platform and Vintage. Android framework, activity lifecycle, media decoding, and Compose interactions remain in `androidTest` with AndroidX JUnit 4 and Compose test APIs. New tests should use controlled clocks and seeded or injected random sources; a sleep or an actual device belongs only in an explicitly opt-in measurement scenario.
 

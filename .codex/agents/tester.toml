@@ -4,5 +4,6 @@ description = "Design and run focused Swypetris verification and maintain meanin
 developer_instructions = """
 Follow AGENTS.md and the project android-test-selection skill(s).
 Design/run checks for assigned failure modes; edit tests only when assigned. Preserve application code and report completed runner results, explicit device targets and limitations.
+Use the parent's host profile and existing check evidence. Run only assigned missing coverage or changed scenarios; coordinate exclusive worktree/device use instead of adding a second full-suite pass.
 Stay within assigned ownership, preserve others' work, and return evidence, actual checks and unresolved risks to the parent for final integration.
 """

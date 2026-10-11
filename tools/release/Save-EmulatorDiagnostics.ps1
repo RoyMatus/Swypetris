@@ -3,8 +3,8 @@ param([Parameter(Mandatory)][ValidatePattern('^emulator-\d+$')][string]$Serial)
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'Emulator-Diagnostics.psm1') -Force
 $project = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-$sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
-$adb = Join-Path $sdk 'platform-tools/adb.exe'
+$sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($IsWindows) { Join-Path $env:LOCALAPPDATA 'Android/Sdk' } else { Join-Path $env:HOME 'Android/Sdk' }
+$adb = Join-Path $sdk $(if ($IsWindows) { 'platform-tools/adb.exe' } else { 'platform-tools/adb' })
 if (!(Test-Path -LiteralPath $adb)) { $adb = (Get-Command adb -ErrorAction Stop).Source }
 $directory = Join-Path $project ("app/build/verification/emulator-diagnostics-{0}" -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Force -Path $directory | Out-Null

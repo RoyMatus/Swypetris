@@ -70,7 +70,7 @@ Describe 'Verification runner failure handling' {
         $fixture = Join-Path $TestDrive 'fixture'
         New-Item -ItemType Directory -Path "$fixture/tools" -Force | Out-Null
         Copy-Item "$project/tools/Verify-Tests.ps1","$project/tools/Verification.psm1" "$fixture/tools"
-        Set-Content "$fixture/gradlew.bat" "@echo off`r`necho deliberate fixture failure`r`nexit /b 7"
+        Set-Content "$fixture/gradlew.bat" "@echo off`r`necho %*`r`necho deliberate fixture failure`r`nexit /b 7"
         $java = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME 'bin/java.exe' } else { (Get-ChildItem "$env:USERPROFILE/.jdks/*/bin/java.exe" | Where-Object FullName -Match 'jbr-21' | Select-Object -First 1).FullName }
         if (!$java) { throw 'This Windows integration fixture needs the local JDK 21.' }
         $jdk = Split-Path (Split-Path $java)
@@ -79,7 +79,7 @@ Describe 'Verification runner failure handling' {
         try {
             $env:JAVA_HOME = $jdk
             $env:ANDROID_SERIAL = 'verification-sentinel'
-            $output = & "$fixture/tools/Verify-Tests.ps1" -Suite Fast -JavaHome $jdk
+            $output = & "$fixture/tools/Verify-Tests.ps1" -Suite Fast -JavaHome $jdk -MaxWorkers 2
             $LASTEXITCODE | Should -Be 1
             $env:JAVA_HOME | Should -Be $jdk
             $env:ANDROID_SERIAL | Should -Be 'verification-sentinel'
@@ -87,10 +87,40 @@ Describe 'Verification runner failure handling' {
             $summary.result | Should -Be 'failed'
             $summary.error | Should -Match 'exit 7'
             $summary.durationSeconds | Should -BeGreaterThan 0
+            $summary.maxWorkers | Should -Be 2
+            ($output -join ' ') | Should -Match '--max-workers=2'
             ($output -join ' ') | Should -Match 'deliberate fixture failure'
         } finally {
             $env:JAVA_HOME = $previousJava
             $env:ANDROID_SERIAL = $previousSerial
         }
+    }
+    It 'runs the Unix launcher with focused filters and records fresh results' -Skip:($IsWindows) {
+        $fixture = Join-Path $TestDrive 'unix-fixture'
+        New-Item -ItemType Directory -Path "$fixture/tools","$fixture/jdk/bin","$fixture/app/src/test/java/ru/itoltec/swypetris" -Force | Out-Null
+        Copy-Item "$project/tools/Verify-Tests.ps1","$project/tools/Verification.psm1" "$fixture/tools"
+        Set-Content "$fixture/app/src/test/java/ru/itoltec/swypetris/ExampleTest.kt" "package ru.itoltec.swypetris`nclass ExampleTest { @Test fun works() {} }"
+        Set-Content "$fixture/jdk/bin/java" "#!/bin/sh`necho 'openjdk version 21'"
+        $launcher = @'
+#!/bin/sh
+printf '%s\n' "$@" > arguments.txt
+mkdir -p app/build/test-results/testDebugUnitTest
+echo '<testsuite tests="1" failures="0" errors="0"><testcase classname="ru.itoltec.swypetris.ExampleTest" name="works"/></testsuite>' > app/build/test-results/testDebugUnitTest/TEST-ExampleTest.xml
+echo '> Task :app:testDebugUnitTest'
+'@
+        # .gitattributes checks out .ps1 with CRLF even on Linux; shell shebangs require LF.
+        Set-Content "$fixture/gradlew" ($launcher -replace "`r`n", "`n")
+        & chmod +x "$fixture/gradlew" "$fixture/jdk/bin/java"
+        $previousJava = $env:JAVA_HOME
+        & "$fixture/tools/Verify-Tests.ps1" -Suite FocusedJvm -TestClass ExampleTest -JavaHome "$fixture/jdk" -MaxWorkers 2 | Out-Host
+        $LASTEXITCODE | Should -Be 0
+        $env:JAVA_HOME | Should -Be $previousJava
+        $arguments = Get-Content "$fixture/arguments.txt"
+        $arguments | Should -Contain '--max-workers=2'
+        $arguments | Should -Contain 'ru.itoltec.swypetris.ExampleTest'
+        $summary = Get-ChildItem "$fixture/app/build/verification" -Filter '*.json' | ForEach-Object { Get-Content $_.FullName -Raw | ConvertFrom-Json }
+        $summary.result | Should -Be 'passed'
+        $summary.tests.passed | Should -Be 1
+        $summary.reusedTestResults | Should -BeFalse
     }
 }
