@@ -17,4 +17,4 @@ Two earlier updated invocations failed certificate-output parsing: locally insta
 
 Raw timing JSON and build logs are retained in ignored `app/build/verification/` in the implementation worktree. Credentials are excluded from summaries. A cold build or changed application still requires compilation and meaningful tests; daemon reuse cannot remove that work.
 
-An additional `-NoDaemon` fallback invocation passed with both original certificates in 107.294 seconds. Its APK phase reported 48 seconds despite all but the lint aggregate task being up-to-date; the cause of this timing variation was not established. This diagnostic result is included rather than discarded. It reinforces that the 75.0% warm comparison is an observed pair, not a guaranteed speedup.
+An additional `-NoDaemon` fallback invocation passed with both original certificates in 107.293 seconds. Its APK phase reported 48 seconds despite all but the lint aggregate task being up-to-date; the cause of this timing variation was not established. This diagnostic result is included rather than discarded. It reinforces that the 75.0% warm comparison is an observed pair, not a guaranteed speedup.
