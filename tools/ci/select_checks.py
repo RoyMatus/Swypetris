@@ -89,7 +89,7 @@ GROUP_TESTS = {
     "input": (("GestureControllerTest", "GestureHoldTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest"), ("GestureDensityTest", "GameFeedbackIntegrationTest", "HoldIntegrationTest", "GameUiTest")),
     "line_clear": (("LineClearAnimationTest", "GameEngineTest", "GameRulesTest"), ("LineClearUiTest", "GameUiTest")),
     "feedback": (("GameFeedbackTest",), ("GameFeedbackIntegrationTest", "MusicIntegrationTest")),
-    "music": (("PlaylistClockTest",), ("MusicIntegrationTest", "MusicSettingsFruitTest")),
+    "music": (("PlaylistClockTest",), ("MusicIntegrationTest", "MusicSettingsFruitTest", "MenuPreparationTest")),
     "storage": (("RecordHistoryTest", "SessionQueueBehaviorSpec"),
                 ("MigrationTest", "SessionLifecycleTest", "SessionWriteTest", "ResultsIntegrationTest")),
     "lifecycle": (("SessionQueueBehaviorSpec",), ("ForegroundUiTest", "SessionLifecycleTest", "GameUiTest")),

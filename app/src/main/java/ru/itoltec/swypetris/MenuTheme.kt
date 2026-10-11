@@ -96,17 +96,24 @@ internal object MenuTheme {
     }
 }
 
+/** Prepared menu playback can be handed from its worker to the main-thread music owner. */
+internal interface MenuPlayback {
+    fun play()
+    fun pause()
+    fun release()
+}
+
 /** Static PCM loop owned by GameMusic; pause/play retain the current loop position. */
-internal class MenuThemePlayer private constructor(private val track: AudioTrack) {
-    fun play() {
+internal class MenuThemePlayer private constructor(private val track: AudioTrack) : MenuPlayback {
+    override fun play() {
         if (track.playState != AudioTrack.PLAYSTATE_PLAYING) track.play()
     }
 
-    fun pause() {
+    override fun pause() {
         if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.pause()
     }
 
-    fun release() = track.release()
+    override fun release() = track.release()
 
     companion object {
         fun create(context: Context, attributes: AudioAttributes): MenuThemePlayer {

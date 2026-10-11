@@ -168,3 +168,77 @@ detekt passed in 89 seconds (nine tasks executed, 53 reused). These checks cover
 removed helper/import references and static defects; required PR CI executes the
 affected Android cases. No additional local full device regression was repeated
 for this test-output-only change.
+
+Merged as [PR #249](https://github.com/RoyMatus/Swypetris/pull/249), main commit
+`83664c8d8e433463342bb56df55b18f654001b39`. Required CI run `38148400320`
+passed all 56 selected Android cases without skips, plus JVM and quality checks.
+The successful-run export cleanup did not remove subjective tests: the reviewed
+suite had no human-only verdicts to remove.
+
+## Asynchronous menu audio preparation
+
+The first menu request previously read and decoded the bundled WAV and populated
+its static AudioTrack buffer on the caller/main thread. Preparation now runs on
+Dispatchers.IO. Main owns adoption and playback decisions, using the current
+mode, selection, focus and headphone gates when the worker finishes. Only one
+preparation may be in flight. Cancellation retains ownership of a late-created
+player until cleanup; release does not wait for the worker on main. Prepared
+players remain reusable across navigation. PCM decoding, buffer format, gain,
+loop points and audio assets are unchanged.
+
+Expected preparation failures now log and remain silent until an explicit new
+menu visit instead of propagating a synchronous initialization exception. This
+is a deliberate failure-path change; no automatic retry loop is introduced.
+
+Five first-call observations per version used separate instrumentation processes
+on the same API 35 headless emulator (`emulator-5560`, software graphics,
+`-noaudio`). The temporary measurement fixture was removed from shipped test
+sources after measurement. Values below are milliseconds in observation order:
+
+| Measurement | Before | After |
+| --- | --- | --- |
+| First menu call, wall | 217.690, 245.055, 106.527, 68.720, 456.749 | 12.788, 19.497, 22.037, 3.760, 9.806 |
+| Median wall | 217.690 | 12.788 |
+| Median main-thread CPU | 203.902 | 6.709 |
+| Median observed playback-ready upper bound | 219.249 | 111.460 |
+
+Readiness includes polling and dispatch and is not audible onset. These noisy
+emulator observations support moving preparation work off main, not a physical
+device performance or perceived audio-quality claim. All ten measurement runs
+reported one passing case; traces/logs remain in ignored
+`app/build/verification/audio-audit/`.
+
+Five separate eight-second whole-app startup traces per version used force-stop
+without clearing data or OS caches. `am start` TotalTime values were
+4466/3372/2622/2904/3054 ms before and 3080/3065/2898/3126/3236 ms after;
+medians were 3054 and 3080 ms. No whole-app startup improvement is established.
+Per-run median frame durations were 129.32/124.85/128.39/134.00/123.52 ms before
+and 117.93/135.23/116.11/125.61/124.50 ms after. Software-GPU histogram anomalies
+are excluded; these broad captures do not isolate audio or establish causality.
+
+Local validation: four PlaylistClock JVM cases passed; app/test assembly, debug
+lint and detekt passed in 107 seconds. Removing the temporary measurement fixture
+then rebuilding the test APK and rerunning affected lint/detekt took 59 seconds.
+All 13 selected Android cases passed in 232.922 seconds, including six new
+controlled-factory cases and the seven real-media/integration cases. The real
+loop advanced 4,331,328 frames over 88,485 ms through navigation, exceeding three
+1,417,069-frame cycles without resetting. PCM/hash/level checks passed; no
+listening or physical-speaker assessment was performed. Nineteen CI selector
+tests passed, including future selection of the new preparation class for either
+menu-audio source file. Required PR CI covers the mapping change with full
+regression; no additional duplicate local full regression was scheduled.
+
+Initial required CI run `38150109028` reached case 154 of 167 and was stopped by
+the existing eight-minute instrumentation deadline. The six new preparation
+cases had passed but consumed 103.4 seconds; logs and diagnostics were preserved
+before correction. A single-case local profile found approximately two seconds
+per `compose.runOnIdle` call despite having no Compose UI under test, while its
+factory gate took 0.784 ms and completion observation 18.867 ms. Replacing only
+these new tests' UI-idle waits with direct main-thread dispatch reduced the same
+passing case from 10.457 to 2.869 seconds. Post-change construction/start/body
+phases measured 52.837/98.554/58.181 ms. Temporary profiling was then removed.
+All assertions, controlled gates, readiness bounds and CI timeouts remain intact;
+the unchanged production/audio measurements and real-media results are reused.
+Final test-APK/lint/detekt checks passed in 18 seconds; all six preparation cases
+then passed in 9.120 seconds. The full required CI is rerun for the corrected
+commit, without changing its eight-minute instrumentation deadline.
