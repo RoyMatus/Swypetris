@@ -53,15 +53,15 @@ class GameViewModel internal constructor(
         .coerceIn(GameRules.MIN_STARTING_LEVEL, GameRules.MAX_STARTING_LEVEL))
         private set
     private val music = musicPlayback ?: if (autoTick) GameMusic(application) else null
-    var legacyRecord by mutableStateOf(GameStorage.legacyRecord(preferences))
-        private set
     var results by mutableStateOf(resultStore.read())
+        private set
+    var legacyRecord by mutableStateOf(GameStorage.legacyRecord(preferences, results))
         private set
     var currentResultId by mutableStateOf<String?>(null)
         private set
     var latestResult by mutableStateOf<GameResult?>(null)
         private set
-    val recordResults: List<GameResult> get() = recordHistory(results)
+    val recordResults: List<GameResult> by derivedStateOf { recordHistory(results) }
     var requestRecordName by mutableStateOf(false)
         private set
     var playerName by mutableStateOf(preferences.getString("player_name", "") ?: "")

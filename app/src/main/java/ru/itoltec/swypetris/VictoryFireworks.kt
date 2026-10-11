@@ -14,8 +14,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val FIREWORK_RAYS = 24
-private const val SPARKS_PER_RAY = 9
 private const val SPARK_PIXEL_DP = 3
 private const val ROCKET_TRAIL = 9
 private val WARM_SPARKS = listOf(Color(0xFFFFD44A), Color(0xFFFF8A32), Color(0xFFFF4267))
@@ -26,6 +24,21 @@ private const val ROUND_BURST_RADIUS = .28f
 private val ABSOLUTE_CENTERS = listOf(.18f, .5f, .82f)
 
 internal enum class VictoryCelebration { ROUND, ABSOLUTE, POSTCARD }
+
+/** Ray directions never depend on time or canvas geometry. Preserve the original float rounding. */
+internal object FireworkDirections {
+    const val RAYS = 24
+    const val SPARKS_PER_RAY = 9
+    private val values = Array(RAYS) { ray ->
+        val angle = ray * 2.0 * PI / RAYS
+        Array(SPARKS_PER_RAY) { spark ->
+            val trailAngle = angle + spark * .035f * if (ray % 2 == 0) 1 else -1
+            Offset(cos(trailAngle).toFloat(), sin(trailAngle).toFloat())
+        }
+    }
+
+    operator fun get(ray: Int, spark: Int): Offset = values[ray][spark]
+}
 
 /** Approved orange/blue launches, expanding trails and falling embers, behind the fixed foreground. */
 @Composable
@@ -66,14 +79,13 @@ private fun DrawScope.drawBurst(center: Offset, progress: Float, colors: List<Co
     val radius = size.width * radiusFraction * (1 - (1 - growth) * (1 - growth))
     val alpha = VictoryMotion.opacity(progress)
     val pixel = SPARK_PIXEL_DP.dp.toPx()
-    repeat(FIREWORK_RAYS) { ray ->
-        val angle = ray * 2.0 * PI / FIREWORK_RAYS
+    repeat(FireworkDirections.RAYS) { ray ->
         var previous: Offset? = null
-        repeat(SPARKS_PER_RAY) { spark ->
+        repeat(FireworkDirections.SPARKS_PER_RAY) { spark ->
             val distance = radius * (1 - spark * .09f) * if (ray % 2 == 0) 1f else .83f
-            val trailAngle = angle + spark * .035f * if (ray % 2 == 0) 1 else -1
-            val point = center + Offset(cos(trailAngle).toFloat() * distance,
-                sin(trailAngle).toFloat() * distance + size.width * .14f * progress * progress)
+            val direction = FireworkDirections[ray, spark]
+            val point = center + Offset(direction.x * distance,
+                direction.y * distance + size.width * .14f * progress * progress)
             previous?.let { outer ->
                 drawLine(colors[(ray + spark) % colors.size].copy(alpha = alpha * (1 - progress)),
                     outer, point, strokeWidth = pixel * .6f)
