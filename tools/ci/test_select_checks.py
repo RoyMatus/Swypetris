@@ -48,6 +48,15 @@ class SelectionTests(unittest.TestCase):
         for name in ("BorderlessHudTest", "HudLayeringTest", "GameUiTest", "SmokeTest"):
             self.assertIn("ru.itoltec.swypetris." + name, result["android"].split(","))
 
+    def test_settings_changes_cover_vibration_and_existing_flows(self):
+        for source in ("SettingsScreen.kt", "Difficulty.kt", "GamePalette.kt"):
+            with self.subTest(source=source):
+                result = select(["app/src/main/java/ru/itoltec/swypetris/" + source])
+                self.assertEqual("selected", result["mode"])
+                for name in ("VibrationSettingsTest", "GameUiTest", "MusicSettingsFruitTest",
+                             "StatisticsResetTest", "SmokeTest"):
+                    self.assertIn("ru.itoltec.swypetris." + name, result["android"].split(","))
+
     def test_tools_use_own_checks(self):
         result = select(["tools/GitHub-Api.psm1", "tools/Sync-IssueProject.ps1", "tools/release/Build-Release.ps1"])
         self.assertEqual("none", result["mode"])
