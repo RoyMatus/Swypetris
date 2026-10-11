@@ -242,7 +242,7 @@ class FullRegressionProofTests(unittest.TestCase):
                 self.validate()
             self.payload[name] = previous
 
-    def test_failed_empty_or_mismatched_jvm_reports_rejected(self):
+    def test_failed_empty_jvm_reports_rejected(self):
         for variant in proof.JVM_VARIANTS:
             name = f'quality/test-results/{variant}/TEST-example.xml'
             previous = self.payload[name]
@@ -252,9 +252,6 @@ class FullRegressionProofTests(unittest.TestCase):
                     self.validate()
             self.payload[name] = b'<testsuite/>'
             with self.assertRaises(ValueError):
-                self.validate()
-            self.payload[name] = previous.replace(b'passes', b'other')
-            with self.assertRaisesRegex(ValueError, 'inventories differ'):
                 self.validate()
             self.payload[name] = previous
 
@@ -271,13 +268,19 @@ class FullRegressionProofTests(unittest.TestCase):
                 self.validate()
             self.payload[name] = previous
 
-    def test_partially_skipped_release_inventory_rejected(self):
-        complete = b'<testsuite><testcase classname="example.Test" name="one"/><testcase classname="example.Test" name="two"/></testsuite>'
-        for variant in proof.JVM_VARIANTS:
-            self.payload[f'quality/test-results/{variant}/TEST-example.xml'] = complete
-        self.payload['quality/test-results/testReleaseUnitTest/TEST-example.xml'] = complete.replace(
-            b'name="two"/>', b'name="two"><skipped/></testcase>')
-        with self.assertRaisesRegex(ValueError, 'inventories differ'):
+    def test_additional_jvm_variant_is_validated_when_present(self):
+        name = 'quality/test-results/testReleaseUnitTest/TEST-example.xml'
+        self.payload[name] = b'<testsuite><testcase classname="example.ReleaseTest" name="releaseOnly"/></testsuite>'
+        self.validate()
+        for data in (b'<testsuite/>', b'<testsuite><testcase classname="example.ReleaseTest" name="releaseOnly"><failure/></testcase></testsuite>'):
+            self.payload[name] = data
+            with self.assertRaises(ValueError):
+                self.validate()
+
+    def test_additional_variant_does_not_replace_required_debug_reports(self):
+        debug = 'quality/test-results/testDebugUnitTest/TEST-example.xml'
+        self.payload['quality/test-results/testReleaseUnitTest/TEST-example.xml'] = self.payload.pop(debug)
+        with self.assertRaisesRegex(ValueError, 'Missing full quality'):
             self.validate()
 
     def test_unexpected_quality_paths_and_duplicate_cases_rejected(self):

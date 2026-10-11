@@ -31,14 +31,16 @@ QUALITY_FILES = {
     "reports/detekt/detekt.html",
     "reports/detekt/detekt.sarif",
 }
-JVM_VARIANTS = ("testDebugUnitTest", "testReleaseUnitTest")
+# AGP 9 enables unit tests only for the tested build type (debug by default).
+# Keep the current required suite explicit; validate additional reports if emitted.
+JVM_VARIANTS = ("testDebugUnitTest",)
 
 
 def quality_names(names: set[str]) -> set[str]:
     """Accept only fixed reports and direct Gradle JVM XML reports, never arbitrary paths."""
     required = {"quality/" + name for name in QUALITY_FILES}
     reports = {name for name in names if re.fullmatch(
-        r"quality/test-results/(testDebugUnitTest|testReleaseUnitTest)/TEST-[^/\\:\x00]+\.xml", name)}
+        r"quality/test-results/test[A-Za-z0-9]+UnitTest/TEST-[^/\\:\x00]+\.xml", name)}
     if not required <= names or any(
         not any(name.startswith(f"quality/test-results/{variant}/") for name in reports)
         for variant in JVM_VARIANTS
@@ -57,8 +59,8 @@ def validate_quality(payload: dict[str, bytes]) -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(payload[name])
         verify_reports(build)
-    inventories = []
-    for variant in JVM_VARIANTS:
+    variants = sorted({name.split('/')[2] for name in names if name.startswith('quality/test-results/')})
+    for variant in variants:
         cases = set()
         passed = set()
         for name in sorted(names):
@@ -75,9 +77,6 @@ def validate_quality(payload: dict[str, bytes]) -> None:
                     passed.add(identity)
         if not passed:
             raise ValueError(f"No JVM tests executed for {variant}")
-        inventories.append((cases, passed))
-    if inventories[0] != inventories[1]:
-        raise ValueError("Debug/release JVM test inventories differ")
     sarif = json.loads(payload["quality/reports/detekt/detekt.sarif"])
     runs = sarif.get("runs")
     if not isinstance(runs, list) or not runs:
@@ -191,9 +190,8 @@ def create(root: Path, destination: Path) -> None:
     payload = {name: (root / path).read_bytes() for name, path in FILES.items()}
     payload.update({"quality/" + name: (root / "app/build" / name).read_bytes()
                     for name in QUALITY_FILES})
-    for variant in JVM_VARIANTS:
-        for report in sorted((root / "app/build/test-results" / variant).glob("TEST-*.xml")):
-            payload[f"quality/test-results/{variant}/{report.name}"] = report.read_bytes()
+    for report in sorted((root / "app/build/test-results").glob("test*UnitTest/TEST-*.xml")):
+        payload[f"quality/test-results/{report.parent.name}/{report.name}"] = report.read_bytes()
     payload["configuration.json"] = json.dumps(configuration(root), sort_keys=True).encode()
     proof = dict(schema=3, repository=os.environ["GITHUB_REPOSITORY"], workflow=WORKFLOW,
                  workflow_ref=os.environ["GITHUB_WORKFLOW_REF"], sha=sha,
