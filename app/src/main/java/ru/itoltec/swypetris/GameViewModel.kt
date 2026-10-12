@@ -10,6 +10,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.core.content.edit
 import androidx.lifecycle.viewModelScope
 
+private enum class MusicPopupTransfer { NONE, OPENING, CLOSING }
+
 /** A paused game is owned by the model while the ordinary menu is displayed. */
 enum class GameScreen {
     MENU, SETTINGS, HELP, CONTACTS, PRIVACY, LEGAL, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY,
@@ -38,6 +40,7 @@ class GameViewModel internal constructor(
     internal val statistics = Statistics()
     internal val navigation = Navigation()
     internal val absolute = AbsoluteVictory()
+    internal val musicPopup = MusicPopup()
 
     /** The standard Android constructor uses a monotonic clock and an automatic game loop. */
     constructor(application: Application) : this(application, null, SystemClock::uptimeMillis, true)
@@ -78,7 +81,7 @@ class GameViewModel internal constructor(
     val musicEnabled: Boolean get() = musicSelection != MusicSelection.Off
     private var foreground = true
     private var windowFocused = true
-    private val activeForeground: Boolean get() = foreground && windowFocused
+    private val activeForeground: Boolean get() = foreground && (windowFocused || musicPopup.active)
     var launchIntroMillis by mutableStateOf(if (showLaunchIntro) 0L else LaunchIntroMotion.DURATION)
         private set
     val launchIntroPending by derivedStateOf { launchIntroMillis < LaunchIntroMotion.DURATION }
@@ -298,24 +301,78 @@ class GameViewModel internal constructor(
     /** Backgrounding stops both gameplay and settings music preview. */
     fun onBackground() {
         foreground = false
+        musicPopup.lifecycle(false)
         pause()
     }
 
     /** Returning to the foreground restores only the music appropriate for the current screen. */
     fun onForeground() {
         foreground = true
+        musicPopup.lifecycle(true)
         simulation.syncOrdinaryMusic()
     }
 
-    /** Focus loss silences playback; focus return restores the current screen's ordinary mode. */
+    /** Focus belongs to either our Activity or its focusable Settings popup. */
     fun onWindowFocusChanged(focused: Boolean) {
         windowFocused = focused
-        if (!focused) pause()
+        musicPopup.hostFocusChanged(focused)
+        if (!activeForeground) pause()
         else simulation.syncOrdinaryMusic()
+    }
+
+    /** Tracks acknowledged native windows and explicit transfers, not popup visibility alone. */
+    internal inner class MusicPopup {
+        private var focused = false
+        private var transfer = MusicPopupTransfer.NONE
+        private var view: java.lang.ref.WeakReference<android.view.View>? = null
+        val active: Boolean get() = focused || transfer != MusicPopupTransfer.NONE
+
+        fun begin() {
+            if (screen == GameScreen.SETTINGS) transfer = MusicPopupTransfer.OPENING
+        }
+
+        fun attach(popup: android.view.View) {
+            view = java.lang.ref.WeakReference(popup)
+            focused = popup.hasWindowFocus()
+            if (focused) transfer = MusicPopupTransfer.NONE
+        }
+
+        fun hostFocusChanged(hasFocus: Boolean) {
+            if (hasFocus && transfer == MusicPopupTransfer.CLOSING) transfer = MusicPopupTransfer.NONE
+        }
+
+        fun onFocusChanged(hasFocus: Boolean) {
+            focused = hasFocus
+            // A live popup losing native focus is an external interruption, not its dismissal.
+            transfer = MusicPopupTransfer.NONE
+            if (!activeForeground) pause()
+            else simulation.syncOrdinaryMusic()
+        }
+
+        fun dismiss() {
+            transfer = if (foreground) MusicPopupTransfer.CLOSING else MusicPopupTransfer.NONE
+        }
+
+        fun detach(popup: android.view.View, host: android.view.View) {
+            if (view?.get() !== popup) return
+            if (foreground && (focused || transfer == MusicPopupTransfer.OPENING)) dismiss()
+            view = null
+            focused = false
+            if (host.hasWindowFocus()) onWindowFocusChanged(true)
+            else if (!activeForeground) pause()
+        }
+
+        fun lifecycle(resumed: Boolean) {
+            transfer = MusicPopupTransfer.NONE
+            focused = resumed && view?.get()?.hasWindowFocus() == true
+        }
+
+        fun close() { view = null; focused = false; transfer = MusicPopupTransfer.NONE }
     }
 
     /** Closes audio resources when the Activity's model is finally destroyed. */
     override fun onCleared() {
+        musicPopup.close()
         timer?.cancel()
         scheduledAt = null
         feedback.release()
