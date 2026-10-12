@@ -1,0 +1,10 @@
+{
+  "files": 22,
+  "matches_auditioned_wav_bytes": true,
+  "classic_generated_files_included": false,
+  "runtime_bytes": 479004,
+  "zip_bytes": 384706,
+  "zip_sha256": "0b93962d71fac8f13a0e93d1a9283de465af6cba61ad837e7e76c09106447114",
+  "android_integration_tested": false,
+  "runtime_audition_completed": false
+}
