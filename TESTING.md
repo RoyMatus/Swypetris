@@ -37,15 +37,15 @@ Final local PR checks use `tools/ci/select_checks.py` for affected Android class
 
 ## Current verified inventory
 
-The 2026-10-11 [required CI run](https://github.com/RoyMatus/Swypetris/actions/runs/38151584836) passed with **152 JVM cases** and **167 Android cases**, 164 passed and three opt-in skips. These are case counts, not the number of assertions, portrait/font fixtures or repeated executions. The default Android skips are `EnergyScenarioTest` (measurement), `SignedUpdateScenarioTest` (explicit signed-install fixture) and `FireworkRenderingTest` (numeric before/after frame export); a normal full regression does not exercise them.
+The latest completed broad local snapshot is [PR #255](https://github.com/RoyMatus/Swypetris/pull/255), head `251af6c66a92da7c9cac7f76fba6ca2ac06fedbb` on 2026-10-12: **154 JVM cases** and **175 unique Android cases**, 172 passed and three opt-in skips. These are case counts, not assertions, portrait/font fixtures or repeated executions. The default Android skips are `EnergyScenarioTest` (measurement), `SignedUpdateScenarioTest` (explicit signed-install fixture) and `FireworkRenderingTest` (explicit frame/clip export); a normal full regression does not exercise them. Both #248 motion exports passed separately, without being counted as additional unique regression cases. Subsequent changes still need their own applicable exact-head evidence.
 
 Historical full PR CI additionally ran the one-case picker preflight and a 14-case UI preflight before the complete inventory. Those 15 cases are repeated in the full run, not 15 extra unique tests. The signed APK has a separate menu/settings/new-game/pause/Continue runtime smoke; full instrumentation exercises the debug target. JVM coverage measures debug production code executed by JVM tests and does not include Android/Compose coverage.
 
-The original #62 counts and coverage figures below are historical snapshots, not the current inventory. Use actual XML and invocation outcome for each new run; Gradle cached/up-to-date results do not represent fresh test execution. Settings selection now includes `VibrationSettingsTest` alongside the existing game/music/reset flows and `SmokeTest`.
+The original #62 counts and coverage figures below are historical snapshots, not the current inventory. Use actual XML and invocation outcome for each new run; Gradle cached/up-to-date results do not represent fresh test execution. Settings selection includes `StartingLevelTest` and `VibrationSettingsTest` alongside the existing game/music/reset flows and `SmokeTest`.
 
-## Historical audit and decisions (#62)
+## Test class inventory (#205)
 
-Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android test classes with 71 methods, plus the `IsolatedStorageRule` fixture. These counts predate the CI `SmokeTest` added later. The following review compares each class with current game behavior. Tests marked **keep** have a distinct regression purpose; no class was removed merely to reduce the count.
+The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit methods and 21 Android test classes with 71 methods, plus the `IsolatedStorageRule` fixture. These are historical counts. The following current review records each class's distinct regression purpose and keep/update decision; no class is removed merely to reduce the count.
 
 | Test class | Level and behavior checked | Decision |
 | --- | --- | --- |
@@ -63,18 +63,19 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `LaunchIntroMotionTest` | JVM: deterministic animation progress and haptic values | Keep; device tests check rendered intro and lifecycle. |
 | `LineClearAnimationTest` | JVM: column order, timing boundary, completed-clear count | Keep; UI clear test checks pause and rendering. |
 | `VictoryMotionTest` / `FireworkParticlesTest` | JVM: periodic timing, elapsed-time partitioning across wrap, spark rise/fall, outward deceleration, varied finite lifetimes and historical trail ordering | Keep; verifies motion contracts without pinning the previous renderer's ray coordinates or judging appearance. |
+| `FireworkRenderingTest` | Android opt-in: deterministic boundary frames, matched software/ART samples and real Activity motion clips/postcard | Keep explicit export/measurement; default skipped, no aesthetic oracle or extra animation clock. |
 | `PlaylistClockTest` | JVM: seeded shuffle, exact gaps, pause, legacy selection | Keep; injected clock avoids wall time. |
 | `RecordHistoryTest` | JVM: strict records per difficulty and legacy group | Keep; UI results test checks persistence and entry. |
 | `RewardsTest` | JVM: fruit thresholds, fixed line reward, cell-based gesture steps | Keep; all three are current rules, though the gesture case spans two areas. |
 | `VictoryRulesTest` | JVM: threshold, overshoot, second round, victory over loss | Keep; state transitions are independent of the victory UI test. |
 | `AbsoluteVictoryRulesTest` | JVM: terminal score cap, exact/overshot boundaries, frozen commands, queue and next-round guard | Keep; preserves scoring and line counters below and at 999 999. |
 | `AbsoluteVictoryIntegrationTest` | Android: terminal journal, name validation, restored postcard phase, static PNG bytes and read-only URI | Keep; checks platform serialization and image sharing independently of layout. |
-| `AbsoluteVictoryUiTest` | Compose: name entry and postcard across portrait/landscape viewports and larger fonts | Keep; saves renders and verifies reachable actions. |
+| `AbsoluteVictoryUiTest` | Compose: name entry and postcard across portrait viewports and larger fonts | Keep; verifies reachable actions and in-memory image/bounds contracts. |
 | `BrandNavigationTest` | Android UI: menu order, compact layout, contacts and intent failure | Keep; needs Compose and platform intents. |
 | `EnergyScenarioTest` | Android measurement: repeatable gameplay workload | Keep opt-in; its real-time sleep is for measurement, never a normal correctness assertion. |
 | `ForegroundUiTest` | Android lifecycle: locked portrait board bounds, notification shade, task reuse, insets | Keep; requires system UI and Activity state. |
 | `GameFeedbackIntegrationTest` | Android integration: sound/vibration settings and single-event behavior | Keep; complements pure feedback rules. |
-| `VibrationSettingsTest` | Compose UI: 0/50/100% slider input, persisted intensity, narrow/landscape screens and large fonts | Keep; covers the accessible settings control separately from motor parameters. |
+| `VibrationSettingsTest` | Compose UI: 0/50/100% slider input, persisted intensity, narrow/tablet portrait screens and large fonts | Update fixture/name; retain every input, persistence and reachability assertion. |
 | `GameTimerTest` | Android model: injected scheduler, pause remainder, clear and terminal deadlines | Keep; deterministic despite Android model construction. |
 | `GameUiTest` | Compose UI: settings, controls, recreation, pause, record and layout | Keep; exercises user actions beyond model-only tests. |
 | `GestureDensityTest` | Compose input: pointer across spawn and pixel-to-dp conversion | Keep; device density behavior cannot be established by JVM gestures alone. |
@@ -99,8 +100,87 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `AppUpdatesTest` | Android: release metadata and update entry points | Keep; validates JSON/platform parsing and manual check visibility. |
 | `UpdateApkTest` | Android: package/version and malformed APK rejection | Keep; uses the real package parser. |
 | `AutomaticUpdatesTest` | Android UI: explicit consent, manual-only choice, preference persistence and disabling | Keep; exercises the real Activity and Settings switch across recreation. |
+| `GameplayGeometryTest` | JVM: safe-top spawn alignment, visible bottom and insufficient available height | Keep; protects inset-derived board geometry independently of painting. |
+| `GestureHoldTest` | JVM: 300 ms readiness, one exchange per touch, early rotation, cancellation and jitter | Keep; protects gesture timing and replacement-piece isolation. |
+| `HiddenBufferTest` | JVM: hidden spawn/collision/ghost rows, partial lock, blocked spawn and collapse | Keep; preserves logical board boundaries beyond visible geometry. |
+| `HoldTest` | JVM: empty/occupied Hold, bag consumption, lock re-enabling, blocked swap and reset | Keep; separate from gesture/platform presentation. |
+| `LockDelayTest` | JVM: 500 ms delay, successful-action reset budget, airborne freeze and pause | Keep; distinct timing boundaries. |
+| `MarathonTimingTest` | JVM: speed/20G bound, callback partitioning and clear/lock/death deadlines | Keep; checks preserved remainders without wall-clock sleeps. |
+| `MenuSkyMotionTest` | JVM: independent cloud recycling and twinkle periods | Keep; protects motion continuity independently of artwork pixels. |
+| `PlacementTest` | JVM: last-action spin classification, kick promotion, chains and hidden-row perfect clears | Keep; placement classification precedes award calculation. |
+| `ProgressionTest` | JVM: pre-clear level, cumulative higher-start thresholds, round retention, overflow and fruits | Keep; covers coupled line/level/fruit boundaries. |
+| `ScoringTest` | JVM: scaled awards, combo/back-to-back/perfect-clear composition, drops and single award | Keep; prevents duplicate or overflowed scoring. |
+| `SrsTest` | JVM: eight transitions, wall/floor kicks and hidden rows | Keep; distinct I/JLSTZ tables and rejected-rotation state. |
+| `UpdateCheckPolicyTest` | JVM: polling, rate limits, HTTP dates and malformed timing | Keep; separates generic failures from rate-limit evidence. |
+| `UpdateFailureTest` | JVM: safe error classification, cleanup, cancellation identity and programming failures | Keep; never masks unexpected defects as recoverable network notices. |
+| `BorderlessHudTest` | Compose pixels/bounds: score/fruit lanes, Hold state and Next contrast in two themes | Keep; objective layer/state contracts. |
+| `GameplaySurfaceTest` | Compose pixels: grid under status area and clipped foreground | Keep; protects edge-to-edge surface behavior. |
+| `HistoryCacheTest` | Android storage: initialization read, malformed/legacy rows and cache invalidation | Keep; validates the cached record owner's lifecycle. |
+| `HoldIntegrationTest` | Compose/storage: gesture, persisted Hold, replacement isolation and feedback suppression | Keep; platform interaction complements JVM Hold rules. |
+| `HudLayeringTest` | Compose pixels: piece/fruit intersection and score segment visibility | Keep; preserves drawing order and theme contrast. |
+| `MenuSkyTest` | Compose pixels/lifecycle: anchored artwork, background/disabled clocks and isolated wide crop | Keep; its 640×360 artwork crop is not a landscape application viewport. |
+| `NextQueueTest` | Compose bounds: spawn-position preview and suppression when obstructed | Keep; separate from saved seven-bag ordering. |
+| `ShareAppTest` | Android QR/intent: canonical store/latest-release links and sharing | Keep; decoded content and platform payloads. |
+| `ShareDialogInteractionTest` | Compose touch/intent: Share without background dismissal | Keep; event propagation and chooser payload. |
+| `StartingLevelTest` | Compose/storage: slider, unclipped explanation, cumulative higher starts and unchanged Continue | Update selection; existing scenarios exercise the setting's contracts. |
+| `UpdateCheckTest` | Android policy/UI: duplicate manual checks, persisted deadlines and safe messages | Keep; model/platform integration. |
+| `UpdateDeliveryRecoveryTest` | Android asynchronous delivery: retry and no installable partial file | Keep; cleanup and transition completion without a real download. |
+| `VictorySessionIntegrationTest` | Android model: round continuation, retained score/rules/time and one record | Keep; session/music transitions independent of visual geometry. |
 
-The audit found no proven obsolete or interchangeable test group to remove. The Android classes need framework services or verify actual Compose behavior; moving them to JVM would require an Android simulator or duplicating the UI mechanism. Newly added `SessionQueueBehaviorSpec` covers ordered seven-bag restoration and rejection of a corrupt queue, which the previous tests did not exercise directly. Its `Given/When/Then` structure makes the saved-session transition explicit.
+## Tool test inventory
+
+These groups account for the existing coherent modules. Archived launcher/workflow
+contract tests do not authorize hosted execution.
+
+| Modules | Regression purpose and decision |
+| --- | --- |
+| `tools/tests/GitHub-Api.Tests.ps1` | Keep: API payloads, branch/PR/project operations and readiness failure boundaries. |
+| `tools/tests/Verification.Tests.ps1`, `LocalVerification.Tests.ps1`, `ExecutionProfile.Tests.ps1` | Keep: selections, fresh/cached XML, exact head/base and hashes, local host budgets and diagnostics. |
+| `tools/tests/Release-Verification.Tests.ps1`, `Release-SigningRestore.Tests.ps1`, `Release-Transaction.Tests.ps1`, `Release-Local.Tests.ps1` | Keep: signatures/certificates, private-key restoration, transaction safety, local provenance and immutable publication. |
+| `tools/tests/Development-Workflow.Tests.ps1` | Keep: observed intervals, unknown/unfinished time and reports. |
+| `tools/ci/test_select_checks.py`, `test_quality_results.py`, `test_instrumentation_output.py`, `test_full_regression_proof.py`, `test_local_verification.py` | Update existing settings assertion; keep conservative routing, complete source/XML inventory, parser failures, thresholds and hash-bound evidence. |
+| `tools/ci/test_release_context.py`, `test_release_gate.py`, `test_release_workflow.py`, `test_release_smoke.py` | Keep: release context, exact-main gates, publication definitions and runtime observation parsing, including historical provenance. |
+| `tools/ci/test_windows_android_smoke.py`, `test_windows_android_smoke.ps1` | Keep: actual Windows PowerShell launcher/smoke adapter contract; not another app regression suite. |
+| `tools/ci/test_cloud_android_checks.py` | Keep archived/static contracts and optional Unix fixtures; never dispatch cloud checks. |
+| `tools/ci/test_developer_workflow.py` | Keep: evidence, timing/count reconciliation and report contracts. |
+
+## Finite audit and behavior map (#205)
+
+The inventory accounts for 31 JVM and 49 Android test classes; fixture helpers
+are not additional tests. Review starts from merged #248
+(`3edb6c280c6ecc43e4309d0390413bd5d83bf575`), without inherited uncommitted app
+changes. Run summaries identify subsequent tested heads.
+
+| Supported behavior | Owning regression groups |
+| --- | --- |
+| Spawn, collision, rotation, locking, hidden rows and loss | Engine, SRS, hidden-buffer, placement, lock-delay and geometry; GameplaySurface/Foreground UI. |
+| Scoring, progression, fruits, ordinary/absolute victory | Scoring/Progression/Rewards/Victory/AbsoluteVictory rules; session/theme/absolute UI/integration; motion/particles and #248 clips. |
+| Gestures, Hold, Ghost and Next | GestureController/GestureHold/Hold and queue rules; GestureDensity/HoldIntegration/NextQueue/GameUi. |
+| Pause/Continue, navigation, recreation and durable saves | Foreground/SessionLifecycle/SessionWrite/GameTimer/LaunchIntroRecreation, navigation and saved queue. |
+| Settings, results and historical data | StartingLevel/Vibration/MusicSettings/StatisticsReset; ResultsIntegration/RecordHistory/HistoryCache, archive/current ordering and long labels. |
+| Updates, migrations, sharing and release safeguards | Migration, update policy/download/failure/platform/recovery/consent; QR/share; tool inventory and independent signed gate. |
+
+Confirmed repairs: settings routing omitted `StartingLevelTest` (the strengthened
+existing assertion failed before the mapping fix); vibration and palette settings
+forced 600×400 full-UI fixtures. They retain narrow/tall fixtures and now use
+600×960 portrait at font scale 2. The vibration method is renamed to describe
+portrait coverage. Palette reachability/persistence and every slider 0/50/100%
+assertion remain. The isolated wide MenuSky artwork crop remains meaningful.
+
+No test is removed or added by #205; its routing assertion is extended. #248
+replaced obsolete implementation-pinning `FireworkDirectionsTest` with three
+particle behavior cases, preserving timing and foreground assertions. Default
+runs retain three explicit opt-in skips. Both README languages now describe the
+already-delivered 999,999 terminal victory/postcard, firework stages, record labels,
+saved celebration restoration and vibration strength.
+
+No additional material missing behavior case was established in this finite
+review. This does not establish exhaustive state/device coverage or zero bugs.
+Physical appearance/listening, broad API compatibility and hardware frame pacing
+remain separate limitations. Deterministic pixel/PCM/state checks do not replace
+human acceptance. Exact-head and exact-main release gates remain required.
+
+The original #62 audit found no proven obsolete or interchangeable test group to remove. Android classes need framework services or actual Compose behavior; moving them to JVM would require a simulator or duplicate UI mechanism. That audit added `SessionQueueBehaviorSpec` for ordered seven-bag restoration and corrupt-queue rejection. Its `Given/When/Then` structure describes the saved-session transition.
 
 ## Historical coverage and limits (#62)
 

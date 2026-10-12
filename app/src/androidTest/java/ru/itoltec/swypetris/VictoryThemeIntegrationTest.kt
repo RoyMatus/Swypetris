@@ -307,7 +307,7 @@ class VictoryThemeIntegrationTest {
             DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(viewport) then
                 DeviceConfigurationOverride.FontScale(2f)) { SwypetrisApp(model) {} }
         }
-        for (size in listOf(DpSize(320.dp, 640.dp), DpSize(393.dp, 873.dp), DpSize(600.dp, 400.dp))) {
+        for (size in listOf(DpSize(320.dp, 640.dp), DpSize(393.dp, 873.dp), DpSize(600.dp, 960.dp))) {
             viewport = size
             compose.waitForIdle()
             val control = compose.onNodeWithTag("randomTheme").performScrollTo().assertIsDisplayed()
