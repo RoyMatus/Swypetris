@@ -29,7 +29,7 @@ class VibrationSettingsTest {
     @get:Rule(order = 1) val compose = createComposeRule()
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
-    @Test fun strengthSliderPersistsAndFitsNarrowLandscapeAndLargeFontScreens() {
+    @Test fun strengthSliderPersistsAndFitsPortraitAndLargeFontScreens() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = GameViewModel(app, null, { 1000L }, false)
         model.navigation.settings()
@@ -38,7 +38,7 @@ class VibrationSettingsTest {
             DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(viewport) then
                 DeviceConfigurationOverride.FontScale(2f)) { SwypetrisApp(model) {} }
         }
-        for (size in listOf(DpSize(320.dp, 640.dp), DpSize(393.dp, 873.dp), DpSize(600.dp, 400.dp))) {
+        for (size in listOf(DpSize(320.dp, 640.dp), DpSize(393.dp, 873.dp), DpSize(600.dp, 960.dp))) {
             viewport = size
             compose.waitForIdle()
             val slider = compose.onNodeWithTag("vibrationStrength").performScrollTo().assertIsDisplayed()

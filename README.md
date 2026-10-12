@@ -14,7 +14,7 @@ The game supports **Android 7.0 and later** (API 24+). The application interface
 2. Install the APK. Android may ask you to allow installation from the application used to open it.
 3. Open Swypetris and choose **Новая игра** (New game). **Как играть** (How to play) contains an illustrated guide inside the app.
 
-The skippable launch introduction assembles the logo from blocks. The main menu has an animated illustrated sky, the Swypetris wordmark, and New game, Continue, Settings, How to play, Results, Contacts, and Exit buttons. Continue is available for an unfinished game. The menu's version number also opens an update check.
+The skippable launch introduction assembles the logo from blocks. The main menu has an animated illustrated sky, the Swypetris wordmark, and New game, Continue, Settings, How to play, Results, Contacts, and Exit buttons. Continue restores an unfinished game or a saved victory/postcard. The menu's version number also opens an update check.
 
 ### One-finger controls
 
@@ -80,7 +80,7 @@ The current rules version is **6**. Placement awards use the level **before** th
 - **Combo:** consecutive line-clearing placements add `50 × combo count × level`; the first clear has count zero.
 - **Perfect Clear:** emptying the entire logical board adds 800 / 1,200 / 1,800 / 2,000 × level for one / two / three / four lines. A back-to-back four-line Perfect Clear adds 3,200 × level instead.
 - **Manual Soft Drop:** 1 point per cell. **Hard Drop:** 2 points per cell. These awards are not multiplied by level.
-- Automatic gravity gives no points. The maximum score is 2,147,483,647 points.
+- Automatic gravity gives no points. The current game's maximum score is **999,999 points**.
 
 ### Fruits and victory rounds
 
@@ -90,7 +90,11 @@ Every **10,000 points** awards the next fruit:
 
 Collecting all eight completes a round: the first victory threshold is **80,000 points**. A dedicated victory screen shows a block-built trophy, the fruit collection, the completed round, and total score. Play waits for an explicit continuation action.
 
+Both victory screens use pixel fireworks with launches, compact flashes, outward sparks, falling trails and fading embers. Animation stops while backgrounded and has a static fallback when system animations are disabled.
+
 The next round starts on an empty board while retaining **score, cleared lines, level, starting level, and speed**. Points above the threshold are retained. Each additional round requires another 80,000 cumulative points. Fruit quantities reflect total score, including awards that cross several thresholds at once.
+
+Reaching **999,999** ends the game in Absolute Victory, including an award that would overshoot the limit. The final score is capped, and no further gameplay round begins. Enter a name to create a static victory postcard and share it through Android; the saved celebration/postcard can be restored after reopening the app.
 
 ### Pause, autosave, and personal results
 
@@ -99,6 +103,8 @@ Back pauses into the main menu. Backgrounding or losing window focus, including 
 Local autosave preserves the board, active and next pieces, remaining seven-bag queue, Hold state, score, lines, rounds, starting level, lock delay, and timing progress. If Android recreates the game screen, the game is restored paused; reopening the app offers Continue from the menu. New game replaces the active save. A lost game cannot be continued. Incompatible older active saves are rejected without deleting settings or historical results.
 
 Results shows the latest finished game's score, lines, level, active play time, and fruit collection, plus personal record history. Pauses are excluded from play time. A new personal best opens a record celebration and optional name entry. New personal records are saved; previously stored history remains available, and records from different rules versions are kept separate. Results are local, without a shared online ranking.
+
+The summary uses **«Лучший результат»** (Best result) and, when present, **«Архивный рекорд»** (Archived record). History cards show their difficulty without an internal rules-version label. Older stored results can exceed the current game's cap and are retained as history.
 
 **Reset statistics** asks for confirmation and removes stored history and records, including older ones. Settings and the current game are preserved.
 
@@ -111,7 +117,7 @@ Selections persist between launches:
 | Starting level | 1–15; default 1; applies to new games. |
 | Landing Ghost | On or off; off by default. |
 | Sound effects | Independent switch; on by default. |
-| Vibration | Independent switch; on by default. |
+| Vibration | Independent switch; on by default; strength 0–100%, default 100%. |
 | Music | Off, shuffle all, or one of eight tracks; shuffle all by default. |
 | Color theme | Twelve themes; Classic by default. |
 | Automatic updates | Requires explicit consent; can be disabled. |
@@ -152,7 +158,7 @@ Swypetris — бесплатная головоломка с падающими 
 2. Установите APK. Android может попросить разрешить установку из приложения, в котором вы открыли файл.
 3. Запустите Swypetris и нажмите **«Новая игра»**. В разделе **«Как играть»** есть иллюстрированная инструкция.
 
-При запуске вступительная анимация собирает логотип из блоков; её можно пропустить. В главном меню расположены анимированное иллюстрированное небо, надпись Swypetris и кнопки «Новая игра», «Продолжить», «Настройки», «Как играть», «Результаты», «Контакты» и «Выход». «Продолжить» доступна для незавершённой партии. Нажатие на номер версии в меню позволяет проверить обновления.
+При запуске вступительная анимация собирает логотип из блоков; её можно пропустить. В главном меню расположены анимированное иллюстрированное небо, надпись Swypetris и кнопки «Новая игра», «Продолжить», «Настройки», «Как играть», «Результаты», «Контакты» и «Выход». «Продолжить» восстанавливает незавершённую партию или сохранённую победу/открытку. Нажатие на номер версии в меню позволяет проверить обновления.
 
 ### Управление одним пальцем
 
@@ -218,7 +224,7 @@ steps = начальный уровень - 1 + (уровень - начальн
 - **Комбо:** последовательные размещения с очисткой добавляют `50 × номер комбо × уровень`; у первой очистки номер равен нулю.
 - **Perfect Clear:** полное опустошение логического поля добавляет 800 / 1 200 / 1 800 / 2 000 × уровень за одну / две / три / четыре строки. Для back-to-back Perfect Clear на четыре строки добавляется 3 200 × уровень вместо 2 000.
 - **Ручной спуск:** 1 очко за клетку. **Мгновенный бросок:** 2 очка за клетку. Эти награды не умножаются на уровень.
-- Автоматическое падение очков не даёт. Максимальный счёт — 2 147 483 647 очков.
+- Автоматическое падение очков не даёт. Максимальный счёт текущей партии — **999 999 очков**.
 
 ### Фрукты и победные круги
 
@@ -228,7 +234,11 @@ steps = начальный уровень - 1 + (уровень - начальн
 
 Сбор всех восьми завершает круг: первая победа наступает при **80 000 очков**. Отдельный экран победы показывает кубок из блоков, коллекцию фруктов, пройденный круг и общий счёт. Продолжение требует явного нажатия кнопки.
 
+Оба экрана победы показывают пиксельный салют: взлёт, короткую вспышку, разлёт искр, падение следов и затухание. В фоне анимация останавливается; при отключённых системных анимациях используется неподвижный вариант.
+
 Следующий круг начинается на пустом поле, сохраняя **очки, очищенные линии, уровень, начальный уровень и скорость**. Очки сверх порога сохраняются. Каждый следующий круг требует ещё 80 000 очков в общем счёте. Количество фруктов определяется суммарными очками, включая награды, пересекающие сразу несколько порогов.
+
+При достижении **999 999** партия завершается абсолютной победой, в том числе если награда превышает этот предел. Итоговый счёт ограничивается этим значением, следующий игровой круг не начинается. После ввода имени можно создать неподвижную победную открытку и поделиться ею через Android; сохранённая победа/открытка восстанавливается после повторного запуска.
 
 ### Пауза, автосохранение и личные результаты
 
@@ -237,6 +247,8 @@ steps = начальный уровень - 1 + (уровень - начальн
 Локальное автосохранение включает поле, активную и следующую фигуры, остаток мешка, состояние запаса, очки, линии, круги, начальный уровень, задержку фиксации и прогресс таймеров. Если Android пересоздаёт игровой экран, партия восстанавливается на паузе; после повторного запуска меню предлагает продолжить игру. Новая партия заменяет активное сохранение. Проигранную партию продолжить нельзя. Несовместимые старые активные сохранения отклоняются без удаления настроек и прежних результатов.
 
 Результаты показывают очки, линии, уровень, активное время и фрукты последней завершённой партии, а также историю личных рекордов. Паузы не входят в игровое время. Новый рекорд открывает поздравление и необязательный ввод имени. Новые личные рекорды сохраняются; прежняя история остаётся доступной, а рекорды разных версий правил учитываются отдельно. Результаты локальные, общей онлайн-таблицы нет.
+
+В сводке используются подписи **«Лучший результат»** и, при наличии старых данных, **«Архивный рекорд»**. Карточки истории показывают сложность без внутреннего номера версии правил. Старые сохранённые результаты могут превышать нынешний предел партии и остаются в истории.
 
 **«Сбросить статистику»** требует подтверждения и удаляет сохранённую историю и рекорды, включая старые. Настройки и текущая партия сохраняются.
 
@@ -249,7 +261,7 @@ steps = начальный уровень - 1 + (уровень - начальн
 | Начальный уровень | 1–15; по умолчанию 1; для новых партий. |
 | Тень падения | Включена или выключена; по умолчанию выключена. |
 | Звуковые эффекты | Независимый переключатель; по умолчанию включены. |
-| Вибрация | Независимый переключатель; по умолчанию включена. |
+| Вибрация | Независимый переключатель; по умолчанию включена; сила 0–100%, по умолчанию 100%. |
 | Музыка | Выключена, случайный порядок или одна из восьми композиций; по умолчанию случайный порядок. |
 | Цветовая тема | Двенадцать тем; по умолчанию классическая. |
 | Автоматические обновления | После явного согласия; можно отключить. |

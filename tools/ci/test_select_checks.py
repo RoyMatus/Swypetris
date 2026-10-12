@@ -77,7 +77,7 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(source=source):
                 result = select(["app/src/main/java/ru/itoltec/swypetris/" + source])
                 self.assertEqual("selected", result["mode"])
-                for name in ("VibrationSettingsTest", "GameUiTest", "MusicSettingsFruitTest",
+                for name in ("StartingLevelTest", "VibrationSettingsTest", "GameUiTest", "MusicSettingsFruitTest",
                              "StatisticsResetTest", "SmokeTest"):
                     self.assertIn("ru.itoltec.swypetris." + name, result["android"].split(","))
 
