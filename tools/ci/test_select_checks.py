@@ -146,6 +146,11 @@ class SelectionTests(unittest.TestCase):
         paths = {file.relative_to(source_dir).as_posix() for file in source_dir.rglob("*.kt")}
         self.assertFalse(paths - SOURCE_GROUPS.keys() - FULL_SOURCES)
 
+    def test_shared_material_owner_requires_full_regression(self):
+        result = select(["app/src/main/java/ru/itoltec/swypetris/BlockMaterial.kt"])
+        self.assertEqual("full", result["mode"])
+        self.assertEqual("", result["android"])
+
     def test_mapped_test_classes_exist(self):
         unit_dir = Path("app/src/test/java/ru/itoltec/swypetris")
         device_dir = Path("app/src/androidTest/java/ru/itoltec/swypetris")

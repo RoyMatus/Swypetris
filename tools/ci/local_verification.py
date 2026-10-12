@@ -17,6 +17,7 @@ from full_regression_proof import test_inventory
 OPT_IN = {
     "ru.itoltec.swypetris.EnergyScenarioTest#gameplay",
     "ru.itoltec.swypetris.FireworkRenderingTest#exportsDeterministicBoundaryFrames",
+    "ru.itoltec.swypetris.MaterialFrameEvidenceTest#realActivityFrames",
     "ru.itoltec.swypetris.SignedUpdateScenarioTest#liveGitHubDownloadChecksSignerBeforeInstaller",
 }
 QUALITY_TASKS = (":app:assembleDebug", ":app:assembleDebugAndroidTest", ":app:lintDebug", ":app:detekt", ":app:testDebugUnitTest", ":app:jacocoDebugUnitTestReport")

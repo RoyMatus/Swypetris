@@ -155,7 +155,14 @@ class LocalReportContractTests(unittest.TestCase):
         for identity in gate.OPT_IN:
             name, method = identity.split('#')
             gate.validate_skips([gate.ET.fromstring(f'<testcase classname="{name}" name="{method}"><skipped/></testcase>')])
-        for identity in ('ru.itoltec.swypetris.SmokeTest#launch', 'ru.itoltec.swypetris.UpdateCheckTest#checks', 'ru.itoltec.swypetris.EnergyScenarioTest#anotherMethod'):
+        for identity in (
+            'ru.itoltec.swypetris.SmokeTest#launch',
+            'ru.itoltec.swypetris.UpdateCheckTest#checks',
+            'ru.itoltec.swypetris.EnergyScenarioTest#anotherMethod',
+            'ru.itoltec.swypetris.MaterialRenderingTest#realActivityFrames',
+            'ru.itoltec.swypetris.MaterialFrameEvidenceTest#anotherMethod',
+            'ru.itoltec.swypetris.MaterialFrameEvidenceTest#realActivityFramesExtra',
+        ):
             name, method = identity.split('#')
             with self.assertRaises(ValueError):
                 gate.validate_skips([gate.ET.fromstring(f'<testcase classname="{name}" name="{method}"><skipped/></testcase>')])
