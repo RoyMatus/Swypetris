@@ -1,0 +1,30 @@
+{
+  "baselineCommit": "d1a02e62867ba74a82ccf5146d1fe08d02f8f5a4",
+  "captureHarnessSha256": "1c02970f62519e00715ed5ddb64fbb7ea0b468fee3c73598179d215f2aa3e0fb",
+  "renderer": [
+    {
+      "file": "VictoryFireworks.kt",
+      "sha256": "680ba440364faeb47f3d9764896bf1c107ace15c93f38ee4b9f9e2a9e8ffed8d"
+    },
+    {
+      "file": "VictoryMotion.kt",
+      "sha256": "e5a07b21ef68a0d3cf06c50c7c518fb26b9115114d4fff13d76eb753ebf64598"
+    }
+  ],
+  "conditions": {
+    "graphics": "software (GLES SwiftShader; Vulkan disabled)",
+    "resolution": "1080x1920",
+    "api": 35,
+    "platform": "Windows",
+    "memoryMiB": 2048,
+    "workers": 4,
+    "density": 420,
+    "cores": 4,
+    "emulatorMode": "headless"
+  },
+  "checks": {
+    "currentCapture": "1 passed, 0 skipped; 88.181 seconds invocation wall time; detekt passed",
+    "focusedJvm": "FireworkParticlesTest 3 and VictoryMotionTest 2 passed before the capture-only changes; reused for this checkpoint",
+    "baselineCapture": "1 passed, 0 skipped; 84 seconds Gradle wall time"
+  }
+}

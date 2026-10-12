@@ -10,37 +10,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.math.floor
+import kotlin.math.min
+import kotlin.math.roundToInt
 
-private const val SPARK_PIXEL_DP = 3
+private const val SPARK_PIXEL_DP = 2
 private const val ROCKET_TRAIL = 9
-private val WARM_SPARKS = listOf(Color(0xFFFFD44A), Color(0xFFFF8A32), Color(0xFFFF4267))
-private val COOL_SPARKS = listOf(Color(0xFF62EEFF), Color(0xFF249AFF), Color(0xFFFFD44A))
-private val PINK_SPARKS = listOf(Color(0xFFFFE875), Color(0xFFFF428A), Color(0xFFFF2262))
-private const val ABSOLUTE_BURST_RADIUS = .19f
-private const val ROUND_BURST_RADIUS = .28f
-private val ABSOLUTE_CENTERS = listOf(.18f, .5f, .82f)
+private const val UPPER_BURST_SCALE = .65f
+private const val UPPER_BURST_PARTICLES = 20
+private const val MAX_DISTANCE_HEIGHT = .45f
+private const val TRAIL_ALPHA = .65f
+private const val FLASH_CELLS = 3
+private const val MIN_PIXEL_COLUMNS = 140
+private const val SPARK_CLEARANCE_DP = 20
+private val WARM_SPARKS = listOf(Color(0xFFFFD44A), Color(0xFFFF8A32), Color(0xFFFFE875))
+private val COOL_SPARKS = listOf(Color(0xFF62EEFF), Color(0xFF249AFF), Color(0xFFCDF8FF))
+private val UPPER_SPARKS = listOf(Color(0xFFFFE875), Color(0xFFFFD44A), Color(0xFFFF8A32))
+private val ABSOLUTE_CENTERS = listOf(.18f, .82f, .5f)
+private val SPARK_HIGHLIGHT = Color(0xFFFFF5DA)
 
 internal enum class VictoryCelebration { ROUND, ABSOLUTE, POSTCARD }
 
-/** Ray directions never depend on time or canvas geometry. Preserve the original float rounding. */
-internal object FireworkDirections {
-    const val RAYS = 24
-    const val SPARKS_PER_RAY = 9
-    private val values = Array(RAYS) { ray ->
-        val angle = ray * 2.0 * PI / RAYS
-        Array(SPARKS_PER_RAY) { spark ->
-            val trailAngle = angle + spark * .035f * if (ray % 2 == 0) 1 else -1
-            Offset(cos(trailAngle).toFloat(), sin(trailAngle).toFloat())
-        }
-    }
-
-    operator fun get(ray: Int, spark: Int): Offset = values[ray][spark]
-}
-
-/** Approved orange/blue launches, expanding trails and falling embers, behind the fixed foreground. */
+/** Detached pixel sparks follow shared trajectories behind the protected foreground. */
 @Composable
 internal fun VictoryFireworks(celebration: VictoryCelebration = VictoryCelebration.ROUND, time: () -> Long) {
     Canvas(Modifier.fillMaxSize().testTag("victoryFireworks")) {
@@ -54,11 +45,13 @@ internal fun DrawScope.drawVictoryFireworks(elapsed: Long, celebration: VictoryC
     repeat(if (absolute) ABSOLUTE_CENTERS.size else 2) { burst ->
         val age = VictoryMotion.age(elapsed, burst)
         val center = centers?.get(burst) ?: Offset(size.width *
-            if (absolute) ABSOLUTE_CENTERS[burst] else if (burst == 0) .23f else .77f, size.height * .13f)
-        val colors = when (burst) { 0 -> WARM_SPARKS; 1 -> COOL_SPARKS; else -> PINK_SPARKS }
+            if (absolute) ABSOLUTE_CENTERS[burst] else if (burst == 0) .23f else .77f,
+            size.height * if (absolute && burst == 2) .075f else .13f)
+        val colors = when (burst) { 0 -> WARM_SPARKS; 1 -> COOL_SPARKS; else -> UPPER_SPARKS }
         if (age < VictoryMotion.LAUNCH_FRACTION) drawRocket(center, age, burst, colors)
-        else drawBurst(center, VictoryMotion.expansion(age), colors,
-            if (absolute) ABSOLUTE_BURST_RADIUS else ROUND_BURST_RADIUS)
+        else drawBurst(center, VictoryMotion.burstSeconds(age), burst, colors,
+            if (absolute && burst == 2) UPPER_BURST_SCALE else 1f,
+            if (centers == null) size.height * VictoryLayout.forHeight(size.height.toDp()).contentTop else size.height)
     }
 }
 
@@ -69,32 +62,45 @@ private fun DrawScope.drawRocket(center: Offset, age: Float, burst: Int, colors:
     repeat(ROCKET_TRAIL) { spark ->
         val progress = (launch - spark * .035f).coerceAtLeast(0f)
         val point = start + (center - start) * progress
-        drawRect(colors[spark % colors.size].copy(alpha = alpha * (1 - spark / ROCKET_TRAIL.toFloat())),
-            point, Size(2.dp.toPx(), 4.dp.toPx()))
+        drawSparkPixel(point, colors[spark % colors.size],
+            alpha * (1 - spark / ROCKET_TRAIL.toFloat()), sparkPixel())
     }
 }
 
-private fun DrawScope.drawBurst(center: Offset, progress: Float, colors: List<Color>, radiusFraction: Float) {
-    val growth = (progress / .45f).coerceIn(0f, 1f)
-    val radius = size.width * radiusFraction * (1 - (1 - growth) * (1 - growth))
-    val alpha = VictoryMotion.opacity(progress)
-    val pixel = SPARK_PIXEL_DP.dp.toPx()
-    repeat(FireworkDirections.RAYS) { ray ->
-        var previous: Offset? = null
-        repeat(FireworkDirections.SPARKS_PER_RAY) { spark ->
-            val distance = radius * (1 - spark * .09f) * if (ray % 2 == 0) 1f else .83f
-            val direction = FireworkDirections[ray, spark]
-            val point = center + Offset(direction.x * distance,
-                direction.y * distance + size.width * .14f * progress * progress)
-            previous?.let { outer ->
-                drawLine(colors[(ray + spark) % colors.size].copy(alpha = alpha * (1 - progress)),
-                    outer, point, strokeWidth = pixel * .6f)
+private fun DrawScope.drawBurst(center: Offset, seconds: Float, burst: Int, colors: List<Color>,
+    scale: Float, bottom: Float) {
+    val pixel = sparkPixel()
+    val distanceScale = min(size.width, size.height * MAX_DISTANCE_HEIGHT) * scale
+    val count = if (scale < 1f) UPPER_BURST_PARTICLES else FireworkParticles.COUNT
+    repeat(count) { index ->
+        val particle = FireworkParticles.spark(burst, index * FireworkParticles.COUNT / count)
+        val head = center + FireworkParticles.position(particle, seconds) * distanceScale
+        val clearance = ((bottom - head.y - pixel * 2) / SPARK_CLEARANCE_DP.dp.toPx()).coerceIn(0f, 1f)
+        val alpha = FireworkParticles.opacity(particle, seconds) * clearance
+        if (alpha > 0f) {
+            for (sample in particle.trailSamples - 1 downTo 1) {
+                val earlier = FireworkParticles.trailTime(seconds, sample)
+                if (earlier >= 0f) drawSparkPixel(
+                    center + FireworkParticles.position(particle, earlier) * distanceScale,
+                    colors[index % colors.size],
+                    alpha * (1 - sample / particle.trailSamples.toFloat()) * TRAIL_ALPHA, pixel)
             }
-            previous = point
-            drawRect(colors[(ray + spark) % colors.size].copy(alpha = alpha * (1 - spark * .12f)),
-                point, Size(pixel, pixel))
+            drawSparkPixel(head, colors[index % colors.size], alpha, pixel, 2)
+            drawSparkPixel(head, SPARK_HIGHLIGHT, alpha, pixel)
         }
     }
-    drawRect(colors.first().copy(alpha = alpha * (1 - progress)),
-        center - Offset(pixel, pixel), Size(pixel * 2, pixel * 2))
+    if (seconds < FireworkParticles.FLASH_SECONDS) {
+        val alpha = 1 - seconds / FireworkParticles.FLASH_SECONDS
+        drawSparkPixel(center - Offset(pixel, pixel), colors.first(), alpha, pixel, FLASH_CELLS)
+        drawSparkPixel(center, SPARK_HIGHLIGHT, alpha, pixel)
+    }
+}
+
+private fun DrawScope.sparkPixel(): Float =
+    SPARK_PIXEL_DP.dp.toPx().coerceAtMost(size.width / MIN_PIXEL_COLUMNS).roundToInt().coerceAtLeast(1).toFloat()
+
+/** Integer cells keep heads and broken historical trails crisp at any density. */
+private fun DrawScope.drawSparkPixel(point: Offset, color: Color, alpha: Float, pixel: Float, cells: Int = 1) {
+    val snapped = Offset(floor(point.x / pixel) * pixel, floor(point.y / pixel) * pixel)
+    drawRect(color.copy(alpha = alpha), snapped, Size(pixel * cells, pixel * cells))
 }
