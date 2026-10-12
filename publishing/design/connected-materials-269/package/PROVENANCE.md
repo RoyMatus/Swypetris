@@ -1,0 +1,13 @@
+# Artwork provenance
+
+The only visual references for this package are `references/sheet-1.png`, `sheet-2.png`, and `sheet-3.png`, the three final catalogues selected by the owner. No earlier material or field-background sheets are included or required.
+
+The production cutouts in `sources/` were prepared through built-in `imagegen`, using each corresponding catalogue as the edit target and `transparent_background: true`. Background removal is a generative preparation step, so the cutouts are not claimed to be pixel-identical copies of the original catalogues. Both selected references and resulting source art are retained for review. No fallback CLI/API model or third-party imagery was used.
+
+Prompt used independently for each sheet:
+
+> PRECISE BACKGROUND REMOVAL / PRODUCTION SPRITE EXTRACTION. Edit this exact supplied sheet, do not draw a new interpretation. Remove ALL dark background, ALL text (theme names, column letters), ALL table borders and separators, ALL presentation cast shadows outside the figures. Replace removed areas with genuine transparent alpha. Preserve exactly the 28 colored four-cell tetromino figures: 4 rows by 7 columns, same positions, same sizes, same shape, same material artwork pixels, same colors, same brightness and all detailed patterns. Preserve connected texture artwork across each figure and original thin internal cube seams. Keep all genuine dark material pixels within the blocks (especially wet asphalt), do not make dark material holes transparent. Empty areas outside the figure silhouettes must be fully transparent; no checkerboard drawn into the pixels, no labels. Keep the full original canvas dimensions and arrangement so individual sprites can be mechanically cropped. Do not add/delete any figure or cell. Do not recolor, restyle, simplify, invent material details or rearrange. Exact preservation of selected artwork is the objective; only presentation elements/background are removed.
+
+The packaging script performs deterministic crop/resample/packing from those fixed exported cutouts. Source bounds and per-cell crop coordinates are recorded in `manifest.json`. Colors are not recolored or multiplied by current palette pigments. Manifest hashes identify exact inputs and outputs.
+
+The first asset-validation attempt used alpha compositing to reconstruct four quadrants and detected a one-level RGB rounding difference in a partially transparent pixel. The validator was corrected to reassemble decoded quadrant samples directly, avoiding compositor premultiplication rounding. No artwork was recolored to satisfy the check. Final results are in `VALIDATION.json`.

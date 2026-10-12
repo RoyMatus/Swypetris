@@ -1,0 +1,18 @@
+{
+  "result": "passed",
+  "atlasCount": 12,
+  "figureCount": 84,
+  "canonicalCellCount": 336,
+  "quadrantFragmentsChecked": 1344,
+  "checks": [
+    "asset SHA256/size inventory",
+    "atlas dimensions and RGBA decoding",
+    "7 shapes x 4 canonical cells for every theme",
+    "exact visible RGBA equality of atlas cores and sprite cells",
+    "empty shape positions fully transparent",
+    "extruded edge padding equals corresponding edge pixels",
+    "four quadrant crops reconstruct each original textured cell exactly"
+  ],
+  "minimumOpaqueCellCoverage": 0.96624755859375,
+  "excluded": "No Android build, emulator test, runtime integration or automated aesthetic/edge-continuity claim."
+}
