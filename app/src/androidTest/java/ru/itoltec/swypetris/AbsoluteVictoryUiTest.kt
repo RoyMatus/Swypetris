@@ -177,8 +177,10 @@ class AbsoluteVictoryUiTest {
                 // Global Back is asynchronous: wait for this host before the next test launches.
                 val dismissed = automation.executeAndWaitForEvent({
                     assertTrue(automation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK))
-                }, { event -> event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-                    event.packageName?.toString() == app.packageName }, 10000)
+                }, { event ->
+                    event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+                        event.packageName?.toString() == app.packageName
+                }, 10000)
                 @Suppress("DEPRECATION")
                 dismissed.recycle()
                 // Backgrounding the app can legitimately return the model to the menu.
