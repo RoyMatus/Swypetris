@@ -62,6 +62,8 @@ exit /b 0
             [pscredential]::new($role, (ConvertTo-SecureString 'fixture-secret' -AsPlainText -Force)) | Export-Clixml (Join-Path $signing "$role.clixml")
         }
         $names = @('JAVA_HOME','ANDROID_HOME','RELEASE_FIXTURE_FAILURE','SWYPETRIS_STORE_FILE','SWYPETRIS_STORE_PASSWORD','SWYPETRIS_KEY_ALIAS')
+        New-Item -ItemType Directory -Path (Join-Path $root 'bin') | Out-Null
+        Set-Content (Join-Path $root 'bin/java.exe') 'toolchain fixture'
         $before = @{}
         foreach ($name in $names) { $before[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
         try {
@@ -141,6 +143,8 @@ Describe 'Local release verification' {
         $beforeJava = [Environment]::GetEnvironmentVariable('JAVA_HOME', 'Process')
         $beforeSdk = [Environment]::GetEnvironmentVariable('ANDROID_HOME', 'Process')
         $fixtureSdk = Join-Path $TestDrive 'sdk'
+        New-Item -ItemType Directory -Force (Join-Path $TestDrive 'bin') | Out-Null
+        Set-Content (Join-Path $TestDrive 'bin/java.exe') 'toolchain fixture'
         New-Item -ItemType Directory -Force (Join-Path $fixtureSdk 'build-tools/1.0.0') | Out-Null
         Set-Content (Join-Path $fixtureSdk 'build-tools/1.0.0/aapt.exe') 'not executed: Gradle fails first'
         try {

@@ -2,6 +2,10 @@
 
 All release builds and checks run locally. Verification and publication are separate commands; neither a version edit nor a merge automatically publishes anything. Complete the applicable [release compliance review](RELEASE-COMPLIANCE.md) before publication.
 
+Before delivery, run `tools/release/Test-DeliveryEnvironment.ps1 -JavaHome '<JDK 21>' -Python '<python executable>' -CheckSigning`. This read-only preflight reports checkout/head, stale tracking-main, executable readiness and repository permissions without printing credentials. Read access does not prove fine-grained token permission for a write endpoint. Use the existing HTTPS/GCM credential for automated Git transfers on this Windows host; preserve SSH configuration. `Invoke-CheckedGit` in `tools/Verification.psm1` checks exit codes and bounds process/output waiting. After an ambiguous push, inspect the remote SHA before retrying. Compare fetched main with the GitHub API before creating a branch.
+
+`Build-Release.ps1` accepts explicit `-JavaHome` (defaults to process JAVA_HOME). Signature verification always passes that JDK to apksigner and restores the previous process environment, including on failure. No machine/user environment change is needed.
+
 1. Check out the clean exact current remote `main` commit and finish `tools/Invoke-LocalChecks.ps1 -Mode Full` with all required local platform evidence and Sonar Quality Gate. See [CI.md](CI.md).
 2. Verify the signed candidate on an explicitly selected isolated emulator:
 

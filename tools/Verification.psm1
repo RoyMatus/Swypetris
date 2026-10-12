@@ -72,6 +72,40 @@ function Read-VerificationReports {
     }
     [pscustomobject]@{ tests = $cases.Count; passed = $cases.Count - $skipped; skipped = $skipped; failures = 0; classes = $actualClasses }
 }
+function Invoke-CheckedGit {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Project,
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [ValidateRange(1,600)][int]$TimeoutSeconds = 60)
+    $info = [Diagnostics.ProcessStartInfo]::new((Get-Command git -CommandType Application -ErrorAction Stop).Source)
+    $info.WorkingDirectory = (Resolve-Path -LiteralPath $Project).Path
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $info.Environment['GIT_TERMINAL_PROMPT'] = '0'
+    $info.Environment['GCM_INTERACTIVE'] = 'never'
+    foreach ($argument in $Arguments) { $info.ArgumentList.Add($argument) }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $info
+    try {
+        $null = $process.Start()
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        $completion = [Threading.Tasks.Task]::WhenAll([Threading.Tasks.Task[]]@($process.WaitForExitAsync(), $stdout, $stderr))
+        if (!$completion.Wait($TimeoutSeconds * 1000)) {
+            if (!$process.HasExited) { $process.Kill($true); $process.WaitForExit() }
+            $process.StandardOutput.Dispose()
+            $process.StandardError.Dispose()
+            throw 'Git operation timed out. Inspect remote identity before retrying a write.'
+        }
+        $text = $stdout.GetAwaiter().GetResult()
+        $null = $stderr.GetAwaiter().GetResult()
+        if ($process.ExitCode -ne 0) { throw "Git operation failed (exit $($process.ExitCode)); no result accepted." }
+        $text.TrimEnd()
+    } finally { $process.Dispose() }
+}
+
 function New-VerificationSummary {
     param([string]$Project, [string]$Suite, [string[]]$Classes, [string]$Serial, [datetime]$Started)
     $commit = & git -C $Project rev-parse HEAD 2>$null
@@ -83,4 +117,4 @@ function New-VerificationSummary {
         powershell = $PSVersionTable.PSVersion.ToString(); serial = $Serial
     }
 }
-Export-ModuleMember -Function Resolve-VerificationClasses, Get-VerificationTasks, Get-VerificationTaskOutcome, Read-VerificationReports, New-VerificationSummary
+Export-ModuleMember -Function Resolve-VerificationClasses, Get-VerificationTasks, Get-VerificationTaskOutcome, Read-VerificationReports, New-VerificationSummary, Invoke-CheckedGit

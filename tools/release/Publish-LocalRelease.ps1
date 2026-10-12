@@ -12,6 +12,7 @@ Import-Module (Join-Path $project 'tools/GitHub-Api.psm1') -Force
 Import-Module (Join-Path $project 'tools/LocalVerification.psm1') -Force
 . (Join-Path $PSScriptRoot 'Local-Release.ps1')
 . (Join-Path $PSScriptRoot 'Release-Verification.ps1')
+$JavaHome = Resolve-ReleaseJavaHome $JavaHome
 $proof = Get-Content -LiteralPath $ProvenancePath -Raw | ConvertFrom-Json
 Assert-LocalReleaseProvenance $proof $proof.commit $proof.version
 $directory = Split-Path -Parent (Resolve-Path -LiteralPath $ProvenancePath).Path

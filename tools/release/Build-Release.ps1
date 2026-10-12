@@ -1,6 +1,6 @@
 <# Выпускает APK с ключом приложения и AAB с отдельным ключом загрузки Google Play. #>
 param([string]$SigningDirectory = (Join-Path $env:USERPROFILE '.swypetris-signing'), [switch]$NoDaemon,
-    [ValidateRange(1,64)][int]$MaxWorkers)
+    [ValidateRange(1,64)][int]$MaxWorkers, [string]$JavaHome = $env:JAVA_HOME)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Release-Verification.ps1')
 . (Join-Path $PSScriptRoot 'Release-Transaction.ps1')
@@ -24,11 +24,12 @@ if ($versionLines.Count -ne 1 -or $versionLines[0] -notmatch '^swypetrisVersion\
 $version = $Matches[1]
 $destination = Join-Path $project "dist/$version"
 $transaction = $null
-$variables = @('SWYPETRIS_STORE_FILE','SWYPETRIS_STORE_PASSWORD','SWYPETRIS_KEY_ALIAS')
+$variables = @('SWYPETRIS_STORE_FILE','SWYPETRIS_STORE_PASSWORD','SWYPETRIS_KEY_ALIAS','JAVA_HOME')
 $previous = @{}
 foreach ($name in $variables) { $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 Push-Location $project
 try {
+    $env:JAVA_HOME = Resolve-ReleaseJavaHome $JavaHome
     $transaction = New-ReleaseTransaction -Project $project -Version $version
     $stage = $transaction.Stage
     $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
