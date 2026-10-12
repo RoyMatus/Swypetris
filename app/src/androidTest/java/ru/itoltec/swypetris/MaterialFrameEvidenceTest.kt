@@ -54,6 +54,11 @@ private object MaterialActivityFrames {
                     sample++
                     SystemClock.sleep(32)
                 }
+                instrumentation.runOnMainSync {
+                    val model = androidx.lifecycle.ViewModelProvider(activity)[GameViewModel::class.java]
+                    check(model.screen == GameScreen.PLAYING) { "Frame measurement left gameplay" }
+                    check(model.game?.victoryPending == false)
+                }
                 graphics(instrumentation, File(directory, "${palette.id}-gfx-frames.txt"), "framestats")
                 val screenshot = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
                 File(directory, "${palette.id}-real-activity.png").outputStream().use {
@@ -89,7 +94,7 @@ private object MaterialActivityFrames {
         }
         val field = GameViewModel::class.java.getDeclaredField("game\$delegate").apply { isAccessible = true }
         val state = field.get(model) as androidx.compose.runtime.MutableState<GameState?>
-        state.value = requireNotNull(model.game).copy(board = board, held = Tetromino.L, score = 254430)
+        state.value = requireNotNull(model.game).copy(board = board, held = Tetromino.L, score = 54430)
     }
 
     private fun graphics(instrumentation: android.app.Instrumentation, file: File, operation: String) {
