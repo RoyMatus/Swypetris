@@ -13,6 +13,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +35,14 @@ private const val WRAPPED_ACTION_FONT_SCALE = 1.4f
 @Composable
 internal fun MusicPicker(model: GameViewModel) {
     var expanded by remember { mutableStateOf(false) }
+    val host = LocalView.current
+    DisposableEffect(model, host) {
+        val listener = observeWindowFocus(host, model::onWindowFocusChanged)
+        model.onWindowFocusChanged(host.hasWindowFocus())
+        onDispose {
+            stopObservingWindowFocus(host, listener)
+        }
+    }
     val palette = LocalGamePalette.current
     val accent = palette.piece(Tetromino.J)
     val description = when (model.musicSelection) {
@@ -47,7 +57,9 @@ internal fun MusicPicker(model: GameViewModel) {
     }
     @Composable fun selector() {
         Box {
-            OutlinedButton(onClick = { expanded = true },
+            OutlinedButton(onClick = {
+                if (!expanded) { model.musicPopup.begin(); expanded = true }
+            },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("musicPicker"),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
@@ -57,10 +69,16 @@ internal fun MusicPicker(model: GameViewModel) {
                     overflow = TextOverflow.Ellipsis)
                 Text("▾")
             }
-        DropdownMenu(expanded, onDismissRequest = { expanded = false }, Modifier.heightIn(max = 360.dp)) {
+        DropdownMenu(expanded, onDismissRequest = { model.musicPopup.dismiss(); expanded = false },
+            Modifier.heightIn(max = 360.dp)) {
+            MusicPopupWindowFocus(model, host)
             MusicSelection.all.forEach { selection ->
                 DropdownMenuItem(text = { Text(selection.title) }, modifier = Modifier.testTag("music_${selection.id}"),
-                    onClick = { model.options.chooseMusic(selection); expanded = false })
+                    onClick = {
+                        model.options.chooseMusic(selection)
+                        model.musicPopup.dismiss()
+                        expanded = false
+                    })
             }
         }
         }
@@ -75,4 +93,31 @@ internal fun MusicPicker(model: GameViewModel) {
             Box(Modifier.width(158.dp)) { selector() }
         }
     }
+}
+
+/** Observe the popup's actual native window, retaining keyboard, Back and accessibility focus. */
+@Composable
+private fun MusicPopupWindowFocus(model: GameViewModel, host: android.view.View) {
+    val view = LocalView.current
+    DisposableEffect(model, view, host) {
+        val listener = observeWindowFocus(view, model.musicPopup::onFocusChanged)
+        model.musicPopup.attach(view)
+        onDispose {
+            stopObservingWindowFocus(view, listener)
+            model.musicPopup.detach(view, host)
+        }
+    }
+}
+
+private fun observeWindowFocus(view: android.view.View, onFocus: (Boolean) -> Unit):
+    android.view.ViewTreeObserver.OnWindowFocusChangeListener {
+    val listener = android.view.ViewTreeObserver.OnWindowFocusChangeListener(onFocus)
+    view.viewTreeObserver.addOnWindowFocusChangeListener(listener)
+    return listener
+}
+
+private fun stopObservingWindowFocus(view: android.view.View,
+    listener: android.view.ViewTreeObserver.OnWindowFocusChangeListener) {
+    val observer = view.viewTreeObserver
+    if (observer.isAlive) observer.removeOnWindowFocusChangeListener(listener)
 }

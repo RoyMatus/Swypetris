@@ -1,6 +1,9 @@
 package ru.itoltec.swypetris
 
 import android.app.Application
+import android.media.AudioTrack
+import android.media.AudioManager
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
@@ -35,9 +38,15 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.core.app.ActivityScenario
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.Lifecycle
+import androidx.test.espresso.Espresso
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertSame
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -227,6 +236,170 @@ class MusicSettingsFruitTest {
         }
     }
 
+    /** MainActivity forwards real popup window focus; playback must survive that transfer. */
+    @Test fun realMusicDropdownKeepsPreparedMenuPlaybackAndPosition() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            val model = realSettings(scenario)
+            val track = checkNotNull(menuTrack(model))
+            val audit = auditPlayback(model)
+            val selection = model.musicSelection
+            val playlist = field(audit.real, "playlist") as PlaylistClock
+            val occurrence = playlist.occurrence
+            for (dismissal in listOf("outside", "back", "same")) {
+                val position = track.playbackHeadPosition
+                audit.modes.clear()
+                openRealMusicDropdown()
+                var focused = true
+                scenario.onActivity { focused = it.hasWindowFocus() }
+                Log.i("MusicDropdownAudit", "dismissal=$dismissal activityFocused=$focused " +
+                    "trackState=${track.playState} position=$position")
+                assertFalse("Must exercise the native popup window", focused)
+                assertContinuousPlayback(model, track, audit, position)
+                when (dismissal) {
+                    "outside" -> tapOutsideNativeMusicPopup(scenario)
+                    "back" -> Espresso.pressBack()
+                    else -> compose.onNodeWithTag("music_${selection.id}").performScrollTo().performClick()
+                }
+                compose.onNodeWithTag("music_sugar_plum").assertDoesNotExist()
+                assertContinuousPlayback(model, track, audit, position)
+                assertEquals(selection, model.musicSelection)
+                assertEquals(occurrence, playlist.occurrence)
+                assertTrue(audit.selections.isEmpty())
+            }
+        }
+    }
+
+    /** Uses a real Activity lifecycle and real decoded AudioTrack while the popup owns focus. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 28)
+    @Test fun realMusicDropdownPreservesSelectionOffAndSystemGates() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            val model = realSettings(scenario)
+            val audit = auditPlayback(model)
+            val track = checkNotNull(menuTrack(model))
+            openRealMusicDropdown()
+            compose.onNodeWithTag("music_sugar_plum").performClick()
+            assertEquals(listOf(MusicSelection.Track(Song.SUGAR_PLUM)), audit.selections.toList())
+            openRealMusicDropdown()
+            compose.onNodeWithTag("music_off").performScrollTo().performClick()
+            assertEquals(MusicSelection.Off, model.musicSelection)
+            assertEquals(2, audit.selections.size)
+            assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
+            openRealMusicDropdown()
+            assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
+            Espresso.pressBack()
+            compose.onNodeWithTag("music_sugar_plum").assertDoesNotExist()
+            assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
+            assertEquals(MusicSelection.Off,
+                GameViewModel(ApplicationProvider.getApplicationContext(), null, { 1000L }, false).musicSelection)
+            openRealMusicDropdown()
+            compose.onNodeWithTag("music_shuffle").performScrollTo().performClick()
+            compose.waitUntil(5000) { track.playState == AudioTrack.PLAYSTATE_PLAYING }
+            openRealMusicDropdown()
+            scenario.moveToState(Lifecycle.State.CREATED)
+            assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
+            assertTrue(MusicMode.SILENT in audit.modes)
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.waitUntil(10000) { track.playState == AudioTrack.PLAYSTATE_PLAYING }
+            compose.onNodeWithTag("music_sugar_plum").assertIsDisplayed()
+            verifyScreenLock(track)
+            verifyNativeMusicFocusCallbacks(scenario, audit.real, track)
+        }
+    }
+
+    @androidx.annotation.RequiresApi(28)
+    private fun verifyScreenLock(track: AudioTrack) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        assertTrue(automation.performGlobalAction(
+            android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS))
+        try {
+            compose.waitUntil(10000) { track.playState == AudioTrack.PLAYSTATE_PAUSED }
+        } finally {
+            assertTrue(automation.performGlobalAction(
+                android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK))
+        }
+        compose.waitUntil(10000) { track.playState == AudioTrack.PLAYSTATE_PLAYING }
+        try {
+            assertTrue(automation.performGlobalAction(
+                android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN))
+            compose.waitUntil(10000) { track.playState == AudioTrack.PLAYSTATE_PAUSED }
+        } finally {
+            for (command in listOf("input keyevent KEYCODE_WAKEUP", "wm dismiss-keyguard")) {
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command))
+                    .use { it.readBytes() }
+            }
+        }
+        compose.waitUntil(10000) { track.playState == AudioTrack.PLAYSTATE_PLAYING }
+    }
+
+    private fun verifyNativeMusicFocusCallbacks(scenario: ActivityScenario<MainActivity>, music: GameMusic,
+        track: AudioTrack) {
+        scenario.onActivity {
+            val listener = field(music, "listener") as AudioManager.OnAudioFocusChangeListener
+            listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+            assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
+            listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+            assertEquals(AudioTrack.PLAYSTATE_PLAYING, track.playState)
+            val receiver = field(music, "noisyReceiver") as android.content.BroadcastReceiver
+            receiver.onReceive(it, android.content.Intent(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
+            assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
+            listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+            assertEquals(AudioTrack.PLAYSTATE_PAUSED, track.playState)
+        }
+    }
+
+    private fun realSettings(scenario: ActivityScenario<MainActivity>): GameViewModel {
+        lateinit var model: GameViewModel
+        scenario.onActivity {
+            model = ViewModelProvider(it)[GameViewModel::class.java]
+            model.navigation.finishLaunchIntro()
+            model.navigation.settings()
+        }
+        compose.waitUntil(10000) { menuTrack(model)?.playState == AudioTrack.PLAYSTATE_PLAYING }
+        return model
+    }
+
+    private fun openRealMusicDropdown() {
+        compose.onNodeWithTag("musicPicker").performScrollTo().performClick()
+        compose.onNodeWithTag("music_sugar_plum").performScrollTo().assertIsDisplayed()
+    }
+
+    private fun assertContinuousPlayback(model: GameViewModel, track: AudioTrack, audit: PlaybackAudit, position: Int) {
+        assertSame(track, menuTrack(model))
+        assertEquals(AudioTrack.PLAYSTATE_PLAYING, track.playState)
+        assertFalse("No brief silent mode during popup handover", MusicMode.SILENT in audit.modes)
+        compose.waitUntil(5000) { track.playbackHeadPosition > position }
+    }
+
+    private class PlaybackAudit(val real: GameMusic) : MusicPlayback by real {
+        val modes = java.util.concurrent.CopyOnWriteArrayList<MusicMode>()
+        val selections = java.util.concurrent.CopyOnWriteArrayList<MusicSelection>()
+        override fun setMode(next: MusicMode) { modes += next; real.setMode(next) }
+        override fun select(selection: MusicSelection) { selections += selection; real.select(selection) }
+    }
+
+    private fun auditPlayback(model: GameViewModel): PlaybackAudit {
+        val audit = PlaybackAudit(checkNotNull(realMusic(model)))
+        compose.runOnIdle {
+            model.javaClass.getDeclaredField("music").apply { isAccessible = true }.set(model, audit)
+        }
+        return audit
+    }
+
+    private fun realMusic(model: GameViewModel): GameMusic? = when (val playback = field(model, "music")) {
+        is PlaybackAudit -> playback.real
+        is GameMusic -> playback
+        else -> null
+    }
+
+    private fun menuTrack(model: GameViewModel): AudioTrack? {
+        val music = realMusic(model)
+        val player = music?.let { field(it, "menuPlayer") }
+        return player?.let { field(it, "track") as AudioTrack }
+    }
+
+    private fun field(owner: Any, name: String): Any? = owner.javaClass.getDeclaredField(name)
+        .apply { isAccessible = true }.get(owner)
+
     /** Captures the real portrait renderer for both approved mockup scenarios. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun approvedFruitHudScenariosExportPortraitEvidence() {
@@ -261,4 +434,47 @@ class MusicSettingsFruitTest {
         compose.runOnIdle { assertTrue(model.game!!.active.x<initialX) }
     }
 
+}
+
+/** Inject outside input through Android's window dispatcher, not a background Compose root. */
+private fun tapOutsideNativeMusicPopup(scenario: ActivityScenario<MainActivity>) {
+    val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+    val info = automation.serviceInfo
+    val flags = info.flags
+    info.flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+    automation.serviceInfo = info
+    try {
+        automation.waitForIdle(100, 5000)
+        val popupBounds = android.graphics.Rect()
+        val focused = checkNotNull(automation.windows.firstOrNull { it.isFocused })
+        focused.getBoundsInScreen(popupBounds)
+        lateinit var point: android.graphics.Point
+        scenario.onActivity { activity ->
+            val decor = activity.window.decorView
+            assertEquals(activity.packageName, focused.root?.packageName?.toString())
+            val location = IntArray(2)
+            decor.getLocationOnScreen(location)
+            val insets = androidx.core.view.ViewCompat.getRootWindowInsets(decor)?.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.systemBars()) ?: androidx.core.graphics.Insets.NONE
+            val safe = android.graphics.Rect(location[0] + insets.left, location[1] + insets.top,
+                location[0] + decor.width - insets.right, location[1] + decor.height - insets.bottom)
+            point = listOf(android.graphics.Point(safe.left + 1, safe.bottom - 1),
+                android.graphics.Point(safe.right - 1, safe.bottom - 1),
+                android.graphics.Point(safe.left + 1, safe.top + 1),
+                android.graphics.Point(safe.right - 1, safe.top + 1))
+                .first { !popupBounds.contains(it.x, it.y) }
+        }
+        val down = android.os.SystemClock.uptimeMillis()
+        for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+            val event = android.view.MotionEvent.obtain(down, android.os.SystemClock.uptimeMillis(), action,
+                point.x.toFloat(), point.y.toFloat(), 0)
+            try {
+                event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                assertTrue(automation.injectInputEvent(event, true))
+            } finally { event.recycle() }
+        }
+    } finally {
+        info.flags = flags
+        automation.serviceInfo = info
+    }
 }
