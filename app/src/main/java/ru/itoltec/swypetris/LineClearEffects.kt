@@ -13,7 +13,7 @@ private const val CLEAR_ROW_CENTER = .5f
 
 /** Drawn inside the board's clip; trajectories are cached once and sampled without randomization. */
 internal fun DrawScope.lineClearEffects(shards: List<ClearShard>, rows: List<Int>, palette: GamePalette,
-    origin: Offset, cell: Size, elapsed: Long, reducedMotion: Boolean) {
+    origin: Offset, cell: Size, elapsed: Long, reducedMotion: Boolean, material: BlockMaterial? = null) {
     val highlight = LineClearAnimation.highlight(elapsed)
     if (highlight > 0f) {
         val gap = minOf(cell.width, cell.height) * .07f
@@ -45,7 +45,7 @@ internal fun DrawScope.lineClearEffects(shards: List<ClearShard>, rows: List<Int
                 shard.velocityY * progress + 3.2f * progress * progress) * cell.height)
         rotate(shard.rotation * progress, center) {
             bevelBlock(center - Offset(side / 2, side / 2), Size(side, side),
-                palette.piece(shard.type), palette.finish, palette.texture, alpha)
+                palette.piece(shard.type), palette.finish, palette.texture, alpha, material = material)
         }
     }
 }

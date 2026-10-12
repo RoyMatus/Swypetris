@@ -27,6 +27,15 @@ any comparison; software drawing is not device GPU presentation performance.
 The normal regression skips this export and does not record video or wait for
 real-time celebration cycles.
 
+`MaterialRenderingTest` checks the twelve themes and Settings cards at two portrait
+sizes/font scales. Pass `materialCapture=true` for source-comparison PNG exports
+or `materialBenchmark=true` for cached software-draw timings. The separate
+`MaterialFrameEvidenceTest` requires `materialFrames=true`: it measures the real
+Activity with its production clock, a dense board and alternating movement input,
+and exports screenshots/gfxinfo. It has no ComposeTestRule and is skipped in
+ordinary regression. Headless emulator and shared-host overhead are part of the
+measurement; no physical-device frame rate or baseline speedup is implied.
+
 For development checkpoints, use `./tools/Verify-Tests.ps1 -Suite FocusedJvm -TestClass BackgroundCropTest,GameEngineTest` or `-Suite FocusedAndroid -TestClass SmokeTest -Serial emulator-5554`. Short and fully qualified class names are accepted; methods, wildcards, missing classes and empty selections are rejected. Focused JVM runs do not generate whole-app coverage. The original `Fast` and `Android` modes remain available; Fast builds debug, runs debug lint/JVM/JaCoCo, but does not run detekt, Sonar or device tests and does not replace the mandatory final local gate.
 
 Every completed Gradle invocation writes a timestamped log and JSON summary in ignored `app/build/verification/`: elapsed seconds, source commit/dirty flag, selected classes, Java/PowerShell/OS and explicit emulator identity when applicable. XML reports must be complete, successful and match a focused selection. Fresh execution rejects stale reports. JVM `UP-TO-DATE` and `FROM-CACHE` results are explicitly labelled reused rather than freshly executed; device tests must execute. Failed invocations retain their log and failed summary. No environment dump or signing credentials are recorded.
@@ -118,6 +127,8 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `HistoryCacheTest` | Android storage: initialization read, malformed/legacy rows and cache invalidation | Keep; validates the cached record owner's lifecycle. |
 | `HoldIntegrationTest` | Compose/storage: gesture, persisted Hold, replacement isolation and feedback suppression | Keep; platform interaction complements JVM Hold rules. |
 | `HudLayeringTest` | Compose pixels: piece/fruit intersection and score segment visibility | Keep; preserves drawing order and theme contrast. |
+| `MaterialRenderingTest` | Compose pixels/state: twelve materials/fields, seven pigments, light score without backdrop, two portrait sizes/fonts and every Settings card | Keep; optional source-comparison exports/software timings supplement assertions. |
+| `MaterialFrameEvidenceTest` | Opt-in native Activity: production clock, dense board, movement, gfxinfo and screenshots | Skip ordinarily; no Compose test clock, and no timing threshold on a shared software emulator. |
 | `MenuSkyTest` | Compose pixels/lifecycle: anchored artwork, background/disabled clocks and isolated wide crop | Keep; its 640×360 artwork crop is not a landscape application viewport. |
 | `NextQueueTest` | Compose bounds: spawn-position preview and suppression when obstructed | Keep; separate from saved seven-bag ordering. |
 | `ShareAppTest` | Android QR/intent: canonical store/latest-release links and sharing | Keep; decoded content and platform payloads. |

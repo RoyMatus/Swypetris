@@ -136,7 +136,7 @@ class HudLayeringTest {
                 val column = (local / cellWidth).toInt()
                 val inCell = local - column * cellWidth
                 if (column !in 6..9 || inCell < gap + 2 || inCell > cellWidth - gap - 2) continue
-                assertEquals("Fruit drawn over active piece at $w/$row/$x/$y", cleanPiece[x, y], covered[x, y])
+                assertOpaquePiece("Fruit drawn over active piece at $w/$row/$x/$y", cleanPiece[x, y], covered[x, y])
                 if (unobscured[x, y] != cleanPiece[x, y]) {
                     if (labels.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
                         y + root.top)) }) coveredLabels++
@@ -146,6 +146,15 @@ class HudLayeringTest {
             }
         }
             return coveredIcons to coveredLabels
+        }
+
+        /** Bitmap filtering can round a channel by one byte across composited captures. */
+        private fun assertOpaquePiece(message: String, expected: Color, actual: Color) {
+            val tolerance = 1f / 255f + .000001f
+            assertEquals(message, expected.red, actual.red, tolerance)
+            assertEquals(message, expected.green, actual.green, tolerance)
+            assertEquals(message, expected.blue, actual.blue, tolerance)
+            assertEquals(message, expected.alpha, actual.alpha, 0f)
         }
     }
 }

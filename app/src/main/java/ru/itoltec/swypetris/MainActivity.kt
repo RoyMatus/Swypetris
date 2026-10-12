@@ -326,6 +326,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
         // Only the falling piece crosses over fruit pixels; score and Hold stay in front.
         pieceOverlay()
         DigitalScore(displayed, scoreHeight,
+            color = if (LocalGamePalette.current.light && !scoreBackdrop) Color.Black else Color.White,
             modifier = Modifier.align(Alignment.TopEnd)
                 .offset(x = -rightMargin, y = scoreTop)
                 .graphicsLayer {
@@ -425,6 +426,7 @@ private fun holdAreaWidth(held: Tetromino?, maxWidth: Dp, height: Dp): Dp {
 @Composable
 private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
     val palette = LocalGamePalette.current
+    val material = blockMaterial(palette)
     Canvas(modifier.semantics {
         contentDescription = when {
             held == null -> "Запас пуст, обмен доступен"
@@ -446,7 +448,7 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
         clipRect {
             cells.forEach {
                 block(Cell(it.x - firstColumn, it.y - firstRow), palette.piece(held), palette.finish,
-                    palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f)
+                    palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f, material = material)
             }
         }
     }

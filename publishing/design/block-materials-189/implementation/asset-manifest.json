@@ -1,0 +1,230 @@
+[
+  {
+    "style": "classic",
+    "heroCrop": [
+      32,
+      97,
+      314,
+      381
+    ],
+    "backgroundCrop": [
+      13,
+      94,
+      250,
+      1489
+    ],
+    "materialSheetSha256": "01cfd265746e5770226c371c873543fcce7752aaafab7fc8f734c556df8f5171",
+    "backgroundSheetSha256": "a62e1997193ce1692171c06a748f01bef64d1c9a69af8d310c9baceade60b011",
+    "atlasSha256": "9e18fd84541350d170eb3c3c88812ebe39c36ab05a4944793d246e30b3bd6e39",
+    "backgroundSha256": "dd38792c4fb756583d3f3e5bff4d091adc1d303665fd89bbb2f8ed39f5a0c572"
+  },
+  {
+    "style": "monokai",
+    "heroCrop": [
+      801,
+      95,
+      1083,
+      380
+    ],
+    "backgroundCrop": [
+      266,
+      94,
+      503,
+      1489
+    ],
+    "materialSheetSha256": "01cfd265746e5770226c371c873543fcce7752aaafab7fc8f734c556df8f5171",
+    "backgroundSheetSha256": "a62e1997193ce1692171c06a748f01bef64d1c9a69af8d310c9baceade60b011",
+    "atlasSha256": "2657b9d83bcc7b33c4c5cb6bdcc7516f172e699b381857de854e76b296e837e3",
+    "backgroundSha256": "a1b9bdab9ae0fcab9035b93a585c040dff0cea92da51e5f9c216c297b66bb1b9"
+  },
+  {
+    "style": "gruvbox",
+    "heroCrop": [
+      32,
+      576,
+      313,
+      869
+    ],
+    "backgroundCrop": [
+      519,
+      94,
+      757,
+      1489
+    ],
+    "materialSheetSha256": "01cfd265746e5770226c371c873543fcce7752aaafab7fc8f734c556df8f5171",
+    "backgroundSheetSha256": "a62e1997193ce1692171c06a748f01bef64d1c9a69af8d310c9baceade60b011",
+    "atlasSha256": "d82d8561c914b00abf36b233af0e201c90a40e4ce6dc4ea0184473a5b4e00758",
+    "backgroundSha256": "a061e55ef5eac7e1ee5ecef2e9b81c68f0035ba1e8bc02ffa0767472f0a2116e"
+  },
+  {
+    "style": "vscode",
+    "heroCrop": [
+      799,
+      577,
+      1083,
+      870
+    ],
+    "backgroundCrop": [
+      772,
+      94,
+      1009,
+      1489
+    ],
+    "materialSheetSha256": "01cfd265746e5770226c371c873543fcce7752aaafab7fc8f734c556df8f5171",
+    "backgroundSheetSha256": "a62e1997193ce1692171c06a748f01bef64d1c9a69af8d310c9baceade60b011",
+    "atlasSha256": "12fba80c92be73cff3b65f789ecdde603fd2846536349cf38a34ec651d43be9e",
+    "backgroundSha256": "46e2a2762af3ad13988eaeeae3c30e1ae629b7424933a7f05cf9f7e47d3f39d4"
+  },
+  {
+    "style": "dracula",
+    "heroCrop": [
+      37,
+      65,
+      393,
+      456
+    ],
+    "backgroundCrop": [
+      24,
+      64,
+      377,
+      992
+    ],
+    "materialSheetSha256": "3398bd29908d573ce89ddb28f7c31d06db3028655fa86be818a0e9a7b7f29768",
+    "backgroundSheetSha256": "38f4faa740f70c3e256b2e7cc13dd932fe43bd925a674a082137ed8d14faef78",
+    "atlasSha256": "b3924445ccf3c09ba37d01c5465494fbaf689d7b928f7aa3fdc34cb05a975c79",
+    "backgroundSha256": "fb68703ed70e14546708155992e9a756f3bc1137df1cd9b267681ac4f963f742"
+  },
+  {
+    "style": "nord",
+    "heroCrop": [
+      809,
+      65,
+      1162,
+      456
+    ],
+    "backgroundCrop": [
+      403,
+      64,
+      755,
+      992
+    ],
+    "materialSheetSha256": "3398bd29908d573ce89ddb28f7c31d06db3028655fa86be818a0e9a7b7f29768",
+    "backgroundSheetSha256": "38f4faa740f70c3e256b2e7cc13dd932fe43bd925a674a082137ed8d14faef78",
+    "atlasSha256": "790762b4f32b30a7d1a9de305e43299c314ee0de663629432a68dfd2d953d982",
+    "backgroundSha256": "a915bc7728511590f7254b7c73f0d925ed978fe511e02551eb676828c22897c1"
+  },
+  {
+    "style": "solarized_light",
+    "heroCrop": [
+      37,
+      576,
+      393,
+      968
+    ],
+    "backgroundCrop": [
+      781,
+      64,
+      1134,
+      992
+    ],
+    "materialSheetSha256": "3398bd29908d573ce89ddb28f7c31d06db3028655fa86be818a0e9a7b7f29768",
+    "backgroundSheetSha256": "38f4faa740f70c3e256b2e7cc13dd932fe43bd925a674a082137ed8d14faef78",
+    "atlasSha256": "e3ca18a9ed344e8a01719bd67b175e0749aa86b9a00890b095085b73c67151b9",
+    "backgroundSha256": "d0670629cafeba59dab37910c74fa3a607899170dce33d85df681ed7576e57fc"
+  },
+  {
+    "style": "solarized_dark",
+    "heroCrop": [
+      806,
+      575,
+      1166,
+      973
+    ],
+    "backgroundCrop": [
+      1160,
+      64,
+      1513,
+      992
+    ],
+    "materialSheetSha256": "3398bd29908d573ce89ddb28f7c31d06db3028655fa86be818a0e9a7b7f29768",
+    "backgroundSheetSha256": "38f4faa740f70c3e256b2e7cc13dd932fe43bd925a674a082137ed8d14faef78",
+    "atlasSha256": "39dc7bc19626fdd99723c1a78adc266bcc7b11a15e808c9c5ce07c2819c64a71",
+    "backgroundSha256": "25d746c12557e2189c9716600e6b4374302cc60c225310ed8e1e69710b20b0fe"
+  },
+  {
+    "style": "github_light",
+    "heroCrop": [
+      24,
+      88,
+      313,
+      458
+    ],
+    "backgroundCrop": [
+      31,
+      60,
+      412,
+      899
+    ],
+    "materialSheetSha256": "473030b8b6c448dcfb7c7fc8a8f6693d0234cc6fd52345212e23e7869019b97b",
+    "backgroundSheetSha256": "e5bc29e333cb85b9c1582ca699dc2be072e25433b22cd8a94ed2e04ba21c2e7c",
+    "atlasSha256": "f5736ca7119ebc13aae146e3a5267109c586d2d73e25d88e3a77e6a513138007",
+    "backgroundSha256": "fd421ad7b1823e7c7ca6e2b15f10f26a64809af149fe5405d4359fddae13cc95"
+  },
+  {
+    "style": "tokyo_night",
+    "heroCrop": [
+      793,
+      89,
+      1082,
+      457
+    ],
+    "backgroundCrop": [
+      447,
+      60,
+      829,
+      899
+    ],
+    "materialSheetSha256": "473030b8b6c448dcfb7c7fc8a8f6693d0234cc6fd52345212e23e7869019b97b",
+    "backgroundSheetSha256": "e5bc29e333cb85b9c1582ca699dc2be072e25433b22cd8a94ed2e04ba21c2e7c",
+    "atlasSha256": "5ac3d0a48482f983aa5077e98344c422f9fe85fdee7959e1dafcbf9ac50581b7",
+    "backgroundSha256": "60fb0ed39b3e8894cdb24b43018a1d9d845e2cb5e20a04fd2eb76ef5a8aea3f4"
+  },
+  {
+    "style": "catppuccin",
+    "heroCrop": [
+      24,
+      592,
+      313,
+      963
+    ],
+    "backgroundCrop": [
+      864,
+      60,
+      1245,
+      899
+    ],
+    "materialSheetSha256": "473030b8b6c448dcfb7c7fc8a8f6693d0234cc6fd52345212e23e7869019b97b",
+    "backgroundSheetSha256": "e5bc29e333cb85b9c1582ca699dc2be072e25433b22cd8a94ed2e04ba21c2e7c",
+    "atlasSha256": "f697cb06b1d76dc26df6aa547637de814bd89464fefddae254a9d820f4cbd8d4",
+    "backgroundSha256": "977183277f0de368ad53a05c5dc98ff18f029dddbde3d9eeee33cd15d60db5e9"
+  },
+  {
+    "style": "synthwave_84",
+    "heroCrop": [
+      793,
+      594,
+      1083,
+      956
+    ],
+    "backgroundCrop": [
+      1281,
+      60,
+      1659,
+      899
+    ],
+    "materialSheetSha256": "473030b8b6c448dcfb7c7fc8a8f6693d0234cc6fd52345212e23e7869019b97b",
+    "backgroundSheetSha256": "e5bc29e333cb85b9c1582ca699dc2be072e25433b22cd8a94ed2e04ba21c2e7c",
+    "atlasSha256": "4fedc70fb4da4b173a876248dc81fee679e362abcbc73101cc1abdcdc84ae2c2",
+    "backgroundSha256": "8e1e804b6145dee231569b71ea7b6176c9cb0f07e10379d568eba9c9a22610f0"
+  }
+]

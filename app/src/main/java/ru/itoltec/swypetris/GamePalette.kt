@@ -191,6 +191,7 @@ internal fun PalettePicker(model: GameViewModel) {
             GamePalettes.all.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     row.forEach { item ->
+                        val material = blockMaterial(item)
                         val selected = palette.id == item.id
                         val shape = RoundedCornerShape(9.dp)
                         Column(Modifier.weight(1f).heightIn(min = 96.dp)
@@ -208,7 +209,7 @@ internal fun PalettePicker(model: GameViewModel) {
                                     bevelBlock(Offset(column * side + side * PREVIEW_BLOCK_X_OFFSET,
                                         row * side + side * PREVIEW_BLOCK_Y_OFFSET),
                                         Size(side * PREVIEW_BLOCK_FILL, side * PREVIEW_BLOCK_FILL),
-                                            item.pieces[index], item.finish, item.texture)
+                                            item.pieces[index], item.finish, item.texture, material = material)
                                 }
                             }
                             Text(item.title, Modifier.fillMaxWidth().testTag("palette_${item.id}_label"),
@@ -226,11 +227,15 @@ internal fun PalettePicker(model: GameViewModel) {
     }
 }
 
-/** Draws a block with a flat center, narrow beveled edges, and a thin outline. */
+/** Shares approved filled artwork while retaining outline semantics and existing menu decoration. */
 internal fun DrawScope.bevelBlock(at: Offset, size: Size, color: Color, finish: BlockFinish, texture: BlockTexture,
-    alpha: Float = 1f, outline: Boolean = false) {
+    alpha: Float = 1f, outline: Boolean = false, material: BlockMaterial? = null) {
     if (outline) {
         drawRect(color.copy(alpha = alpha), at, size, style = Stroke(1.5.dp.toPx()))
+        return
+    }
+    if (material != null) {
+        material.draw(this, at, size, color, alpha)
         return
     }
     val b = minOf(size.width, size.height) * .08f

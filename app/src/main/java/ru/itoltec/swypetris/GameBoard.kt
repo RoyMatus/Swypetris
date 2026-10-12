@@ -28,6 +28,7 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
     reducedMotion: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
         !android.animation.ValueAnimator.areAnimatorsEnabled()) {
     val palette = LocalGamePalette.current
+    val material = blockMaterial(palette)
     val shards = remember(state.board, state.clearingRows, state.completedClears) { LineClearAnimation.shards(state) }
     Canvas(Modifier.fillMaxSize()
         .semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
@@ -41,9 +42,9 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
 
             drawSpawnPreview(state, palette, origin, cell)
 
-            drawSettledCells(state, palette, origin, cell, elapsed, reducedMotion)
+            drawSettledCells(state, palette, material, origin, cell, elapsed, reducedMotion)
             if (state.clearingRows.isNotEmpty()) clipRect(top = origin.y) {
-                lineClearEffects(shards, state.clearingRows, palette, origin, cell, elapsed, reducedMotion)
+                lineClearEffects(shards, state.clearingRows, palette, origin, cell, elapsed, reducedMotion, material)
             }
 
             if (!state.gameOver && state.clearingRows.isEmpty()) {
@@ -53,7 +54,7 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
                             alpha = palette.ghostAlpha, outline = true)
                     }
                 }
-                if (drawActive) fallingPiece(state, palette, origin, cell)
+                if (drawActive) fallingPiece(state, palette, material, origin, cell)
             }
         }
     }
@@ -63,17 +64,20 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
 @Composable
 internal fun ActivePiece(state: GameState, geometry: GameplayGeometry) {
     val palette = LocalGamePalette.current
+    val material = blockMaterial(palette)
     Canvas(Modifier.fillMaxSize().testTag("activePiece")) {
         val cell = Size(size.width / BoardGeometry.WIDTH, geometry.cellHeight)
         val origin = Offset(0f, geometry.gridTop + SPAWN_DISPLAY_ROWS * cell.height)
-        clipRect(top = geometry.safeTop) { fallingPiece(state, palette, origin, cell) }
+        clipRect(top = geometry.safeTop) { fallingPiece(state, palette, material, origin, cell) }
     }
 }
 
-private fun DrawScope.fallingPiece(state: GameState, palette: GamePalette, origin: Offset, cell: Size) {
+private fun DrawScope.fallingPiece(state: GameState, palette: GamePalette, material: BlockMaterial,
+    origin: Offset, cell: Size) {
     if (!state.gameOver && state.clearingRows.isEmpty()) {
         state.active.cells().filter { it.y in -SPAWN_DISPLAY_ROWS until BoardGeometry.VISIBLE_ROWS }.forEach {
-            block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell)
+            block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell,
+                material = material)
         }
     }
 }
@@ -81,11 +85,11 @@ private fun DrawScope.fallingPiece(state: GameState, palette: GamePalette, origi
 /** Draws a colored cell with spacing using independent width and height. */
 internal fun DrawScope.block(cell: Cell, color: Color, finish: BlockFinish, texture: BlockTexture, origin: Offset,
     step: Size,
-    alpha: Float = 1f, outline: Boolean = false) {
+    alpha: Float = 1f, outline: Boolean = false, material: BlockMaterial? = null) {
     val gap = minOf(step.width, step.height) * 0.07f
     val topLeft = origin + Offset(cell.x * step.width + gap, cell.y * step.height + gap)
     val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
-    bevelBlock(topLeft, blockSize, color, finish, texture, alpha, outline)
+    bevelBlock(topLeft, blockSize, color, finish, texture, alpha, outline, material)
 }
 
 private fun DrawScope.drawSpawnPreview(state: GameState, palette: GamePalette, origin: Offset, cell: Size) {
@@ -104,7 +108,8 @@ private fun DrawScope.drawSpawnPreview(state: GameState, palette: GamePalette, o
         }
 }
 
-private fun DrawScope.drawSettledCells(state: GameState, palette: GamePalette, origin: Offset, cell: Size,
+private fun DrawScope.drawSettledCells(state: GameState, palette: GamePalette, material: BlockMaterial,
+    origin: Offset, cell: Size,
     elapsed: Long, reducedMotion: Boolean) {
     val firstVisibleSpawnRow = -SPAWN_DISPLAY_ROWS
     state.board.forEachIndexed { rowIndex, row ->
@@ -114,7 +119,7 @@ private fun DrawScope.drawSettledCells(state: GameState, palette: GamePalette, o
             !(rowIndex in state.clearingRows && LineClearAnimation.isRemoved(elapsed))) {
             row.forEachIndexed { x, type ->
                 if (type != null) block(Cell(x, logicalY), palette.piece(type), palette.finish,
-                    palette.texture, origin + Offset(0f, shift * cell.height), cell)
+                    palette.texture, origin + Offset(0f, shift * cell.height), cell, material = material)
             }
         }
     }
