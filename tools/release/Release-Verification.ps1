@@ -20,25 +20,42 @@ function Assert-ReleaseCertificate {
     }
 }
 
+function Resolve-ReleaseJavaHome {
+    param([string]$JavaHome)
+    if (!$JavaHome -or !(Test-Path -LiteralPath (Join-Path $JavaHome 'bin/java.exe') -PathType Leaf)) {
+        throw 'A Windows JDK with bin/java.exe is required; supply -JavaHome explicitly.'
+    }
+    (Resolve-Path -LiteralPath $JavaHome).Path
+}
+
 function Assert-ReleaseSignature {
     param([string]$Artifact, [string]$Role, [string]$Project, [string]$JavaHome, [string]$BuildTools)
-    $keytool = Join-Path $JavaHome 'bin/keytool.exe'
-    $public = @(& $keytool '-J-Duser.language=en' -printcert -file (Join-Path $Project "publishing/certificates/swypetris-$Role.pem") 2>&1)
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot read the checked-in public signing certificate.' }
-    $expected = Get-ReleaseCertificateDigest -Output $public
-    if ($Role -eq 'app') {
-        $output = @(& (Join-Path $BuildTools 'apksigner.bat') verify --print-certs $Artifact 2>&1)
-        if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
-        $actual = Get-ReleaseCertificateDigest -Output $output -Apk
-    } else {
-        $output = @(& (Join-Path $JavaHome 'bin/jarsigner.exe') '-J-Duser.language=en' -verify $Artifact 2>&1)
-        if ($LASTEXITCODE -ne 0 -or ($output -join "`n") -notmatch '(?m)^jar verified\.\s*$') { throw 'AAB signature verification failed.' }
-        $output = @(& $keytool '-J-Duser.language=en' -printcert -jarfile $Artifact 2>&1)
-        if ($LASTEXITCODE -ne 0) { throw 'Cannot read the AAB signing certificate.' }
-        $actual = Get-ReleaseCertificateDigest -Output $output
+    $JavaHome = Resolve-ReleaseJavaHome $JavaHome
+    $previousJava = $env:JAVA_HOME
+    try {
+        # apksigner.bat selects Java from the child process environment, not this parameter.
+        $env:JAVA_HOME = $JavaHome
+        $keytool = Join-Path $JavaHome 'bin/keytool.exe'
+        $public = @(& $keytool '-J-Duser.language=en' -printcert -file (Join-Path $Project "publishing/certificates/swypetris-$Role.pem") 2>&1)
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot read the checked-in public signing certificate.' }
+        $expected = Get-ReleaseCertificateDigest -Output $public
+        if ($Role -eq 'app') {
+            $output = @(& (Join-Path $BuildTools 'apksigner.bat') verify --print-certs $Artifact 2>&1)
+            if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
+            $actual = Get-ReleaseCertificateDigest -Output $output -Apk
+        } else {
+            $output = @(& (Join-Path $JavaHome 'bin/jarsigner.exe') '-J-Duser.language=en' -verify $Artifact 2>&1)
+            if ($LASTEXITCODE -ne 0 -or ($output -join "`n") -notmatch '(?m)^jar verified\.\s*$') { throw 'AAB signature verification failed.' }
+            $output = @(& $keytool '-J-Duser.language=en' -printcert -jarfile $Artifact 2>&1)
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot read the AAB signing certificate.' }
+            $actual = Get-ReleaseCertificateDigest -Output $output
+        }
+        Assert-ReleaseCertificate -Actual $actual -Expected $expected
+        $actual
+    } finally {
+        if ($null -eq $previousJava) { Remove-Item Env:JAVA_HOME -ErrorAction SilentlyContinue }
+        else { $env:JAVA_HOME = $previousJava }
     }
-    Assert-ReleaseCertificate -Actual $actual -Expected $expected
-    $actual
 }
 
 function Assert-PublishedReleaseFiles {

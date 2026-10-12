@@ -20,6 +20,16 @@ function New-GitHubClient {
     }
 }
 
+function Get-GitHubRepositoryCapabilities {
+    param([Parameter(Mandatory)]$Client)
+    $repository = Invoke-RestMethod -Uri "https://api.github.com/repos/$($Client.Repository)" -Headers $Client.Headers -TimeoutSec 30 -ErrorAction Stop
+    if ($repository.full_name -cne $Client.Repository) { throw 'Repository identity mismatch.' }
+    # Repository permissions are advisory: fine-grained tokens may further restrict endpoint writes.
+    [pscustomobject]@{ repository=$repository.full_name; readable=$true;
+        push=[bool]$repository.permissions.push; admin=[bool]$repository.permissions.admin;
+        writeEndpointAccess='Not proven by a read-only probe' }
+}
+
 function Invoke-GitHubRest {
     param(
         [Parameter(Mandatory)]$Client,
@@ -29,12 +39,12 @@ function Invoke-GitHubRest {
     )
 
     $uri = "https://api.github.com/repos/$($Client.Repository)/$Path"
-    if ($Method -eq 'Get') { return Invoke-RestMethod -Uri $uri -Method Get -Headers $Client.Headers }
+    if ($Method -eq 'Get') { return Invoke-RestMethod -Uri $uri -Method Get -Headers $Client.Headers -TimeoutSec 60 -ErrorAction Stop }
     if ($PSBoundParameters.ContainsKey('Body')) {
         $json = $Body | ConvertTo-Json -Depth 12 -Compress
-        return Invoke-RestMethod -Uri $uri -Method $Method -Headers $Client.Headers -ContentType 'application/json' -Body $json
+        return Invoke-RestMethod -Uri $uri -Method $Method -Headers $Client.Headers -ContentType 'application/json' -Body $json -TimeoutSec 60 -ErrorAction Stop
     }
-    return Invoke-RestMethod -Uri $uri -Method $Method -Headers $Client.Headers
+    return Invoke-RestMethod -Uri $uri -Method $Method -Headers $Client.Headers -TimeoutSec 60 -ErrorAction Stop
 }
 
 function Invoke-GitHubRestPaged {
@@ -171,4 +181,4 @@ function Get-GitHubRequiredChecks {
     $checks | Sort-Object context, app_id -Unique
 }
 
-Export-ModuleMember -Function Get-GitHubRequiredChecks, New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Get-GitHubPullRequestBlockers, Assert-GitHubPullRequestReady
+Export-ModuleMember -Function Get-GitHubRequiredChecks, New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Get-GitHubPullRequestBlockers, Assert-GitHubPullRequestReady, Get-GitHubRepositoryCapabilities
