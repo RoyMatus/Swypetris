@@ -23,7 +23,7 @@ private val digitSegments = intArrayOf(0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d,
 
 /** Narrow seven-segment digits, including faint inactive segments, without a bundled font. */
 @Composable
-internal fun DigitalScore(value: String, height: Dp, modifier: Modifier = Modifier) {
+internal fun DigitalScore(value: String, height: Dp, modifier: Modifier = Modifier, color: Color = Color.White) {
     Canvas(modifier.size(height * digitalScoreAspect(value.length), height)
         .semantics { text = AnnotatedString(value) }) {
         value.forEachIndexed { index, character ->
@@ -43,7 +43,7 @@ internal fun DigitalScore(value: String, height: Dp, modifier: Modifier = Modifi
                 RectSegment(Offset(x + thickness / 2, middle - thickness / 2), width - thickness, thickness)
             )
             segments.forEachIndexed { segment, bounds ->
-                digitalSegment(bounds, Color.White.copy(alpha = if (mask and (1 shl segment) != 0) 1f else .10f))
+                digitalSegment(bounds, color.copy(alpha = if (mask and (1 shl segment) != 0) 1f else .10f))
             }
         }
     }

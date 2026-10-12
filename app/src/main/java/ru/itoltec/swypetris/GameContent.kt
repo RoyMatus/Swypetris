@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -73,6 +74,7 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
         WindowInsets.statusBars.union(WindowInsets.displayCutout).getTop(this).toDp()
     }
     val palette = LocalGamePalette.current
+    CompositionLocalProvider(LocalBlockMaterial provides blockMaterial(palette)) {
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.glass,
         lerp(palette.glass, palette.background, if (palette.light) LIGHT_GLASS_BLEND else DARK_GLASS_BLEND))))
         .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))) {
@@ -89,6 +91,7 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
                 LaunchedEffect(boardWidth) { model.input.setBoardWidth(boardWidth.value) }
 
                 if (model.background.enabled) BackgroundImageLayer(model.background.image, model.background.crop)
+                else ThemedFieldBackground(palette)
                 GameGridBackground(geometry)
                 Box(Modifier.fillMaxSize()) {
                     Board(state, landingHint = landing, clearTime = { model.clearElapsedMillis }, geometry = geometry,
@@ -112,6 +115,7 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
         // Use the same content-local coordinates for drawing and gameplay gestures.
         Box(Modifier.fillMaxSize().padding(top = safeTop).testTag("gameArea")
             .gamePointerInput(model, playing, density)) {}
+    }
     }
 }
 
