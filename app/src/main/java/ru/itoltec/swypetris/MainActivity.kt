@@ -122,6 +122,7 @@ private const val SCORE_PULSE_LEG_MILLIS = 110
 private const val FRUIT_COLUMNS = 2
 private const val MAX_HUD_FRUIT_SIZE_DP = 30f
 private const val PHOTO_SCORE_BACKDROP_ALPHA = .72f
+private val fruitBadgeBackground = Color(0xFF242424)
 
 
 /** Current score scale exposed for testing a single pulse with a controlled Compose clock. */
@@ -379,7 +380,7 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
                             val badgeLeft = minOf(itemWidth - badgeWidth, iconSize - badgeWidth * .5f)
                             Box(Modifier.align(Alignment.BottomStart).offset(x = badgeLeft)
                                 .size(badgeWidth, badgeHeight)
-                                .background(Color(0xFF242424), RoundedCornerShape(4.dp)),
+                                .background(fruitBadgeBackground, RoundedCornerShape(4.dp)),
                                 contentAlignment = Alignment.Center) {
                                 Text(label, maxLines = 1, softWrap = false,
                                     style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,

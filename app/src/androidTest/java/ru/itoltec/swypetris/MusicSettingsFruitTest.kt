@@ -178,43 +178,51 @@ class MusicSettingsFruitTest {
             compose.runOnIdle { width = w; fontScale = scale }
             for (count in 0..8) {
                 compose.runOnIdle { score = count * GameRules.FRUIT_STEP }
-                if (count == 0) {
-                    compose.onNodeWithTag("earnedFruits").assertDoesNotExist()
-                    continue
-                }
-                val first = compose.onNodeWithTag("earnedFruitIcon_CHERRY").fetchSemanticsNode().boundsInRoot
-                for (index in 0 until count) {
-                    val fruit = Fruit.entries[index]
-                    val icon = compose.onNodeWithTag("earnedFruitIcon_${fruit.name}")
-                        .fetchSemanticsNode().boundsInRoot
-                    if (index % 2 == 0) assertEquals(first.left, icon.left, 1f)
-                    else assertTrue(icon.left > first.right)
-                }
+                assertFruitColumns(count)
             }
             for (palette in listOf("classic", "solarized_light", "github_light")) {
                 compose.runOnIdle { theme = palette; score = GameRules.FRUIT_STEP }
-                var previousIcon: androidx.compose.ui.geometry.Rect? = null
-                var previousDigits = 0
-                for (quantity in listOf(1, 2, 3, 4, 9, 10, 13)) {
-                    compose.runOnIdle { score = ((quantity - 1) * 8 + 1) * GameRules.FRUIT_STEP }
-                    val icon = compose.onNodeWithTag("earnedFruitIcon_CHERRY")
-                        .fetchSemanticsNode().boundsInRoot
-                    // Score digit growth can widen the existing score lane; badge growth cannot.
-                    val digits = score.toString().length
-                    if (digits == previousDigits) assertEquals(previousIcon, icon)
-                    previousIcon = icon
-                    previousDigits = digits
-                    val badge = compose.onNodeWithTag("earnedFruitCount_CHERRY")
-                    if (quantity == 1) badge.assertDoesNotExist()
-                    else {
-                        badge.assertTextEquals(quantity.toString())
-                            .assertContentDescriptionEquals("${Fruit.CHERRY.title}: $quantity")
-                        val cell = compose.onNodeWithTag("earnedFruit_CHERRY").fetchSemanticsNode().boundsInRoot
-                        val bounds = badge.fetchSemanticsNode().boundsInRoot
-                        assertTrue(bounds.left >= cell.left && bounds.right <= cell.right + 1f)
-                        assertTrue(bounds.top >= cell.top && bounds.bottom <= cell.bottom + 1f)
-                    }
-                }
+                assertStableFruitBadges { value -> compose.runOnIdle { score = value } }
+            }
+        }
+    }
+
+    private fun assertFruitColumns(count: Int) {
+        if (count == 0) {
+            compose.onNodeWithTag("earnedFruits").assertDoesNotExist()
+            return
+        }
+        val first = compose.onNodeWithTag("earnedFruitIcon_CHERRY").fetchSemanticsNode().boundsInRoot
+        for (index in 0 until count) {
+            val fruit = Fruit.entries[index]
+            val icon = compose.onNodeWithTag("earnedFruitIcon_${fruit.name}")
+                .fetchSemanticsNode().boundsInRoot
+            if (index % 2 == 0) assertEquals(first.left, icon.left, 1f)
+            else assertTrue(icon.left > first.right)
+        }
+    }
+
+    private fun assertStableFruitBadges(updateScore: (Int) -> Unit) {
+        var previousIcon: androidx.compose.ui.geometry.Rect? = null
+        var previousDigits = 0
+        for (quantity in listOf(1, 2, 3, 4, 9, 10, 13)) {
+            val value = ((quantity - 1) * 8 + 1) * GameRules.FRUIT_STEP
+            updateScore(value)
+            val icon = compose.onNodeWithTag("earnedFruitIcon_CHERRY").fetchSemanticsNode().boundsInRoot
+            // Score digit growth can widen the existing score lane; badge growth cannot.
+            val digits = value.toString().length
+            if (digits == previousDigits) assertEquals(previousIcon, icon)
+            previousIcon = icon
+            previousDigits = digits
+            val badge = compose.onNodeWithTag("earnedFruitCount_CHERRY")
+            if (quantity == 1) badge.assertDoesNotExist()
+            else {
+                badge.assertTextEquals(quantity.toString())
+                    .assertContentDescriptionEquals("${Fruit.CHERRY.title}: $quantity")
+                val cell = compose.onNodeWithTag("earnedFruit_CHERRY").fetchSemanticsNode().boundsInRoot
+                val bounds = badge.fetchSemanticsNode().boundsInRoot
+                assertTrue(bounds.left >= cell.left && bounds.right <= cell.right + 1f)
+                assertTrue(bounds.top >= cell.top && bounds.bottom <= cell.bottom + 1f)
             }
         }
     }
