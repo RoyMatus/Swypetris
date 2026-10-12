@@ -90,7 +90,7 @@ Every **10,000 points** awards the next fruit:
 
 Collecting all eight completes a round: the first victory threshold is **80,000 points**. A dedicated victory screen shows a block-built trophy, the fruit collection, the completed round, and total score. Play waits for an explicit continuation action.
 
-Both victory screens use pixel fireworks with launches, compact flashes, outward sparks, falling trails and fading embers. Animation stops while backgrounded and has a static fallback when system animations are disabled.
+Both victory screens use pixel fireworks with launches, compact flashes, outward sparks, falling trails and fading embers. Animation stops while backgrounded; on Android 8.0+, disabled system animations use a static fallback.
 
 The next round starts on an empty board while retaining **score, cleared lines, level, starting level, and speed**. Points above the threshold are retained. Each additional round requires another 80,000 cumulative points. Fruit quantities reflect total score, including awards that cross several thresholds at once.
 
@@ -234,7 +234,7 @@ steps = начальный уровень - 1 + (уровень - начальн
 
 Сбор всех восьми завершает круг: первая победа наступает при **80 000 очков**. Отдельный экран победы показывает кубок из блоков, коллекцию фруктов, пройденный круг и общий счёт. Продолжение требует явного нажатия кнопки.
 
-Оба экрана победы показывают пиксельный салют: взлёт, короткую вспышку, разлёт искр, падение следов и затухание. В фоне анимация останавливается; при отключённых системных анимациях используется неподвижный вариант.
+Оба экрана победы показывают пиксельный салют: взлёт, короткую вспышку, разлёт искр, падение следов и затухание. В фоне анимация останавливается; на Android 8.0+ при отключённых системных анимациях используется неподвижный вариант.
 
 Следующий круг начинается на пустом поле, сохраняя **очки, очищенные линии, уровень, начальный уровень и скорость**. Очки сверх порога сохраняются. Каждый следующий круг требует ещё 80 000 очков в общем счёте. Количество фруктов определяется суммарными очками, включая награды, пересекающие сразу несколько порогов.
 
