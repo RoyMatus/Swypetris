@@ -150,14 +150,18 @@ class VictoryThemeIntegrationTest {
             }
         }
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
+        val actualPhases = mutableListOf<Long>()
         val frames = listOf(300L, 2300L, 4000L).map { time ->
             compose.mainClock.advanceTimeBy(time - compose.mainClock.currentTime)
             compose.waitForIdle()
+            actualPhases += model.victoryAnimationMillis
             capture()
         }
+        frames.zipWithNext().forEach { (before, after) ->
+            assertTrue("Fireworks must visibly change between storyboard stages: $actualPhases",
+                changedPixels(before, after, .03f, .38f, .02f, .45f, 4) > 20)
+        }
         for (frame in frames.drop(1)) {
-            assertTrue("Fireworks must visibly change between storyboard stages",
-                changedPixels(frames.first(), frame, .03f, .38f, .02f, .25f, 4) > 20)
             assertEquals("Trophy must stay fixed over the animated background", 0,
                 changedPixels(frames.first(), frame, .42f, .58f, .25f, .34f, 4))
             assertEquals("Victory controls must stay fixed", 0,

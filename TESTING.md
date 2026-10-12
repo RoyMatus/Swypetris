@@ -15,6 +15,18 @@ in memory when assertions consume them; successful-run PNG exports solely for
 manual inspection are omitted. Failure diagnostics, publication-media generation
 and explicit numeric measurement exports retain their separate purposes.
 
+`FireworkRenderingTest.exportsDeterministicBoundaryFrames` is an opt-in export:
+pass `fireworkPhase=<artifact-label>` to retain deterministic renderer frames,
+`fireworkBenchmark=true` for software-draw timing and approximate process-wide
+ART allocation/GC counters, and `victoryCapture=true` for recordings of both
+actual victory Activities with their production animation clock. The recording
+exports portrait video frames, observed phase timestamps, graphics statistics
+and a static postcard. These are review/measurement artifacts, not automated
+judgments of beauty. Recording and emulator overhead must be reported alongside
+any comparison; software drawing is not device GPU presentation performance.
+The normal regression skips this export and does not record video or wait for
+real-time celebration cycles.
+
 For development checkpoints, use `./tools/Verify-Tests.ps1 -Suite FocusedJvm -TestClass BackgroundCropTest,GameEngineTest` or `-Suite FocusedAndroid -TestClass SmokeTest -Serial emulator-5554`. Short and fully qualified class names are accepted; methods, wildcards, missing classes and empty selections are rejected. Focused JVM runs do not generate whole-app coverage. The original `Fast` and `Android` modes remain available; Fast builds debug, runs debug lint/JVM/JaCoCo, but does not run detekt, Sonar or device tests and does not replace the mandatory final local gate.
 
 Every completed Gradle invocation writes a timestamped log and JSON summary in ignored `app/build/verification/`: elapsed seconds, source commit/dirty flag, selected classes, Java/PowerShell/OS and explicit emulator identity when applicable. XML reports must be complete, successful and match a focused selection. Fresh execution rejects stale reports. JVM `UP-TO-DATE` and `FROM-CACHE` results are explicitly labelled reused rather than freshly executed; device tests must execute. Failed invocations retain their log and failed summary. No environment dump or signing credentials are recorded.
@@ -50,6 +62,7 @@ Baseline on 2026-09-28: 12 JVM test classes with 65 JUnit methods; 21 Android te
 | `GestureControllerTest` | JVM: taps, rotation, reversal, diagonal protection, hard drop, piece change, clear | Keep; each boundary or state transition protects a distinct input behavior. |
 | `LaunchIntroMotionTest` | JVM: deterministic animation progress and haptic values | Keep; device tests check rendered intro and lifecycle. |
 | `LineClearAnimationTest` | JVM: column order, timing boundary, completed-clear count | Keep; UI clear test checks pause and rendering. |
+| `VictoryMotionTest` / `FireworkParticlesTest` | JVM: periodic timing, elapsed-time partitioning across wrap, spark rise/fall, outward deceleration, varied finite lifetimes and historical trail ordering | Keep; verifies motion contracts without pinning the previous renderer's ray coordinates or judging appearance. |
 | `PlaylistClockTest` | JVM: seeded shuffle, exact gaps, pause, legacy selection | Keep; injected clock avoids wall time. |
 | `RecordHistoryTest` | JVM: strict records per difficulty and legacy group | Keep; UI results test checks persistence and entry. |
 | `RewardsTest` | JVM: fruit thresholds, fixed line reward, cell-based gesture steps | Keep; all three are current rules, though the gesture case spans two areas. |

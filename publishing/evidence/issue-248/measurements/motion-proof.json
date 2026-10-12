@@ -1,0 +1,42 @@
+[
+  {
+    "variant": "before",
+    "scene": "round",
+    "durationMillis": 10661,
+    "observedWrapsMillis": [
+      4302,
+      8543
+    ],
+    "mp4Sha256": "23d630e346fddc5f5ce9d5f21860f0288d1b89d737b75153dc6ef41fe51fc6c2"
+  },
+  {
+    "variant": "before",
+    "scene": "absolute",
+    "durationMillis": 9983,
+    "observedWrapsMillis": [
+      4332,
+      8611
+    ],
+    "mp4Sha256": "aaba9be41d91f682cb77efc712d971e41f14607f27bee20a6a019aab74dd3982"
+  },
+  {
+    "variant": "after",
+    "scene": "round",
+    "durationMillis": 10541,
+    "observedWrapsMillis": [
+      4268,
+      8563
+    ],
+    "mp4Sha256": "56fcec82d675ba50f459da17df221a410eb855e0334536200d3ad374044cf78a"
+  },
+  {
+    "variant": "after",
+    "scene": "absolute",
+    "durationMillis": 9755,
+    "observedWrapsMillis": [
+      4314,
+      8624
+    ],
+    "mp4Sha256": "8dab17480a9325f44efb503dd2d6ea5040e926377ffae3c475ed16901dd874fd"
+  }
+]
