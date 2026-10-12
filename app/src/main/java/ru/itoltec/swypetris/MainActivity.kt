@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
@@ -45,7 +46,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -122,6 +122,7 @@ private const val SCORE_PULSE_LEG_MILLIS = 110
 private const val FRUIT_COLUMNS = 2
 private const val MAX_HUD_FRUIT_SIZE_DP = 30f
 private const val PHOTO_SCORE_BACKDROP_ALPHA = .72f
+private val fruitBadgeBackground = Color(0xFF242424)
 
 
 /** Current score scale exposed for testing a single pulse with a controlled Compose clock. */
@@ -353,35 +354,45 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
     }
 }
 
-/** Keeps two complete fruit/quantity pairs per row inside the score width. */
+/** Fixed cells keep fruit columns and icon bounds stable as quantities change. */
 @Composable
 private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
     val fruits = Fruit.entries.zip(state.fruitCounts).filter { it.second > 0 }
     if (fruits.isEmpty()) return
     val itemWidth = ((width - FRUIT_GAP.dp * (FRUIT_COLUMNS - 1)) / FRUIT_COLUMNS).coerceAtLeast(1.dp)
-    val iconSize = minOf(MAX_HUD_FRUIT_SIZE_DP.dp, itemWidth * .65f).coerceAtLeast(1.dp)
+    val iconSize = minOf(MAX_HUD_FRUIT_SIZE_DP.dp, itemWidth * .8f).coerceAtLeast(1.dp)
+    val badgeWidth = minOf(18.dp, itemWidth * .52f)
+    val badgeHeight = minOf(14.dp, badgeWidth)
+    val itemHeight = iconSize + badgeHeight * .5f
     Column(modifier, verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
         fruits.chunked(FRUIT_COLUMNS).forEach { row ->
             Row(Modifier.fillMaxWidth(),
-                horizontalArrangement = if (row.size == 1) Arrangement.Center else Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 row.forEach { (fruit, count) ->
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier.widthIn(max = itemWidth).testTag("earnedFruit_${fruit.name}")) {
+                    Box(Modifier.size(itemWidth, itemHeight).testTag("earnedFruit_${fruit.name}")) {
+                        FruitIcon(fruit, Modifier.align(Alignment.TopStart).size(iconSize)
+                            .testTag("earnedFruitIcon_${fruit.name}"))
                         if (count > 1) {
-                            val label = "$count ×"
-                            val font = fittedHudFont(label, 10.sp,
-                                (itemWidth - iconSize - 2.dp).coerceAtLeast(1.dp))
-                            Text(label, maxLines = 1, softWrap = false,
-                                style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
-                                    platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                                color = LocalGamePalette.current.text,
-                                modifier = Modifier.testTag("earnedFruitCount_${fruit.name}"))
+                            val label = count.toString()
+                            val font = fittedHudFont(label, 10.sp, (badgeWidth - 2.dp).coerceAtLeast(1.dp),
+                                badgeHeight)
+                            val badgeLeft = minOf(itemWidth - badgeWidth, iconSize - badgeWidth * .5f)
+                            Box(Modifier.align(Alignment.BottomStart).offset(x = badgeLeft)
+                                .size(badgeWidth, badgeHeight)
+                                .background(fruitBadgeBackground, RoundedCornerShape(4.dp)),
+                                contentAlignment = Alignment.Center) {
+                                Text(label, maxLines = 1, softWrap = false,
+                                    style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
+                                        platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                                    color = Color.White,
+                                    modifier = Modifier.testTag("earnedFruitCount_${fruit.name}")
+                                        .semantics { contentDescription = "${fruit.title}: $count" })
+                            }
                         }
-                        FruitIcon(fruit, Modifier.size(iconSize).testTag("earnedFruitIcon_${fruit.name}"))
                     }
                 }
+                repeat(FRUIT_COLUMNS - row.size) { Spacer(Modifier.size(itemWidth, itemHeight)) }
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
@@ -8,10 +8,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.bottom
@@ -35,6 +40,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
+import android.graphics.Bitmap
 
 /** Проверяет прослушивание, миграцию выбора и компактную колонку наград без пользовательских данных. */
 class MusicSettingsFruitTest {
@@ -136,7 +143,7 @@ class MusicSettingsFruitTest {
             }
             val hold = compose.onNodeWithTag("holdPreview").fetchSemanticsNode().boundsInRoot
             if (n == 9) {
-                compose.onNodeWithTag("earnedFruitCount_CHERRY").assertTextEquals("2 ×")
+                compose.onNodeWithTag("earnedFruitCount_CHERRY").assertTextEquals("2")
                 Fruit.entries.drop(1).forEach { fruit ->
                     compose.onNodeWithTag("earnedFruitCount_${fruit.name}").assertDoesNotExist()
                 }
@@ -148,6 +155,93 @@ class MusicSettingsFruitTest {
                 assertEquals(score.left, fruits.left, 1f)
                 assertEquals(score.right, fruits.right, 1f)
                 assertTrue(hold.right <= score.left + 1f)
+            }
+        }
+    }
+
+    /** Odd rows reserve the right cell; badge growth cannot move or resize artwork. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
+    @Test fun fruitColumnsAndBadgesStayStableAcrossCountsAndPortraitSizes() {
+        var score by mutableIntStateOf(0)
+        var width by mutableIntStateOf(240)
+        var fontScale by mutableFloatStateOf(1f)
+        var theme by mutableStateOf("classic")
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale),
+                LocalGamePalette provides GamePalettes.find(theme)) {
+                Box(Modifier.size(width.dp, 640.dp)) {
+                    GameHud(GameState(active = Piece(Tetromino.T), next = Tetromino.O, score = score))
+                }
+            }
+        }
+        for (w in listOf(240, 320)) for (scale in listOf(1f, 2f)) {
+            compose.runOnIdle { width = w; fontScale = scale }
+            for (count in 0..8) {
+                compose.runOnIdle { score = count * GameRules.FRUIT_STEP }
+                assertFruitColumns(count)
+            }
+            for (palette in listOf("classic", "solarized_light", "github_light")) {
+                compose.runOnIdle { theme = palette; score = GameRules.FRUIT_STEP }
+                assertStableFruitBadges { value -> compose.runOnIdle { score = value } }
+            }
+        }
+    }
+
+    private fun assertFruitColumns(count: Int) {
+        if (count == 0) {
+            compose.onNodeWithTag("earnedFruits").assertDoesNotExist()
+            return
+        }
+        val first = compose.onNodeWithTag("earnedFruitIcon_CHERRY").fetchSemanticsNode().boundsInRoot
+        for (index in 0 until count) {
+            val fruit = Fruit.entries[index]
+            val icon = compose.onNodeWithTag("earnedFruitIcon_${fruit.name}")
+                .fetchSemanticsNode().boundsInRoot
+            if (index % 2 == 0) assertEquals(first.left, icon.left, 1f)
+            else assertTrue(icon.left > first.right)
+        }
+    }
+
+    private fun assertStableFruitBadges(updateScore: (Int) -> Unit) {
+        var previousIcon: androidx.compose.ui.geometry.Rect? = null
+        var previousDigits = 0
+        for (quantity in listOf(1, 2, 3, 4, 9, 10, 13)) {
+            val value = ((quantity - 1) * 8 + 1) * GameRules.FRUIT_STEP
+            updateScore(value)
+            val icon = compose.onNodeWithTag("earnedFruitIcon_CHERRY").fetchSemanticsNode().boundsInRoot
+            // Score digit growth can widen the existing score lane; badge growth cannot.
+            val digits = value.toString().length
+            if (digits == previousDigits) assertEquals(previousIcon, icon)
+            previousIcon = icon
+            previousDigits = digits
+            val badge = compose.onNodeWithTag("earnedFruitCount_CHERRY")
+            if (quantity == 1) badge.assertDoesNotExist()
+            else {
+                badge.assertTextEquals(quantity.toString())
+                    .assertContentDescriptionEquals("${Fruit.CHERRY.title}: $quantity")
+                val cell = compose.onNodeWithTag("earnedFruit_CHERRY").fetchSemanticsNode().boundsInRoot
+                val bounds = badge.fetchSemanticsNode().boundsInRoot
+                assertTrue(bounds.left >= cell.left && bounds.right <= cell.right + 1f)
+                assertTrue(bounds.top >= cell.top && bounds.bottom <= cell.bottom + 1f)
+            }
+        }
+    }
+
+    /** Captures the real portrait renderer for both approved mockup scenarios. */
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
+    @Test fun approvedFruitHudScenariosExportPortraitEvidence() {
+        var state by mutableStateOf(GameState(active = Piece(Tetromino.S, y = 8), next = Tetromino.T,
+            held = Tetromino.J, score = 54430))
+        val model = GameViewModel(ApplicationProvider.getApplicationContext(), state, { 1000L }, false)
+        compose.setContent { GameContent(model, state, 0.dp) }
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val directory = File(app.getExternalFilesDir(null), "fruit-hud-259").apply { mkdirs() }
+        for (value in listOf(54430, 254430)) {
+            compose.runOnIdle { state = state.copy(score = value) }
+            compose.onNodeWithTag("score").assertTextEquals(value.toString())
+            val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+            File(directory, "$value.png").outputStream().use {
+                assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
             }
         }
     }
