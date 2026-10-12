@@ -80,7 +80,7 @@ class HudLayeringTest {
                 compose.runOnIdle { state = state.copy(active = Piece(Tetromino.I, x = 6, y = row - 2)) }
                 val covered = compose.onRoot().captureToImage().toPixelMap()
                 val labels = Fruit.entries.map {
-                    compose.onNodeWithTag("earnedFruitCount_${it.name}").assertTextEquals("3 ×")
+                    compose.onNodeWithTag("earnedFruitCount_${it.name}").assertTextEquals("3")
                         .fetchSemanticsNode().boundsInRoot
                 }
                 val icons = Fruit.entries.map { compose.onNodeWithContentDescription(it.title)
