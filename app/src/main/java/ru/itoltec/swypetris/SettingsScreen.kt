@@ -150,7 +150,9 @@ internal fun SettingsDivider(accent: Color) {
 @Composable
 private fun StartingLevelSetting(model: GameViewModel) {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        SettingsLabel("Начальный уровень: ${model.startingLevel}", "Для новой партии. Скорость Marathon, максимум 20G.")
+        SettingsLabel("Начальный уровень: ${model.startingLevel}",
+            "Чем выше начальный уровень, тем быстрее падают фигуры. Применяется к новой игре.",
+            subtitleMaxLines = Int.MAX_VALUE)
         Slider(value = model.startingLevel.toFloat(),
             onValueChange = { model.options.chooseStartingLevel(it.roundToInt()) },
             valueRange = GameRules.MIN_STARTING_LEVEL.toFloat()..GameRules.MAX_STARTING_LEVEL.toFloat(),
@@ -195,13 +197,13 @@ private fun SettingsToggle(title: String, subtitle: String, tag: String, checked
 }
 
 @Composable
-internal fun SettingsLabel(title: String, subtitle: String) {
+internal fun SettingsLabel(title: String, subtitle: String, subtitleMaxLines: Int = 2) {
     val palette = LocalGamePalette.current
     Column(Modifier.fillMaxWidth()) {
         Text(title, color = palette.text, fontSize = 14.sp, modifier = Modifier.fillMaxWidth(),
             fontWeight = FontWeight.Medium)
         Text(subtitle, color = palette.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(),
-            maxLines = 2, overflow = TextOverflow.Ellipsis)
+            maxLines = subtitleMaxLines, overflow = TextOverflow.Ellipsis)
     }
 }
 

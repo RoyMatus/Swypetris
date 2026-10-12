@@ -10,15 +10,19 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.width
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
@@ -38,8 +42,14 @@ class StartingLevelTest {
                 }
             }
         }
-        compose.onNodeWithTag("startingLevel").performScrollTo().assertIsDisplayed()
-            .performSemanticsAction(SemanticsActions.SetProgress) { it(5f) }
+        val slider = compose.onNodeWithTag("startingLevel").performScrollTo().assertIsDisplayed()
+        val description = compose.onNodeWithText("Чем выше начальный уровень", substring = true)
+        val layouts = mutableListOf<TextLayoutResult>()
+        description.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertFalse("Starting-level description must wrap without truncation", layouts.single().hasVisualOverflow)
+        assertTrue("Description overlaps the slider", description.fetchSemanticsNode().boundsInRoot.bottom <=
+            slider.fetchSemanticsNode().boundsInRoot.top)
+        slider.performSemanticsAction(SemanticsActions.SetProgress) { it(5f) }
         compose.runOnIdle {
             assertEquals(5, model.startingLevel)
             model.newGame()
