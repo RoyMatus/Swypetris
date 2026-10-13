@@ -1,0 +1,7 @@
+# Ticket #N execution log convention
+
+Use the single ignored `app/build/verification/epic-E/work.jsonl` or `ticket-N/work.jsonl` journal through `Record-EpicWork.ps1`. Record observed Start/Stop in UTC, phase, issue/real epic, commit, short `-Context`, and local relative `-Evidence` references. One owner writes the journal. Stop active work before leaving or waiting; record observed waits as Waiting. Never reconstruct missing time from commits. Keep raw logs, diagnostics and private values out of published summaries.
+
+For each meaningful event, keep a short adjacent ignored Markdown note if the event context is insufficient: `UTC | issue | phase | decision/check risk | actual result/count/duration | fresh/reused/cached evidence | failure/diagnostic/rework | unknown`. Reference exact runner JSON and log paths. Do not add overlapping phase and runner seconds.
+
+At completion, compute `Get-DevelopmentTicketTime -Events $events -Issue N -Coverage Partial` and review coverage manually. Active = Implementation + Review + ReleasePreparation + Rework; Rework is a subset. LocalChecks, Waiting/CIWait, check durations and delivery elapsed are separate quantities in seconds; state minutes with seconds in the comment. `Complete` means actual boundaries cover the work, not merely that intervals are paired. Missing work is Partial/Unknown; zero is a measured value. Re-read the posted issue comment to verify authoritative storage.
