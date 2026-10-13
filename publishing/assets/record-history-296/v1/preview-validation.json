@@ -1,0 +1,104 @@
+{
+  "javascriptErrors": [],
+  "fixtureCases": [
+    {
+      "score": 2466,
+      "fruits": 0,
+      "badges": 0,
+      "counts": []
+    },
+    {
+      "score": 42500,
+      "fruits": 4,
+      "badges": 0,
+      "counts": []
+    },
+    {
+      "score": 80000,
+      "fruits": 8,
+      "badges": 0,
+      "counts": []
+    },
+    {
+      "score": 90000,
+      "fruits": 8,
+      "badges": 1,
+      "counts": [
+        2
+      ]
+    },
+    {
+      "score": 788267,
+      "fruits": 8,
+      "badges": 8,
+      "counts": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        9,
+        9
+      ]
+    },
+    {
+      "score": 999999,
+      "fruits": 8,
+      "badges": 8,
+      "counts": [
+        13,
+        13,
+        13,
+        12,
+        12,
+        12,
+        12,
+        12
+      ]
+    }
+  ],
+  "layoutChecks": [
+    {
+      "width": 200,
+      "overlaps": 0,
+      "badgeCount": 0
+    },
+    {
+      "width": 200,
+      "overlaps": 0,
+      "badgeCount": 0
+    },
+    {
+      "width": 200,
+      "overlaps": 0,
+      "badgeCount": 0
+    },
+    {
+      "width": 200,
+      "overlaps": 0,
+      "badgeCount": 1
+    },
+    {
+      "width": 200,
+      "overlaps": 0,
+      "badgeCount": 8
+    },
+    {
+      "width": 200,
+      "overlaps": 0,
+      "badgeCount": 8
+    },
+    {
+      "width": 174.6875,
+      "overlaps": 0,
+      "badgeCount": 8
+    },
+    {
+      "width": 236,
+      "overlaps": 0,
+      "badgeCount": 8
+    }
+  ],
+  "scope": "Headless browser composition of supplied assets only; no Android integration or instrumentation."
+}

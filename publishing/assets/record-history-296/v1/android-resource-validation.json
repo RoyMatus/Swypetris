@@ -1,0 +1,7 @@
+{
+  "tool": "Android SDK Build Tools 36.1.0 aapt2",
+  "operation": "compile --dir",
+  "exitCode": 0,
+  "compiledResourceCount": 10,
+  "scope": "Nine PNGs and one VectorDrawable only; no app build, resource linking, gameplay test or instrumentation"
+}
