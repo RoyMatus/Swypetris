@@ -2,8 +2,10 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -103,14 +105,17 @@ def required(mode, selected):
     return checks
 
 
-def validate(path, root, head, base, full=False):
-    clean(root, head, base)
+def validate(path, root, head, base, full=False, check_clean=True):
+    if check_clean:
+        clean(root, head, base)
     doc = json.loads(path.read_text(encoding='utf-8-sig'))
-    if doc.get('schema') != 1 or doc.get('head') != head or doc.get('base') != base or doc.get('result') != 'passed':
+    if doc.get('schema') not in (1, 2) or doc.get('head') != head or doc.get('base') != base or doc.get('result') != 'passed':
         raise ValueError('Evidence identity/result mismatch')
     mode = doc.get('mode')
     if mode not in {'PR', 'Full'} or (full and mode != 'Full'):
         raise ValueError('Evidence scope mismatch')
+    if doc['schema'] == 2 and mode != 'Full':
+        raise ValueError('Promoted evidence must cover Full regression')
     if doc.get('platform') != 'Windows':
         raise ValueError('Mandatory verification requires Windows evidence')
     expected = selection(root, mode, head, base)
@@ -133,6 +138,8 @@ def validate(path, root, head, base, full=False):
         raise ValueError('Unbound or missing report files')
     if any(c.get('log') not in files for c in checks):
         raise ValueError('Missing check logs')
+    if doc['schema'] == 2:
+        validate_promotion(path, root, doc)
     if expected['mode'] != 'none':
         validate_source_inventory(root)
         for apk_dir in ('app/build/outputs/apk/debug/', 'app/build/outputs/apk/androidTest/debug/'):
@@ -161,15 +168,100 @@ def validate(path, root, head, base, full=False):
     return doc
 
 
+def tree(root, commit):
+    return git(root, 'rev-parse', commit + '^{tree}')
+
+
+def validate_promotion(path, root, doc):
+    proof = doc.get('promotion') or {}
+    source_path = path.parent / 'source/evidence.json'
+    if proof.get('sourceEvidence') != 'source/evidence.json' or not source_path.is_file():
+        raise ValueError('Missing original promotion evidence')
+    source = json.loads(source_path.read_text(encoding='utf-8-sig'))
+    if source.get('schema') != 1 or source.get('mode') != 'Full' or source.get('result') != 'passed':
+        raise ValueError('Promotion requires passed version-one Full evidence')
+    if source.get('head') == doc['head'] or source.get('base') != doc['base'] or type(proof.get('prNumber')) is not int or proof['prNumber'] <= 0:
+        raise ValueError('Invalid promotion identity')
+    if proof.get('sourceHead') != source['head'] or proof.get('sourceBase') != source['base'] or proof.get('destinationHead') != doc['head']:
+        raise ValueError('Promotion provenance mismatch')
+    if proof.get('sourceEvidenceSha256') != hashlib.sha256(source_path.read_bytes()).hexdigest():
+        raise ValueError('Original promotion evidence changed')
+    subprocess.run(['git', '-C', str(root), 'merge-base', '--is-ancestor', source['base'], source['head']], check=True)
+    subprocess.run(['git', '-C', str(root), 'merge-base', '--is-ancestor', source['base'], doc['head']], check=True)
+    source_tree, destination_tree = tree(root, source['head']), tree(root, doc['head'])
+    if source_tree != destination_tree or proof.get('sourceTree') != source_tree or proof.get('destinationTree') != destination_tree:
+        raise ValueError('Promotion requires identical Git trees')
+    validate(source_path, root, source['head'], source['base'], full=True, check_clean=False)
+    if {c['name']: c for c in source['checks'] if c['name'] != 'sonar'} != {c['name']: c for c in doc['checks'] if c['name'] != 'sonar'}:
+        raise ValueError('Reused check identity changed')
+    if any(doc['files'].get(name) != digest for name, digest in source['files'].items() if name != 'sonar.log'):
+        raise ValueError('Reused report hash changed')
+    if doc['files'].get('sonar.log') == source['files'].get('sonar.log'):
+        raise ValueError('Main Sonar analysis must be fresh')
+    sonar = next(c for c in doc['checks'] if c['name'] == 'sonar')
+    if not isinstance(sonar.get('durationSeconds'), (int, float)) or not math.isfinite(sonar['durationSeconds']) or sonar['durationSeconds'] < 0:
+        raise ValueError('Invalid fresh main Sonar duration')
+
+
+def preflight_promotion(source_path, root, head, base):
+    clean(root, head, base)
+    source = json.loads(source_path.read_text(encoding='utf-8-sig'))
+    if source.get('schema') != 1 or source.get('mode') != 'Full' or source.get('base') != base:
+        raise ValueError('Only version-one Full evidence from the stated base can be promoted')
+    subprocess.run(['git', '-C', str(root), 'merge-base', '--is-ancestor', base, source['head']], check=True)
+    if tree(root, source['head']) != tree(root, head):
+        raise ValueError('PR and main Git trees differ')
+    validate(source_path, root, source['head'], base, full=True, check_clean=False)
+    return source
+
+
+def promote(source_path, root, head, base, destination, pr_number, sonar_log, sonar_seconds):
+    source = preflight_promotion(source_path, root, head, base)
+    if type(pr_number) is not int or pr_number <= 0 or not math.isfinite(sonar_seconds) or sonar_seconds < 0:
+        raise ValueError('Invalid promotion input')
+    source_dir, target_dir = source_path.parent.resolve(), destination.resolve()
+    if target_dir.is_relative_to(source_dir) or source_dir.is_relative_to(target_dir):
+        raise ValueError('Promotion source and output must be disjoint')
+    if destination.exists():
+        raise ValueError('Promotion output already exists')
+    destination.mkdir(parents=True)
+    try:
+        shutil.copytree(source_path.parent, destination / 'source')
+        for name in source['files']:
+            target = destination / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_path.parent / name, target)
+        shutil.copy2(sonar_log, destination / 'sonar.log')
+        checks = [dict(check, durationSeconds=sonar_seconds) if check['name'] == 'sonar' else check for check in source['checks']]
+        files = {str(item.relative_to(destination)).replace('\\', '/'): hashlib.sha256(item.read_bytes()).hexdigest()
+                 for item in destination.rglob('*') if item.is_file()}
+        doc = dict(source, schema=2, head=head, checks=checks, files=files,
+                   promotion=dict(prNumber=pr_number, sourceEvidence='source/evidence.json',
+                                  sourceEvidenceSha256=hashlib.sha256((destination / 'source/evidence.json').read_bytes()).hexdigest(),
+                                  sourceHead=source['head'], sourceBase=base, destinationHead=head,
+                                  sourceTree=tree(root, source['head']), destinationTree=tree(root, head)))
+        output = destination / 'evidence.json'
+        output.write_text(json.dumps(doc, indent=2) + '\n', encoding='utf-8')
+        validate(output, root, head, base, full=True)
+        return output
+    except BaseException:
+        shutil.rmtree(destination)
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['plan', 'validate', 'source-inventory'])
+    parser.add_argument('action', choices=['plan', 'validate', 'source-inventory', 'preflight-promotion', 'promote'])
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--head', required=True)
     parser.add_argument('--base', required=True)
     parser.add_argument('--mode', default='PR', choices=['PR', 'Full'])
     parser.add_argument('--evidence', type=Path)
     parser.add_argument('--full', action='store_true')
+    parser.add_argument('--destination', type=Path)
+    parser.add_argument('--pr-number', type=int)
+    parser.add_argument('--sonar-log', type=Path)
+    parser.add_argument('--sonar-seconds', type=float)
     args = parser.parse_args()
     clean(args.root, args.head, args.base)
     if args.action == 'source-inventory':
@@ -177,6 +269,15 @@ def main():
             validate_source_inventory(args.root)
     elif args.action == 'validate':
         validate(args.evidence, args.root, args.head, args.base, args.full)
+    elif args.action == 'preflight-promotion':
+        if not args.evidence:
+            parser.error('preflight-promotion requires evidence')
+        preflight_promotion(args.evidence, args.root, args.head, args.base)
+    elif args.action == 'promote':
+        if not all((args.evidence, args.destination, args.pr_number, args.sonar_log, args.sonar_seconds is not None)):
+            parser.error('promote requires evidence, destination, PR number, Sonar log and duration')
+        print(promote(args.evidence, args.root, args.head, args.base, args.destination,
+                      args.pr_number, args.sonar_log, args.sonar_seconds))
     else:
         print(json.dumps(selection(args.root, args.mode, args.head, args.base)))
 

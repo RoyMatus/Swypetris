@@ -147,6 +147,121 @@ class LocalEvidenceTests(unittest.TestCase):
         self.assertEqual(gate.required('Full', selected), {'whitespace','python','pester','source-inventory','quality','quality-reports','sonar','android','install-debug','launcher-smoke'})
 
 
+class PromotionStructureTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name) / 'repo'
+        self.root.mkdir()
+        self.git('init', '-b', 'main')
+        (self.root / 'README.md').write_text('base\n')
+        self.commit()
+        self.base = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-b', 'feature')
+        (self.root / 'README.md').write_text('same content\n')
+        self.commit('feature')
+        self.source_head = self.git('rev-parse', 'HEAD')
+        self.git('checkout', 'main')
+        (self.root / 'README.md').write_text('same content\n')
+        self.commit('squash main')
+        self.main_head = self.git('rev-parse', 'HEAD')
+        self.source_dir = Path(self.temp.name) / 'original'
+        self.source_dir.mkdir()
+        self.log = self.source_dir / 'sonar.log'
+        self.log.write_text('PR quality gate passed')
+        self.original = self.source_dir / 'evidence.json'
+        self.source = dict(schema=1, mode='Full', result='passed', platform='Windows',
+                           head=self.source_head, base=self.base,
+                           checks=[dict(name='sonar', result='passed', log='sonar.log', durationSeconds=10)],
+                           files={'sonar.log': hashlib.sha256(self.log.read_bytes()).hexdigest()})
+        self.original.write_text(json.dumps(self.source))
+        self.fresh = Path(self.temp.name) / 'main-sonar.log'
+        self.fresh.write_text('Main quality gate passed')
+
+    def git(self, *args):
+        return subprocess.check_output(['git', '-C', str(self.root), *args], text=True, stderr=subprocess.PIPE).strip()
+
+    def commit(self, message='fixture'):
+        self.git('add', 'README.md')
+        self.git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', message)
+
+    def test_promotes_identical_tree_with_bound_original_and_fresh_main_sonar(self):
+        destination = Path(self.temp.name) / 'promoted'
+        with patch.object(gate, 'validate'):
+            output = gate.promote(self.original, self.root, self.main_head, self.base,
+                                  destination, 42, self.fresh, 3.5)
+        doc = json.loads(output.read_text())
+        self.assertEqual(doc['schema'], 2)
+        self.assertEqual(doc['head'], self.main_head)
+        self.assertEqual(doc['promotion']['sourceHead'], self.source_head)
+        self.assertEqual(doc['checks'][0]['durationSeconds'], 3.5)
+        with patch.object(gate, 'validate'):
+            gate.validate_promotion(output, self.root, doc)
+            for key, value in [('prNumber', 0), ('prNumber', True), ('sourceTree', '0'*40),
+                               ('sourceEvidenceSha256', '0'*64)]:
+                damaged = json.loads(json.dumps(doc))
+                damaged['promotion'][key] = value
+                with self.subTest(key=key), self.assertRaises(ValueError):
+                    gate.validate_promotion(output, self.root, damaged)
+            damaged = json.loads(json.dumps(doc))
+            damaged['files']['sonar.log'] = self.source['files']['sonar.log']
+            with self.assertRaisesRegex(ValueError, 'fresh'):
+                gate.validate_promotion(output, self.root, damaged)
+            damaged = json.loads(json.dumps(doc))
+            damaged['checks'][0]['durationSeconds'] = float('nan')
+            with self.assertRaisesRegex(ValueError, 'duration'):
+                gate.validate_promotion(output, self.root, damaged)
+
+    def test_rejects_different_tree_before_copying_or_main_analysis(self):
+        (self.root / 'README.md').write_text('different\n')
+        self.commit()
+        other_head = self.git('rev-parse', 'HEAD')
+        with self.assertRaisesRegex(ValueError, 'trees differ'):
+            gate.preflight_promotion(self.original, self.root, other_head, self.base)
+        self.assertFalse((Path(self.temp.name) / 'promoted').exists())
+
+    def test_version_two_validates_copied_full_reports_and_rejects_corruption(self):
+        selected = dict(mode='full', android='', jvm='', github_scripts='false',
+                        release_scripts='false', ci_scripts='false', windows_release_tools='false')
+        self.source['selection'] = selected
+        identity = 'ru.itoltec.swypetris.SmokeTest#launch'
+        files = {}
+        for name in gate.required('Full', selected):
+            path = self.source_dir / (name + '.log')
+            if name == 'quality':
+                path.write_text('\n'.join('> Task ' + task for task in gate.QUALITY_TASKS))
+            elif name == 'sonar':
+                path.write_text('PR quality gate passed')
+            else:
+                path.write_text(name + ' passed')
+            files[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+        for name, data in {
+            'android/TEST-SmokeTest.xml': b'<testsuite><testcase classname="ru.itoltec.swypetris.SmokeTest" name="launch"/></testsuite>',
+            'app/build/outputs/apk/debug/app-debug.apk': b'debug apk',
+            'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk': b'test apk',
+        }.items():
+            path = self.source_dir / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            files[name] = hashlib.sha256(data).hexdigest()
+        self.source['files'] = files
+        self.source['checks'] = [dict(name=name, result='passed', log=name + '.log', durationSeconds=1)
+                                 for name in gate.required('Full', selected)]
+        self.original.write_text(json.dumps(self.source))
+        destination = Path(self.temp.name) / 'promoted-full'
+        with patch.object(gate, 'selection', return_value=selected), \
+             patch.object(gate, 'validate_source_inventory'), \
+             patch.object(gate, 'validate_jvm_inventory'), \
+             patch('full_regression_proof.validate_quality'), \
+             patch.object(gate, 'test_inventory', return_value={identity}):
+            output = gate.promote(self.original, self.root, self.main_head, self.base,
+                                  destination, 42, self.fresh, 3.5)
+            self.assertEqual(gate.validate(output, self.root, self.main_head, self.base, full=True)['schema'], 2)
+            (destination / 'source/quality.log').write_text('tampered')
+            with self.assertRaises(ValueError):
+                gate.validate(output, self.root, self.main_head, self.base, full=True)
+
+
 if __name__ == '__main__':
     unittest.main()
 
