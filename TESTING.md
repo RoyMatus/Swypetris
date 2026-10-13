@@ -136,6 +136,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `HudLayeringTest` | Compose pixels: piece/fruit intersection and score segment visibility | Keep; preserves drawing order and theme contrast. |
 | `MaterialRenderingTest` | Compose pixels/state: twelve materials/fields, seven pigments, light score without backdrop, two portrait sizes/fonts and every Settings card | Keep; optional source-comparison exports/software timings supplement assertions. |
 | `MaterialFrameEvidenceTest` | Opt-in native Activity: production clock, dense board, movement, gfxinfo and screenshots | Skip ordinarily; no Compose test clock, and no timing threshold on a shared software emulator. |
+| `ThemeSoundIntegrationTest` | Android resources/model/native audio: all 24 approved hashes, manual/random/restored selection, timed/command events, load/cache/stop/release | Keep; `themeSoundCapture=true` additionally runs a real-time repeated gameplay audio workload with and without music. Markers alone do not establish subjective listening acceptance. |
 | `MenuSkyTest` | Compose pixels/lifecycle: anchored artwork, background/disabled clocks and isolated wide crop | Keep; its 640×360 artwork crop is not a landscape application viewport. |
 | `NextQueueTest` | Compose bounds: spawn-position preview and suppression when obstructed | Keep; separate from saved seven-bag ordering. |
 | `ShareAppTest` | Android QR/intent: canonical store/latest-release links and sharing | Keep; decoded content and platform payloads. |
