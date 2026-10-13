@@ -6,6 +6,8 @@ import android.content.SharedPreferences
 /** Selects preference stores; instrumentation tests inject isolated settings before Activity launch. */
 object GameStorage {
     internal var testPreferences: SharedPreferences? = null
+    // This one-time reset belongs to the approved balance change, not every future rules version.
+    internal const val BALANCE_RESET = "rules_7_balance_reset_completed"
 
     /** Returns user preferences or the explicitly injected test store. */
     fun preferences(application: Application): SharedPreferences =
@@ -15,8 +17,17 @@ object GameStorage {
     internal fun sessionPreferences(application: Application): SharedPreferences =
         testPreferences ?: application.getSharedPreferences("swypetris_session", 0)
 
-    /** Initializes the current-version record once while retaining legacy keys and history. */
-    fun migrate(preferences: SharedPreferences) {
+    /** Resets pre-balance results/session once, then initializes the current-version record. */
+    fun migrate(preferences: SharedPreferences, sessionPreferences: SharedPreferences = preferences) {
+        if (!preferences.getBoolean(BALANCE_RESET, false)) {
+            SessionStore(sessionPreferences).clearForMigration()
+            clearStatistics(preferences)
+            if (!preferences.edit().putBoolean(BALANCE_RESET, true).commit()) {
+                // A failed disk write may have changed memory; never let it suppress a retry.
+                preferences.edit().remove(BALANCE_RESET).commit()
+                error("Не удалось сохранить сброс предыдущих результатов")
+            }
+        }
         val migration = "rules_${GameRules.VERSION}_migrated"
         val record = "record_v${GameRules.VERSION}"
         if (preferences.getBoolean(migration, false)) return
@@ -37,9 +48,9 @@ object GameStorage {
 
     /** Removes result history and every legacy record key in one preferences transaction. */
     fun clearStatistics(preferences: SharedPreferences) {
-        val editor = preferences.edit().remove("results_v2")
-        (listOf("record", "legacy_record") + (2..GameRules.VERSION).map { "record_v$it" })
-            .forEach(editor::remove)
+        val editor = preferences.edit()
+        preferences.all.keys.filter { it == "record" || it == "legacy_record" ||
+            it.matches(Regex("record_v\\d+|results_v\\d+")) }.forEach(editor::remove)
         check(editor.commit()) { "Не удалось удалить статистику" }
     }
 }

@@ -57,10 +57,10 @@ level = max(startingLevel, 1 + clearedLines / 10)
 
 Here `/` means integer division. A level-1 start reaches level 2 after 10 lines. A level-5 start first advances to level 6 after 50 lines; a level-15 start reaches level 16 after 150 lines. Later levels advance every ten lines, with no level-15 cap. Drop points and fruit rewards do not increase the level.
 
-Gravity follows a Tetris Worlds-style Marathon curve, with progression **stretched by a factor of three after the selected starting level**:
+Gravity follows a Tetris Worlds-style Marathon curve, with progression **stretched by a factor of 4.5 after the selected starting level**:
 
 ```text
-steps = startingLevel - 1 + (level - startingLevel) / 3.0
+steps = startingLevel - 1 + (level - startingLevel) / 4.5
 secondsPerRow = (0.8 - steps × 0.007) ^ steps
 ```
 
@@ -68,7 +68,7 @@ Initial speed is approximately 1 second per row at starting level 1, 355 ms at s
 
 ### Scoring
 
-The current rules version is **6**. Placement awards use the level **before** the clear. A clear that increases the level does not retroactively receive the new multiplier.
+The current rules version is **7**. Placement awards use the level **before** the clear. A clear that increases the level does not retroactively receive the new multiplier.
 
 | Placement | Base points, multiplied by level |
 | --- | ---: |
@@ -104,7 +104,9 @@ Local autosave preserves the board, active and next pieces, remaining seven-bag 
 
 Results shows the latest finished game's score, lines, level, active play time, and fruit collection, plus personal record history. Pauses are excluded from play time. A new personal best opens a record celebration and optional name entry. New personal records are saved; previously stored history remains available, and records from different rules versions are kept separate. Results are local, without a shared online ranking.
 
-The summary uses **«Лучший результат»** (Best result) and, when present, **«Архивный рекорд»** (Archived record). History cards show their difficulty without an internal rules-version label. Older stored results can exceed the current game's cap and are retained as history.
+The summary uses **«Лучший результат»** (Best result) and, when present, **«Архивный рекорд»** (Archived record). History cards show their difficulty without an internal rules-version label.
+
+The version-7 balance update performs an owner-approved **one-time reset of all prior records, result history and the active save/Continue**. Settings and player name remain. Subsequent new records and games save normally; restarting or later rules initialization does not repeat this reset. The slower gravity progression does not change selected starting speed, ten-line levels, scoring, the 20G cap or the 500 ms lock delay. Human endgame playability is not established by automated checks.
 
 **Reset statistics** asks for confirmation and removes stored history and records, including older ones. Settings and the current game are preserved.
 
@@ -201,10 +203,10 @@ Swypetris — бесплатная головоломка с падающими 
 
 Здесь `/` означает целочисленное деление. При старте с уровня 1 переход на уровень 2 происходит после 10 линий. При старте с уровня 5 первый переход на уровень 6 — после 50 линий; при старте с уровня 15 переход на уровень 16 — после 150 линий. Далее уровень повышается через каждые десять линий, без ограничения уровнем 15. Очки за спуск и награды-фрукты уровень не повышают.
 
-Скорость основана на кривой Marathon в стиле Tetris Worlds, но её развитие **растянуто втрое после выбранного начального уровня**:
+Скорость основана на кривой Marathon в стиле Tetris Worlds, но её развитие **растянуто в 4,5 раза после выбранного начального уровня**:
 
 ```text
-steps = начальный уровень - 1 + (уровень - начальный уровень) / 3.0
+steps = начальный уровень - 1 + (уровень - начальный уровень) / 4.5
 секундыНаСтроку = (0.8 - steps × 0.007) ^ steps
 ```
 
@@ -212,7 +214,7 @@ steps = начальный уровень - 1 + (уровень - начальн
 
 ### Начисление очков
 
-Текущая версия правил — **6**. Награда за размещение рассчитывается по уровню **до** удаления строк: очистка, повысившая уровень, не пересчитывается с новым множителем.
+Текущая версия правил — **7**. Награда за размещение рассчитывается по уровню **до** удаления строк: очистка, повысившая уровень, не пересчитывается с новым множителем.
 
 | Размещение | Базовые очки, умножаемые на уровень |
 | --- | ---: |
@@ -248,7 +250,9 @@ steps = начальный уровень - 1 + (уровень - начальн
 
 Результаты показывают очки, линии, уровень, активное время и фрукты последней завершённой партии, а также историю личных рекордов. Паузы не входят в игровое время. Новый рекорд открывает поздравление и необязательный ввод имени. Новые личные рекорды сохраняются; прежняя история остаётся доступной, а рекорды разных версий правил учитываются отдельно. Результаты локальные, общей онлайн-таблицы нет.
 
-В сводке используются подписи **«Лучший результат»** и, при наличии старых данных, **«Архивный рекорд»**. Карточки истории показывают сложность без внутреннего номера версии правил. Старые сохранённые результаты могут превышать нынешний предел партии и остаются в истории.
+В сводке используются подписи **«Лучший результат»** и, при наличии старых данных, **«Архивный рекорд»**. Карточки истории показывают сложность без внутреннего номера версии правил.
+
+Обновление баланса до версии правил 7 выполняет согласованный **однократный сброс всех прежних рекордов, истории результатов и сохранённой партии/«Продолжить»**. Настройки и имя игрока сохраняются. Новые рекорды и партии затем сохраняются штатно; перезапуск и последующая инициализация правил не повторяют сброс. Более плавное ускорение не меняет выбранную начальную скорость, переходы через десять линий, начисление очков, предел 20G и задержку фиксации 500 мс. Автоматические проверки не доказывают человеческую играбельность финальных этапов.
 
 **«Сбросить статистику»** требует подтверждения и удаляет сохранённую историю и рекорды, включая старые. Настройки и текущая партия сохраняются.
 

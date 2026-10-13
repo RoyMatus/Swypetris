@@ -243,7 +243,7 @@ class SessionLifecycleTest {
         assertEquals(2, record.results.size)
         assertTrue(record.requestRecordName)
         assertNull(record.latestResult!!.difficulty)
-        assertEquals(6, record.latestResult!!.rulesVersion)
+        assertEquals(GameRules.VERSION, record.latestResult!!.rulesVersion)
         assertEquals(legacy, record.results.last())
         val ordinary = finish(50)
         assertEquals(2, ordinary.results.size)

@@ -1,6 +1,6 @@
 # Epic #236 development review
 
-[Swypetris 1.5.1](https://github.com/RoyMatus/Swypetris/releases/tag/v1.5.1) was published on 2026-10-12 at 12:19:52 UTC from exact main `882388d44d8ca2ef75cdf021db5f43e7bbc48349` after [release PR #257](https://github.com/RoyMatus/Swypetris/pull/257). Public downloads, tag, notes, package/version and original certificate were independently verified. All five child issues are closed. Measurements below are observed records; unknown intervals are not estimated.
+[Swypetris 1.5.1](https://github.com/RoyMatus/Swypetris/releases/tag/v1.5.1) was published on 2026-10-12 at 12:19:52 UTC from exact main `882388d44d8ca2ef75cdf021db5f43e7bbc48349` after [release PR #257](https://github.com/RoyMatus/Swypetris/pull/257). Public downloads, tag, notes, package/version and original certificate were independently verified. All five child issues of that historical delivery are closed. Measurements below are observed records; unknown intervals are not estimated.
 
 ## Delivery
 
@@ -78,3 +78,42 @@ One publication WhatIf failed before any write because the fresh PowerShell proc
 The [complete two-platform compliance review](release-v1.5.1-compliance.md) was prepared and approved locally before publication, then reassessed for actual exact-main artifacts. Public provenance regression evidence digest: `1c48e8c3daa33d85da3097abb1d13e712c98954e4c22fbf8a4a911627364edf7`. Detailed raw diagnostics and failed-run logs remain ignored; public proof contains only generic emulator identity and hashes/filenames, not host paths or physical-device identifiers.
 
 Implementation PRs: [#253](https://github.com/RoyMatus/Swypetris/pull/253), [#254](https://github.com/RoyMatus/Swypetris/pull/254), [#255](https://github.com/RoyMatus/Swypetris/pull/255), [#256](https://github.com/RoyMatus/Swypetris/pull/256). Migration PR: [#252](https://github.com/RoyMatus/Swypetris/pull/252). The final documentation PR closes [epic #236](https://github.com/RoyMatus/Swypetris/issues/236) after this observed publication. Its own final merge/check duration is not known when this report is committed and is recorded in that PR's actual evidence rather than fabricated here. Owned worktrees/capture baseline/reference branch are retained for needed caches and diagnostics; unrelated local work was preserved.
+
+## Reopened delivery: HUD, music and initial materials (2026-10-12)
+
+This section records the later delivery without changing the historical v1.5.1 publication above. The epic was reopened; #259, #264 and #189 merged independently in [PR #266](https://github.com/RoyMatus/Swypetris/pull/266), [PR #267](https://github.com/RoyMatus/Swypetris/pull/267) and [PR #268](https://github.com/RoyMatus/Swypetris/pull/268). Their closures and Project Done values were read back. None is claimed included in the previously published v1.5.1 artifact.
+
+| Issue / exact verified PR head | JVM evidence | Full Android unique results / runner seconds | Quality / Sonar wrapper seconds |
+| --- | --- | --- | --- |
+| #259 / 63c0a5cc28a1c1ba9b277693ba025964b311dfa6 | 154 valid reused cases | 177: 174 passed / 3 opt-in skips; 788.179 | 56.327 / 102.055 |
+| #264 / 5cecd65b470678b4df38c15624ebf21a7a003b00 | 154 fresh cases | 179: 176 passed / 3 opt-in skips; 840.561 | 175.654 / 153.458 |
+| #189 / 4996e4434423a5367e6349de5057e930e9065315 | 154 valid reused cases | 182: 178 passed / 4 opt-in skips; 783.067 | 7.834 / 72.012 |
+
+Every listed final gate passed exact-head/current-base integrity and inventory validation, quality/lint/detekt/JaCoCo, Sonar and picker/UI preflights. Preflights repeat cases from full regression and are not additional unique coverage. #189 additionally passed Python 121 and Pester 128 / two allowed platform skips after its tool correction. Android wrapper times were 789.453, 842.882 and 783.671 seconds respectively; runner duration is separate from installation/preflight/build overhead. Differing code, caches and host load prevent causal speed comparisons.
+
+Focused #259 HUD checks passed 11 cases in 107.825 s. #264's real-popup/AudioTrack regression passed 21 cases in 290.792 s, preserving genuine background/focus interruption behavior; no acoustic/headphone test is inferred. #189's scene-checked native rendering observations passed in 55.926 s (current) and 51.028 s (pre-change APK). Its shared SwiftShader timings and size limits are detailed in [the materials report](issue-189-materials-verification.md), with [all twelve comparisons](../design/block-materials-189/implementation/README.md). Initial victory-scene measurements were invalidated by visual review and are not gameplay performance evidence.
+
+### Failure, rework and resource records
+
+#259 exposed an asynchronous sharesheet Back leak; its test cleanup now waits for the real app window/root before restoring flags. #264's intermediate transfer timing briefly paused music; a real-player command audit rejected it and the final implementation uses explicit native transfer acknowledgements. #189's first clean gate passed application regression but failed evidence validation on the unregistered optional native measurement. The exact identity was registered; near-match skips still fail. Tool regression also required explicitly classifying the new shared atlas owner as full scope. Failed candidates were preserved, never promoted or bypassed. Earlier SDK/signing/style/report failures and emulator diagnostics remain retained.
+
+Work journals record observed boundaries, not total reconstructed human implementation time. Some phases mix implementation, checks and artifact review; complete pure-category active time is unknown. On 2026-10-13 the report helper encountered locale-dependent date conversion with PowerShell 7.6. Running the unchanged helper with InvariantCulture parsed retained ISO journal timestamps successfully. No invented replacement timings or tool policy change were made.
+
+Signed main was installed on the owner-requested Pixel 7 after #264 and #189. #189 installation used exact main ada8d174a5cdde32817379309ed2822d76b5813b, original APP signer, adb update install and exact installed-APK hash readback; build/install/verification elapsed 201.175 s and launch returned Status ok (cold start 240 ms). Package remains 1.5.1/code23 pending the separately verified new release. These are installation/launch facts, not instrumentation, phone FPS, listening acceptance or a published-release claim. Work paused at the owner's request afterward; no active work time is recorded for that overnight pause.
+
+### Evidence-based improvements for subsequent tickets
+
+| Evidence | Proposed improvement / expected benefit | Validation preserving quality |
+| --- | --- | --- |
+| #189 application gate reached its final validator before the exact opt-in registration omission surfaced | Review every new optional measurement identity and source classification before the final gate; catch known inventory errors earlier | Exact allowlist contract rejects near matches and required behavior skips; complete final gate remains mandatory |
+| Initial #189 fixture accidentally measured Victory rather than gameplay | Assert scene/state and inspect native samples before collecting all themes; avoid invalid measurement work | Keep PLAYING/no-victory assertions plus actual frame inspection; retain rejected samples separately |
+| #264 controller-only observation missed transient SILENT | Observe commands around real native window/AudioTrack transfers at development checkpoints; reduce later integration rework | Preserve popup, background, audio-focus and noisy interruption coverage, without loosening time/assertion bounds |
+| #210's 29-case checkpoint had one obsolete version assertion, while 28 neighbors succeeded | Recheck failed class plus migration neighbors; reuse unchanged successful checkpoint evidence | Preserve version/comparability assertions and retain the complete mandatory clean-head gate |
+
+These are concrete opportunities, not guaranteed percentage speedups. No successful unchanged full suite is rerun by habit; a changed head/base, test input or gate contract still requires applicable validation.
+
+## Resumed scope (2026-10-13)
+
+The live epic adds #269 connected atlas/fragments, #270 exact non-Classic audio and #271 full-opacity Hold after #210 and the independently published #215 current release. They do not block that release or earlier children's closure. Asset-storage branches are retained and must not be merged as application implementation. No extra automatic release is authorized for those follow-ups. The epic stays open until all required children complete.
+
+#210 implementation and its development checks are described in [the gravity/reset report](issue-210-gravity-reset.md). The owner previously waived the additional final balance approval hold and authorized the one-time old-progress reset in the implementation conversation. This does not supply missing human gameplay evidence. Final PR/merge results are recorded in that implementation PR and consolidated issue comment; current-release publication remains #215 work.

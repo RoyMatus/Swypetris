@@ -144,8 +144,8 @@ class GameEngineTest {
     /** Скорость растёт по уровням, но не становится быстрее установленного минимума. */
     @Test fun gravityHasMinimumInterval() {
         assertEquals(1000L, state().gravityMillis)
-        assertEquals(928L, state().copy(lines = 10).gravityMillis)
-        assertEquals(793L, state().copy(lines = 30).gravityMillis)
+        assertEquals(952L, state().copy(lines = 10).gravityMillis)
+        assertEquals(859L, state().copy(lines = 30).gravityMillis)
         assertEquals(1L, state().copy(lines = 1000000).gravityMillis)
     }
 

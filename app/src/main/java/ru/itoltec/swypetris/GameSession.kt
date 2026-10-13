@@ -34,6 +34,14 @@ internal class SessionStore(private val preferences: SharedPreferences) {
     private var cachedBoard: List<List<Tetromino?>>? = null
     private var encodedBoard = ""
 
+    /** Completes the one-time balance reset before its durable migration marker is written. */
+    fun clearForMigration() {
+        check(preferences.edit().remove(KEY).commit()) { "Не удалось удалить сохранённую партию" }
+        lastWritten = null
+        cachedBoard = null
+        encodedBoard = ""
+    }
+
     /**
      * Persists a changed [session] asynchronously. Reuses the encoded board while its immutable
      * board instance is unchanged, so piece movement need not serialize all 400 cells again.

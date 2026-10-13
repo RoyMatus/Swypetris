@@ -93,7 +93,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `LaunchIntroTest` | Compose UI: skip, Back, animation stages and icon assets | Keep; covers observable launch behavior. |
 | `LegalScreenTest` | Compose UI: offline notices and bundled license | Keep; verifies packaged content. |
 | `LineClearUiTest` | Compose/model: clearing pause, controlled time and cancellation | Keep; complements pure line-clear rules. |
-| `MigrationTest` | Android storage: prior history migration | Keep; requires persisted Android data. |
+| `MigrationTest` | Android storage: one-time balance reset across separate stores, retained settings/new saves, durable-write failure retries | Keep; requires persisted Android data. |
 | `MusicIntegrationTest` | Android media: fanfare mode and packaged audio decoding | Keep; JVM playlist tests cannot decode Android media. |
 | `MenuPreparationTest` | Android audio ownership: asynchronous preparation, cancellation and playback gates | Keep; controlled factory completion checks late resource adoption and release without listening. |
 | `UpdatePersistenceTest` | Android update policy: durable asynchronous writes, manual coalescing and cancellation | Keep; controlled commit outcomes check ordering and main-thread responsiveness without networking. |

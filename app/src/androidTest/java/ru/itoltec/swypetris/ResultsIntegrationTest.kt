@@ -69,6 +69,7 @@ class ResultsIntegrationTest {
                     rulesVersion = GameRules.VERSION - 1) else null)
             compose.runOnIdle {
                 preferences.edit().clear().commit()
+                GameStorage.migrate(preferences)
                 ResultStore(preferences).write(history)
                 model = GameViewModel(application, null, { 1000L }, false)
                 model.navigation.showResults()
