@@ -10,11 +10,11 @@ private const val NANOS_PER_SECOND = 1_000_000_000
 internal const val MAX_PLAYER_NAME_LENGTH = 40
 
 
-/** Shared version-6 rules for engine, HUD, and help; thresholds avoid Int overflow. */
+/** Shared version-7 rules for engine, HUD, and help; thresholds avoid Int overflow. */
 object GameRules {
     const val MAX_CLEAR_LINES = 4
-    const val VERSION = 6
-    const val PREVIOUS_VERSION = 5
+    const val VERSION = 7
+    const val PREVIOUS_VERSION = 6
     const val NANOS_PER_MILLI = 1_000_000L
     // Rounded upward to keep the effective rate at or below 20G.
     const val MIN_GRAVITY_NANOS = 833_334L
@@ -23,7 +23,7 @@ object GameRules {
     const val MAX_SCORE = 999_999
 
     const val LINES_PER_LEVEL = 10
-    const val GRAVITY_PROGRESSION_STRETCH = 3.0
+    const val GRAVITY_PROGRESSION_STRETCH = 4.5
     const val MIN_STARTING_LEVEL = 1
     const val MAX_STARTING_LEVEL = 15
 

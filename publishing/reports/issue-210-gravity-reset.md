@@ -1,0 +1,23 @@
+# Gravity balance and one-time progress reset (#210)
+
+The owner-authorized coefficient is 4.5, replacing 3.0 in the existing single GameRules owner. Rules version is 7 (previous 6). Initial speed at every selected starting level 1-15, ten-line level progression, scoring, gestures, Hold, round continuation, the 833,334 ns gravity floor and 500 ms lock delay are retained. Starting at level 1 reaches the floor at level 82 / 810 cleared lines instead of level 55 / 540 lines. This is formula-derived progression, not a measured human playability result. The coefficient does not mean a uniform 1.5x reduction in falling speed.
+
+## Authorized compatibility decision
+
+The owner's execution instruction in the implementation conversation removed the additional final approval hold and authorized deleting all prior records, result history and saved session/Continue, while retaining settings and normal saving afterward. The older issue/epic's human-approval wording is not evidence of a completed playtest. No human 500k/999,999 run, final aesthetic judgment or guarantee of achievable scores is claimed.
+
+GameStorage uses a fixed rules_7_balance_reset_completed marker independent of future GameRules.VERSION changes. SessionStore first commits removal of its owned session key in the separate production session store. Statistics keys are then removed synchronously; settings, player name and unrelated preferences are retained. Only successful cleanup permits a durable completion marker. A false marker commit clears its in-memory marker before failing so a same-process retry cannot silently skip cleanup. This is ordered, idempotent recovery across two preference files, not an atomic transaction spanning both files. Writes of subsequent normal sessions remain asynchronous and cached as before.
+
+Manual Reset statistics continues to preserve the current session/settings. Test fixtures initialize an empty already-migrated store before seeding ordinary new-session/history scenarios; dedicated MigrationTest explicitly opts out to exercise first-upgrade cleanup. Existing restoration, history-cache, result-comparison and Hold checks remain meaningful.
+
+## Risk-based development evidence
+
+- Curve/timing/scoring/round invariants: MarathonTimingTest, ProgressionTest, GameRulesTest, ScoringTest, VictoryRulesTest and SessionQueueBehaviorSpec passed 26 JVM cases, zero skips, in 17.744 s (fresh execution).
+- Persistence/settings/rounds/selected-start risks: the first seven-class native run executed 29 cases in 27.895 s; 28 passed, one failed because SessionLifecycleTest expected literal version 6. Migration behavior passed. Replacing that obsolete expectation with the current rules contract retained the record/version assertion. SessionLifecycleTest and neighboring MigrationTest then passed 21 cases, zero skips, in 12.671 s. Unchanged successful neighbor evidence was retained rather than rerunning all seven classes. The strengthened nonempty-history fixture then passed all four migration cases in 12.232 s.
+- Migration cases exercise separate settings/session stores, all prior record/history cleanup, retained preference values, new records/sessions after repeated migration and rules reinitialization, removal of old Continue and restoration of a new game, and session/statistics/marker commit failures including in-memory changes on a false result.
+- Debug Android-test assembly and detekt passed (29 s Gradle duration). An earlier detekt run failed on one overlong test declaration (46 s); the declaration was wrapped without changing behavior. Failed logs/XML and the native emulator snapshot are retained in ignored output.
+- The final clean-head/current-main-base gate is recorded in the implementation PR; these development checkpoints do not authorize merging or replace that gate.
+
+The checked native device was an owned headless API35 x86_64 emulator. Host profile: eight logical CPUs, 47.87 GiB total / 24.73 GiB available RAM and 43.17 GiB free disk at diagnosis; max-workers four, one Gradle process and one emulator. CPU load was a single 66% sample, not a permanent capacity claim. No cloud build/test or physical-device human playtest is claimed.
+
+The authenticated Context7 Android reference was consulted for SharedPreferences.Editor commit/apply. [Official API](https://developer.android.com/reference/kotlin/android/content/SharedPreferences.Editor): commit reports synchronous persistent-write success; apply has no failure result. Existing framework/dependency versions were retained.

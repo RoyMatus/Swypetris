@@ -9,10 +9,10 @@ import org.junit.Test
 
 class MarathonTimingTest {
     @Test fun curveMatchesRepresentativeLevelsAndCapsAt20G() {
-        val expected = mapOf(1 to 1_000_000_000L, 13 to 355_196_928L, 28 to 64_151_585L,
-            43 to 7_058_616L, 52 to 1_457_139L, 55 to 833_334L)
+        val expected = mapOf(1 to 1_000_000_000L, 19 to 355_196_928L, 37 to 93_882_249L,
+            55 to 18_153_329L, 73 to 2_520_084L, 81 to 937_028L, 82 to 833_334L)
         expected.forEach { (level, nanos) -> assertEquals(nanos, GameRules.gravityNanos(level)) }
-        for (level in listOf(56, 100, Int.MAX_VALUE))
+        for (level in listOf(83, 100, Int.MAX_VALUE))
             assertEquals(GameRules.MIN_GRAVITY_NANOS, GameRules.gravityNanos(level))
         assertTrue(1_000_000_000.0 / GameRules.MIN_GRAVITY_NANOS <= 1200)
         for (start in 1..15) {
@@ -21,11 +21,14 @@ class MarathonTimingTest {
             val initial = GameEngine().newGame(start)
             assertEquals(original, initial.gravityNanos)
             assertEquals(original, initial.copy(lines = start * 10 - 1).gravityNanos)
-            for (advance in 1..19 - start) {
+            for (advance in 2..19 - start step 2) {
                 val oldSteps = steps + advance
                 val oldNanos = if (oldSteps >= 18) GameRules.MIN_GRAVITY_NANOS else
                     ((0.8 - oldSteps * 0.007).pow(oldSteps) * 1_000_000_000).roundToLong()
-                assertEquals(oldNanos, initial.copy(lines = (start + advance * 3 - 1) * 10).gravityNanos)
+                assertEquals(oldNanos, initial.copy(lines = (start + advance * 9 / 2 - 1) * 10).gravityNanos)
+            }
+            for (level in start..100) {
+                assertTrue(GameRules.gravityNanos(level + 1, start) <= GameRules.gravityNanos(level, start))
             }
         }
         assertEquals(500L, LockRules.DELAY_MILLIS)
@@ -55,7 +58,7 @@ class MarathonTimingTest {
 
     @Test fun landingConsumesOnlySubsequentLockTimeAndResetsFractionOnMovement() {
         val engine = GameEngine(Random(42))
-        var state = GameState(active = Piece(Tetromino.O, y = 17), next = Tetromino.T, lines = 540)
+        var state = GameState(active = Piece(Tetromino.O, y = 17), next = Tetromino.T, lines = 810)
         val timeline = GameTimeline(state.gravityNanos)
         state = timeline.advance(state, 1, engine) { _, _ -> }
         assertEquals(18, state.active.y)
@@ -76,18 +79,18 @@ class MarathonTimingTest {
         val board = BoardGeometry.empty().map { it.toMutableList() }
         for (x in 0..7) board[BoardGeometry.row(19)][x] = Tetromino.J
         val initial = engine.apply(GameState(board = board, active = Piece(Tetromino.O, x = 8, y = 18),
-            next = Tetromino.T, lines = 539), GameCommand.HARD_DROP)
+            next = Tetromino.T, lines = 809), GameCommand.HARD_DROP)
         assertTrue(initial.clearingRows.isNotEmpty())
         assertEquals(run(initial, listOf(1100)), run(initial, List(1100) { 1 }))
         val result = run(initial, listOf(617))
-        assertEquals(55, result.state.level)
+        assertEquals(82, result.state.level)
         assertEquals(1, result.state.generation)
         assertTrue(result.state.active.y > 0)
     }
 
     @Test fun pauseFreezesDueEventsAndRetainsFractionalLandingTime() {
         val engine = GameEngine(Random(42))
-        val initial = GameState(active = Piece(Tetromino.O, y = 17), next = Tetromino.T, lines = 540)
+        val initial = GameState(active = Piece(Tetromino.O, y = 17), next = Tetromino.T, lines = 810)
         val timeline = GameTimeline(initial.gravityNanos)
         val landed = timeline.advance(initial, 1, engine) { _, _ -> }
         val frozen = timeline.freeze(landed, 217, engine)

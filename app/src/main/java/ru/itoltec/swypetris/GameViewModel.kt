@@ -44,7 +44,9 @@ class GameViewModel internal constructor(
 
     /** The standard Android constructor uses a monotonic clock and an automatic game loop. */
     constructor(application: Application) : this(application, null, SystemClock::uptimeMillis, true)
-    private val preferences = GameStorage.preferences(application).also(GameStorage::migrate)
+    private val preferences = GameStorage.preferences(application).also {
+        GameStorage.migrate(it, GameStorage.sessionPreferences(application))
+    }
     internal val background = CustomBackground(BackgroundStore(java.io.File(application.filesDir, "backgrounds"),
         preferences, java.io.File(application.cacheDir, "background-import")), viewModelScope)
     private val resultStore = ResultStore(preferences)
