@@ -24,9 +24,13 @@ if ((& $adb -s $serial get-state 2>$null) -join '' -eq 'device') {
     throw "$serial is already in use; the CI emulator must be started by this step."
 }
 
-$process = Start-Process -FilePath $emulator -ArgumentList @(
-    "@$avd", '-port', '5556', '-no-window', '-no-audio', '-no-snapshot', '-wipe-data'
-) -WindowStyle Hidden -PassThru
+$startup = Join-Path 'app/build/verification' ('emulator-start-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+$null = New-Item -ItemType Directory -Path $startup -Force
+$options = @("@$avd", '-port', '5556', '-no-window', '-no-audio', '-no-snapshot', '-wipe-data')
+$process = Start-Process -FilePath $emulator -ArgumentList $options -WindowStyle Hidden -PassThru `
+    -RedirectStandardOutput (Join-Path $startup 'stdout.log') -RedirectStandardError (Join-Path $startup 'stderr.log')
+@{serial=$serial;pid=$process.Id;avd=$avd;options=$options;startedUtc=[datetimeoffset]::UtcNow.ToString('o')} |
+    ConvertTo-Json | Set-Content -LiteralPath (Join-Path $startup 'context.json') -Encoding utf8
 try {
     $deadline = (Get-Date).AddMinutes(4)
     do {
@@ -42,10 +46,7 @@ try {
 
     & ./gradlew.bat :app:assembleDebugAndroidTest --build-cache --console=plain
     if ($LASTEXITCODE -ne 0) { throw "Android test APK build failed ($LASTEXITCODE)." }
-    & $adb -s $serial install -r app/build/outputs/apk/debug/app-debug.apk
-    if ($LASTEXITCODE -ne 0) { throw 'Application APK installation failed.' }
-    & $adb -s $serial install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-    if ($LASTEXITCODE -ne 0) { throw 'Android test APK installation failed.' }
+    & (Join-Path $PSScriptRoot 'Prepare-DirectInstrumentation.ps1') -Serial $serial
 
     $report = 'app/build/outputs/androidTest-results/windows/instrumentation.txt'
     New-Item -ItemType Directory -Force -Path (Split-Path $report) | Out-Null
@@ -80,6 +81,12 @@ try {
         instrumentation_command = "adb $($instrumentArgs -join ' ')"
     }
     $environment | ConvertTo-Json | Set-Content -Encoding utf8 'app/build/outputs/androidTest-results/windows/environment.json'
+} catch {
+    $_.Exception.Message | Set-Content -LiteralPath (Join-Path $startup 'failure.txt')
+    try { & (Join-Path $PSScriptRoot '../release/Save-EmulatorDiagnostics.ps1') -Serial $serial |
+        Set-Content -LiteralPath (Join-Path $startup 'diagnostics-path.txt') }
+    catch { "Diagnostic capture failed: $($_.Exception.Message)" | Set-Content -LiteralPath (Join-Path $startup 'diagnostics-path.txt') }
+    throw
 } finally {
     & $adb -s $serial emu kill 2>$null | Out-Null
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }

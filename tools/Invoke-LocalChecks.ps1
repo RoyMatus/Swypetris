@@ -44,6 +44,9 @@ try {
     if ($Serial) { $env:ANDROID_SERIAL = $Serial }
     $toolsRequired = $Mode -eq 'Full' -or @('github_scripts','release_scripts','ci_scripts','windows_release_tools').Where({$selection.$_ -eq 'true'}).Count -gt 0
     Invoke-Check 'whitespace' 'git' @('diff','--check',"$BaseSha..$headSha")
+    if ($selection.mode -ne 'none') {
+        Invoke-Check 'source-inventory' $Python @($helper,'source-inventory','--root',$project,'--head',$headSha,'--base',$BaseSha,'--mode',$Mode)
+    }
     if ($toolsRequired) {
         Invoke-Check 'python' $Python @('tools/ci/run_local_tool_tests.py')
         Invoke-Check 'pester' (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $PSScriptRoot 'Invoke-LocalToolTests.ps1'))

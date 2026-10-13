@@ -23,6 +23,7 @@ param(
     [string]$BodyFile,
     [ValidateRange(1, 1000000)][int]$PullRequestNumber,
     [string]$EvidencePath,
+    [int[]]$KeepOpenIssueNumbers,
     [string]$Python = 'python',
     [switch]$Draft
 )
@@ -146,12 +147,14 @@ if ($Action -eq 'Inspect') {
 
 if (!$localVerified) { throw $localError }
 Assert-GitHubPullRequestReady -PullRequest $pr -Checks $checks -Statuses $statuses -RequiredChecks $requiredChecks -LocalVerificationPassed
+if ($KeepOpenIssueNumbers) { Assert-GitHubIssuesRemainOpen -Client $client -PullRequest $pr -IssueNumbers $KeepOpenIssueNumbers }
 
 if ($PSCmdlet.ShouldProcess("$Repository PR #$PullRequestNumber", 'Merge via squash')) {
     # Recheck the base immediately before merge. GitHub's merge endpoint only supports expected HEAD.
     $latestBase = Invoke-GitHubRest -Client $client -Method Get -Path "git/ref/heads/$($pr.base.ref)"
     if ($latestBase.object.sha -ne $verifiedBase) { throw 'Base advanced after local verification; update and verify again.' }
     $null = Assert-LocalVerificationEvidence -EvidencePath $EvidencePath -Project $project -HeadSha $pr.head.sha -BaseSha $verifiedBase -Python $Python
+    if ($KeepOpenIssueNumbers) { Assert-GitHubIssuesRemainOpen -Client $client -PullRequest $pr -IssueNumbers $KeepOpenIssueNumbers }
     $result = Invoke-GitHubRest -Client $client -Method Put -Path "pulls/$PullRequestNumber/merge" -Body @{ merge_method = 'squash'; sha = $pr.head.sha }
     if ($result.merged -ne $true) { throw "GitHub did not confirm the merge of PR #$PullRequestNumber." }
     [pscustomobject]@{ Number = $PullRequestNumber; Merged = $result.merged; Sha = $result.sha; Message = $result.message }

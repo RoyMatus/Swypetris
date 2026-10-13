@@ -7,6 +7,7 @@ Run verification locally using [EXECUTION-PROFILES.md](EXECUTION-PROFILES.md). D
 1. Inspect affected behavior and list the risk each selected check covers. Use focused JVM checks for rules and focused emulator checks for UI/platform integration at meaningful checkpoints on the selected executor. One owner schedules heavy checks; reuse valid evidence across agents. Tool/instruction changes do not justify an app build by themselves.
 2. Keep compatible caches in the owned worktree through sequential issues. Preserve others' worktrees/processes. Do not clean or force rerun without evidence.
 3. Before the final push, finish code, tests, review, PR text, notes and measurements belonging in the PR. Reuse valid unchanged local evidence. Complete the local gate for the final clean SHA and current main base; subsequent meaningful changes require applicable revalidation. Merge through Manage-PullRequest.ps1 with validated evidence; never dispatch cloud checks.
+   For a preparatory PR that must leave an issue open, pass `-KeepOpenIssueNumbers <number>` to the merge script. It checks both closing keywords and native GitHub closing links immediately before merge. Reserve `Closes #N` for the completion PR.
 4. While local checks run, prepare completion text and inspect evidence without modifying the tested commit. Do not start implementation of the next epic issue before merge/closure.
 5. After a failure, preserve the full log and device snapshot, diagnose the cause, then verify the failed scenario and affected neighbors. No automatic retry-to-green. `Verify-Tests.ps1` captures bounded emulator diagnostics on device readiness/test failures; manual capture is also available:
 
@@ -47,6 +48,8 @@ Select only this epic's actual JSON summaries, XML and CI run IDs; do not glob h
 The generator produces a new ignored English draft, never overwrites a public report and never writes to GitHub. It retains failed checks, fresh/cached distinction, dirty/SHA identity, incomplete intervals and selected CI run/attempt identities. CI jobs are paginated. Job durations are not queue time or elapsed epic time; overlapping jobs and repeated test cases are not summed into unique coverage. XML profiling lists the slowest measured cases and excludes absent timing rather than inventing it.
 
 Review scope, failures, inferences and limitations, then write `publishing/reports/epic-<number>-development-review.md` after merge and link from the epic. Give each proposed optimization evidence, expected benefit and a validation that preserves assertions, isolation and required gates. Compare matching successful scope/environment across the next epic; report median/range and retries when enough observations exist. No guaranteed percentage follows from one warm build pair.
+
+After independent verification of the public release assets, prepare one documentation PR containing the exact-artifact release compliance report, epic development review and link from the epic when all evidence is ready. Verify the reports and GitHub link together. This batching does not defer urgent corrective work or the required pull of main and installation of the game after each actual merge.
 
 ## Verify the published release locally
 

@@ -166,3 +166,41 @@ Describe 'Local evidence integration with GitHub protection' {
         { Assert-GitHubPullRequestReady -PullRequest $pr -LocalVerificationPassed } | Should -Throw '*draft*'
     }
 }
+
+Describe 'Preparatory PR issue preservation' {
+    BeforeEach {
+        Mock Invoke-GitHubRest -ModuleName GitHub-Api { [pscustomobject]@{state='open';pull_request=$null} }
+        Mock Invoke-GitHubGraphQL -ModuleName GitHub-Api {
+            [pscustomobject]@{repository=[pscustomobject]@{pullRequest=[pscustomobject]@{
+                closingIssuesReferences=[pscustomobject]@{nodes=@();pageInfo=[pscustomobject]@{hasNextPage=$false}}
+            }}}
+        }
+        $client = [pscustomobject]@{Repository='RoyMatus/Swypetris'}
+    }
+    It 'allows a preparatory PR with no closing reference' {
+        $pr = [pscustomobject]@{number=301;body='Prepares issue #285.'}
+        Assert-GitHubIssuesRemainOpen -Client $client -PullRequest $pr -IssueNumbers 285
+    }
+    It 'rejects a text closing keyword' {
+        $pr = [pscustomobject]@{number=301;body='Closes #285'}
+        { Assert-GitHubIssuesRemainOpen -Client $client -PullRequest $pr -IssueNumbers 285 } | Should -Throw '*would close issue #285*'
+    }
+    It 'rejects a native link without a body keyword' {
+        Mock Invoke-GitHubGraphQL -ModuleName GitHub-Api {
+            [pscustomobject]@{repository=[pscustomobject]@{pullRequest=[pscustomobject]@{
+                closingIssuesReferences=[pscustomobject]@{nodes=@([pscustomobject]@{number=285;repository=[pscustomobject]@{nameWithOwner='RoyMatus/Swypetris'}});pageInfo=[pscustomobject]@{hasNextPage=$false}}
+            }}}
+        }
+        $pr = [pscustomobject]@{number=301;body='Preparation only'}
+        { Assert-GitHubIssuesRemainOpen -Client $client -PullRequest $pr -IssueNumbers 285 } | Should -Throw '*would close issue #285*'
+    }
+    It 'fails closed for incomplete native results' {
+        Mock Invoke-GitHubGraphQL -ModuleName GitHub-Api {
+            [pscustomobject]@{repository=[pscustomobject]@{pullRequest=[pscustomobject]@{
+                closingIssuesReferences=[pscustomobject]@{nodes=@();pageInfo=[pscustomobject]@{hasNextPage=$true}}
+            }}}
+        }
+        $pr = [pscustomobject]@{number=301;body='Preparation only'}
+        { Assert-GitHubIssuesRemainOpen -Client $client -PullRequest $pr -IssueNumbers 285 } | Should -Throw '*incomplete*'
+    }
+}

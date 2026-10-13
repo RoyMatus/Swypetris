@@ -9,7 +9,7 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import xml.etree.ElementTree as ET
-from select_checks import select, changed_paths
+from select_checks import select, changed_paths, SOURCE_GROUPS, FULL_SOURCES
 from full_regression_proof import test_inventory
 
 
@@ -84,12 +84,22 @@ def selection(root, mode, head, base):
         os.chdir(previous)
 
 
+def validate_source_inventory(root):
+    source_dir = root / 'app/src/main'
+    prefix = 'java/ru/itoltec/swypetris/'
+    sources = {path.relative_to(source_dir).as_posix() for path in source_dir.rglob('*.kt')}
+    known = {prefix + name for name in SOURCE_GROUPS.keys() | FULL_SOURCES}
+    unknown = sources - known
+    if unknown:
+        raise ValueError('Unclassified production Kotlin source: ' + ', '.join(sorted(unknown)))
+
+
 def required(mode, selected):
     checks = {'whitespace'}
     if mode == 'Full' or any(selected[k] == 'true' for k in ('github_scripts', 'release_scripts', 'ci_scripts', 'windows_release_tools')):
         checks |= {'python', 'pester'}
     if selected['mode'] != 'none':
-        checks |= {'quality', 'quality-reports', 'sonar', 'android', 'install-debug', 'launcher-smoke'}
+        checks |= {'source-inventory', 'quality', 'quality-reports', 'sonar', 'android', 'install-debug', 'launcher-smoke'}
         if selected['mode'] == 'full':
             checks |= {'picker-preflight', 'ui-preflight'}
     return checks
@@ -126,6 +136,7 @@ def validate(path, root, head, base, full=False):
     if any(c.get('log') not in files for c in checks):
         raise ValueError('Missing check logs')
     if expected['mode'] != 'none':
+        validate_source_inventory(root)
         for apk_dir in ('app/build/outputs/apk/debug/', 'app/build/outputs/apk/androidTest/debug/'):
             if not any(n.startswith(apk_dir) and n.endswith('.apk') for n in files):
                 raise ValueError('Missing bound APK artifact: ' + apk_dir)
@@ -154,7 +165,7 @@ def validate(path, root, head, base, full=False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['plan', 'validate'])
+    parser.add_argument('action', choices=['plan', 'validate', 'source-inventory'])
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--head', required=True)
     parser.add_argument('--base', required=True)
@@ -163,7 +174,10 @@ def main():
     parser.add_argument('--full', action='store_true')
     args = parser.parse_args()
     clean(args.root, args.head, args.base)
-    if args.action == 'validate':
+    if args.action == 'source-inventory':
+        if selection(args.root, args.mode, args.head, args.base)['mode'] != 'none':
+            validate_source_inventory(args.root)
+    elif args.action == 'validate':
         validate(args.evidence, args.root, args.head, args.base, args.full)
     else:
         print(json.dumps(selection(args.root, args.mode, args.head, args.base)))
