@@ -82,6 +82,37 @@ function Invoke-GitHubGraphQL {
     return $result.data
 }
 
+function Assert-GitHubIssuesRemainOpen {
+    param([Parameter(Mandatory)]$Client, [Parameter(Mandatory)]$PullRequest,
+          [Parameter(Mandatory)][int[]]$IssueNumbers)
+    if (!$IssueNumbers.Count) { throw 'Specify at least one issue to preserve.' }
+    $parts = $Client.Repository.Split('/')
+    $query = @'
+query($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      closingIssuesReferences(first: 100) {
+        nodes { number repository { nameWithOwner } }
+        pageInfo { hasNextPage }
+      }
+    }
+  }
+}
+'@
+    $data = Invoke-GitHubGraphQL -Client $Client -Query $query -Variables @{owner=$parts[0];repo=$parts[1];number=[int]$PullRequest.number}
+    $references = $data.repository.pullRequest.closingIssuesReferences
+    if ($null -eq $references -or $references.pageInfo.hasNextPage) { throw 'Native closing issue references are unavailable or incomplete.' }
+    foreach ($issueNumber in ($IssueNumbers | Sort-Object -Unique)) {
+        $issue = Invoke-GitHubRest -Client $Client -Method Get -Path "issues/$issueNumber"
+        if ($issue.state -cne 'open' -or $issue.pull_request) { throw "Issue #$issueNumber is not an open issue." }
+        $native = @($references.nodes | Where-Object { $_.number -eq $issueNumber -and $_.repository.nameWithOwner -ceq $Client.Repository })
+        $pattern = "(?im)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+(?:$([regex]::Escape($Client.Repository)))?\s*#$issueNumber\b"
+        if ($native.Count -or $PullRequest.body -match $pattern) {
+            throw "Preparatory PR #$($PullRequest.number) would close issue #$issueNumber. Remove the closing keyword/native link and verify it remains open before merging."
+        }
+    }
+}
+
 function Get-GitHubPullRequestBlockers {
     param(
         [Parameter(Mandatory)]$PullRequest,
@@ -181,4 +212,4 @@ function Get-GitHubRequiredChecks {
     $checks | Sort-Object context, app_id -Unique
 }
 
-Export-ModuleMember -Function Get-GitHubRequiredChecks, New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Get-GitHubPullRequestBlockers, Assert-GitHubPullRequestReady, Get-GitHubRepositoryCapabilities
+Export-ModuleMember -Function Get-GitHubRequiredChecks, New-GitHubClient, Invoke-GitHubRest, Invoke-GitHubRestPaged, Invoke-GitHubGraphQL, Get-GitHubPullRequestBlockers, Assert-GitHubPullRequestReady, Assert-GitHubIssuesRemainOpen, Get-GitHubRepositoryCapabilities

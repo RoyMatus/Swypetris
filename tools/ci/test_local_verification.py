@@ -32,6 +32,16 @@ class LocalCommitTests(unittest.TestCase):
     def test_accepts_clean_exact_head_and_ancestor_base(self):
         gate.clean(self.root, self.head, self.base)
 
+    def test_production_source_inventory_rejects_unknown_before_build(self):
+        source = self.root / 'app/src/main/java/ru/itoltec/swypetris'
+        source.mkdir(parents=True)
+        (source / 'NewUnclassified.kt').write_text('package ru.itoltec.swypetris\n')
+        with self.assertRaisesRegex(ValueError, 'NewUnclassified.kt'):
+            gate.validate_source_inventory(self.root)
+        (source / 'NewUnclassified.kt').unlink()
+        (source / 'GameMusic.kt').write_text('package ru.itoltec.swypetris\n')
+        gate.validate_source_inventory(self.root)
+
     def test_rejects_wrong_head(self):
         with self.assertRaises(ValueError):
             gate.clean(self.root, self.base, self.base)
@@ -134,7 +144,7 @@ class LocalEvidenceTests(unittest.TestCase):
 
     def test_full_requires_tools_and_android(self):
         selected = dict(self.selection, mode='full')
-        self.assertEqual(gate.required('Full', selected), {'whitespace','python','pester','quality','quality-reports','sonar','android','install-debug','launcher-smoke','picker-preflight','ui-preflight'})
+        self.assertEqual(gate.required('Full', selected), {'whitespace','python','pester','source-inventory','quality','quality-reports','sonar','android','install-debug','launcher-smoke','picker-preflight','ui-preflight'})
 
 
 if __name__ == '__main__':
