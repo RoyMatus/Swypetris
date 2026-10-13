@@ -29,6 +29,25 @@ Describe 'Observed development evidence' {
         { Get-DevelopmentIntervals @($start,(New-Event Stop '2026-10-11T08:00:00Z')) } | Should -Throw
         { Get-DevelopmentIntervals @($start,(New-Event Stop '2026-10-11T09:00:05Z' CIWait)) } | Should -Throw
     }
+    It 'rejects overlapping intervals and distinguishes active, check and waiting time' {
+        $events = @(
+            (New-Event Start '2026-10-11T09:00:00Z'),
+            (New-Event Stop '2026-10-11T09:00:10Z'),
+            [pscustomobject]@{id='b';issue=190;action='Start';phase='LocalChecks';timeUtc='2026-10-11T09:00:10Z'},
+            [pscustomobject]@{id='b';issue=190;action='Stop';phase='LocalChecks';timeUtc='2026-10-11T09:01:10Z'},
+            [pscustomobject]@{id='c';issue=190;action='Start';phase='Waiting';timeUtc='2026-10-11T09:01:10Z'},
+            [pscustomobject]@{id='c';issue=190;action='Stop';phase='Waiting';timeUtc='2026-10-11T09:01:40Z'}
+        )
+        $summary = Get-DevelopmentTicketTime -Events $events -Issue 190 -Coverage Complete
+        $summary.activeSeconds | Should -Be 10
+        $summary.localChecksSeconds | Should -Be 60
+        $summary.waitingSeconds | Should -Be 30
+        (Get-DevelopmentTicketTime -Events $events -Issue 191 -Coverage Unknown).activeSeconds | Should -BeNullOrEmpty
+        { Get-DevelopmentIntervals @($events[0], $events[2]) } | Should -Throw '*Overlapping*'
+        { Get-DevelopmentIntervals ($events + @($events[0])) } | Should -Throw '*Duplicate*'
+        { Get-DevelopmentTicketTime -Events @($events[0]) -Issue 190 -Coverage Complete } | Should -Throw '*unfinished*'
+        { Get-DevelopmentTicketTime -Events $events -Issue 191 -Coverage Complete } | Should -Throw '*completed intervals*'
+    }
     It 'preserves JSON timestamp instants and fractions in <Culture>' -ForEach @(
         @{Culture='ru-RU'}, @{Culture='en-US'}
     ) {
@@ -156,6 +175,17 @@ Describe 'Work journal and draft command integration' {
         & $script -Epic 187 -Issue 190 -Action Stop -Phase Implementation -Id $event.id | Out-Null
         $events = @(Get-Content $journal | ForEach-Object { $_ | ConvertFrom-Json })
         (Get-DevelopmentIntervals $events).unfinished.Count | Should -Be 0
+    }
+    It 'supports standalone tickets without an invented epic number and retains context' {
+        $script = Join-Path $release 'Record-EpicWork.ps1'
+        $result = & $script -Issue 191 -Action Start -Phase Waiting -Context 'Waiting for local test' -Evidence 'app/build/verification/check.json'
+        $journal = Join-Path $root 'app/build/verification/ticket-191/work.jsonl'
+        Test-Path $journal | Should -BeTrue
+        $event = Get-Content $journal | ConvertFrom-Json
+        $event.context | Should -Be 'Waiting for local test'
+        $event.evidence | Should -Contain 'app/build/verification/check.json'
+        & $script -Issue 191 -Action Stop -Phase Waiting -Id $event.id | Out-Null
+        (Get-DevelopmentTicketTime -Events @(Get-Content $journal | ForEach-Object { $_ | ConvertFrom-Json }) -Issue 191).waitingSeconds | Should -BeGreaterThan 0
     }
     It 'creates an ignored evidence draft with incomplete work excluded and without overwriting a public report' {
         & (Join-Path $release 'Record-EpicWork.ps1') -Epic 187 -Issue 190 -Action Start -Phase Implementation | Out-Null
