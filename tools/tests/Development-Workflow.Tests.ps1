@@ -29,6 +29,33 @@ Describe 'Observed development evidence' {
         { Get-DevelopmentIntervals @($start,(New-Event Stop '2026-10-11T08:00:00Z')) } | Should -Throw
         { Get-DevelopmentIntervals @($start,(New-Event Stop '2026-10-11T09:00:05Z' CIWait)) } | Should -Throw
     }
+    It 'preserves JSON timestamp instants and fractions in <Culture>' -ForEach @(
+        @{Culture='ru-RU'}, @{Culture='en-US'}
+    ) {
+        $previous = [Threading.Thread]::CurrentThread.CurrentCulture
+        try {
+            [Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::GetCultureInfo($Culture)
+            $events = @((New-Event Start '2026-10-13T09:00:00.125+03:00'),
+                (New-Event Stop '2026-10-13T06:00:05.750Z'))
+            (Get-DevelopmentIntervals $events).intervals[0].seconds | Should -Be 5.625
+            $decoded = $events | ConvertTo-Json | ConvertFrom-Json
+            (Get-DevelopmentIntervals $decoded).intervals[0].seconds | Should -Be 5.625
+            foreach ($event in $events) { $event.timeUtc = [datetimeoffset]::Parse($event.timeUtc) }
+            (Get-DevelopmentIntervals $events).intervals[0].seconds | Should -Be 5.625
+        } finally { [Threading.Thread]::CurrentThread.CurrentCulture = $previous }
+    }
+    It 'reads JSON summary timestamps after the twelfth day in ru-RU' {
+        $previous = [Threading.Thread]::CurrentThread.CurrentCulture
+        try {
+            [Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::GetCultureInfo('ru-RU')
+            $file = Join-Path $TestDrive 'dated-summary.json'
+            @{suite='Fast'; commit='abc'; startedUtc='2026-10-13T09:00:00.125+03:00';
+                result='passed'; durationSeconds=5.625} | ConvertTo-Json | Set-Content $file
+            $row = @(Get-DevelopmentCheckRows @($file))
+            $row.Count | Should -Be 1
+            $row[0].seconds | Should -Be 5.625
+        } finally { [Threading.Thread]::CurrentThread.CurrentCulture = $previous }
+    }
     It 'retains failures, cached counts, dirty state and release-role outcomes without totaling coverage' {
         $file = Join-Path $TestDrive 'summary.json'
         @{suite='Fast'; commit='abc'; dirty=$true; startedUtc='2026-10-11T09:00:00Z'; result='failed'; durationSeconds=2; reusedTestResults=$true; tests=@{passed=149;skipped=0}} | ConvertTo-Json -Depth 5 | Set-Content $file

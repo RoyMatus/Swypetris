@@ -1,18 +1,26 @@
 <# Evidence helpers: explicit intervals, no inferred coding time or summed overlapping wall time. #>
+function ConvertTo-DevelopmentTime {
+    param([object]$Value)
+    # ConvertFrom-Json may already return a date. Do not stringify it: that loses
+    # its offset/fractions and mixes PowerShell invariant formatting with locale parsing.
+    if ($Value -is [datetimeoffset] -or $Value -is [datetime]) { return [datetimeoffset]$Value }
+    [datetimeoffset]::Parse([string]$Value, [Globalization.CultureInfo]::InvariantCulture)
+}
+
 function Get-DevelopmentIntervals {
     param([object[]]$Events)
     $pending = @{}
     $intervals = @()
     foreach ($event in $Events) {
         if ($event.action -notin @('Start', 'Stop') -or !$event.phase -or !$event.id) { throw 'Invalid work event.' }
-        $time = [datetimeoffset]::Parse($event.timeUtc)
+        $time = ConvertTo-DevelopmentTime $event.timeUtc
         if ($event.action -eq 'Start') {
             if ($pending.ContainsKey($event.id)) { throw 'Duplicate start event.' }
             $pending[$event.id] = $event
         } else {
             if (!$pending.ContainsKey($event.id)) { throw 'Stop has no matching start.' }
             $start = $pending[$event.id]
-            $seconds = ($time - [datetimeoffset]::Parse($start.timeUtc)).TotalSeconds
+            $seconds = ($time - (ConvertTo-DevelopmentTime $start.timeUtc)).TotalSeconds
             if ($seconds -lt 0 -or $event.phase -ne $start.phase -or $event.issue -ne $start.issue) { throw 'Mismatched or negative interval.' }
             $intervals += [pscustomobject]@{ id=$event.id; issue=$event.issue; phase=$event.phase; seconds=$seconds; start=$start.timeUtc; end=$event.timeUtc }
             $pending.Remove($event.id)
@@ -28,7 +36,7 @@ function Get-DevelopmentCheckRows {
         if (!$s.suite -or !$s.commit -or !$s.startedUtc -or $s.result -notin @('passed','failed') -or
             $null -eq $s.durationSeconds -or [double]$s.durationSeconds -lt 0 -or
             [double]::IsNaN([double]$s.durationSeconds) -or [double]::IsInfinity([double]$s.durationSeconds)) { throw "Invalid verification summary: $path" }
-        $null = [datetimeoffset]::Parse($s.startedUtc)
+        $null = ConvertTo-DevelopmentTime $s.startedUtc
         $counts = @()
         if ($s.tests) { $counts += "passed=$($s.tests.passed), skipped=$($s.tests.skipped), reused=$([bool]$s.reusedTestResults)" }
         foreach ($role in @($s.roles)) {
