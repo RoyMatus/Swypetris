@@ -134,7 +134,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `ShareAppTest` | Android QR/intent: canonical store/latest-release links and sharing | Keep; decoded content and platform payloads. |
 | `ShareDialogInteractionTest` | Compose touch/intent: Share without background dismissal | Keep; event propagation and chooser payload. |
 | `StartingLevelTest` | Compose/storage: slider, unclipped explanation, cumulative higher starts and unchanged Continue | Update selection; existing scenarios exercise the setting's contracts. |
-| `UpdateCheckTest` | Android policy/UI: duplicate manual checks, persisted deadlines and safe messages | Keep; model/platform integration. |
+| `UpdateCheckTest` | Android policy/UI: playable fresh launch with equal/older/offline metadata, dismissible newer offers without consent/download, duplicate manual checks, persisted deadlines and safe messages | Keep; model/platform integration. |
 | `UpdateDeliveryRecoveryTest` | Android asynchronous delivery: retry and no installable partial file | Keep; cleanup and transition completion without a real download. |
 | `VictorySessionIntegrationTest` | Android model: round continuation, retained score/rules/time and one record | Keep; session/music transitions independent of visual geometry. |
 

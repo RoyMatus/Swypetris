@@ -43,6 +43,52 @@ class UpdateCheckTest {
         return value
     }
 
+    @Test fun freshLaunchWithCurrentVersionDoesNotRequireUpdate() = assertFreshLaunchRemainsPlayable { current }
+
+    @Test fun freshLaunchWithOlderPublishedVersionDoesNotRequireUpdate() =
+        assertFreshLaunchRemainsPlayable { current.copy(versionCode = current.versionCode - 1) }
+
+    @Test fun freshLaunchOfflineDoesNotRequireUpdate() =
+        assertFreshLaunchRemainsPlayable { throw IOException("Controlled offline first launch") }
+
+    @Test fun freshLaunchWithNewerVersionCanPostponeAndPlayWithoutDownload() =
+        assertFreshLaunchRemainsPlayable(offered = true) {
+            AvailableUpdate(current.versionCode + 1, "9.9.9", "https://example.invalid/Swypetris.apk",
+                false, "0".repeat(64), 1)
+        }
+
+    private fun assertFreshLaunchRemainsPlayable(offered: Boolean = false, fetch: () -> AvailableUpdate?) {
+        val calls = AtomicInteger()
+        lateinit var updates: AppUpdates
+        lateinit var model: GameViewModel
+        compose.runOnIdle {
+            model = GameViewModel(app, null, { now }, false)
+            updates = create { calls.incrementAndGet(); fetch() }
+        }
+        try {
+            compose.setContent { SwypetrisApp(model, updates) {} }
+            compose.runOnIdle {
+                assertFalse(updates.automaticEnabled)
+                updates.check(false)
+            }
+            waitForCheck(updates, calls, 1)
+            if (offered) compose.onNodeWithTag("laterUpdate").assertIsDisplayed().performClick()
+            compose.runOnIdle {
+                assertNull(updates.notice)
+                assertNull(updates.delivery.notice)
+                assertFalse(updates.consentRequested)
+            }
+            compose.onNodeWithTag("newGame").assertIsDisplayed().performClick()
+            compose.runOnIdle {
+                assertEquals(GameScreen.PLAYING, model.screen)
+                assertNull(updates.delivery.notice)
+                assertFalse(updates.automaticEnabled)
+            }
+        } finally {
+            compose.runOnIdle { model.pause(); updates.close(); preferences.edit().clear().commit() }
+        }
+    }
+
     @Test fun failedAutomaticAttemptIsPersistedAcrossRecreationButManualCanBypassInterval() {
         val calls = AtomicInteger()
         val fetch = { calls.incrementAndGet(); throw IOException("Controlled failure") }
