@@ -6,6 +6,9 @@ Monokai/Dracula добавлены для различимости семи фи
 адаптированы для читаемости. Логотип подстраивается под палитру; фруктовые спрайты
 сохраняют узнаваемые основные цвета, а их обводка и листья слегка подкрашиваются.
 
+Связанные рисунки фигур предоставлены владельцем для задачи #269; атласы используются без перекраски.
+Исходные каталоги и описание подготовки: https://github.com/RoyMatus/Swypetris/tree/449a63ff1d3e1d327ed214e461bfe9f4d4845e1d/publishing/design/connected-materials-269/package
+
 - Классическая: I cyan, O yellow, T purple, S green, Z red, J blue, L orange.
   https://cdn.steamstatic.com/steam/apps/1259790/manuals/tenpex_WM_210216_Steam_en.pdf
 - Monokai: https://github.com/microsoft/vscode/tree/main/extensions/theme-monokai — MIT, Microsoft.

@@ -446,9 +446,10 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
         // block() adds a gap on both axes, so cancel it at the lane origin.
         val origin = Offset(-step * .07f, -step * .07f)
         clipRect {
-            cells.forEach {
-                block(Cell(it.x - firstColumn, it.y - firstRow), palette.piece(held), palette.finish,
-                    palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f, material = material)
+            cells.forEachIndexed { index, position ->
+                block(Cell(position.x - firstColumn, position.y - firstRow), palette.piece(held), palette.finish,
+                    palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f, material = material,
+                    type = held, appearance = BlockAppearance(index))
             }
         }
     }

@@ -209,7 +209,8 @@ internal fun PalettePicker(model: GameViewModel) {
                                     bevelBlock(Offset(column * side + side * PREVIEW_BLOCK_X_OFFSET,
                                         row * side + side * PREVIEW_BLOCK_Y_OFFSET),
                                         Size(side * PREVIEW_BLOCK_FILL, side * PREVIEW_BLOCK_FILL),
-                                            item.pieces[index], item.finish, item.texture, material = material)
+                                            item.pieces[index], item.finish, item.texture, material = material,
+                                                type = Tetromino.entries[index])
                                 }
                             }
                             Text(item.title, Modifier.fillMaxWidth().testTag("palette_${item.id}_label"),
@@ -229,13 +230,14 @@ internal fun PalettePicker(model: GameViewModel) {
 
 /** Shares approved filled artwork while retaining outline semantics and existing menu decoration. */
 internal fun DrawScope.bevelBlock(at: Offset, size: Size, color: Color, finish: BlockFinish, texture: BlockTexture,
-    alpha: Float = 1f, outline: Boolean = false, material: BlockMaterial? = null) {
+    alpha: Float = 1f, outline: Boolean = false, material: BlockMaterial? = null,
+    type: Tetromino? = null, appearance: BlockAppearance = BlockAppearance.legacy) {
     if (outline) {
         drawRect(color.copy(alpha = alpha), at, size, style = Stroke(1.5.dp.toPx()))
         return
     }
     if (material != null) {
-        material.draw(this, at, size, color, alpha)
+        material.draw(this, at, size, requireNotNull(type), appearance, alpha)
         return
     }
     val b = minOf(size.width, size.height) * .08f

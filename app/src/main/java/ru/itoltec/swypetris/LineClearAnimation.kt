@@ -65,7 +65,8 @@ object LineClearAnimation {
                         (column - (BoardGeometry.WIDTH - 1) / 2f) * HORIZONTAL_SPLAY + (
                             seed % HORIZONTAL_VARIATIONS - HORIZONTAL_VARIATION_CENTER) * HORIZONTAL_VARIATION_STEP,
                         BASE_VERTICAL_VELOCITY - seed % VERTICAL_VARIATIONS * VERTICAL_VARIATION_STEP,
-                            (seed % 2 * 2 - 1) * (BASE_ROTATION_DEGREES + seed % ROTATION_VARIATIONS)))
+                            (seed % 2 * 2 - 1) * (BASE_ROTATION_DEGREES + seed % ROTATION_VARIATIONS),
+                        state.blockAppearance(row, column)))
                 }
             }
         }
@@ -73,4 +74,5 @@ object LineClearAnimation {
 }
 
 internal data class ClearShard(val column: Int, val row: Int, val type: Tetromino, val part: Int,
-    val velocityX: Float, val velocityY: Float, val rotation: Float)
+    val velocityX: Float, val velocityY: Float, val rotation: Float,
+    val appearance: BlockAppearance = BlockAppearance.legacy)
