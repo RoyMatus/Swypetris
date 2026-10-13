@@ -5,7 +5,7 @@ description: Implement an assigned Swypetris Android gameplay or Compose UI chan
 
 # Android implementation
 
-Locate the existing owner of the affected rule, UI state, or persisted session before editing. Follow the current Kotlin/Compose architecture and reuse the project's APIs and dependencies. Consult Context7 for the affected framework or API as required by `AGENTS.md`; if unavailable, state that and use official documentation.
+Locate the existing owner of the affected rule, UI state, or persisted session before editing. Follow the current Kotlin/Compose architecture and reuse the project's APIs and dependencies. For a new, changed or uncertain framework/API contract, consult Context7 as required by `AGENTS.md` and reuse that research until the contract changes; if unavailable, state that and use official documentation.
 
 Use the current task's execution profile and check plan; diagnose once at the required AGENTS.md boundary, not once per edit or delegated task. Reuse the parent's source findings and successful test evidence. Reserve heavy Gradle/emulator execution with the verification owner before starting it.
 

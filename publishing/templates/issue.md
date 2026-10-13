@@ -13,7 +13,7 @@ Intended behavior: <observable before/after>. Authorized files/systems: <scope>.
 - [ ] <measurable behavior, including edge cases and preserved behavior>
 - [ ] <measurable delivery/closure condition>
 
-Risk and selected local check: <risk -> check and evidence>. Final exact-head PR gate: required. Release gate: <required when releasing, otherwise not applicable>. Testing Project value: <evidence-based choice>.
+Risk and selected local check: <risk -> check and evidence>. Final exact-head PR gate: required. Release gate: <required when releasing, otherwise not applicable>. Testing Project value: <choose only if the current Project schema exposes it; otherwise not applicable>.
 
 ## Metadata decision
 

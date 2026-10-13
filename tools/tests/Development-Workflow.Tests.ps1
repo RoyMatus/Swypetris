@@ -86,6 +86,15 @@ Describe 'Observed development evidence' {
         @{suite='Release'; commit='abc'; startedUtc='2026-10-11T09:00:00Z'; result='passed'; durationSeconds=2; roles=@(@{role='app'; jvmOutcome='UP-TO-DATE'; jvm=@{passed=149;skipped=0}})} | ConvertTo-Json -Depth 5 | Set-Content $file
         @(Get-DevelopmentCheckRows @($file))[0].counts | Should -Match 'outcome=UP-TO-DATE'
     }
+    It 'deduplicates copied evidence by content while retaining distinct attempts' {
+        $first = Join-Path $TestDrive 'one.json'
+        $copy = Join-Path $TestDrive 'copy.json'
+        @{suite='Fast'; commit='abc'; startedUtc='2026-10-13T09:00:00Z'; result='passed'; durationSeconds=2} | ConvertTo-Json | Set-Content $first
+        Copy-Item $first $copy
+        @(Get-DevelopmentCheckRows @($first,$copy)).Count | Should -Be 1
+        (Get-Content $copy -Raw).Replace('"durationSeconds": 2','"durationSeconds": 3') | Set-Content $copy
+        @(Get-DevelopmentCheckRows @($first,$copy)).Count | Should -Be 2
+    }
     It 'rejects malformed summary input' {
         $file = Join-Path $TestDrive 'bad.json'
         '{}' | Set-Content $file
@@ -159,7 +168,7 @@ Describe 'Work journal and draft command integration' {
         $root = Join-Path $TestDrive ([guid]::NewGuid().ToString())
         $release = Join-Path $root 'tools/release'
         New-Item -ItemType Directory -Force $release | Out-Null
-        foreach ($name in @('Record-EpicWork.ps1','New-EpicReview.ps1','Development-Review.psm1')) {
+        foreach ($name in @('Record-EpicWork.ps1','New-EpicReview.ps1','New-TicketCompletion.ps1','Development-Review.psm1')) {
             Copy-Item (Join-Path $PSScriptRoot "../release/$name") $release
         }
         & git -C $root init --quiet
@@ -195,6 +204,42 @@ Describe 'Work journal and draft command integration' {
         $text | Should -Match 'Unfinished intervals excluded: 1'
         $text | Should -Match 'Unrecorded active work is unknown'
         Test-Path (Join-Path $root 'publishing/reports/epic-187-development-review.md') | Should -BeFalse
+    }
+    It 'drafts a concise completion from selected failed and reused checks without posting' {
+        $summary = Join-Path $TestDrive 'selected.json'
+        @{suite='Tool'; commit=('a'*40); startedUtc='2026-10-13T09:00:00Z'; result='failed'; durationSeconds=12; reusedTestResults=$true; tests=@{passed=2;skipped=1}} | ConvertTo-Json -Depth 5 | Set-Content $summary
+        $copy = Join-Path $TestDrive 'copy.json'; Copy-Item $summary $copy
+        $gate = Join-Path $TestDrive 'gate.json'
+        @{result='failed'; head=('a'*40); base=('b'*40); checks=@(@{name='Pester'; result='failed'; durationSeconds=12})} | ConvertTo-Json -Depth 5 | Set-Content $gate
+        $output = Join-Path $root 'app/build/verification/draft'
+        & (Join-Path $release 'New-TicketCompletion.ps1') -Issue 190 -Behavior 'Fixture' -SummaryFile @($summary,$copy) -EvidenceFile $gate -OutputDirectory $output | Out-Null
+        $draft = @(Get-ChildItem $output -Filter 'completion-draft-*.md')
+        $draft.Count | Should -Be 1
+        $body = Get-Content $draft[0].FullName -Raw
+        $body | Should -Match 'Recorded active work: Unknown'
+        $body | Should -Match 'reported failed, 12 s'
+        $body | Should -Match 'reused=True'
+        $body | Should -Match 'failed: Pester'
+        @($body -split 'source ' | Where-Object { $_ -match 'selected.json|copy.json' }).Count | Should -Be 1
+        Test-Path (Join-Path $root 'publishing/reports') | Should -BeFalse
+        { & (Join-Path $release 'New-TicketCompletion.ps1') -Issue 190 -Behavior Fixture -SummaryFile (Join-Path $TestDrive 'missing.json') -OutputDirectory $output } | Should -Throw
+    }
+    It 'keeps partial active time separate from a successful check and rejects overlapping journal entries' {
+        $summary = Join-Path $TestDrive 'passed.json'
+        @{suite='Tool'; commit=('a'*40); startedUtc='2026-10-13T09:00:00Z'; result='passed'; durationSeconds=30; tests=@{passed=8;skipped=0}} | ConvertTo-Json -Depth 5 | Set-Content $summary
+        $journal = Join-Path $TestDrive 'journal.jsonl'
+        @((New-Event Start '2026-10-13T09:00:00Z'), (New-Event Stop '2026-10-13T09:00:05Z')) | ForEach-Object { $_ | ConvertTo-Json -Compress } | Set-Content $journal
+        $output = Join-Path $root 'app/build/verification/partial'
+        & (Join-Path $release 'New-TicketCompletion.ps1') -Issue 190 -Behavior Fixture -SummaryFile $summary -JournalFile $journal -OutputDirectory $output | Out-Null
+        $draft = @(Get-ChildItem $output -Filter 'completion-draft-*.md')
+        $body = Get-Content $draft[0].FullName -Raw
+        $body | Should -Match '5 s lower bound.*Partial'
+        $body | Should -Match 'reported passed, 30 s'
+        $body | Should -Not -Match '35 s'
+        @((New-Event Start '2026-10-13T09:00:04Z'), (New-Event Stop '2026-10-13T09:00:06Z')) | ForEach-Object {
+            $_.id = 'b'; $_ | ConvertTo-Json -Compress
+        } | Add-Content $journal
+        { & (Join-Path $release 'New-TicketCompletion.ps1') -Issue 190 -Behavior Fixture -JournalFile $journal -OutputDirectory $output } | Should -Throw '*Overlapping*'
     }
 }
 Describe 'Workflow-run publication provenance' {
