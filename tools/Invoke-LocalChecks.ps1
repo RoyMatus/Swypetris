@@ -81,12 +81,6 @@ try {
         Invoke-Check 'install-debug' $adb @('-s',$Serial,'install','-r','app/build/outputs/apk/debug/app-debug.apk')
         Invoke-Check 'launcher-smoke' $adb @('-s',$Serial,'shell','monkey','-p','ru.itoltec.swypetris','-c','android.intent.category.LAUNCHER','1')
         if ((Get-Content (Join-Path $OutputDirectory 'launcher-smoke.log') -Raw) -notmatch '(?m)^Events injected: 1\s*$') { throw 'Launcher smoke output incomplete.' }
-        if ($selection.mode -eq 'full') {
-            $script = (Join-Path $PSScriptRoot 'Verify-Tests.ps1').Replace("'","''")
-            Invoke-Check 'picker-preflight' (Get-Process -Id $PID).Path @('-NoProfile','-Command',"& '$script' -Suite FocusedAndroid -TestClass 'ru.itoltec.swypetris.BackgroundPickerTest' -Serial '$Serial' -MaxWorkers $MaxWorkers")
-            Invoke-Check 'ui-preflight' (Get-Process -Id $PID).Path @('-NoProfile','-Command',"& '$script' -Suite FocusedAndroid -TestClass @('ru.itoltec.swypetris.VictoryThemeIntegrationTest','ru.itoltec.swypetris.AbsoluteVictoryUiTest','ru.itoltec.swypetris.SmokeTest') -Serial '$Serial' -MaxWorkers $MaxWorkers")
-        }
-
         $deviceArgs = @('-NoProfile','-File',(Join-Path $PSScriptRoot 'Verify-Tests.ps1'),'-Serial',$Serial,'-MaxWorkers',"$MaxWorkers")
         if ($JavaHome) { $deviceArgs += @('-JavaHome',$JavaHome) }
         if ($selection.mode -eq 'full') { $deviceArgs += @('-Suite','Android') }

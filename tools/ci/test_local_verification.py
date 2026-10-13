@@ -144,7 +144,7 @@ class LocalEvidenceTests(unittest.TestCase):
 
     def test_full_requires_tools_and_android(self):
         selected = dict(self.selection, mode='full')
-        self.assertEqual(gate.required('Full', selected), {'whitespace','python','pester','source-inventory','quality','quality-reports','sonar','android','install-debug','launcher-smoke','picker-preflight','ui-preflight'})
+        self.assertEqual(gate.required('Full', selected), {'whitespace','python','pester','source-inventory','quality','quality-reports','sonar','android','install-debug','launcher-smoke'})
 
 
 if __name__ == '__main__':

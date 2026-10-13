@@ -29,6 +29,8 @@ GitHub requires a PR and preserves main/tag integrity protections, but has no re
 
 Retain stdout/stderr, XML, quality reports and device diagnostics in ignored verification output. A build/install is not an instrumentation pass. Every selected Android class must have a passing case; a full suite must account for its declared inventory, including documented opt-in skips. Launcher smoke and SmokeTest cover distinct behavior; signed runtime smoke does not replace complete debug instrumentation or physical-device/store acceptance.
 
+The full local gate executes the complete Android instrumentation suite once. Picker and UI focused scenarios remain available for development diagnosis and are included in that complete inventory; separate preflight reruns are not required evidence. The launcher smoke still runs before instrumentation so a broken app launch fails early.
+
 Use a single risk-based plan per ticket. Reuse successful evidence only while its inputs/configuration remain valid; mark cached/up-to-date JVM tasks as reused. Do not habitually clean, rerun unchanged suites or retry failures until green. Preserve diagnostics, identify the cause and rerun the failed scope and affected neighbors. Record actual queue, build, analysis, emulator and test time separately; do not infer speedups from unlike scopes or cold/warm comparisons.
 
 ## SonarQube Cloud exception
