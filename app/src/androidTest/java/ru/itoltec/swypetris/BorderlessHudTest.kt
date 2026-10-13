@@ -33,6 +33,7 @@ import androidx.compose.ui.test.filter
 import androidx.compose.ui.test.height
 import androidx.compose.ui.test.left
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.right
 import androidx.compose.ui.test.top
@@ -95,20 +96,22 @@ class BorderlessHudTest {
         score = score).fruitCounts
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
-    @Test fun framelessHoldIsExtraFaintAndUsedStateIsStillDistinct() {
+    @Test fun framelessHoldMatchesActiveMaterialInBothAvailabilityStates() {
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var held by mutableStateOf<Tetromino?>(null)
         var used by mutableStateOf(false)
         var density = 1f
+        var material: BlockMaterial? = null
         compose.setContent {
             density = LocalDensity.current.density
             CompositionLocalProvider(LocalGamePalette provides palette) {
+                material = blockMaterial(palette)
                 Box(Modifier.size(320.dp, 480.dp).background(palette.background)) {
                     GameHud(GameState(active = Piece(Tetromino.O), next = Tetromino.T, held = held, holdUsed = used))
                 }
             }
         }
-        for (theme in listOf("classic", "solarized_light", "github_light")) for (piece in Tetromino.entries) {
+        for (theme in GamePalettes.all.map { it.id }) for (piece in Tetromino.entries) {
             compose.runOnIdle { palette = GamePalettes.find(theme); held = null; used = false }
             // The preview width varies by shape; compare against the solid empty background.
             val background = compose.onNodeWithTag("holdPreview").captureToImage().toPixelMap()[0, 0]
@@ -126,18 +129,12 @@ class BorderlessHudTest {
             compose.runOnIdle { used = true }
             val unavailable = compose.onNodeWithTag("holdPreview")
                 .assertContentDescriptionEquals("Запас ${piece.name}, обмен недоступен").captureToImage().toPixelMap()
-            var availableDifference = 0f
-            var usedDifference = 0f
             for (y in 0 until available.height) for (x in 0 until available.width) {
-                availableDifference += difference(available[x, y], background)
-                usedDifference += difference(unavailable[x, y], background)
+                assertEquals("Availability must not dim Hold: $theme/$piece ($x,$y)",
+                    available[x, y], unavailable[x, y])
             }
-            availableDifference /= available.width * available.height
-            usedDifference /= available.width * available.height
-            assertTrue("Recognizable but extra faint: $theme/$piece", availableDifference > .005f &&
-                availableDifference < .25f)
-            assertTrue("Used Hold remains distinct: $theme/$piece", usedDifference > .001f &&
-                availableDifference > usedDifference * 1.5f)
+            HoldMaterialAssertions.matchesActive(available, requireNotNull(material), palette, piece, density)
+            HoldMaterialAssertions.exportPortraitIfRequested(theme, piece) { compose.onRoot().captureToImage() }
             val corner = (density * 1).toInt()
             for (x in listOf(available.width - 1 - corner)) for (y in listOf(corner, available.height - 1 - corner))
                 assertEquals("Hold must have no outer brackets", background, available[x, y])

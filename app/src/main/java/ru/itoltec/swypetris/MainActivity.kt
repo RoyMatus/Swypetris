@@ -448,7 +448,7 @@ private fun HoldPreview(held: Tetromino?, used: Boolean, modifier: Modifier) {
         clipRect {
             cells.forEachIndexed { index, position ->
                 block(Cell(position.x - firstColumn, position.y - firstRow), palette.piece(held), palette.finish,
-                    palette.texture, origin, Size(step, step), alpha = if (used) .055f else .16f, material = material,
+                    palette.texture, origin, Size(step, step), material = material,
                     type = held, appearance = BlockAppearance(index))
             }
         }

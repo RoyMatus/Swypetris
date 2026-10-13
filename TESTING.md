@@ -129,7 +129,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `SrsTest` | JVM: eight transitions, wall/floor kicks and hidden rows | Keep; distinct I/JLSTZ tables and rejected-rotation state. |
 | `UpdateCheckPolicyTest` | JVM: polling, rate limits, HTTP dates and malformed timing | Keep; separates generic failures from rate-limit evidence. |
 | `UpdateFailureTest` | JVM: safe error classification, cleanup, cancellation identity and programming failures | Keep; never masks unexpected defects as recoverable network notices. |
-| `BorderlessHudTest` | Compose pixels/bounds: score/fruit lanes, Hold state and Next contrast in two themes | Keep; objective layer/state contracts. |
+| `BorderlessHudTest` | Compose pixels/bounds: score/fruit lanes, full-opacity Hold in all twelve themes/seven shapes and unchanged Next contrast | Keep; compare available/used pixels and the active material at equal size/background, preserving semantics/layout. `holdCapture=true` explicitly exports comparisons and representative portrait fixtures. |
 | `GameplaySurfaceTest` | Compose pixels: grid under status area and clipped foreground | Keep; protects edge-to-edge surface behavior. |
 | `HistoryCacheTest` | Android storage: initialization read, malformed/legacy rows and cache invalidation | Keep; validates the cached record owner's lifecycle. |
 | `HoldIntegrationTest` | Compose/storage: gesture, persisted Hold, replacement isolation and feedback suppression | Keep; platform interaction complements JVM Hold rules. |
