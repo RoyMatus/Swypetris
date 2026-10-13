@@ -1,0 +1,86 @@
+{
+  "baseCommit": "7b8e1bfa5a4e6669750d53457156f565160802a8",
+  "productionRenderer": "app/src/main/java/ru/itoltec/swypetris/BlockMaterial.kt",
+  "atlasLayout": {
+    "gutter": 2,
+    "previewCellIndex": 0,
+    "columns": 7,
+    "cell": 128,
+    "rows": 4,
+    "pitch": 132
+  },
+  "assets": [
+    {
+      "themeId": "classic",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_classic.webp",
+      "bytes": 360538,
+      "sha256": "d5e810d9fa71509a51333d58e14297b4ba4230112415b53d32285c0099371e98"
+    },
+    {
+      "themeId": "monokai",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_monokai.webp",
+      "bytes": 549414,
+      "sha256": "8e2101958c3cac4b223c9a387dd4ccd0ba16581c46d3059ead07f8c224ef9a40"
+    },
+    {
+      "themeId": "gruvbox",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_gruvbox.webp",
+      "bytes": 525948,
+      "sha256": "4d563c5e4e3d93d8b834094b630f3ad64c95ac7e5364e7e3426b791c25aa8210"
+    },
+    {
+      "themeId": "vscode",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_vscode.webp",
+      "bytes": 573970,
+      "sha256": "dfe15e9e339918b9cbbda0cf921a496b6debf48b61905b6ef5a4b81d7aedadc1"
+    },
+    {
+      "themeId": "dracula",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_dracula.webp",
+      "bytes": 590606,
+      "sha256": "a2ea7be20c0989a0781101d572d68a5da16aff494df834b234b610da5ec83ae2"
+    },
+    {
+      "themeId": "nord",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_nord.webp",
+      "bytes": 605480,
+      "sha256": "b04e063563e58a7d6ae2b41a8b5572f282b4889a83e5c304744d9f410f25f3b1"
+    },
+    {
+      "themeId": "solarized_light",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_solarized_light.webp",
+      "bytes": 594672,
+      "sha256": "33942a92bab2afe8f5f41b3034568fe67553ec7fd6fff56c0b509531af373ff6"
+    },
+    {
+      "themeId": "solarized_dark",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_solarized_dark.webp",
+      "bytes": 701350,
+      "sha256": "edf887c4f8bcbddcb37715e6e071c8000c5fab5a03f421bd55985ca16664d267"
+    },
+    {
+      "themeId": "github_light",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_github_light.webp",
+      "bytes": 500588,
+      "sha256": "cc57ecba08bcedc32446c550938065df2b4b222433732269f7f353f0bee91cb4"
+    },
+    {
+      "themeId": "tokyo_night",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_tokyo_night.webp",
+      "bytes": 708298,
+      "sha256": "7a98366b65b719cbdb31cdc7055a5ef4a3d74defda7db697dd3ad507aea3b7b3"
+    },
+    {
+      "themeId": "catppuccin",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_catppuccin.webp",
+      "bytes": 620136,
+      "sha256": "e118d497aba09e40141e06bd7b1bd2c3563b5e5ff772f86eda358ff001f8dfe8"
+    },
+    {
+      "themeId": "synthwave_84",
+      "path": "app/src/main/res/drawable-nodpi/material_connected_synthwave_84.webp",
+      "bytes": 689602,
+      "sha256": "a43c6e1eabff5cc3ce534a990e8d42208213031a7e10f989955e1007325a40a0"
+    }
+  ]
+}

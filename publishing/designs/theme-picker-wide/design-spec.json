@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "approvedVariant": "Wide cards",
+  "approvedVariantOriginalLabel": "Широкие карточки",
+  "approvedDate": "2026-10-13",
+  "repository": "RoyMatus/Swypetris",
+  "baseCommit": "7b8e1bfa5a4e6669750d53457156f565160802a8",
+  "entryPoint": "app/src/main/java/ru/itoltec/swypetris/GamePalette.kt::PalettePicker",
+  "componentDestination": "app/src/main/java/ru/itoltec/swypetris/WidePalettePicker.kt",
+  "testDestination": "app/src/androidTest/java/ru/itoltec/swypetris/WidePalettePickerTest.kt",
+  "themeIdsInOrder": ["classic", "monokai", "gruvbox", "vscode", "dracula", "nord", "solarized_light", "solarized_dark", "github_light", "tokyo_night", "catppuccin", "synthwave_84"],
+  "productionArtwork": "Existing material_connected_<id>.webp atlases via blockMaterial and bevelBlock; no asset replacement",
+  "paletteOrder": ["I", "O", "T", "S", "Z", "J", "L"],
+  "card": {"columns": 1, "gapDp": 8, "radiusDp": 13, "minHeightDp": 88, "background": "item.background", "textColor": "item.text", "borderDp": 2, "borderColor": "#354059", "selectedBorderDp": 3, "selectedColor": "activePalette.piece(Tetromino.T)", "contentPaddingDp": {"start": 28, "end": 12, "top": 10, "bottom": 10}, "labelArtworkGapDp": 14},
+  "title": {"sizeSp": 19, "lineHeightSp": 27, "weight": 600, "alignment": "start", "maxLines": null, "ellipsis": false},
+  "preview": {"widthDp": 140, "heightDp": 68, "cellDp": 32, "gapDp": 4, "topRow": ["I", "O", "T", "S"], "bottomRow": ["Z", "J", "L"], "bottomOffsetDp": 18},
+  "check": {"diameterDp": 16, "iconDp": 12, "startDp": 5, "topDp": 7, "decorative": true},
+  "stacked": {"widthLessThanDp": 294, "fontScaleAtLeast": 1.4, "paddingDp": 14, "gapDp": 12, "titleSp": 18, "lineHeightSp": 26, "titleEndReserveDp": 20, "rows": 1, "cellFormula": "min(40dp, max(1dp, (cardWidth - 28dp - 6 * 4dp) / 7))", "checkDiameterDp": 19, "checkEndDp": 7, "checkTopDp": 7},
+  "interaction": {"target": "whole card", "role": "RadioButton", "group": "selectableGroup", "stateOwner": "GameViewModel.options.setPalette", "newScrollContainer": false, "preservePortraitLock": true}
+}

@@ -1,0 +1,19 @@
+{
+  "errors": [],
+  "loadedThemes": 12,
+  "selectionAfterClick": "nord",
+  "checks": [
+    {
+      "productWidth": 420,
+      "cards": 12,
+      "overflow": false,
+      "labelIssues": []
+    },
+    {
+      "productWidth": 320,
+      "cards": 12,
+      "overflow": false,
+      "labelIssues": []
+    }
+  ]
+}

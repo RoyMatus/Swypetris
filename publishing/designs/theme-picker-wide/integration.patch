@@ -1,0 +1,374 @@
+diff --git a/app/src/androidTest/java/ru/itoltec/swypetris/VictoryThemeIntegrationTest.kt b/app/src/androidTest/java/ru/itoltec/swypetris/VictoryThemeIntegrationTest.kt
+index 8ef6db9..d2b46cc 100644
+--- a/app/src/androidTest/java/ru/itoltec/swypetris/VictoryThemeIntegrationTest.kt
++++ b/app/src/androidTest/java/ru/itoltec/swypetris/VictoryThemeIntegrationTest.kt
+@@ -1,4 +1,4 @@
+-﻿package ru.itoltec.swypetris
++package ru.itoltec.swypetris
+ 
+ import android.app.Application
+ import android.graphics.Bitmap
+@@ -357,7 +357,8 @@ class VictoryThemeIntegrationTest {
+                 val label = compose.onNodeWithTag("palette_${item.id}_label", useUnmergedTree = true)
+                 val labelNode = label.assertTextEquals(item.title).fetchSemanticsNode()
+                 val labelBounds = labelNode.boundsInRoot
+-                assertTrue("${item.title}: label overlaps preview at $scale", labelBounds.top >= art.bottom)
++                assertTrue("${item.title}: label overlaps preview at $scale",
++                    labelBounds.right <= art.left || labelBounds.bottom <= art.top)
+                 assertTrue("${item.title}: label exceeds card at $scale",
+                     labelBounds.bottom <= card.fetchSemanticsNode().boundsInRoot.bottom)
+                 val layout = mutableListOf<TextLayoutResult>()
+diff --git a/app/src/androidTest/java/ru/itoltec/swypetris/WidePalettePickerTest.kt b/app/src/androidTest/java/ru/itoltec/swypetris/WidePalettePickerTest.kt
+new file mode 100644
+index 0000000..916ca80
+--- /dev/null
++++ b/app/src/androidTest/java/ru/itoltec/swypetris/WidePalettePickerTest.kt
+@@ -0,0 +1,91 @@
++package ru.itoltec.swypetris
++
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.fillMaxHeight
++import androidx.compose.foundation.layout.width
++import androidx.compose.foundation.rememberScrollState
++import androidx.compose.foundation.verticalScroll
++import androidx.compose.runtime.CompositionLocalProvider
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableFloatStateOf
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.platform.LocalDensity
++import androidx.compose.ui.semantics.Role
++import androidx.compose.ui.semantics.SemanticsActions
++import androidx.compose.ui.semantics.SemanticsProperties
++import androidx.compose.ui.test.SemanticsMatcher
++import androidx.compose.ui.test.assert
++import androidx.compose.ui.test.assertIsDisplayed
++import androidx.compose.ui.test.assertTextEquals
++import androidx.compose.ui.test.junit4.createComposeRule
++import androidx.compose.ui.test.onNodeWithTag
++import androidx.compose.ui.test.performClick
++import androidx.compose.ui.test.performScrollTo
++import androidx.compose.ui.text.TextLayoutResult
++import androidx.compose.ui.unit.Density
++import androidx.compose.ui.unit.dp
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Rule
++import org.junit.Test
++
++class WidePalettePickerTest {
++    @get:Rule val compose = createComposeRule()
++
++    /** The approved landscape-free list uses large previews and one full-width card per theme. */
++    @Test fun wideCardsHaveLargeSamplesAndSelectableSemantics() {
++        var selected by mutableStateOf(GamePalettes.find("classic"))
++        compose.setContent {
++            Column(Modifier.width(360.dp).fillMaxHeight().verticalScroll(rememberScrollState())) {
++                WidePalettePicker(selected) { selected = GamePalettes.find(it) }
++            }
++        }
++        for (theme in GamePalettes.all) {
++            val card = compose.onNodeWithTag("palette_${theme.id}_preview").performScrollTo().assertIsDisplayed()
++            card.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
++            val cardBounds = card.fetchSemanticsNode().boundsInRoot
++            val art = compose.onNodeWithTag("palette_${theme.id}_art", true).fetchSemanticsNode().boundsInRoot
++            val label = compose.onNodeWithTag("palette_${theme.id}_label", true).fetchSemanticsNode().boundsInRoot
++            val density = compose.density.density
++            assertEquals("Full-width card", 360f, cardBounds.width / density, 1f)
++            assertEquals("Four 32dp blocks and three 4dp gaps", 140f, art.width / density, 1f)
++            assertEquals("Two rows of 32dp blocks", 68f, art.height / density, 1f)
++            assertTrue("Title is left of artwork", label.right <= art.left)
++            card.performClick().assert(SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
++            compose.runOnIdle { assertEquals(theme.id, selected.id) }
++            compose.onNodeWithTag("palette_${theme.id}_check", true).assertExists()
++        }
++    }
++
++    /** Long labels stay complete on narrow portrait layouts and at doubled system font scale. */
++    @Test fun narrowAndLargeFontCardsHaveUnclippedNamesAndArtwork() {
++        var width by mutableStateOf(240.dp)
++        var font by mutableFloatStateOf(1f)
++        compose.setContent {
++            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, font)) {
++                Column(Modifier.width(width).fillMaxHeight().verticalScroll(rememberScrollState())) {
++                    WidePalettePicker(GamePalettes.find("classic")) {}
++                }
++            }
++        }
++        for ((requestedWidth, scale) in listOf(240.dp to 1f, 240.dp to 2f, 360.dp to 2f)) {
++            compose.runOnIdle { width = requestedWidth; font = scale }
++            for (theme in GamePalettes.all) {
++                val card = compose.onNodeWithTag("palette_${theme.id}_preview").performScrollTo().assertIsDisplayed()
++                val bounds = card.fetchSemanticsNode().boundsInRoot
++                val label = compose.onNodeWithTag("palette_${theme.id}_label", true).assertTextEquals(theme.title)
++                    .fetchSemanticsNode()
++                val art = compose.onNodeWithTag("palette_${theme.id}_art", true).fetchSemanticsNode().boundsInRoot
++                assertTrue("Title stays above artwork", label.boundsInRoot.bottom <= art.top)
++                assertTrue("Artwork stays inside card",
++                    art.left >= bounds.left && art.right <= bounds.right && art.bottom <= bounds.bottom)
++                val layouts = mutableListOf<TextLayoutResult>()
++                assertTrue(label.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts) == true)
++                assertFalse("Full label at $requestedWidth/$scale", layouts.single().hasVisualOverflow)
++            }
++        }
++    }
++}
+diff --git a/app/src/main/java/ru/itoltec/swypetris/GamePalette.kt b/app/src/main/java/ru/itoltec/swypetris/GamePalette.kt
+index 89749bc..1ecda7a 100644
+--- a/app/src/main/java/ru/itoltec/swypetris/GamePalette.kt
++++ b/app/src/main/java/ru/itoltec/swypetris/GamePalette.kt
+@@ -1,29 +1,10 @@
+ package ru.itoltec.swypetris
+ 
+-import androidx.compose.foundation.Canvas
+-import androidx.compose.foundation.border
+-import androidx.compose.foundation.clickable
+-import androidx.compose.foundation.background
+-import androidx.compose.foundation.layout.Arrangement
+-import androidx.compose.foundation.layout.BoxWithConstraints
+-import androidx.compose.foundation.layout.Column
+-import androidx.compose.foundation.layout.Row
+-import androidx.compose.foundation.layout.Spacer
+-import androidx.compose.foundation.layout.fillMaxWidth
+-import androidx.compose.foundation.layout.height
+-import androidx.compose.foundation.layout.heightIn
+-import androidx.compose.foundation.layout.padding
+-import androidx.compose.foundation.layout.size
+-import androidx.compose.foundation.layout.width
+-import androidx.compose.foundation.shape.RoundedCornerShape
+ import androidx.compose.material3.ColorScheme
+-import androidx.compose.material3.Text
+ import androidx.compose.material3.darkColorScheme
+ import androidx.compose.material3.lightColorScheme
+ import androidx.compose.runtime.Composable
+ import androidx.compose.runtime.staticCompositionLocalOf
+-import androidx.compose.ui.Modifier
+-import androidx.compose.ui.Alignment
+ import androidx.compose.ui.geometry.Offset
+ import androidx.compose.ui.geometry.Size
+ import androidx.compose.ui.graphics.Color
+@@ -32,20 +13,10 @@ import androidx.compose.ui.graphics.Path
+ import androidx.compose.ui.graphics.drawscope.DrawScope
+ import androidx.compose.ui.graphics.drawscope.Stroke
+ import androidx.compose.ui.graphics.lerp
+-import androidx.compose.ui.platform.testTag
+-import androidx.compose.ui.platform.LocalDensity
+-import androidx.compose.ui.semantics.selected
+-import androidx.compose.ui.semantics.semantics
+-import androidx.compose.ui.text.style.TextAlign
+-import androidx.compose.ui.text.style.TextOverflow
+ import androidx.compose.ui.unit.dp
+-import androidx.compose.ui.unit.sp
+ 
+ private const val OPAQUE_ARGB_MASK = 0xFF000000L
+ private const val LIGHT_GOLD_RGB = 0x8A5700L
+-private const val PREVIEW_BLOCK_X_OFFSET = .15f
+-private const val PREVIEW_BLOCK_Y_OFFSET = .05f
+-private const val PREVIEW_BLOCK_FILL = .89f
+ private const val FLAT_FINISH_OUTLINE_BLEND = .36f
+ private const val RETRO_STRIPE_DIVISOR = 3
+ private const val DRACULA_DOT_RADIUS = .045f
+@@ -170,64 +141,11 @@ object GamePalettes {
+ 
+ val LocalGamePalette = staticCompositionLocalOf { GamePalettes.all.first() }
+ 
+-/** Every supported palette is directly selectable from one non-scrolling grid. */
++/** Every supported theme is directly selectable through the approved full-width cards. */
+ @Composable
+ internal fun PalettePicker(model: GameViewModel) {
+-    val palette = LocalGamePalette.current
+-    val accent = palette.piece(Tetromino.T)
+-    SettingsLabel("Расцветка", "Выбери стиль игры")
+-    Spacer(Modifier.height(8.dp))
+-    BoxWithConstraints(Modifier.fillMaxWidth().testTag("paletteGrid")) {
+-        val fontScale = LocalDensity.current.fontScale
+-        val columns = when {
+-            fontScale >= 1.4f && maxWidth < 480.dp -> 1
+-            fontScale >= 1.4f -> 2
+-            maxWidth >= 600.dp -> 4
+-            maxWidth >= 480.dp -> 3
+-            maxWidth >= 260.dp -> 2
+-            else -> 1
+-        }
+-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+-            GamePalettes.all.chunked(columns).forEach { row ->
+-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+-                    row.forEach { item ->
+-                        val material = blockMaterial(item)
+-                        val selected = palette.id == item.id
+-                        val shape = RoundedCornerShape(9.dp)
+-                        Column(Modifier.weight(1f).heightIn(min = 96.dp)
+-                            .background(item.background, shape)
+-                            .border(if (selected) 3.dp else 1.dp, if (selected) accent else palette.grid, shape)
+-                            .clickable { model.options.setPalette(item.id) }
+-                            .semantics { this.selected = selected }
+-                            .testTag("palette_${item.id}_preview").padding(5.dp),
+-                            horizontalAlignment = Alignment.CenterHorizontally,
+-                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+-                            Canvas(Modifier.fillMaxWidth().height(34.dp).testTag("palette_${item.id}_art")) {
+-                                val side = minOf(size.width / 4.6f, size.height / 2.4f)
+-                                val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
+-                                positions.forEachIndexed { index, (column, row) ->
+-                                    bevelBlock(Offset(column * side + side * PREVIEW_BLOCK_X_OFFSET,
+-                                        row * side + side * PREVIEW_BLOCK_Y_OFFSET),
+-                                        Size(side * PREVIEW_BLOCK_FILL, side * PREVIEW_BLOCK_FILL),
+-                                            item.pieces[index], item.finish, item.texture, material = material,
+-                                                type = Tetromino.entries[index])
+-                                }
+-                            }
+-                            Text(item.title, Modifier.fillMaxWidth().testTag("palette_${item.id}_label"),
+-                                color = item.text, fontSize = 14.sp, lineHeight = 18.sp,
+-                                fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold
+-                                    else androidx.compose.ui.text.font.FontWeight.Normal,
+-                                textAlign = TextAlign.Center, minLines = 2, maxLines = 2,
+-                                overflow = TextOverflow.Ellipsis)
+-                        }
+-                    }
+-                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+-                }
+-            }
+-        }
+-    }
++    WidePalettePicker(LocalGamePalette.current) { model.options.setPalette(it) }
+ }
+-
+ /** Shares approved filled artwork while retaining outline semantics and existing menu decoration. */
+ internal fun DrawScope.bevelBlock(at: Offset, size: Size, color: Color, finish: BlockFinish, texture: BlockTexture,
+     alpha: Float = 1f, outline: Boolean = false, material: BlockMaterial? = null,
+diff --git a/app/src/main/java/ru/itoltec/swypetris/WidePalettePicker.kt b/app/src/main/java/ru/itoltec/swypetris/WidePalettePicker.kt
+new file mode 100644
+index 0000000..e5d8060
+--- /dev/null
++++ b/app/src/main/java/ru/itoltec/swypetris/WidePalettePicker.kt
+@@ -0,0 +1,129 @@
++package ru.itoltec.swypetris
++
++import androidx.compose.foundation.Canvas
++import androidx.compose.foundation.background
++import androidx.compose.foundation.border
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.BoxWithConstraints
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.Spacer
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.height
++import androidx.compose.foundation.layout.heightIn
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.size
++import androidx.compose.foundation.selection.selectable
++import androidx.compose.foundation.selection.selectableGroup
++import androidx.compose.foundation.shape.CircleShape
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.Check
++import androidx.compose.material3.Icon
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.clip
++import androidx.compose.ui.geometry.Offset
++import androidx.compose.ui.geometry.Size
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.platform.LocalDensity
++import androidx.compose.ui.platform.testTag
++import androidx.compose.ui.semantics.Role
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.unit.Dp
++import androidx.compose.ui.unit.dp
++import androidx.compose.ui.unit.sp
++
++private val CardBorder = Color(0xFF354059)
++private val CardRadius = 13.dp
++private val BlockGap = 4.dp
++private val NormalBlockSize = 32.dp
++private val MaxStackedBlockSize = 40.dp
++private val StackedCardWidth = 294.dp
++private const val STACKED_FONT_SCALE = 1.4f
++private const val NORMAL_COLUMNS = 4
++private const val FIRST_ROW_COUNT = 4
++private const val PALETTE_SIZE = 7
++
++/** Approved full-width theme cards; the settings screen remains the sole scroll owner. */
++@Composable
++internal fun WidePalettePicker(palette: GamePalette, onSelect: (String) -> Unit) {
++    SettingsLabel("Расцветка", "Выбери стиль игры")
++    Spacer(Modifier.height(8.dp))
++    Column(Modifier.fillMaxWidth().testTag("paletteGrid").selectableGroup(),
++        verticalArrangement = Arrangement.spacedBy(8.dp)) {
++        GamePalettes.all.forEach { item ->
++            WidePaletteCard(item, palette.id == item.id, palette.piece(Tetromino.T)) {
++                onSelect(item.id)
++            }
++        }
++    }
++}
++
++/** Selection is announced once, on the entire card; the check and artwork are decorative. */
++@Composable
++private fun WidePaletteCard(item: GamePalette, selected: Boolean, accent: Color, onSelect: () -> Unit) {
++    val shape = RoundedCornerShape(CardRadius)
++    BoxWithConstraints(Modifier.fillMaxWidth().heightIn(min = 88.dp).clip(shape)
++        .background(item.background).border(if (selected) 3.dp else 2.dp,
++            if (selected) accent else CardBorder, shape)
++        .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
++        .testTag("palette_${item.id}_preview")) {
++        val stacked = maxWidth < StackedCardWidth || LocalDensity.current.fontScale >= STACKED_FONT_SCALE
++        if (stacked) {
++            // 2dp border + 12dp inner padding on each side, and six 4dp gaps.
++            val blockSize = minOf(MaxStackedBlockSize, ((maxWidth - 28.dp - BlockGap * 6) / PALETTE_SIZE)
++                .coerceAtLeast(1.dp))
++            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
++                PaletteCardTitle(item, true, Modifier.fillMaxWidth().padding(end = 20.dp))
++                PaletteCardArtwork(item, blockSize, true)
++            }
++        } else {
++            Row(Modifier.fillMaxWidth().padding(start = 28.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
++                horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
++                PaletteCardTitle(item, false, Modifier.weight(1f))
++                PaletteCardArtwork(item, NormalBlockSize, false)
++            }
++        }
++        if (selected) {
++            val indicatorSize = if (stacked) 19.dp else 16.dp
++            val alignment = if (stacked) Alignment.TopEnd else Alignment.TopStart
++            Box(Modifier.align(alignment).padding(horizontal = if (stacked) 7.dp else 5.dp, vertical = 7.dp)
++                .size(indicatorSize).background(accent, CircleShape)
++                .testTag("palette_${item.id}_check"), contentAlignment = Alignment.Center) {
++                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White,
++                    modifier = Modifier.size(12.dp))
++            }
++        }
++    }
++}
++
++/** Unlimited wrapping preserves complete theme names at large accessibility font scales. */
++@Composable
++private fun PaletteCardTitle(item: GamePalette, stacked: Boolean, modifier: Modifier) {
++    Text(item.title, modifier.testTag("palette_${item.id}_label"), color = item.text,
++        fontSize = if (stacked) 18.sp else 19.sp, lineHeight = if (stacked) 26.sp else 27.sp,
++        fontWeight = FontWeight.SemiBold)
++}
++
++/** Uses the production connected atlas, in the existing I/O/T/S/Z/J/L palette order. */
++@Composable
++private fun PaletteCardArtwork(item: GamePalette, blockSize: Dp, singleRow: Boolean) {
++    val material = blockMaterial(item)
++    val columns = if (singleRow) PALETTE_SIZE else NORMAL_COLUMNS
++    val rows = if (singleRow) 1 else 2
++    Canvas(Modifier.size(blockSize * columns + BlockGap * (columns - 1),
++        blockSize * rows + BlockGap * (rows - 1)).testTag("palette_${item.id}_art")) {
++        val side = blockSize.toPx()
++        val pitch = side + BlockGap.toPx()
++        Tetromino.entries.forEachIndexed { index, type ->
++            val secondRow = !singleRow && index >= FIRST_ROW_COUNT
++            val column = if (secondRow) index - FIRST_ROW_COUNT + .5f else index.toFloat()
++            bevelBlock(Offset(column * pitch, if (secondRow) pitch else 0f), Size(side, side),
++                item.piece(type), item.finish, item.texture, material = material, type = type)
++        }
++    }
++}
