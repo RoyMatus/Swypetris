@@ -20,11 +20,15 @@ $lines.Add("# Epic #$Epic development review — DRAFT")
 $lines.Add('')
 $lines.Add('Generated evidence only. Review scope, failures, overlapping intervals, conclusions and limitations before committing the post-merge report.')
 $lines.Add('')
-$lines.Add('## Explicitly recorded intervals')
+$lines.Add('## Optional observed phase time')
 $lines.Add('')
-$lines.Add('| Issue | Phase | Seconds | Start UTC | End UTC |')
-$lines.Add('| --- | --- | ---: | --- | --- |')
-foreach ($row in $state.intervals) { $lines.Add("| $($row.issue) | $($row.phase) | $($row.seconds) | $($row.start) | $($row.end) |") }
+$lines.Add('| Issue | Phase | Completed intervals | Seconds |')
+$lines.Add('| --- | --- | ---: | ---: |')
+foreach ($group in ($state.intervals | Group-Object issue,phase)) {
+    $first = $group.Group[0]
+    $seconds = ($group.Group | Measure-Object -Property seconds -Sum).Sum
+    $lines.Add("| $($first.issue) | $($first.phase) | $($group.Count) | $seconds |")
+}
 $lines.Add('')
 $lines.Add("Unfinished intervals excluded: $($state.unfinished.Count). Unrecorded active work is unknown. Overlapping intervals must not be added as elapsed epic time.")
 $lines.Add('')
