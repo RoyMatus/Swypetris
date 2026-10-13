@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -79,11 +80,21 @@ class MusicSettingsFruitTest {
         val recorder = Recorder()
         val initial = GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=10000)
         val model = GameViewModel(app,initial,{1000L},false,musicPlayback=recorder)
+        lateinit var hostView: android.view.View
         assertEquals(MusicSelection.Off,model.musicSelection)
         model.navigation.settings()
-        compose.setContent { SwypetrisApp(model) {} }
+        compose.setContent { hostView = LocalView.current; SwypetrisApp(model) {} }
         compose.onNodeWithTag("musicPicker").performScrollTo().performClick()
         compose.onNodeWithTag("music_trepak").performScrollTo().performClick()
+        val focused = GameViewModel::class.java.getDeclaredField("windowFocused").apply { isAccessible = true }
+        // Finish the genuine popup-to-host focus transfer before simulating lifecycle callbacks on that host.
+        compose.waitUntil(5000) {
+            var ready = false
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                ready = hostView.hasWindowFocus() && focused.getBoolean(model)
+            }
+            ready
+        }
         compose.runOnIdle {
             assertEquals(MusicSelection.Track(Song.TREPAK),model.musicSelection)
             assertEquals(MusicMode.MENU,recorder.modes.last())

@@ -214,28 +214,64 @@ class LineClearUiTest {
 
     @Test fun realClearTimerSamplesBoundedFramesWithoutAddingGameplayDelay() {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        val model = GameViewModel(app, clearFixture(listOf(16, 17, 18, 19)),
-            android.os.SystemClock::uptimeMillis, false, timer = AndroidGameTimer())
-        val costs = mutableListOf<Long>()
-        compose.setContent {
-            Box(Modifier.size(240.dp, 528.dp).drawWithContent {
-                val clearing = model.game!!.clearingRows.isNotEmpty()
-                val start = System.nanoTime()
-                drawContent()
-                if (clearing) costs += System.nanoTime() - start
-            }) { Board(model.game!!, clearTime = { model.clearElapsedMillis }) }
-        }
-        compose.waitUntil(5000) { model.game!!.clearingRows.isEmpty() }
-        compose.runOnIdle {
-            assertEquals(1, model.game!!.generation)
-            assertEquals(800, model.game!!.score)
-            assertTrue("Must render several real animation frames", costs.size >= 5)
+        val startedAt = android.os.SystemClock.uptimeMillis()
+        var liveClock = false
+        var recording = false
+        lateinit var model: GameViewModel
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            model = GameViewModel(app, clearFixture(listOf(16, 17, 18, 19)),
+                { if (liveClock) android.os.SystemClock.uptimeMillis() else startedAt },
+                false, timer = AndroidGameTimer())
             model.pause()
         }
-        val sorted = costs.sorted()
-        saveArtifact("shards-frame-cost.txt") { file ->
-            file.writeText("CPU draw recording only; excludes asynchronous GPU work.\nframes=${costs.size}\n" +
-                "median_ms=${sorted[sorted.size / 2] / 1_000_000.0}\nmax_ms=${sorted.last() / 1_000_000.0}\n")
+        val costs = mutableListOf<Long>()
+        var firstDrawAt: Long? = null
+        var firstDrawClearing: Boolean? = null
+        try {
+            compose.setContent {
+                Box(Modifier.size(240.dp, 528.dp).drawWithContent {
+                    val clearing = model.game!!.clearingRows.isNotEmpty()
+                    // Observe the same draw-phase clock as the child Canvas: child invalidation alone
+                    // does not rerun an unchanged parent's drawWithContent measurement.
+                    val elapsed = model.clearElapsedMillis
+                    if (firstDrawAt == null) {
+                        firstDrawAt = android.os.SystemClock.uptimeMillis()
+                        firstDrawClearing = clearing
+                    }
+                    val start = System.nanoTime()
+                    drawContent()
+                    if (recording && clearing && elapsed < LineClearAnimation.TOTAL_MILLIS)
+                        costs += System.nanoTime() - start
+                }) { Board(model.game!!, clearTime = { model.clearElapsedMillis }) }
+            }
+            // The normal clear occurs on an already drawn board, not during first composition/resource loading.
+            compose.waitUntil(5000) {
+                var drawn = false
+                InstrumentationRegistry.getInstrumentation().runOnMainSync { drawn = firstDrawAt != null }
+                drawn
+            }
+            compose.runOnIdle {
+                assertEquals(0L, model.clearElapsedMillis)
+                liveClock = true
+                recording = true
+                model.resume()
+            }
+            compose.waitUntil(5000) { model.game!!.clearingRows.isEmpty() }
+            val sorted = costs.sorted()
+            saveArtifact("shards-frame-cost.txt") { file ->
+                file.writeText("CPU draw recording only; excludes asynchronous GPU work.\nframes=${costs.size}\n" +
+                    "median_ms=${sorted.getOrNull(sorted.size / 2)?.div(1_000_000.0)}\n" +
+                    "max_ms=${sorted.lastOrNull()?.div(1_000_000.0)}\n" +
+                    "first_draw_after_model_ms=${firstDrawAt?.minus(startedAt)}\n" +
+                    "first_draw_clearing=$firstDrawClearing\n")
+            }
+            compose.runOnIdle {
+                assertEquals(1, model.game!!.generation)
+                assertEquals(800, model.game!!.score)
+                assertTrue("Must render several real animation frames", costs.size >= 5)
+            }
+        } finally {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { model.pause() }
         }
     }
 
