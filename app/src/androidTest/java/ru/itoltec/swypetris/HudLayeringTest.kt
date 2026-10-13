@@ -48,8 +48,10 @@ class HudLayeringTest {
         val model = GameViewModel(ApplicationProvider.getApplicationContext<Application>(), state, { 1000L }, false)
         model.options.setHints(false)
         var density = 1f
+        var material: BlockMaterial? = null
         compose.setContent {
             density = LocalDensity.current.density
+            material = blockMaterial(LocalGamePalette.current)
             Box(Modifier.size(width.dp, 580.dp)) { GameContent(model, state, 24.dp) }
         }
         for (w in listOf(240, 320, 600)) {
@@ -73,7 +75,7 @@ class HudLayeringTest {
             val unobscured = compose.onRoot().captureToImage().toPixelMap()
             val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
             val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
-            val overlap = HudOverlap(fruits, root, area, unobscured)
+            val overlap = HudOverlap(fruits, root, area, unobscured, requireNotNull(material).image.toPixelMap())
             var coveredIcons = 0
             var coveredLabels = 0
             for (row in 0..5) {
@@ -117,7 +119,7 @@ class HudLayeringTest {
 
     private class HudOverlap(val fruits: androidx.compose.ui.geometry.Rect,
         val root: androidx.compose.ui.geometry.Rect, val area: androidx.compose.ui.geometry.Rect,
-        val unobscured: androidx.compose.ui.graphics.PixelMap) {
+        val unobscured: androidx.compose.ui.graphics.PixelMap, val atlas: androidx.compose.ui.graphics.PixelMap) {
         val cellWidth = area.width / 10
         val cellHeight = area.height / 21
         val gap = minOf(cellWidth, cellHeight) * .07f
@@ -135,9 +137,18 @@ class HudLayeringTest {
                 val local = x + root.left - area.left
                 val column = (local / cellWidth).toInt()
                 val inCell = local - column * cellWidth
-                if (column !in 6..9 || inCell < gap + 2 || inCell > cellWidth - gap - 2) continue
-                assertOpaquePiece("Fruit drawn over active piece at $w/$row/$x/$y", cleanPiece[x, y], covered[x, y])
-                if (unobscured[x, y] != cleanPiece[x, y]) {
+                val alpha = if (column in 6..9 && inCell >= gap + 2 && inCell <= cellWidth - gap - 2)
+                    artworkAlpha(atlas, Tetromino.I, column - 6,
+                    (inCell - gap) / (cellWidth - gap * 2) * 128,
+                    (y + root.top - yTop) / (cellHeight - gap * 2) * 128,
+                    kotlin.math.ceil(128 / minOf(cellWidth - gap * 2, cellHeight - gap * 2)).toInt() + 1) else 0f
+                if (alpha < .9f) continue
+                assertArtworkAbove("Fruit drawn over active artwork at $w/$row/$x/$y",
+                    cleanPiece[x, y], covered[x, y], alpha)
+                val contrast = maxOf(abs(unobscured[x, y].red - cleanPiece[x, y].red),
+                    abs(unobscured[x, y].green - cleanPiece[x, y].green),
+                    abs(unobscured[x, y].blue - cleanPiece[x, y].blue))
+                if (contrast > 2 * (1 - alpha + 1f / 255f)) {
                     if (labels.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
                         y + root.top)) }) coveredLabels++
                     else if (icons.any { it.contains(androidx.compose.ui.geometry.Offset(x + root.left,
@@ -148,13 +159,5 @@ class HudLayeringTest {
             return coveredIcons to coveredLabels
         }
 
-        /** Bitmap filtering can round a channel by one byte across composited captures. */
-        private fun assertOpaquePiece(message: String, expected: Color, actual: Color) {
-            val tolerance = 1f / 255f + .000001f
-            assertEquals(message, expected.red, actual.red, tolerance)
-            assertEquals(message, expected.green, actual.green, tolerance)
-            assertEquals(message, expected.blue, actual.blue, tolerance)
-            assertEquals(message, expected.alpha, actual.alpha, 0f)
-        }
     }
 }

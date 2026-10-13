@@ -83,7 +83,11 @@ class NextQueueTest {
     @Test fun activeRemainsOnTopAndPreviewUpdatesAfterLockAndBothHoldPaths() {
         val engine = GameEngine(kotlin.random.Random(42))
         var state by mutableStateOf(engine.newGame())
-        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
+        var material: BlockMaterial? = null
+        compose.setContent {
+            material = blockMaterial(LocalGamePalette.current)
+            Box(Modifier.size(220.dp, 484.dp)) { Board(state) }
+        }
         fun checkRenderedState() {
             val current = state
             val image = compose.onNodeWithTag("board").captureToImage().toPixelMap()
@@ -96,9 +100,14 @@ class NextQueueTest {
             val alternate = Tetromino.entries.first { it != current.next }
             compose.runOnIdle { state = current.copy(next = alternate) }
             val otherPreview = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-            for (cell in current.active.cells().filter { it.y >= -SPAWN_DISPLAY_ROWS }) {
-                assertEquals("Active block must cover both preview colors", image.colorAt(cell),
-                    otherPreview.colorAt(cell))
+            val atlas = requireNotNull(material).image.toPixelMap()
+            current.active.cells().forEachIndexed { index, cell ->
+                if (cell.y >= -SPAWN_DISPLAY_ROWS) {
+                    val alpha = artworkAlpha(atlas, current.active.type, index)
+                    assertTrue("Exercise nearly opaque figure centers", alpha >= .98f)
+                    assertArtworkAbove("Active artwork must stay above both preview colors", image.colorAt(cell),
+                        otherPreview.colorAt(cell), alpha)
+                }
             }
             compose.runOnIdle { state = current }
         }

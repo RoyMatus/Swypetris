@@ -29,6 +29,8 @@ Static analysis initially identified seven style issues, then one excessive nest
 
 The added spawn-clipping test compares visible artwork before/after a five-row translation for all seven shapes and four rotations. Its initial exact hardware-pixel comparison differed by four red-channel levels in the first case; a bounded 0.04 channel tolerance accommodates translated hardware filtering while the independent software source oracle retains its three-level tolerance. The final four-case material checkpoint, including clipping, passed in 42.293 s. The preceding seven-case run also confirmed all three migrated-session cases after the parser refactor. Complete JVM count: 158 passed, zero skips/failures.
 
+The first exact-head PR gate completed 194 Android cases: 187 passed, three failed, four registered opt-in skips (719.586 s wrapper). The failures were existing BackgroundRendering, HudLayering and NextQueue assertions assuming fully opaque old artwork. Inspection of the supplied files found alpha 253/255 throughout the sampled Classic O center; the source cutouts intentionally remain byte-for-byte unchanged, including that intrinsic alpha. Updated assertions bound lower-layer color influence by the actual canonical-region alpha plus one quantization level. HUD coverage counts only near-opaque, contrasting icon/label pixels, so reversed layer order still violates the bound. Geometry, photo precedence, Hold transitions and uncovered preview checks remain. All three formerly failing scenarios passed in a direct native checkpoint (19.406 s runner, 21.562 s wrapper); test assembly/lint/detekt passed in 59 s. No production code changed after the first gate. Failed evidence remains under `issue-269-final-pr/`; the corrected exact-head gate uses a separate directory.
+
 ## Native visual evidence
 
 These contact sheets contain actual Android-rendered captures, downscaled and labelled for review. The figure sheet uses the production native renderer without board spacing so adjacent canonical regions can be compared; gameplay retains the existing 7% inset. Original full-size captures for both portrait configurations remain in local `app/build/verification/epic-236/issue-269-render-evidence/`. All twelve themes were visually inspected against the pinned material direction. Pixel checks establish sampled-region correctness, not an independent aesthetic judgment or human playtest.
@@ -43,14 +45,14 @@ These contact sheets contain actual Android-rendered captures, downscaled and la
 
 ## Packaging and measurements
 
-Comparable debug-variant APK inspection used the immutable pre-change `f5b228d` APK and the #269 development APK. It found exactly twelve new block WebP atlases and twelve unchanged field images. Each packaged atlas matched its runtime source bytes; all field hashes matched the baseline. Superseded atlases, figure/shard PNGs, source/reference sheets, ZIP and full provenance manifest are absent from the APK. The review images above are repository documentation, not Android resources.
+Comparable debug-variant APK inspection used the immutable pre-change `f5b228d` APK and the first #269 PR-head `a0d8d47` APK. That after-APK is retained as `issue-269-apk-comparison/after-a0d8d47.apk`, SHA-256 `5df0ed8aec8b4963661329c1c5b42ea7424551caafa1412bd088d8c57ddc70f2`; subsequent changes concern tests/documentation. Inspection found exactly twelve new block WebP atlases and twelve unchanged field images. Each packaged atlas matched its runtime source bytes; all field hashes matched the baseline. Superseded atlases, figure/shard PNGs, source/reference sheets, ZIP and full provenance manifest are absent from the APK. The review images above are repository documentation, not Android resources.
 
 | Bytes | Before | After | Difference |
 | --- | ---: | ---: | ---: |
 | Block texture payload (also stored ZIP bytes) | 6,832,584 | 7,020,602 | +188,018 |
-| Complete debug APK | 63,258,314 | 64,262,590 | +1,004,276 |
+| Complete debug APK | 63,258,314 | 64,842,596 | +1,584,282 |
 
-The complete APK difference includes code, resource-table and archive overhead; it is not attributed entirely to textures. These are debug files, not a prediction of signed release/download size. The final built artifact inventory is checked again for delivery.
+An earlier dirty-tree development build was 64,262,590 bytes (+1,004,276); the table uses the retained clean-head artifact instead. The complete APK difference includes code, resource-table and archive overhead; it is not attributed entirely to textures. These are debug files, not a prediction of signed release/download size. The final built artifact inventory is checked again for delivery.
 
 RGBA pixel-storage estimate: one 924 × 528 atlas uses 1,951,488 bytes (about 1.86 MiB); twelve use 23,417,856 bytes (about 22.33 MiB), excluding object/driver overhead. This is not measured process RSS or a guarantee that all twelve stay decoded concurrently.
 
