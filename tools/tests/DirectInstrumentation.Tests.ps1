@@ -33,7 +33,7 @@ exit 1
 if ($args[-1] -like '*test.apk') { "package: name='ru.itoltec.swypetris.test'" }
 else { "package: name='ru.itoltec.swypetris'" }
 '@ | Set-Content $aapt
-        "'Signer #1 certificate SHA-256 digest: ' + ('a' * 64)" | Set-Content $signer
+        "'V2 Signer: certificate SHA-256 digest: ' + ('a' * 64)" | Set-Content $signer
     }
     AfterEach {
         'SWYPETRIS_FIXTURE_APP','SWYPETRIS_FIXTURE_TEST','SWYPETRIS_FIXTURE_INSTALL_LOG','SWYPETRIS_FIXTURE_INSTALLED' |
@@ -55,5 +55,9 @@ else { "package: name='ru.itoltec.swypetris'" }
     It 'rejects an incompatible package' {
         '"package: name=''wrong.package''"' | Set-Content $aapt
         { & $preflight -Serial emulator-5560 -AppApk $app -TestApk $test -AdbCommand $adb -AaptCommand $aapt -ApksignerCommand $signer } | Should -Throw '*Incompatible app APK package*'
+    }
+    It 'rejects conflicting signing certificates' {
+        "'V2 Signer: certificate SHA-256 digest: ' + ('a' * 64); 'V3 Signer: certificate SHA-256 digest: ' + ('b' * 64)" | Set-Content $signer
+        { & $preflight -Serial emulator-5560 -AppApk $app -TestApk $test -AdbCommand $adb -AaptCommand $aapt -ApksignerCommand $signer } | Should -Throw '*signing provenance*'
     }
 }

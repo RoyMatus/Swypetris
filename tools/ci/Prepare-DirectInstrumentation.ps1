@@ -33,10 +33,13 @@ try {
             throw "Incompatible $($entry.name) APK package."
         }
         $signature = & $apksigner verify --print-certs $file
-        if ($LASTEXITCODE -ne 0 -or ($signature -join "`n") -notmatch '(?m)^Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]{64})') {
+        if ($LASTEXITCODE -ne 0) {
             throw "Cannot verify $($entry.name) APK signing provenance."
         }
-        $certificate = $Matches[1].ToLowerInvariant()
+        $digests = @([regex]::Matches(($signature -join "`n"), '(?m)^(?:V\d+ Signer:|Signer #\d+) certificate SHA-256 digest: ([0-9a-fA-F]{64})\s*$') |
+            ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() } | Sort-Object -Unique)
+        if ($digests.Count -ne 1) { throw "Cannot verify $($entry.name) APK signing provenance." }
+        $certificate = $digests[0]
         $paths = & $adb -s $Serial shell pm path $entry.expected
         $installed = $LASTEXITCODE -eq 0 -and @($paths | Where-Object { $_ -match '^package:' }).Count -eq 1
         $matchesArtifact = $false
