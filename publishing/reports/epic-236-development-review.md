@@ -202,3 +202,26 @@ The [Hold implementation and native comparison report](opaque-hold-271.md) cover
 Seven focused Android cases passed in 98.031 s; lint/detekt passed in 87 s. The explicit all-theme/portrait export passed in 23.982 s runner / 28.158 s including APK installs and transfer, with 171 originals retained. No failed development checks or retries occurred. Recorded Implementation interval: 564.394 s, including checks and visual evidence preparation, not pure coding time. Review/waiting outside completed intervals is not inferred.
 
 The comparison reused the existing renderer and already checked canonical material identity from #269; it added the risk-specific Hold opacity/state assertions rather than repeating atlas-source tests. The first focused checkpoint covered both brightness and existing Hold persistence/input/Next neighbors and passed. Future small visual changes can similarly compare equal-size/equal-background render paths before the final gate; expected benefit is fewer misleading brightness or sampling failures, not a measured speedup. Keep source-alpha handling, per-cell checks, semantics and the mandatory exact-head gate when validating this approach.
+
+### #271 completed delivery
+
+[PR #278](https://github.com/RoyMatus/Swypetris/pull/278) merged as `6da3fbfd5ac273332b75f8bbb4670bf9177994fb`; closure and Project Done were verified. Exact head `14d49474de261dbb1114f5f8da7118bf4dce4e83` / base `e21d400deabb34329c4b74b2cd8382030571c55d` passed 158 freshly executed JVM cases, lint/detekt/JaCoCo and Sonar Quality Gate. Quality took 25.950 s, Sonar 65.803 s, picker/UI preflight wrappers 34.037/66.054 s. Fresh full Android reported 197 unique cases: 193 passed, four registered opt-in skips, no failures; 777.460 s runner / 778.065 s wrapper. The exact-head gate passed on its first run. Primary main was pulled; post-merge signed preparation and Pixel installation are tracked separately from this test evidence.
+
+The exact-main APP-signed APK was prepared and its certificate verified in 140.615 s (Gradle assembly 138 s), SHA-256 `6f86b09951f04f0a48971a77d33245e70803ee0b07bf79c0a5f9803f8817ca55`. Pixel installation remains pending; the device was still absent from ADB/mDNS after this build. No phone data was removed.
+
+## Final reconciliation — 2026-10-13
+
+The live epic has thirteen required children, all confirmed closed after #271: #192, #211, #234, #248, #205, #259, #264, #189, #210, #215, #269, #270 and #271. Earlier completed work was reused rather than reimplemented. Repository Project inspection found no missing/archived open items, missing statuses or stale Done statuses. Unrelated #260/#263 and paused/out-of-scope work were preserved.
+
+| Delivery | Result and evidence |
+| --- | --- |
+| Current release lane | #210 PR #272; #215 PRs #273–#275. [v1.6.0](https://github.com/RoyMatus/Swypetris/releases/tag/v1.6.0) remains the published release, with its independent artifact verification and [compliance report](release-v1.6.0-compliance.md). |
+| Connected materials | #269 PR #276; [native comparison and implementation report](connected-materials-269.md). Exact-main APP-signed APK installed/read back on Pixel 7. |
+| Theme audio | #270 PR #277; [exact hashes, playback and limits](theme-sounds-270.md). Signed main APK prepared; Pixel installation pending connectivity. |
+| Full-opacity Hold | #271 PR #278; [all-theme comparisons and portrait fixtures](opaque-hold-271.md). Final local gate passed; Pixel installation pending connectivity. |
+
+The three follow-ups are on main and **are not included in the already published v1.6.0 artifact**. No additional release was published. RuStore upload/submission and console-only declarations remain owner actions; no RuStore acceptance is claimed. No subjective audio-loudness/transient/fatigue pass is claimed. The Pixel's last confirmed installed main is #269 (`deb53de`); prepared artifacts do not establish installation of #270/#271.
+
+The final evidence draft `review-draft-20261013-151631-938.md` was generated from the selected #270/#271 native summaries and recorded phase boundaries. All new Android builds/tests, static analysis and signed builds ran locally, one heavy owner at a time; local Sonar scanning used its explicitly permitted remote Quality Gate. No cloud Android or Actions runs were dispatched. Counts above are per checkpoint, not additive unique test coverage, and overlapping work intervals are not added into epic elapsed time. Missing historical/active intervals remain unknown.
+
+Owned worktrees and verification output are retained because they contain native originals, exact-head evidence, work journals and prepared signed APKs needed for the pending phone updates. Asset-storage branches remain intact. No broad branch/worktree cleanup or credential/access changes were performed.
