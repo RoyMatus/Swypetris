@@ -71,18 +71,6 @@ install_cloud_apk app/build/outputs/apk/debug/app-debug.apk app
 install_cloud_apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk test
 adb -s "$serial" shell monkey -p ru.itoltec.swypetris -c android.intent.category.LAUNCHER 1 | tee "$report_dir/smoke.txt"
 grep -Eq '^Events injected: 1[[:space:]]*$' "$report_dir/smoke.txt"
-# Exercise a fresh picker's drawer before full regression exercises its remembered
-# image directory. Both executions select a unique fixture and verify the crop result.
-if [ "$CHECK_MODE" = full ]; then
-  timeout --signal=INT --kill-after=15s 8m adb -s "$serial" shell am instrument -w -r -e class ru.itoltec.swypetris.BackgroundPickerTest \
-    ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner | tee "$report_dir/picker-preflight.txt"
-  python3 "$script_dir/verify_instrumentation_output.py" selected ru.itoltec.swypetris.BackgroundPickerTest "$report_dir/picker-preflight.txt"
-  focused=ru.itoltec.swypetris.AbsoluteVictoryUiTest,ru.itoltec.swypetris.VictoryThemeIntegrationTest,ru.itoltec.swypetris.SmokeTest
-  timeout --signal=INT --kill-after=15s 8m adb -s "$serial" shell am instrument -w -r -e class "$focused" \
-    ru.itoltec.swypetris.test/androidx.test.runner.AndroidJUnitRunner | tee "$report_dir/ui-preflight.txt"
-  python3 "$script_dir/verify_instrumentation_output.py" selected "$focused" "$report_dir/ui-preflight.txt"
-  timeout 30s adb -s "$serial" pull /sdcard/Android/data/ru.itoltec.swypetris/files "$report_dir/device-files-preflight"
-fi
 args=(-s "$serial" shell am instrument -w -r)
 if [ "$CHECK_MODE" = selected ]; then
   [ -n "$ANDROID_CLASSES" ] || { echo 'Selected checks require test classes.' >&2; exit 1; }

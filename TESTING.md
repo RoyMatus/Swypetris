@@ -65,7 +65,7 @@ Final local PR checks use `tools/ci/select_checks.py` for affected Android class
 
 The latest completed broad local snapshot is [PR #255](https://github.com/RoyMatus/Swypetris/pull/255), head `251af6c66a92da7c9cac7f76fba6ca2ac06fedbb` on 2026-10-12: **154 JVM cases** and **175 unique Android cases**, 172 passed and three opt-in skips. These are case counts, not assertions, portrait/font fixtures or repeated executions. The default Android skips are `EnergyScenarioTest` (measurement), `SignedUpdateScenarioTest` (explicit signed-install fixture) and `FireworkRenderingTest` (explicit frame/clip export); a normal full regression does not exercise them. Both #248 motion exports passed separately, without being counted as additional unique regression cases. Subsequent changes still need their own applicable exact-head evidence.
 
-Historical full PR CI additionally ran the one-case picker preflight and a 14-case UI preflight before the complete inventory. Those 15 cases are repeated in the full run, not 15 extra unique tests. The signed APK has a separate menu/settings/new-game/pause/Continue runtime smoke; full instrumentation exercises the debug target. JVM coverage measures debug production code executed by JVM tests and does not include Android/Compose coverage.
+Historical full PR CI additionally ran the one-case picker preflight and a 14-case UI preflight before the complete inventory. Those 15 cases were repeated in the full run, not 15 extra unique tests. The current full local gate runs one complete instrumentation suite; targeted preflights remain available as development checks. The signed APK has a separate menu/settings/new-game/pause/Continue runtime smoke; full instrumentation exercises the debug target. JVM coverage measures debug production code executed by JVM tests and does not include Android/Compose coverage.
 
 The original #62 counts and coverage figures below are historical snapshots, not the current inventory. Use actual XML and invocation outcome for each new run; Gradle cached/up-to-date results do not represent fresh test execution. Settings selection includes `StartingLevelTest` and `VibrationSettingsTest` alongside the existing game/music/reset flows and `SmokeTest`.
 
@@ -168,10 +168,10 @@ contract tests do not authorize hosted execution.
 | `tools/tests/Release-Verification.Tests.ps1`, `Release-SigningRestore.Tests.ps1`, `Release-Transaction.Tests.ps1`, `Release-Local.Tests.ps1` | Keep: signatures/certificates, private-key restoration, transaction safety, local provenance and immutable publication. |
 | `tools/tests/Development-Workflow.Tests.ps1` | Keep: observed intervals, unknown/unfinished time and reports. |
 | `tools/ci/test_select_checks.py`, `test_quality_results.py`, `test_instrumentation_output.py`, `test_full_regression_proof.py`, `test_local_verification.py` | Update existing settings assertion; keep conservative routing, complete source/XML inventory, parser failures, thresholds and hash-bound evidence. |
-| `tools/ci/test_release_context.py`, `test_release_gate.py`, `test_release_workflow.py`, `test_release_smoke.py` | Keep: release context, exact-main gates, publication definitions and runtime observation parsing, including historical provenance. |
+| `tools/ci/test_release_context.py`, `test_release_gate.py`, `test_release_smoke.py` | Keep: release context, exact-main gates and runtime observation parsing, including historical provenance. Retired workflow-routing assertions were removed. |
 | `tools/ci/test_windows_android_smoke.py`, `test_windows_android_smoke.ps1` | Keep: actual Windows PowerShell launcher/smoke adapter contract; not another app regression suite. |
 | `tools/ci/test_cloud_android_checks.py` | Keep archived/static contracts and optional Unix fixtures; never dispatch cloud checks. |
-| `tools/ci/test_developer_workflow.py` | Keep: evidence, timing/count reconciliation and report contracts. |
+| `tools/ci/test_developer_workflow.py` | Keep: disabled remote entrypoint and absence of executable workflows or Dependabot scheduling. Retired developer-workflow routing assertions were removed. |
 
 ## Finite audit and behavior map (#205)
 

@@ -100,8 +100,6 @@ def required(mode, selected):
         checks |= {'python', 'pester'}
     if selected['mode'] != 'none':
         checks |= {'source-inventory', 'quality', 'quality-reports', 'sonar', 'android', 'install-debug', 'launcher-smoke'}
-        if selected['mode'] == 'full':
-            checks |= {'picker-preflight', 'ui-preflight'}
     return checks
 
 
