@@ -14,6 +14,7 @@ class UpdateCheckPolicyTest {
         githubRateLimit(status, remaining, retry, reset, message, at)
 
     @Test fun automaticIntervalHasExactBoundariesAndSafeClockArithmetic() {
+        assertEquals(3_600_000L, AUTO_CHECK_INTERVAL_MS)
         assertTrue(automaticCheckDue(0, null))
         assertFalse(automaticCheckDue(0, 0))
         assertFalse(automaticCheckDue(now + AUTO_CHECK_INTERVAL_MS - 1, now))
@@ -22,6 +23,41 @@ class UpdateCheckPolicyTest {
         assertTrue(automaticCheckDue(Long.MAX_VALUE, 0))
         assertFalse(automaticCheckDue(Long.MIN_VALUE, Long.MIN_VALUE))
         assertTrue(automaticCheckDue(Long.MIN_VALUE + AUTO_CHECK_INTERVAL_MS, Long.MIN_VALUE))
+    }
+
+    @Test fun manualRollingWindowAllowsExactly59AndRecoversAtExpiry() {
+        var attempts = emptyList<Long>()
+        repeat(MANUAL_CHECK_LIMIT) {
+            val eligibility = manualEligibility(now + it, attempts)
+            assertNull(eligibility.retryAt)
+            attempts = eligibility.attempts + (now + it)
+        }
+        assertEquals(now + MANUAL_CHECK_WINDOW_MS,
+            manualEligibility(now + MANUAL_CHECK_LIMIT, attempts).retryAt)
+        assertEquals(MANUAL_CHECK_LIMIT - 1,
+            manualEligibility(now + MANUAL_CHECK_WINDOW_MS, attempts).attempts.size)
+        assertNull(manualEligibility(now + MANUAL_CHECK_WINDOW_MS, attempts).retryAt)
+        assertEquals(attempts, parseManualAttempts(attempts.joinToString(",")))
+        assertNull(parseManualAttempts("1,invalid"))
+        assertNull(parseManualAttempts("2,1"))
+        assertNull(parseManualAttempts((0..MANUAL_CHECK_LIMIT).joinToString(",")))
+    }
+
+    @Test fun persistedPolicyClockResistsWallRollbackAndForwardJumpWithinBoot() {
+        assertEquals(now, policyTime(now - 86_400_000, 20_000, now, 20_000))
+        assertEquals(now + 30_000, policyTime(now + 86_400_000, 50_000, now, 20_000))
+        assertEquals(now, policyTime(now + 86_400_000, 100, now, 20_000))
+        assertEquals(now + 30_000, policyTime(now - 86_400_000, 50_000, now, 20_000))
+        assertEquals(now + 1, manualEligibility(now, listOf(now + 1)).attempts.single())
+    }
+
+    @Test fun secondaryAndStoreBackoffIncreaseAndCapWithoutRetryLoop() {
+        assertEquals(60_000L, secondaryBackoffMillis(0))
+        assertEquals(120_000L, secondaryBackoffMillis(1))
+        assertEquals(3_600_000L, secondaryBackoffMillis(20))
+        assertEquals(secondaryBackoffMillis(3), storeBackoffMillis(3))
+        assertTrue(limit(message = "secondary rate limit")!!.secondaryWithoutDeadline)
+        assertFalse(limit(remaining = "0", reset = "1700000120")!!.secondaryWithoutDeadline)
     }
 
     @Test fun genericForbiddenAndOtherErrorsAreNotRateLimits() {

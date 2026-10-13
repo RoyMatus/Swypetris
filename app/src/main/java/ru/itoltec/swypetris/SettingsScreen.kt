@@ -58,8 +58,7 @@ import kotlin.math.roundToInt
 
 /** The four panels follow the approved settings reference while keeping real settings. */
 @Composable
-internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {},
-    automaticUpdates: Boolean = false, onAutomaticUpdatesChange: (Boolean) -> Unit = {}) {
+internal fun SettingsScreen(model: GameViewModel) {
     val palette = LocalGamePalette.current
     var confirmReset by remember { mutableStateOf(false) }
     val gameplay = palette.piece(Tetromino.I)
@@ -97,13 +96,6 @@ internal fun SettingsScreen(model: GameViewModel, onCheckUpdates: () -> Unit = {
             }
             SettingsPanel("ВЫБРАТЬ ФОН", "Изображение игрового поля", Icons.Outlined.Palette, appearance) {
                 BackgroundPicker(model.background)
-            }
-            SettingsPanel("О ПРИЛОЖЕНИИ", "Версия и обновления", Icons.Outlined.Lightbulb, assistance) {
-                SettingsToggle("Автоматические обновления", "Загрузка и установка из меню после согласия",
-                    "automaticUpdates", automaticUpdates, onAutomaticUpdatesChange)
-                SettingsDivider(assistance)
-                OutlinedButton(onClick = onCheckUpdates, modifier = Modifier.fillMaxWidth()
-                    .testTag("checkUpdates")) { Text("Проверить обновления") }
             }
             SettingsPanel("ДАННЫЕ", "История игр и рекорды", Icons.Outlined.DeleteOutline,
                 MaterialTheme.colorScheme.error) {

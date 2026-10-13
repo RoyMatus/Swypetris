@@ -7,12 +7,54 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-internal const val AUTO_CHECK_INTERVAL_MS = 6L * 60 * 60 * 1000
+internal const val AUTO_CHECK_INTERVAL_MS = 60L * 60 * 1000
+internal const val MANUAL_CHECK_LIMIT = 59
+internal const val MANUAL_CHECK_WINDOW_MS = 60L * 60 * 1000
 private const val SECONDARY_LIMIT_DELAY_MS = 60_000L
+private const val MAX_BACKOFF_MS = 60L * 60 * 1000
+private const val MAX_BACKOFF_SHIFT = 6
 private const val HTTP_TOO_MANY_REQUESTS = 429
 private const val MILLIS_PER_SECOND = 1000L
 
-/** Future attempt timestamps are rebased by the preference owner after a clock rollback. */
+/** Keep the last durable time on rollback; elapsed time handles wall-clock jumps within one boot. */
+internal fun policyTime(wall: Long, elapsed: Long, anchorWall: Long?, anchorElapsed: Long?): Long {
+    return when {
+        anchorWall == null || anchorElapsed == null -> wall
+        elapsed < anchorElapsed -> anchorWall // reboot: conservatively restart the wait
+        else -> saturatingAdd(anchorWall, elapsed - anchorElapsed)
+    }
+}
+
+internal fun saturatingAdd(base: Long, positive: Long): Long =
+    if (positive > 0 && base > Long.MAX_VALUE - positive) Long.MAX_VALUE else base + positive
+
+internal data class ManualEligibility(val attempts: List<Long>, val retryAt: Long?)
+
+/** Count actual starts in a rolling hour; future entries stay counted after clock rollback. */
+internal fun manualEligibility(now: Long, attempts: List<Long>): ManualEligibility {
+    val current = if (now < Long.MIN_VALUE + MANUAL_CHECK_WINDOW_MS) attempts
+        else attempts.filter { it > now - MANUAL_CHECK_WINDOW_MS }
+    val retryAt = if (current.size >= MANUAL_CHECK_LIMIT)
+        saturatingAdd(current.min(), MANUAL_CHECK_WINDOW_MS) else null
+    return ManualEligibility(current, retryAt)
+}
+
+internal fun parseManualAttempts(value: String?): List<Long>? {
+    val parts = value?.takeIf { it.isNotEmpty() }?.split(',') ?: emptyList()
+    val values = parts.mapNotNull(String::toLongOrNull)
+    return values.takeIf { it.size == parts.size &&
+        it.size <= MANUAL_CHECK_LIMIT && it.zipWithNext().all { (a, b) -> a <= b } }
+}
+
+/** A confirmed secondary limit with no server deadline backs off, without an automatic retry loop. */
+internal fun secondaryBackoffMillis(previousFailures: Int): Long =
+    (SECONDARY_LIMIT_DELAY_MS shl previousFailures.coerceIn(0, MAX_BACKOFF_SHIFT))
+        .coerceAtMost(MAX_BACKOFF_MS)
+
+/** A generic store failure has no documented server deadline in the SDK. */
+internal fun storeBackoffMillis(previousFailures: Int): Long = secondaryBackoffMillis(previousFailures)
+
+/** A future attempt stays due only after a full interval, including across process restarts. */
 internal fun automaticCheckDue(now: Long, lastAttempt: Long?): Boolean = lastAttempt == null ||
     (now >= Long.MIN_VALUE + AUTO_CHECK_INTERVAL_MS && lastAttempt <= now - AUTO_CHECK_INTERVAL_MS)
 
@@ -28,7 +70,7 @@ internal fun githubRateLimit(status: Int, remaining: String?, retryAfter: String
         if (primary) reset?.trim()?.toLongOrNull()?.let { secondsDeadline(0, it) } else null)
     val deadline = deadlines.maxOrNull() ?: if (now > Long.MAX_VALUE - SECONDARY_LIMIT_DELAY_MS)
         Long.MAX_VALUE else now + SECONDARY_LIMIT_DELAY_MS
-    return UpdateRateLimitException(deadline)
+    return UpdateRateLimitException(deadline, secondary && deadlines.isEmpty())
 }
 
 private fun secondsDeadline(base: Long, seconds: Long): Long? {

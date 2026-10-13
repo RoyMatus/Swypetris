@@ -12,7 +12,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -93,7 +92,7 @@ class UpdatePersistenceTest {
         val calls = AtomicInteger()
         lateinit var updates: AppUpdates
         onMain {
-            updates = AppUpdates(compose.activity, preferences, { now }) {
+            updates = AppUpdates(compose.activity, preferences, { now }, { now }) {
                 assertEquals(now, actual.getLong("last_check", -1))
                 preferences.events += "fetch"
                 calls.incrementAndGet()
@@ -115,22 +114,17 @@ class UpdatePersistenceTest {
 
     @Test fun failedAttemptCommitSuppressesHttpDespiteChangedPreferencesAndManualInterest() {
         for (updateBacking in listOf(false, true)) {
-            verifyFailedPreflight(rebase = false, updateBacking = updateBacking)
+            verifyFailedPreflight(updateBacking = updateBacking)
         }
     }
 
-    @Test fun failedRollbackCommitSuppressesHttpDespiteManualInterest() {
-        verifyFailedPreflight(rebase = true)
-    }
-
-    private fun verifyFailedPreflight(rebase: Boolean, updateBacking: Boolean = true) {
-        if (rebase) actual.edit().putLong("last_check", now + AUTO_CHECK_INTERVAL_MS).commit()
+    private fun verifyFailedPreflight(updateBacking: Boolean = true) {
         val preferences = ControlledPreferences(actual, "last_check", succeeds = false,
             updateBackingOnFailure = updateBacking)
         val calls = AtomicInteger()
         lateinit var updates: AppUpdates
         onMain {
-            updates = AppUpdates(compose.activity, preferences, { now }) { calls.incrementAndGet(); current }
+            updates = AppUpdates(compose.activity, preferences, { now }, { now }) { calls.incrementAndGet(); current }
             updates.check(false)
         }
         try {
@@ -138,30 +132,28 @@ class UpdatePersistenceTest {
             onMain { updates.check(true) }
             preferences.release.countDown()
             awaitFinished(updates)
-            val expected = if (updateBacking) now else if (rebase) now + AUTO_CHECK_INTERVAL_MS else -1L
+            val expected = if (updateBacking) now else -1L
             assertEquals(expected, actual.getLong("last_check", -1))
             assertEquals(0, calls.get())
             onMain { assertEquals(UpdateNotice.Failed, updates.notice) }
         } finally { finish(updates, preferences) }
     }
 
-    @Test fun manualJoinedDuringRollbackBypassesAutomaticIntervalAfterSuccessfulRebase() {
+    @Test fun rollbackKeepsFutureAutomaticAttemptButManualCanReserveItsOwnRequest() {
         actual.edit().putLong("last_check", now + AUTO_CHECK_INTERVAL_MS).commit()
-        val preferences = ControlledPreferences(actual, "last_check")
         val calls = AtomicInteger()
         lateinit var updates: AppUpdates
         onMain {
-            updates = AppUpdates(compose.activity, preferences, { now }) { calls.incrementAndGet(); current }
-            updates.check(false)
+            updates = AppUpdates(compose.activity, actual, { now }, { now }) { calls.incrementAndGet(); current }
+            updates.check(true)
         }
         try {
-            awaitCommit(preferences)
-            onMain { updates.check(true) }
-            preferences.release.countDown()
             awaitFinished(updates)
             assertEquals(1, calls.get())
+            assertEquals(now + AUTO_CHECK_INTERVAL_MS, actual.getLong("last_check", -1))
+            assertEquals(1, parseManualAttempts(actual.getString("manual_attempts", null))!!.size)
             onMain { assertEquals(UpdateNotice.Current, updates.notice) }
-        } finally { finish(updates, preferences) }
+        } finally { onMain { updates.close() }; actual.edit().clear().commit() }
     }
 
     @Test fun manualJoinedDuringCooldownCommitGetsDurableRateLimitWithoutSecondRequest() {
@@ -178,7 +170,7 @@ class UpdatePersistenceTest {
         val calls = AtomicInteger()
         lateinit var updates: AppUpdates
         onMain {
-            updates = AppUpdates(compose.activity, preferences, { now }) {
+            updates = AppUpdates(compose.activity, preferences, { now }, { now }) {
                 calls.incrementAndGet()
                 throw UpdateRateLimitException(retryAt)
             }
@@ -198,25 +190,20 @@ class UpdatePersistenceTest {
         } finally { finish(updates, preferences) }
     }
 
-    @Test fun destructionDuringRollbackCommitDoesNotFetchOrResumeJoinedManualRequest() {
+    @Test fun recreationDuringUndueAutomaticCheckDoesNotFetchOrRebase() {
         actual.edit().putLong("last_check", now + AUTO_CHECK_INTERVAL_MS).commit()
-        val preferences = ControlledPreferences(actual, "last_check")
         val calls = AtomicInteger()
         lateinit var updates: AppUpdates
         onMain {
-            updates = AppUpdates(compose.activity, preferences, { now }) { calls.incrementAndGet(); current }
+            updates = AppUpdates(compose.activity, actual, { now }, { now }) { calls.incrementAndGet(); current }
             updates.check(false)
         }
         try {
-            awaitCommit(preferences)
-            onMain { updates.check(true) }
-            compose.activityRule.scenario.recreate()
-            preferences.release.countDown()
             awaitFinished(updates)
-            assertFalse(checking(updates))
-            assertEquals(now, actual.getLong("last_check", -1))
+            compose.activityRule.scenario.recreate()
+            assertEquals(now + AUTO_CHECK_INTERVAL_MS, actual.getLong("last_check", -1))
             assertEquals(0, calls.get())
             onMain { assertNull(updates.notice) }
-        } finally { finish(updates, preferences) }
+        } finally { onMain { updates.close() }; actual.edit().clear().commit() }
     }
 }

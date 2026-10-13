@@ -92,22 +92,6 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
         } ?: false
     }
 
-    fun installAutomatically(model: GameViewModel) {
-        val update = ready ?: return
-        val permissionGranted =
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.O || activity.packageManager.canRequestPackageInstalls()
-        val permissionResolved = notice == DeliveryNotice.Permission && permissionGranted
-        val unresolvedNotice = notice != null && notice !is DeliveryNotice.Ready && !permissionResolved
-        if (operation?.isActive == true || unresolvedNotice || work.automaticDeferred(update)) return
-        if (!permissionGranted) {
-            showNotice = true
-            notice = DeliveryNotice.Permission
-        } else {
-            preferences.edit().putLong("automatic_attempt", update.versionCode).apply()
-            install(model, allowWithoutConfirmation = true)
-        }
-    }
-
     fun cancelDownload() {
         operation?.cancel()
         preferences.edit().putBoolean("interrupted", false).apply()
@@ -175,15 +159,11 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
         UpdateInstallReceiver.listener = null
     }
 
-    fun download(update: AvailableUpdate, automatic: Boolean = false) = work.download(update, automatic)
+    fun download(update: AvailableUpdate) = work.download(update)
 
     fun install(model: GameViewModel, allowWithoutConfirmation: Boolean) = work.install(model, allowWithoutConfirmation)
 
     private inner class DeliveryWork {
-        fun automaticDeferred(update: AvailableUpdate): Boolean =
-            preferences.getLong("automatic_attempt", 0) == update.versionCode ||
-                System.currentTimeMillis() - preferences.getLong("dismissed_at", 0) < DISMISSAL_INTERVAL_MS
-
         private fun showRestoredNotice(restored: AvailableUpdate?, failureMessage: String?) {
             sessionId = installPreferences.getInt("session", -1)
             val status = installPreferences.getInt("status", Int.MIN_VALUE)
@@ -260,10 +240,10 @@ internal class UpdateDelivery(private val activity: ComponentActivity) {
             preferences.edit().remove("ready").remove("saved_at").commit()
         }
 
-        fun download(update: AvailableUpdate, automatic: Boolean = false) {
+        fun download(update: AvailableUpdate) {
             if (operation?.isActive == true || update.fromRuStore) return
             notice = DeliveryNotice.Downloading(0, update.sizeBytes)
-            showNotice = !automatic
+            showNotice = true
             attempted = update
             operation =
                 activity.lifecycleScope.launch {

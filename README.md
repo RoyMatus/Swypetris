@@ -122,7 +122,6 @@ Selections persist between launches:
 | Vibration | Independent switch; on by default; strength 0–100%, default 100%. |
 | Music | Off, shuffle all, or one of eight tracks; shuffle all by default. |
 | Color theme | Twelve themes; Classic by default. |
-| Automatic updates | Requires explicit consent; can be disabled. |
 
 Themes: **Classic, Monokai, Gruvbox Dark, VS Code Dark+, Dracula, Nord, Solarized Light, Solarized Dark, GitHub Light, Tokyo Night, Catppuccin Mocha, and SynthWave '84**. They affect piece and interface colors, block textures and finishes, and themed artwork. Solarized Light and GitHub Light use light backgrounds. The picker previews the blocks.
 
@@ -136,9 +135,11 @@ Effects use Android's media volume. Haptics accompany supported game events and 
 
 ### Updates, sharing, and privacy
 
-**RuStore installations receive updates through RuStore; direct APK installations receive updates through GitHub Releases.** Checks are available from Settings and the menu version; launch checks follow the app's check policy. Playing does not require a successful network check.
+**RuStore installations receive updates through RuStore; direct APK installations receive updates through GitHub Releases.** The app checks on an eligible launch at most once an hour. Tapping the version at the bottom of the main menu starts a manual check; up to 59 actual manual attempts are allowed in a rolling hour per installation. Server backoff applies even when local attempts remain. Checks never start an automatic download or installation; the player chooses whether to update. Playing does not require a successful network check.
 
-Automatic downloading and installation require explicit consent and run from the main menu after saving the game. The option can be disabled. Android may still require installation permission or confirmation. Direct APK updates are checked for download size, SHA-256, package identity, version, and signing compatibility before installation.
+Anonymous GitHub REST requests share a 60/hour budget per external IP, so the app's local attempt limit cannot guarantee server availability: other devices/apps and multiple requests per check also consume that budget. RuStore SDK 10.5.1 does not publish a numeric `getAppUpdateInfo()` quota or retry-header contract in its documented API; after a failure the app applies its own increasing pause.
+
+Downloading and installation require an explicit player action. Android may still require installation permission or confirmation. Direct APK updates are checked for download size, SHA-256, package identity, version, and signing compatibility before installation.
 
 Contacts offers developer links, APK download access, and a sharing dialog with a QR code and Android's share action. These actions open the selected external application; messages are not sent automatically.
 
@@ -268,7 +269,6 @@ steps = начальный уровень - 1 + (уровень - начальн
 | Вибрация | Независимый переключатель; по умолчанию включена; сила 0–100%, по умолчанию 100%. |
 | Музыка | Выключена, случайный порядок или одна из восьми композиций; по умолчанию случайный порядок. |
 | Цветовая тема | Двенадцать тем; по умолчанию классическая. |
-| Автоматические обновления | После явного согласия; можно отключить. |
 
 Темы: **Классическая, Monokai, Gruvbox Dark, VS Code Dark+, Dracula, Nord, Solarized Light, Solarized Dark, GitHub Light, Tokyo Night, Catppuccin Mocha и SynthWave '84**. Они меняют цвета фигур и интерфейса, текстуры и обработку блоков, тематическое оформление иллюстраций. Solarized Light и GitHub Light используют светлый фон. В настройках есть предварительный просмотр блоков.
 
@@ -282,9 +282,11 @@ steps = начальный уровень - 1 + (уровень - начальн
 
 ### Обновления, обмен ссылкой и конфиденциальность
 
-**Установки из RuStore получают обновления через RuStore; прямые установки APK — через GitHub Releases.** Проверка доступна в настройках и по нажатию на версию в меню; проверки при запуске выполняются по правилам приложения. Успешное подключение к сети для игры не требуется.
+**Установки из RuStore получают обновления через RuStore; прямые установки APK — через GitHub Releases.** При подходящем запуске игра проверяет обновления не чаще раза в час. Нажатие на номер версии внизу главного меню запускает ручную проверку; в скользящий час допускается не более 59 фактических ручных попыток на установку. Серверная пауза действует даже при оставшемся локальном лимите. Загрузка и установка начинаются только после выбора игрока. Для игры успешное подключение к сети не требуется.
 
-Автоматическая загрузка и установка требуют явного согласия и выполняются из главного меню после сохранения партии. Режим можно отключить. Android при необходимости запрашивает разрешение или подтверждение установки. Для прямых APK проверяются размер загрузки, SHA-256, имя пакета, версия и совместимость подписи.
+Анонимные запросы GitHub REST API делят лимит 60/час по внешнему IP. Поэтому локальные 59 попыток не гарантируют доступность сервера: лимит расходуют и другие устройства/приложения, а одна проверка может сделать несколько запросов. В документации RuStore SDK 10.5.1 нет числовой квоты `getAppUpdateInfo()` или контракта HTTP-заголовков повторной попытки; после ошибки игра выдерживает собственную увеличивающуюся паузу.
+
+Загрузка и установка требуют явного действия игрока. Android при необходимости запрашивает разрешение или подтверждение установки. Для прямых APK проверяются размер загрузки, SHA-256, имя пакета, версия и совместимость подписи.
 
 В контактах есть ссылки разработчика, доступ к скачиванию APK и диалог обмена ссылкой с QR-кодом и системной функцией «Поделиться». Эти действия открывают выбранное внешнее приложение; сообщения не отправляются автоматически.
 

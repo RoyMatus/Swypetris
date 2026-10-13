@@ -2,6 +2,7 @@ package ru.itoltec.swypetris
 
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,7 +24,8 @@ internal const val GITHUB_RELEASE_API = "https://api.github.com/repos/RoyMatus/S
 private const val RUSTORE_INSTALLER = "ru.vk.store"
 private const val REMIND_INTERVAL_MS = 24L * 60 * 60 * 1000
 
-private enum class AutomaticPreflight { PERMITTED, NOT_DUE, PERSISTENCE_FAILED }
+private enum class CheckDecision { PERMITTED, NOT_DUE, COOLDOWN, MANUAL_LIMIT, PERSISTENCE_FAILED }
+private data class CheckPreflight(val decision: CheckDecision, val now: Long, val retryAt: Long = 0)
 
 internal data class AvailableUpdate(val versionCode: Long, val versionName: String,
     val apkUrl: String?, val fromRuStore: Boolean,
@@ -36,6 +38,8 @@ internal sealed interface UpdateNotice {
     data object Current : UpdateNotice
     data object Failed : UpdateNotice
     data class RateLimited(val retryAtMillis: Long) : UpdateNotice
+    data class ManualLimited(val retryAfterMillis: Long) : UpdateNotice
+    data class StoreBackoff(val retryAfterMillis: Long) : UpdateNotice
 }
 
 internal fun newerVersion(available: Long, installed: Long): Boolean = available > installed
@@ -93,6 +97,7 @@ internal class AppUpdates(private val activity: ComponentActivity,
     private val preferences: android.content.SharedPreferences = activity.getSharedPreferences("app_updates",
         Context.MODE_PRIVATE),
     private val clock: () -> Long = System::currentTimeMillis,
+    private val elapsedClock: () -> Long = SystemClock::elapsedRealtime,
     private val githubUpdate: () -> AvailableUpdate? = ::fetchGitHubUpdate) {
     val delivery = UpdateDelivery(activity)
     private val githubChecks = GitHubChecks()
@@ -101,71 +106,93 @@ internal class AppUpdates(private val activity: ComponentActivity,
     private var checking = false
     private var manualRequested = false
     private var storeListener: InstallStateUpdateListener? = null
-    var automaticEnabled by mutableStateOf(preferences.getBoolean("automatic", false))
-        private set
-    var consentRequested by mutableStateOf(false)
-        private set
     var notice by mutableStateOf<UpdateNotice?>(null)
         private set
+
+    init {
+        // The removed setting must never retain an old automatic download/install grant.
+        if (listOf("automatic", "automatic_choice", "automatic_store_attempt").any(preferences::contains))
+            preferences.edit().remove("automatic").remove("automatic_choice")
+                .remove("automatic_store_attempt").apply()
+    }
 
     fun check(manual: Boolean) {
         if (manual && delivery.showReady()) return
         if (checking) {
             if (manual) manualRequested = true
-        } else {
-        val now = clock()
+            return
+        }
         val fromStore = isRuStoreInstall(activity)
-        if (!fromStore && !githubChecks.cooldownAllows(manual, now)) return
         checking = true
         manualRequested = manual
-        if (fromStore) storeChecks.check(now)
-        else githubChecks.check(now, manual)
+        activity.lifecycleScope.launch {
+            var storeStarted = false
+            try {
+                var preflight = withContext(Dispatchers.IO) { reserveAttempt(manual, fromStore) }
+                // A tap joining an automatic preflight only consumes budget if it starts a request.
+                if (!manual && preflight.decision == CheckDecision.NOT_DUE && manualRequested)
+                    preflight = withContext(Dispatchers.IO) { reserveAttempt(true, fromStore) }
+                if (preflight.decision != CheckDecision.PERMITTED) {
+                    if (manualRequested) notice = preflightNotice(preflight, fromStore)
+                    return@launch
+                }
+                if (fromStore) {
+                    storeChecks.check()
+                    storeStarted = true
+                } else githubChecks.completeCheck()
+            } finally {
+                if (!storeStarted) { checking = false; manualRequested = false }
+            }
         }
     }
 
-    private inner class GitHubChecks {
-        fun cooldownAllows(manual: Boolean, now: Long): Boolean {
-            val retryAt = preferences.getLong("retry_at", Long.MIN_VALUE)
-            if (now < retryAt) {
-                if (manual) notice = UpdateNotice.RateLimited(retryAt)
-                return false
-            }
-            return true
+    private fun preflightNotice(preflight: CheckPreflight, fromStore: Boolean): UpdateNotice? {
+        val delay = (preflight.retryAt - preflight.now).coerceAtLeast(0)
+        return when (preflight.decision) {
+            CheckDecision.COOLDOWN -> if (fromStore) UpdateNotice.StoreBackoff(delay)
+                else UpdateNotice.RateLimited(saturatingAdd(clock(), delay))
+            CheckDecision.MANUAL_LIMIT -> UpdateNotice.ManualLimited(delay)
+            CheckDecision.PERSISTENCE_FAILED -> UpdateNotice.Failed
+            else -> null
         }
+    }
 
-        private suspend fun automaticPreflight(now: Long): AutomaticPreflight = withContext(Dispatchers.IO) {
+    private fun policyNow(): Triple<Long, Long, Long> {
+        val wall = clock()
+        val elapsed = elapsedClock()
+        val anchorWall = if (preferences.contains("policy_wall")) preferences.getLong("policy_wall", 0) else null
+        val anchorElapsed = if (preferences.contains("policy_elapsed"))
+            preferences.getLong("policy_elapsed", 0) else null
+        return Triple(policyTime(wall, elapsed, anchorWall, anchorElapsed), wall, elapsed)
+    }
+
+    @Suppress("ReturnCount") // Each failed gate exits before the durable request reservation.
+    private fun reserveAttempt(manual: Boolean, fromStore: Boolean): CheckPreflight {
+        val (now, _, elapsed) = policyNow()
+        val previousElapsed = preferences.getLong("policy_elapsed", Long.MIN_VALUE)
+        if (elapsed < previousElapsed && !preferences.edit().putLong("policy_wall", now)
+                .putLong("policy_elapsed", elapsed).commit())
+            return CheckPreflight(CheckDecision.PERSISTENCE_FAILED, now)
+        val retryAt = preferences.getLong(if (fromStore) "store_retry_at" else "retry_at", Long.MIN_VALUE)
+        if (now < retryAt) return CheckPreflight(CheckDecision.COOLDOWN, now, retryAt)
+        val editor = preferences.edit().putLong("policy_wall", now).putLong("policy_elapsed", elapsed)
+        if (manual) {
+            val attempts = parseManualAttempts(preferences.getString("manual_attempts", null))
+                ?: return CheckPreflight(CheckDecision.PERSISTENCE_FAILED, now)
+            val eligibility = manualEligibility(now, attempts)
+            if (eligibility.retryAt != null) return CheckPreflight(CheckDecision.MANUAL_LIMIT, now, eligibility.retryAt)
+            editor.putString("manual_attempts", (eligibility.attempts + now).joinToString(","))
+        } else {
             val last = if (preferences.contains("last_check")) preferences.getLong("last_check", 0) else null
-            val rebased = last?.coerceAtMost(now)
-            val rebasedSaved = last == rebased || preferences.edit().putLong("last_check", rebased!!).commit()
-            if (!rebasedSaved) return@withContext AutomaticPreflight.PERSISTENCE_FAILED
-            if (!automaticCheckDue(now, rebased)) return@withContext AutomaticPreflight.NOT_DUE
-            // Persist before requesting so Activity/process death or an HTTP failure cannot cause a launch storm.
-            if (preferences.edit().putLong("last_check", now).commit()) AutomaticPreflight.PERMITTED
-            else AutomaticPreflight.PERSISTENCE_FAILED
+            if (!automaticCheckDue(now, last)) return CheckPreflight(CheckDecision.NOT_DUE, now)
+            editor.putLong("last_check", now)
         }
+        // Durable reservation precedes either network/SDK request, including failed attempts.
+        return CheckPreflight(if (editor.commit()) CheckDecision.PERMITTED else CheckDecision.PERSISTENCE_FAILED, now)
+    }
 
-        fun check(now: Long, manualAtStart: Boolean) {
-            activity.lifecycleScope.launch {
-                try {
-                    if (!manualAtStart) {
-                        when (automaticPreflight(now)) {
-                            AutomaticPreflight.PERSISTENCE_FAILED -> {
-                                if (manualRequested) notice = UpdateNotice.Failed
-                                return@launch
-                            }
-                            AutomaticPreflight.NOT_DUE -> if (!manualRequested) return@launch
-                            AutomaticPreflight.PERMITTED -> Unit
-                        }
-                    }
-                    completeCheck(now)
-                } finally {
-                    checking = false
-                    manualRequested = false
-                }
-            }
-        }
-
-        private suspend fun completeCheck(now: Long) {
+    private inner class GitHubChecks {
+        suspend fun completeCheck() {
             val result = withContext(Dispatchers.IO) {
                 runCatching { githubUpdate() }.onFailure { if (it is CancellationException) throw it }
             }
@@ -173,40 +200,73 @@ internal class AppUpdates(private val activity: ComponentActivity,
             if (update == null) {
                 val failure = result.exceptionOrNull() as? UpdateRateLimitException
                 val persisted = failure == null || withContext(Dispatchers.IO) {
-                    preferences.edit().putLong("retry_at", failure.retryAtMillis).commit()
+                    val (now, wall, elapsed) = policyNow()
+                    val previous = preferences.getInt("secondary_failures", 0)
+                    val serverWait = (failure.retryAtMillis - wall).coerceAtLeast(0)
+                    val fallback = if (failure.secondaryWithoutDeadline) secondaryBackoffMillis(previous) else 0
+                    val deadline = saturatingAdd(now, maxOf(serverWait, fallback))
+                    val editor = preferences.edit()
+                    editor.putLong("retry_at", maxOf(deadline,
+                        preferences.getLong("retry_at", Long.MIN_VALUE)))
+                    editor.putInt("secondary_failures", if (failure.secondaryWithoutDeadline)
+                        (previous + 1).coerceAtMost(7) else 0)
+                    editor.putLong("policy_wall", now).putLong("policy_elapsed", elapsed)
+                    editor.commit()
                 }
-                if (manualRequested) notice = if (persisted &&
-                    failure != null) UpdateNotice.RateLimited(failure.retryAtMillis)
+                if (manualRequested) notice = if (persisted && failure != null) {
+                    val now = policyNow().first
+                    UpdateNotice.RateLimited(saturatingAdd(clock(),
+                        (preferences.getLong("retry_at", now) - now).coerceAtLeast(0)))
+                }
                     else UpdateNotice.Failed
                 return
             }
-            preferences.edit().putLong("last_check", now).remove("retry_at").apply()
+            preferences.edit().remove("retry_at").remove("secondary_failures").apply()
             if (newerVersion(update.versionCode, installedVersionCode())) showAvailable(update, manualRequested)
             else if (manualRequested) notice = UpdateNotice.Current
         }
     }
 
     private inner class StoreChecks {
-        fun check(now: Long) {
+        fun check() {
             storeManager.getAppUpdateInfo().addOnSuccessListener { info ->
                 activity.runOnUiThread {
-                    checking = false
-                    val manual = manualRequested
-                    manualRequested = false
-                    preferences.edit().putLong("last_check", now).apply()
-                    val currentCode = installedVersionCode()
-                    if ((info.updateAvailability == UpdateAvailability.UPDATE_AVAILABLE ||
-                        info.updateAvailability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) &&
-                        newerVersion(info.availableVersionCode, currentCode)) {
-                        val update = AvailableUpdate(info.availableVersionCode, info.availableVersionName, null, true)
-                        showAvailable(update, manual)
-                    } else if (manual) notice = UpdateNotice.Current
+                    activity.lifecycleScope.launch {
+                        withContext(Dispatchers.IO) {
+                            preferences.edit().remove("store_retry_at").remove("store_failures").commit()
+                        }
+                        val manual = manualRequested
+                        checking = false
+                        manualRequested = false
+                        val currentCode = installedVersionCode()
+                        if ((info.updateAvailability == UpdateAvailability.UPDATE_AVAILABLE ||
+                            info.updateAvailability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) &&
+                            newerVersion(info.availableVersionCode, currentCode)) {
+                            val update = AvailableUpdate(info.availableVersionCode,
+                                info.availableVersionName, null, true)
+                            showAvailable(update, manual)
+                        } else if (manual) notice = UpdateNotice.Current
+                    }
                 }
             }.addOnFailureListener {
                 activity.runOnUiThread {
-                    checking = false
-                    if (manualRequested) notice = UpdateNotice.Failed
-                    manualRequested = false
+                    activity.lifecycleScope.launch {
+                        val persisted = withContext(Dispatchers.IO) {
+                            val (now, _, elapsed) = policyNow()
+                            val failures = preferences.getInt("store_failures", 0)
+                            val editor = preferences.edit()
+                            editor.putLong("store_retry_at", saturatingAdd(now, storeBackoffMillis(failures)))
+                            editor.putInt("store_failures", (failures + 1).coerceAtMost(7))
+                            editor.putLong("policy_wall", now).putLong("policy_elapsed", elapsed)
+                            editor.commit()
+                        }
+                        if (manualRequested) notice = if (persisted)
+                            UpdateNotice.StoreBackoff((preferences.getLong("store_retry_at", 0) -
+                                policyNow().first).coerceAtLeast(0))
+                            else UpdateNotice.Failed
+                        checking = false
+                        manualRequested = false
+                    }
                 }
             }
         }
@@ -226,39 +286,6 @@ internal class AppUpdates(private val activity: ComponentActivity,
         }
     }
 
-    fun requestAutomatic(enabled: Boolean) {
-        if (enabled) consentRequested = true
-        else {
-            automaticEnabled = false
-            preferences.edit().putBoolean("automatic", false).putBoolean("automatic_choice", true).apply()
-        }
-    }
-
-    fun answerConsent(enabled: Boolean) {
-        automaticEnabled = enabled
-        consentRequested = false
-        preferences.edit().putBoolean("automatic", enabled).putBoolean("automatic_choice", true).apply()
-        if (enabled) {
-            (notice as? UpdateNotice.Available)?.update?.let { open(it, automatic = true) }
-                ?: check(manual = false)
-        }
-    }
-
-    fun postponeConsent() {
-        consentRequested = false
-        dismiss()
-    }
-
-    fun installAutomaticallyIfReady(model: GameViewModel) {
-        if (!automaticEnabled || model.screen != GameScreen.MENU) return
-        delivery.installAutomatically(model)
-        val storeUpdate = (notice as? UpdateNotice.StoreReady)?.update
-        if (storeUpdate != null && preferences.getLong("automatic_store_attempt", 0) != storeUpdate.versionCode) {
-            preferences.edit().putLong("automatic_store_attempt", storeUpdate.versionCode).apply()
-            installStore(model, automatic = true)
-        }
-    }
-
     fun dismiss() {
         val update = when (val current = notice) {
             is UpdateNotice.Available -> current.update
@@ -272,10 +299,10 @@ internal class AppUpdates(private val activity: ComponentActivity,
         notice = null
     }
 
-    fun open(update: AvailableUpdate, automatic: Boolean = false) {
+    fun open(update: AvailableUpdate) {
         notice = null
         if (!update.fromRuStore) {
-            delivery.download(update, automatic)
+            delivery.download(update)
             return
         }
         // A fresh AppUpdateInfo is required after the availability check.
@@ -289,8 +316,7 @@ internal class AppUpdates(private val activity: ComponentActivity,
                 activity.runOnUiThread { notice = UpdateNotice.StoreReady(update) }
                 return@addOnSuccessListener
             }
-            val options = AppUpdateOptions.Builder().appUpdateType(
-                if (automatic) AppUpdateType.SILENT else AppUpdateType.FLEXIBLE).build()
+            val options = AppUpdateOptions.Builder().appUpdateType(AppUpdateType.FLEXIBLE).build()
             val listener = InstallStateUpdateListener { state -> activity.runOnUiThread {
                 if (state.installStatus == InstallStatus.DOWNLOADED) {
                     notice = UpdateNotice.StoreReady(update)
@@ -312,7 +338,7 @@ internal class AppUpdates(private val activity: ComponentActivity,
         }.addOnFailureListener { activity.runOnUiThread { notice = UpdateNotice.Failed } }
     }
 
-    fun installStore(model: GameViewModel, automatic: Boolean = false) {
+    fun installStore(model: GameViewModel) {
         model.pause()
         notice = UpdateNotice.StoreInstalling
         activity.lifecycleScope.launch {
@@ -322,8 +348,7 @@ internal class AppUpdates(private val activity: ComponentActivity,
                     GameStorage.sessionPreferences(app).edit().commit()
             }
             if (!persisted) { notice = UpdateNotice.Failed; return@launch }
-            val options = AppUpdateOptions.Builder().appUpdateType(
-                if (automatic) AppUpdateType.SILENT else AppUpdateType.FLEXIBLE).build()
+            val options = AppUpdateOptions.Builder().appUpdateType(AppUpdateType.FLEXIBLE).build()
             storeManager.completeUpdate(options).addOnFailureListener {
                 activity.runOnUiThread { notice = UpdateNotice.Failed }
             }

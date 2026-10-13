@@ -13,7 +13,8 @@ private const val MAX_CONNECTION_ATTEMPTS = 6
 private const val CONNECTION_TIMEOUT_MS = 10_000
 private const val MAX_ERROR_RESPONSE_BYTES = 16 * 1024
 private val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
-internal class UpdateRateLimitException(val retryAtMillis: Long) : IOException("GitHub request limit reached")
+internal class UpdateRateLimitException(val retryAtMillis: Long,
+    val secondaryWithoutDeadline: Boolean = false) : IOException("GitHub request limit reached")
 
 /** Report failed cleanup without masking a download failure or cancellation. Recovery retries it. */
 internal fun removeUpdateFile(file: File) {
