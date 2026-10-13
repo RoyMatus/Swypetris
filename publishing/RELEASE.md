@@ -6,7 +6,7 @@ Before delivery, run `tools/release/Test-DeliveryEnvironment.ps1 -JavaHome '<JDK
 
 `Build-Release.ps1` accepts explicit `-JavaHome` (defaults to process JAVA_HOME). Signature verification always passes that JDK to apksigner and restores the previous process environment, including on failure. No machine/user environment change is needed.
 
-1. Check out the clean exact current remote `main` commit and finish `tools/Invoke-LocalChecks.ps1 -Mode Full` with all required local platform evidence and Sonar Quality Gate. See [CI.md](CI.md).
+1. Check out the clean exact current remote `main` commit. Finish `tools/Invoke-LocalChecks.ps1 -Mode Full` with all required local platform evidence and Sonar Quality Gate, or use the validated identical-tree Full PR evidence promotion in [CI.md](CI.md), which reruns main Sonar. Both paths produce exact-main Full evidence. A selected PR gate cannot be promoted.
 2. Verify the signed candidate on an explicitly selected isolated emulator:
 
 ```powershell
