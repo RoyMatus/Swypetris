@@ -59,7 +59,7 @@ class BackgroundRenderingTest {
     }
 
     @SdkSuppress(minSdkVersion = 26)
-    @Test fun imageStaysBehindOpaquePiecesAndGeometryAcrossPortraitSizes() {
+    @Test fun imageStaysBehindSuppliedArtworkAndGeometryAcrossPortraitSizes() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val board = BoardGeometry.empty().mapIndexed { row, cells ->
             if (row == BoardGeometry.row(18)) cells.mapIndexed { column, piece ->
@@ -73,21 +73,19 @@ class BackgroundRenderingTest {
         var viewport by mutableStateOf(DpSize(320.dp, 640.dp))
         var palette by mutableStateOf(GamePalettes.find("classic"))
         var density = 1f
+        var material: BlockMaterial? = null
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(viewport) then
                 DeviceConfigurationOverride.FontScale(1.5f)) {
                 density = LocalDensity.current.density
+                material = blockMaterial(palette)
                 CompositionLocalProvider(LocalGamePalette provides palette) {
                     Box(Modifier.fillMaxSize().testTag("backgroundViewport")) { GameContent(model, state, 24.dp) }
                 }
             }
         }
         try {
-            compose.waitUntil(10000) { !model.background.busy }
-            compose.runOnIdle { model.background.choose(app.contentResolver, Uri.fromFile(input)) }
-            compose.waitUntil(10000) { model.background.draft != null && !model.background.busy }
-            compose.runOnIdle { model.background.save() }
-            compose.waitUntil(10000) { model.background.draft == null && !model.background.busy }
+            importBackground(model, app, input)
             for (theme in listOf(GamePalettes.find("classic"), GamePalettes.all.first { it.light })) {
                 for (size in listOf(DpSize(320.dp, 640.dp), DpSize(393.dp, 873.dp), DpSize(600.dp, 960.dp))) {
                     compose.runOnIdle { viewport = size; palette = theme; model.background.changeEnabled(false) }
@@ -104,7 +102,10 @@ class BackgroundRenderingTest {
                     val geometry = gameplayGeometry(after.height.toFloat(), 24f * density)
                     val cellX = (after.width * .55f).toInt()
                     val cellY = (geometry.gridTop + geometry.cellHeight * 20.5f).toInt()
-                    assertEquals(before[cellX, cellY], after[cellX, cellY])
+                    val alpha = artworkAlpha(requireNotNull(material).image.toPixelMap(), Tetromino.O, 0)
+                    assertTrue("The supplied center remains nearly opaque", alpha >= .98f)
+                    assertArtworkAbove("Photo stays below the supplied artwork", before[cellX, cellY],
+                        after[cellX, cellY], alpha)
                     assertNotEquals(before[after.width / 20, after.height / 2],
                         after[after.width / 20, after.height / 2])
                     assertSame(state, model.game)
@@ -116,6 +117,14 @@ class BackgroundRenderingTest {
             input.delete()
             model.background.image?.file?.delete()
         }
+    }
+
+    private fun importBackground(model: GameViewModel, app: Application, input: File) {
+        compose.waitUntil(10000) { !model.background.busy }
+        compose.runOnIdle { model.background.choose(app.contentResolver, Uri.fromFile(input)) }
+        compose.waitUntil(10000) { model.background.draft != null && !model.background.busy }
+        compose.runOnIdle { model.background.save() }
+        compose.waitUntil(10000) { model.background.draft == null && !model.background.busy }
     }
 
     private fun imageFixture(app: Application): File {

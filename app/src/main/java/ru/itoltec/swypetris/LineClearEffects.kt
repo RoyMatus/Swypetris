@@ -44,8 +44,10 @@ internal fun DrawScope.lineClearEffects(shards: List<ClearShard>, rows: List<Int
             (shard.row - BoardGeometry.HIDDEN_ROWS + .25f + shard.part / 2 * .5f +
                 shard.velocityY * progress + 3.2f * progress * progress) * cell.height)
         rotate(shard.rotation * progress, center) {
-            bevelBlock(center - Offset(side / 2, side / 2), Size(side, side),
-                palette.piece(shard.type), palette.finish, palette.texture, alpha, material = material)
+            val at = center - Offset(side / 2, side / 2)
+            if (material != null) material.draw(this, at, Size(side, side), shard.type,
+                shard.appearance, alpha, quadrant = shard.part)
+            else bevelBlock(at, Size(side, side), palette.piece(shard.type), palette.finish, palette.texture, alpha)
         }
     }
 }

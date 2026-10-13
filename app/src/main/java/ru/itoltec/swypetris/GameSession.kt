@@ -6,7 +6,8 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-private const val SESSION_FORMAT_VERSION = 4
+private const val SESSION_FORMAT_VERSION = 5
+private const val LEGACY_SESSION_FORMAT_VERSION = 4
 
 
 /** Uptime itself is never persisted: all clocks are elapsed or remaining game time. */
@@ -32,6 +33,7 @@ internal data class GameSession(
 internal class SessionStore(private val preferences: SharedPreferences) {
     private var lastWritten: GameSession? = null
     private var cachedBoard: List<List<Tetromino?>>? = null
+    private var cachedAppearances: List<List<BlockAppearance?>>? = null
     private var encodedBoard = ""
 
     /** Completes the one-time balance reset before its durable migration marker is written. */
@@ -39,6 +41,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
         check(preferences.edit().remove(KEY).commit()) { "Не удалось удалить сохранённую партию" }
         lastWritten = null
         cachedBoard = null
+        cachedAppearances = null
         encodedBoard = ""
     }
 
@@ -49,9 +52,10 @@ internal class SessionStore(private val preferences: SharedPreferences) {
     fun write(session: GameSession) {
         if (session == lastWritten) return
         // GameState owns immutable boards; movement keeps the same board instance.
-        if (cachedBoard !== session.state.board) {
-            encodedBoard = encodeBoard(session.state.board)
+        if (cachedBoard !== session.state.board || cachedAppearances !== session.state.blockAppearances) {
+            encodedBoard = encodeBoard(session.state)
             cachedBoard = session.state.board
+            cachedAppearances = session.state.blockAppearances
         }
         preferences.edit().putString(KEY, encode(session, encodedBoard)).apply()
         lastWritten = session
@@ -74,12 +78,21 @@ internal class SessionStore(private val preferences: SharedPreferences) {
     companion object {
         private const val KEY = "session_v1"
         /** Serializes the full logical board as piece names, using empty strings for vacant cells. */
-        private fun encodeBoard(board: List<List<Tetromino?>>): String = JSONArray().apply {
-            board.forEach { row -> put(JSONArray(row.map { it?.name ?: "" })) }
-        }.toString()
+        private fun encodeBoard(state: GameState): String {
+            val board = JSONArray().apply {
+                state.board.forEach { row -> put(JSONArray(row.map { it?.name ?: "" })) }
+            }
+            val appearances = JSONArray().apply {
+                state.blockAppearances.forEach { row -> put(JSONArray().apply {
+                    row.forEach { cell -> put(cell?.let { JSONArray(listOf(it.cellIndex, it.quarterTurns)) }
+                        ?: JSONObject.NULL) }
+                }) }
+            }
+            return "\"board\":$board,\"blockAppearances\":$appearances"
+        }
 
         /** Encodes a complete snapshot, including its current board, for storage or tests. */
-        internal fun encode(session: GameSession): String = encode(session, encodeBoard(session.state.board))
+        internal fun encode(session: GameSession): String = encode(session, encodeBoard(session.state))
 
         /** Combines session metadata with a previously encoded board to avoid redundant work. */
         private fun encode(session: GameSession, board: String): String {
@@ -109,17 +122,17 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                     session.clearFractionNanos)
                 .put("recordAtStart", session.recordAtStart).put("finishedAt", session.finishedAt)
                 .put("absoluteName", session.absoluteName).put("postcardReady", session.postcardReady).toString()
-                .dropLast(1) + ",\"board\":" + board + "}"
+                .dropLast(1) + "," + board + "}"
         }
 
         /**
-         * Reconstructs a version-four session and validates board dimensions, piece placement,
+         * Migrates type-only version-four artwork without resetting gameplay; validates new snapshots,
          * clearing rows, bag contents, score, and clock bounds before gameplay can resume.
          * Throws for malformed or inconsistent data; [read] removes such snapshots safely.
          */
         internal fun decode(json: String): GameSession {
             val root = JSONObject(json)
-            require(root.getInt("version") == SESSION_FORMAT_VERSION &&
+            require(root.getInt("version") in LEGACY_SESSION_FORMAT_VERSION..SESSION_FORMAT_VERSION &&
                 root.getInt("rulesVersion") == GameRules.VERSION)
             val board = readSessionBoard(root)
             val piece = readSessionPiece(root, board)
@@ -140,7 +153,8 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                     Spin.valueOf(p.getString("spin")), p.getBoolean("backToBack"), p.getInt("combo"),
                     p.getBoolean("perfectClear"), p.getInt("softDropCells"), p.getInt("hardDropCells"),
                         p.getInt("level")) },
-                startingLevel = if (root.has("startingLevel")) root.getInt("startingLevel") else 1)
+                startingLevel = if (root.has("startingLevel")) root.getInt("startingLevel") else 1,
+                blockAppearances = readSessionAppearances(root, board))
             validateSessionState(state)
             val bag = root.getJSONArray("bag").let { a -> List(a.length()) { Tetromino.valueOf(a.getString(it)) } }
             require(bag.size <= Tetromino.entries.size && bag.distinct().size == bag.size)
@@ -151,6 +165,31 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 root.optString("absoluteName", ""), root.optBoolean("postcardReady", false))
             validateSessionClocks(session)
             return session
+        }
+    }
+}
+
+private fun readSessionAppearances(root: JSONObject, board: List<List<Tetromino?>>): List<List<BlockAppearance?>> {
+    val rows = if (root.getInt("version") == LEGACY_SESSION_FORMAT_VERSION) JSONArray()
+        else root.getJSONArray("blockAppearances")
+    // An empty grid explicitly retains deterministic fallback for a migrated type-only board.
+    if (rows.length() == 0) return emptyList()
+    require(rows.length() == BoardGeometry.TOTAL_ROWS)
+    return List(BoardGeometry.TOTAL_ROWS) { y ->
+        val row = rows.getJSONArray(y)
+        require(row.length() == BoardGeometry.WIDTH)
+        List(BoardGeometry.WIDTH) { x ->
+            if (board[y][x] == null) {
+                require(row.isNull(x))
+                null
+            } else {
+                val cell = row.getJSONArray(x)
+                require(cell.length() == 2)
+                require(cell.get(0) is Int && cell.get(1) is Int)
+                BlockAppearance(cell.getInt(0), cell.getInt(1)).also {
+                    require(board[y][x] != Tetromino.O || it.quarterTurns == 0)
+                }
+            }
         }
     }
 }

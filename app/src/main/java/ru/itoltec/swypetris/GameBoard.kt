@@ -29,7 +29,9 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         !android.animation.ValueAnimator.areAnimatorsEnabled()) {
     val palette = LocalGamePalette.current
     val material = blockMaterial(palette)
-    val shards = remember(state.board, state.clearingRows, state.completedClears) { LineClearAnimation.shards(state) }
+    val shards = remember(state.board, state.blockAppearances, state.clearingRows, state.completedClears) {
+        LineClearAnimation.shards(state)
+    }
     Canvas(Modifier.fillMaxSize()
         .semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
         " Следующая фигура ${state.next.name}" +
@@ -75,9 +77,12 @@ internal fun ActivePiece(state: GameState, geometry: GameplayGeometry) {
 private fun DrawScope.fallingPiece(state: GameState, palette: GamePalette, material: BlockMaterial,
     origin: Offset, cell: Size) {
     if (!state.gameOver && state.clearingRows.isEmpty()) {
-        state.active.cells().filter { it.y in -SPAWN_DISPLAY_ROWS until BoardGeometry.VISIBLE_ROWS }.forEach {
-            block(it, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell,
-                material = material)
+        state.active.cells().forEachIndexed { index, position ->
+            if (position.y in -SPAWN_DISPLAY_ROWS until BoardGeometry.VISIBLE_ROWS)
+                block(position, palette.piece(state.active.type), palette.finish, palette.texture, origin, cell,
+                    material = material, type = state.active.type,
+                    appearance = BlockAppearance(index,
+                        if (state.active.type == Tetromino.O) 0 else state.active.rotation))
         }
     }
 }
@@ -85,11 +90,12 @@ private fun DrawScope.fallingPiece(state: GameState, palette: GamePalette, mater
 /** Draws a colored cell with spacing using independent width and height. */
 internal fun DrawScope.block(cell: Cell, color: Color, finish: BlockFinish, texture: BlockTexture, origin: Offset,
     step: Size,
-    alpha: Float = 1f, outline: Boolean = false, material: BlockMaterial? = null) {
+    alpha: Float = 1f, outline: Boolean = false, material: BlockMaterial? = null,
+    type: Tetromino? = null, appearance: BlockAppearance = BlockAppearance.legacy) {
     val gap = minOf(step.width, step.height) * 0.07f
     val topLeft = origin + Offset(cell.x * step.width + gap, cell.y * step.height + gap)
     val blockSize = Size(step.width - gap * 2, step.height - gap * 2)
-    bevelBlock(topLeft, blockSize, color, finish, texture, alpha, outline, material)
+    bevelBlock(topLeft, blockSize, color, finish, texture, alpha, outline, material, type, appearance)
 }
 
 private fun DrawScope.drawSpawnPreview(state: GameState, palette: GamePalette, origin: Offset, cell: Size) {
@@ -119,7 +125,8 @@ private fun DrawScope.drawSettledCells(state: GameState, palette: GamePalette, m
             !(rowIndex in state.clearingRows && LineClearAnimation.isRemoved(elapsed))) {
             row.forEachIndexed { x, type ->
                 if (type != null) block(Cell(x, logicalY), palette.piece(type), palette.finish,
-                    palette.texture, origin + Offset(0f, shift * cell.height), cell, material = material)
+                    palette.texture, origin + Offset(0f, shift * cell.height), cell, material = material,
+                    type = type, appearance = state.blockAppearance(rowIndex, x))
             }
         }
     }

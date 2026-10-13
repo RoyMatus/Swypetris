@@ -79,7 +79,9 @@ data class GameState(
     val backToBack: Boolean = false,
     val combo: Int = -1,
     val placement: PlacementResult? = null,
-    val startingLevel: Int = 1
+    val startingLevel: Int = 1,
+    /** Empty means a type-only legacy board with deterministic visual fallback. */
+    val blockAppearances: List<List<BlockAppearance?>> = emptyList()
 ) {
     init { require(startingLevel in GameRules.MIN_STARTING_LEVEL..GameRules.MAX_STARTING_LEVEL) }
     /** Terminal victory is distinct from collecting the eight fruits in an ordinary round. */
@@ -262,7 +264,7 @@ class GameEngine(private val random: Random = Random.Default) {
         val event = (state.placement ?: PlacementResult(cleared, Spin.NONE, false, state.combo, level = state.level))
             .copy(perfectClear = board.all { row -> row.all { it == null } })
         return checkVictory(placements.spawnNext(state.copy(
-            board = board, placement = event,
+            board = board, blockAppearances = state.clearedAppearances(), placement = event,
             score = GameRules.addScore(state.score, GameRules.placementScore(event)),
             lines = GameRules.add(state.lines, cleared), clearingRows = emptyList(),
                 completedClears = state.completedClears + 1
@@ -273,18 +275,21 @@ class GameEngine(private val random: Random = Random.Default) {
         /** Locks piece cells; complete rows remain until their removal animation finishes. */
         fun lock(state: GameState): GameState {
             val board = state.board.map { it.toMutableList() }
+            val appearances = state.lockedAppearances()
             state.active.cells().forEach { board[BoardGeometry.row(it.y)][it.x] = state.active.type }
             val rows = board.indices.filter { y -> board[y].all { it != null } }
             // Complete lock-out: all four cells are above the visible field. Partial lock-out is allowed.
             if (state.active.cells().all { it.y < 0 })
-                return state.copy(board = board, gameOver = true, topOut = TopOut.LOCK_OUT)
+                return state.copy(board = board, blockAppearances = appearances, gameOver = true,
+                    topOut = TopOut.LOCK_OUT)
             val spin = SpinRecognition.classify(state)
             val combo = if (rows.isEmpty()) -1 else (state.combo.toLong() + 1).coerceAtMost(Int.MAX_VALUE.toLong())
                 .toInt()
             val difficult = rows.isNotEmpty() && (rows.size == 4 || spin != Spin.NONE)
             val event = PlacementResult(rows.size, spin, difficult && state.backToBack, combo,
                 softDropCells = state.softDropCells, hardDropCells = state.hardDropCells, level = state.level)
-            val locked = state.copy(board = board, clearingRows = rows, combo = combo, placement = event,
+            val locked = state.copy(board = board, blockAppearances = appearances,
+                clearingRows = rows, combo = combo, placement = event,
                 backToBack = if (rows.isEmpty()) state.backToBack else difficult,
                 score = if (rows.isEmpty()) GameRules.addScore(state.score,
                     GameRules.placementScore(event)) else state.score)

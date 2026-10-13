@@ -38,6 +38,7 @@ import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -97,7 +98,7 @@ class MaterialRenderingTest {
                     repeat(200) { index ->
                         bevelBlock(Offset((index % 10 * side).toFloat(), (index / 10 * side).toFloat()),
                             Size(side.toFloat(), side.toFloat()), theme.pieces[index % 7], theme.finish,
-                            theme.texture, material = material)
+                            theme.texture, material = material, type = Tetromino.entries[index % 7])
                     }
                 }
             }
@@ -114,9 +115,100 @@ class MaterialRenderingTest {
 
     private fun materialState(): GameState {
         val board = BoardGeometry.empty().map { it.toMutableList() }
-        Tetromino.entries.forEachIndexed { column, piece -> board[BoardGeometry.row(18)][column] = piece }
-        return GameState(board = board, active = Piece(Tetromino.T, x = 3, y = 8),
-            next = Tetromino.I, held = Tetromino.L, score = 254430)
+        val appearances = List(BoardGeometry.TOTAL_ROWS) { MutableList<BlockAppearance?>(10) { null } }
+        Tetromino.entries.forEachIndexed { column, type ->
+            board[BoardGeometry.row(18)][column] = type
+            appearances[BoardGeometry.row(18)][column] = BlockAppearance.legacy
+            val rotation = if (type == Tetromino.O) 0 else column % 4
+            Piece(type, x = column % 2 * 5, y = 2 + column / 2 * 4, rotation = rotation).cells()
+                .forEachIndexed { index, cell ->
+                    board[BoardGeometry.row(cell.y)][cell.x] = type
+                    appearances[BoardGeometry.row(cell.y)][cell.x] = BlockAppearance(index, rotation)
+                }
+        }
+        return GameState(board = board, active = Piece(Tetromino.T, x = 5, y = 14),
+            next = Tetromino.I, held = Tetromino.L, score = 254430, blockAppearances = appearances)
+    }
+
+    @Test fun texturedExplosionsFollowThemeChangesInThePortraitBoard() {
+        val row = BoardGeometry.row(12)
+        val board = BoardGeometry.empty().map { it.toMutableList() }
+        val appearances = List(BoardGeometry.TOTAL_ROWS) { MutableList<BlockAppearance?>(10) { null } }
+        repeat(10) { column ->
+            val type = Tetromino.entries[column % 7]
+            board[row][column] = type
+            appearances[row][column] = BlockAppearance(column % 4, if (type == Tetromino.O) 0 else column % 4)
+        }
+        val state = GameState(board = board, active = Piece(Tetromino.I), next = Tetromino.O,
+            clearingRows = listOf(row), blockAppearances = appearances)
+        var palette by mutableStateOf(GamePalettes.find("classic"))
+        var elapsed by mutableStateOf(0L)
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(393.dp, 873.dp))) {
+                CompositionLocalProvider(LocalGamePalette provides palette) {
+                    Board(state, elapsed, reducedMotion = false)
+                }
+            }
+        }
+        val themeHashes = mutableSetOf<Int>()
+        for (theme in GamePalettes.all) {
+            compose.runOnIdle { palette = theme; elapsed = 0 }
+            val intact = compose.onNodeWithTag("board").captureToImage().asAndroidBitmap()
+            compose.runOnIdle { elapsed = 160 }
+            val burst = compose.onNodeWithTag("board").captureToImage().asAndroidBitmap()
+            val intactPixels = IntArray(intact.width * intact.height)
+            val burstPixels = IntArray(burst.width * burst.height)
+            intact.getPixels(intactPixels, 0, intact.width, 0, 0, intact.width, intact.height)
+            burst.getPixels(burstPixels, 0, burst.width, 0, 0, burst.width, burst.height)
+            assertNotEquals("${theme.id}: clear phase must draw flying fragments", intactPixels.contentHashCode(),
+                burstPixels.contentHashCode())
+            assertTrue("${theme.id}: theme switch must not retain an old atlas",
+                themeHashes.add(burstPixels.contentHashCode()))
+            export("explosion-${theme.id}", burst)
+        }
+    }
+
+    @Test fun clippingTheSpawnBandDoesNotRenumberCanonicalCells() {
+        var piece by mutableStateOf(Piece(Tetromino.I, y = 3))
+        val geometry = GameplayGeometry(safeTop = 40f, cellHeight = 40f)
+        compose.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(393.dp, 873.dp))) {
+                CompositionLocalProvider(LocalGamePalette provides GamePalettes.find("vscode")) {
+                    ActivePiece(GameState(active = piece, next = Tetromino.O), geometry)
+                }
+            }
+        }
+        var checked = 0
+        for (type in Tetromino.entries) for (rotation in 0..3) {
+            compose.runOnIdle { piece = Piece(type, y = 3, rotation = rotation) }
+            val complete = compose.onNodeWithTag("activePiece").captureToImage().toPixelMap()
+            compose.runOnIdle { piece = piece.copy(y = -2) }
+            val clipped = compose.onNodeWithTag("activePiece").captureToImage().toPixelMap()
+            checked += assertClippedArtwork(piece, complete, clipped, geometry.safeTop)
+        }
+        assertTrue("Exercise visible cells after earlier canonical cells were clipped", checked > 28)
+    }
+
+    private fun assertClippedArtwork(piece: Piece, complete: PixelMap, clipped: PixelMap, safeTop: Float): Int {
+        var checked = 0
+        piece.cells().forEach { cell ->
+            val y = 80 + cell.y * 40 + 20
+            if (y >= safeTop) {
+                val x = (clipped.width * (cell.x + .5f) / 10).toInt()
+                for (offset in listOf(-7, 0, 7)) {
+                    val before = complete[x + offset, y + 200]
+                    val after = clipped[x + offset, y]
+                    // Hardware sampling can round differently after translation; source-region tests use
+                    // a separate native software oracle with a three-byte-level tolerance.
+                    val difference = listOf(kotlin.math.abs(before.red - after.red),
+                        kotlin.math.abs(before.green - after.green), kotlin.math.abs(before.blue - after.blue))
+                    assertTrue("$piece: clipped cell retains its original artwork: $difference",
+                        difference.all { it <= .04f })
+                }
+                checked++
+            }
+        }
+        return checked
     }
 
     private fun assertScore(theme: GamePalette, pixels: PixelMap) {

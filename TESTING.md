@@ -28,7 +28,14 @@ The normal regression skips this export and does not record video or wait for
 real-time celebration cycles.
 
 `MaterialRenderingTest` checks the twelve themes and Settings cards at two portrait
-sizes/font scales. Pass `materialCapture=true` for source-comparison PNG exports
+sizes/font scales, all seven connected figures, spawn clipping and theme-switched
+textured explosions. `ConnectedMaterialRenderingTest` compares actual atlas pixels
+for all canonical cells/rotations, O's effective zero rotation, square rotation before
+non-square scaling and four-quadrant reconstruction. It also checks shared material
+ownership. `ConnectedSessionTest` covers format-four migration, format-five round
+trips, metadata-only cache invalidation and malformed artwork rejection;
+`BlockAppearanceTest` covers lock, hidden lock-out, row removal and shard identity.
+Pass `materialCapture=true` for source-comparison PNG exports
 or `materialBenchmark=true` for cached software-draw timings. The separate
 `MaterialFrameEvidenceTest` requires `materialFrames=true`: it measures the real
 Activity with its production clock, a dense board and alternating movement input,
