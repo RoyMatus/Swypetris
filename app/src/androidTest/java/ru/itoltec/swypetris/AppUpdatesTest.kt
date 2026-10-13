@@ -6,7 +6,6 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import org.json.JSONArray
 import org.json.JSONObject
@@ -45,6 +44,7 @@ class AppUpdatesTest {
         compose.setContent { SwypetrisApp(model) {} }
         compose.onNodeWithTag("versionCheck").assertIsDisplayed().assert(hasClickAction())
         compose.runOnIdle { model.navigation.settings() }
-        compose.onNodeWithTag("checkUpdates").performScrollTo().assertIsDisplayed().assert(hasClickAction())
+        compose.onNodeWithTag("checkUpdates").assertDoesNotExist()
+        compose.onNodeWithTag("automaticUpdates").assertDoesNotExist()
     }
 }

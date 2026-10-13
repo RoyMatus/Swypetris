@@ -207,17 +207,14 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    var updateWindowActive by remember(owner) {
-        mutableStateOf(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
-    }
     DisposableEffect(model, density, owner) {
         val configuration = ViewConfiguration.get(context)
         model.input.configureGestures(GestureConfig(
             tapSlop = configuration.scaledTouchSlop / density
         ))
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) { updateWindowActive = false; model.onBackground() }
-            if (event == Lifecycle.Event.ON_RESUME) { updateWindowActive = true; model.onForeground() }
+            if (event == Lifecycle.Event.ON_PAUSE) model.onBackground()
+            if (event == Lifecycle.Event.ON_RESUME) model.onForeground()
         }
         owner.lifecycle.addObserver(observer)
         onDispose {
@@ -226,10 +223,6 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
         }
     }
     LaunchIntroClock(model)
-    LaunchedEffect(updateWindowActive, model.screen, updates?.automaticEnabled,
-        updates?.delivery?.notice, updates?.notice) {
-        if (updateWindowActive) updates?.installAutomaticallyIfReady(model)
-    }
     BackHandler(enabled = model.launchIntroPending || model.screen != GameScreen.MENU) {
         if (model.background.draft != null) model.background.cancel() else model.navigation.back()
     }

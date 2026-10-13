@@ -34,30 +34,6 @@ internal fun UpdateDeliveryDialog(delivery: UpdateDelivery, model: GameViewModel
 }
 
 @Composable
-internal fun AutomaticUpdateConsentDialog(updates: AppUpdates) {
-    AlertDialog(onDismissRequest = updates::postponeConsent,
-        title = { Text("Автоматические обновления") },
-        text =
-            { Text("Разрешить автоматическую загрузку и установку новых версий " +
-                "Swypetris? Загрузка использует интернет. Установка начнётся только в " +
-                "главном меню после сохранения партии и может закрыть приложение. " +
-                "Android может запросить разрешение и подтверждение. Режим можно " +
-                "отключить в настройках.",
-            modifier = Modifier.verticalScroll(rememberScrollState())) },
-        confirmButton = {
-            TextButton(onClick = { updates.answerConsent(true) },
-                modifier = Modifier.testTag("allowAutomaticUpdates")) { Text("Разрешить") }
-        }, dismissButton = {
-            Column {
-                TextButton(onClick = updates::postponeConsent,
-                    modifier = Modifier.testTag("laterAutomaticUpdates")) { Text("Позже") }
-                TextButton(onClick = { updates.answerConsent(false) },
-                    modifier = Modifier.testTag("manualUpdatesOnly")) { Text("Только вручную") }
-            }
-        })
-}
-
-@Composable
 private fun UpdateDeliveryMessage(notice: DeliveryNotice) {
     when (notice) {
         is DeliveryNotice.Downloading -> {

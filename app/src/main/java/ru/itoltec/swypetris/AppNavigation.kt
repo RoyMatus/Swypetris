@@ -14,9 +14,7 @@ internal fun AppScreen(model: GameViewModel, updates: AppUpdates?, onExit: () ->
     else if (model.screen == GameScreen.PRIVACY) PrivacyScreen()
     else if (model.screen == GameScreen.LEGAL) LegalScreen()
     else if (model.screen == GameScreen.HELP) HelpScreen()
-    else if (model.screen == GameScreen.SETTINGS) SettingsScreen(model,
-        onCheckUpdates = { updates?.check(true) }, automaticUpdates = updates?.automaticEnabled == true,
-        onAutomaticUpdatesChange = { updates?.requestAutomatic(it) })
+    else if (model.screen == GameScreen.SETTINGS) SettingsScreen(model)
     else if (model.screen == GameScreen.VICTORY) VictoryScreen(model)
     else if (model.screen == GameScreen.ABSOLUTE_VICTORY || model.screen == GameScreen.POSTCARD)
         AbsoluteVictoryScreen(model)
@@ -27,9 +25,8 @@ internal fun AppScreen(model: GameViewModel, updates: AppUpdates?, onExit: () ->
 
 @Composable
 internal fun AppUpdateDialogs(model: GameViewModel, updates: AppUpdates) {
-    if (updates.consentRequested) AutomaticUpdateConsentDialog(updates)
-    else UpdateDeliveryDialog(updates.delivery, model) { updates.check(true) }
-    if (!updates.consentRequested && updates.delivery.notice == null) updates.notice?.let { notice ->
+    UpdateDeliveryDialog(updates.delivery, model) { updates.check(true) }
+    if (updates.delivery.notice == null) updates.notice?.let { notice ->
         AlertDialog(onDismissRequest = { if (notice != UpdateNotice.StoreInstalling) updates.dismiss() },
             title = { Text(if (notice is UpdateNotice.Available) "Доступно обновление" else "Проверка обновлений") },
             text = { Text(updateNoticeMessage(notice)) },
@@ -61,4 +58,15 @@ private fun updateNoticeMessage(notice: UpdateNotice): String =
     is UpdateNotice.RateLimited -> "GitHub временно ограничил проверку обновлений. Повторить можно после " +
         java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.MEDIUM)
                     .format(java.util.Date(notice.retryAtMillis)) + " (время устройства). Игру можно продолжить."
+    is UpdateNotice.ManualLimited -> "Достигнут лимит ручных проверок: 59 за 60 минут. " +
+        "Повторите через ${retryMinutes(notice.retryAfterMillis)} мин. " +
+        "Автоматическая проверка выполняется отдельно."
+    is UpdateNotice.StoreBackoff -> "RuStore временно недоступен. Повторите через " +
+        "${retryMinutes(notice.retryAfterMillis)} мин; " +
+        "игру можно продолжить."
     }
+
+private const val MILLIS_PER_MINUTE = 60_000L
+
+private fun retryMinutes(delayMillis: Long): Long =
+    delayMillis / MILLIS_PER_MINUTE + if (delayMillis % MILLIS_PER_MINUTE > 0) 1 else 0

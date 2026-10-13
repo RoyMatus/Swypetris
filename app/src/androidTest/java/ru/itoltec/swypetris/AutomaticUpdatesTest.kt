@@ -2,30 +2,27 @@ package ru.itoltec.swypetris
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Rule
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExternalResource
 
 class AutomaticUpdatesTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
-    @get:Rule(order = 1) val updatePreferences = object : ExternalResource() {
+    private fun preferences() = ApplicationProvider.getApplicationContext<Context>()
+        .getSharedPreferences("app_updates", Context.MODE_PRIVATE)
+    @get:Rule(order = 1) val legacyPreferences = object : ExternalResource() {
         private val keys = listOf("automatic", "automatic_choice", "last_check")
         private var saved: Map<String, Any?> = emptyMap()
-        private fun preferences() = ApplicationProvider.getApplicationContext<Context>()
-            .getSharedPreferences("app_updates", Context.MODE_PRIVATE)
         override fun before() {
-            val preferences = preferences()
-            saved = preferences.all.filterKeys { it in keys }
-            preferences.edit().remove("automatic").remove("automatic_choice")
+            saved = preferences().all.filterKeys { it in keys }
+            preferences().edit().putBoolean("automatic", true).putBoolean("automatic_choice", true)
                 .putLong("last_check", System.currentTimeMillis()).commit()
         }
         override fun after() {
@@ -42,28 +39,24 @@ class AutomaticUpdatesTest {
     }
     @get:Rule(order = 2) val compose = createAndroidComposeRule<MainActivity>()
 
-    @Test fun automaticUpdatesRequireConsentAndSurviveActivityRecreation() {
-        compose.activityRule.scenario.onActivity {
-            ViewModelProvider(it)[GameViewModel::class.java].apply { navigation.finishLaunchIntro();
-                navigation.settings() }
+    @Test fun removedSettingsDoNotReuseOldAutomaticInstallConsent() {
+        compose.activityRule.scenario.onActivity { activity ->
+            ViewModelProvider(activity)[GameViewModel::class.java].apply {
+                navigation.finishLaunchIntro()
+                navigation.settings()
+            }
         }
-        compose.onNodeWithTag("automaticUpdates").performScrollTo().assertIsOff().performClick()
-        compose.onNodeWithTag("manualUpdatesOnly").assertIsDisplayed().performClick()
-        compose.onNodeWithTag("automaticUpdates").assertIsOff().performClick()
-        compose.onNodeWithTag("allowAutomaticUpdates").assertIsDisplayed().performClick()
-        compose.onNodeWithTag("automaticUpdates").assertIsOn()
-        compose.activityRule.scenario.recreate()
-        compose.onNodeWithTag("automaticUpdates").performScrollTo().assertIsOn().performClick()
-        compose.onNodeWithTag("automaticUpdates").assertIsOff()
-        compose.activityRule.scenario.recreate()
-        compose.onNodeWithTag("automaticUpdates").performScrollTo().assertIsOff()
+        compose.onNodeWithTag("automaticUpdates").assertDoesNotExist()
+        compose.onNodeWithTag("checkUpdates").assertDoesNotExist()
+        assertFalse(preferences().contains("automatic"))
+        assertFalse(preferences().contains("automatic_choice"))
+        compose.activityRule.scenario.onActivity { activity ->
+            ViewModelProvider(activity)[GameViewModel::class.java].navigation.menu()
+        }
+        compose.onNodeWithTag("versionCheck").assertIsDisplayed()
     }
-    @Test fun availableUpdateAlwaysWaitsForExplicitLaunchChoice() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        context.getSharedPreferences("app_updates", Context.MODE_PRIVATE).edit()
-            .putBoolean("automatic", true)
-            .putBoolean("automatic_choice", true)
-            .commit()
+
+    @Test fun availableUpdateStillWaitsForExplicitChoice() {
         compose.activityRule.scenario.onActivity { activity ->
             val updates = AppUpdates(activity)
             try {
@@ -71,12 +64,9 @@ class AutomaticUpdatesTest {
                     false, "0".repeat(64), 1)
                 updates.showAvailable(update, manual = false)
                 assertTrue(updates.notice is UpdateNotice.Available)
-                assertTrue(updates.automaticEnabled)
-                assertTrue(!updates.consentRequested)
-            } finally {
-                updates.close()
-            }
+                assertNull(updates.delivery.notice)
+                assertFalse(preferences().contains("automatic"))
+            } finally { updates.close() }
         }
     }
-
 }
