@@ -133,6 +133,7 @@ class GameViewModel internal constructor(
 
     init {
         this.feedback.setVibrationStrength(vibrationStrength)
+        this.feedback.setPalette(paletteId)
         restored?.let { engine.restoreBag(it.bag) }
         game?.takeIf { it.absoluteVictory }?.let {
             game = engine.checkVictory(it)
@@ -614,6 +615,7 @@ class GameViewModel internal constructor(
         fun setPalette(id: String) {
             setRandomTheme(false)
             paletteId = GamePalettes.find(id).id
+            feedback.setPalette(paletteId)
             preferences.edit().putString("palette", paletteId).apply()
         }
 
@@ -626,6 +628,7 @@ class GameViewModel internal constructor(
         fun randomizeRoundTheme() {
             if (randomThemeEnabled) {
                 paletteId = GamePalettes.randomId(paletteId, paletteRandom)
+                feedback.setPalette(paletteId)
                 preferences.edit { putString("palette", paletteId) }
             }
         }

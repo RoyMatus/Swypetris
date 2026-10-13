@@ -20,8 +20,9 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
     private val streams = mutableListOf<Int>()
     @Suppress("DEPRECATION")
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-    private val drop: Int
-    private val clear: Int
+    private val samples = mutableMapOf<ThemeSoundPair, Pair<Int, Int>>()
+    private var selected = ThemeSounds.forPalette("classic")
+    @Volatile private var released = false
     private var vibrationStrength = MAX_VIBRATION_STRENGTH
 
     override fun setVibrationStrength(percent: Int) {
@@ -31,16 +32,26 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
     }
 
     init {
-        pool.setOnLoadCompleteListener { _, id, status -> if (status == 0) loaded.add(id) }
-        drop = pool.load(context, R.raw.drop_soft, 1)
-        clear = pool.load(context, R.raw.clear_soft, 1)
+        pool.setOnLoadCompleteListener { _, id, status -> if (status == 0 && !released) loaded.add(id) }
+        setPalette("classic")
+    }
+
+    /** Each visited pair loads once. A pending load never queues or replays an old event. */
+    override fun setPalette(id: String) {
+        if (released) return
+        val next = ThemeSounds.forPalette(id)
+        if (next != selected) stopSound()
+        selected = next
+        samples.getOrPut(next) { pool.load(context, next.drop, 1) to pool.load(context, next.clear, 1) }
     }
 
     /** Skips sounds not yet loaded and requests vibration with supported Android usage attributes. */
     @Suppress("DEPRECATION")
     override fun play(event: FeedbackEvent, sound: Boolean, vibration: Boolean) {
+        if (released) return
         stop()
-        val sample = if (event == FeedbackEvent.DROP) drop else clear
+        val pair = samples.getValue(selected)
+        val sample = if (event == FeedbackEvent.DROP) pair.first else pair.second
         if (sound && sample in loaded) {
             val stream = pool.play(sample, 0.55f, 0.55f, 1, 0, 1f)
             if (stream != 0) streams.add(stream)
@@ -91,9 +102,12 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
 
     /** Releases SoundPool and its load listener when the model is destroyed. */
     override fun release() {
+        if (released) return
+        released = true
         stop()
         pool.setOnLoadCompleteListener(null)
         pool.release()
         loaded.clear()
+        samples.clear()
     }
 }
