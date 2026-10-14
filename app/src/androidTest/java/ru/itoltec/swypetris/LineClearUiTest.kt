@@ -164,8 +164,10 @@ class LineClearUiTest {
         compose.runOnIdle { elapsed = 280 }
         val quiet = compose.onNodeWithTag("board").captureToImage().toPixelMap()
         val clearTop = (quiet.height * 21f / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)).toInt() - 2
+        // Compare every pixel; construct a coordinate-rich failure only if one differs.
         for (y in 0 until clearTop) for (x in 0 until quiet.width)
-            assertEquals("Reduced motion must not fly or shift cells", still[x, y], quiet[x, y])
+            if (still[x, y] != quiet[x, y])
+                assertEquals("Reduced motion must not fly or shift cells at $x/$y", still[x, y], quiet[x, y])
     }
 
     @androidx.annotation.RequiresApi(26)
@@ -181,7 +183,7 @@ class LineClearUiTest {
         for (y in 0 until pixels.height step 3) for (x in 0 until pixels.width step 3) {
             val outsideHorizontal = x < left - 1 || x > right + 1
             val outsideVertical = y < top - 1 || y > bottom + 1
-            if (outsideHorizontal || outsideVertical)
+            if ((outsideHorizontal || outsideVertical) && pixels[x, y] != Color.Magenta)
                 assertEquals("Shard outside board: $name at $x/$y", Color.Magenta, pixels[x, y])
         }
     }
@@ -194,7 +196,8 @@ class LineClearUiTest {
         // Next spawn hints are outside this comparison; settled board cells must match exactly.
         val top = (settled.height * 3f / (BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_ROWS)).toInt() + 2
         for (y in top until settled.height) for (x in 0 until settled.width)
-            assertEquals("Visual result differs from canonical removal at $x/$y", committed[x, y], settled[x, y])
+            if (committed[x, y] != settled[x, y])
+                assertEquals("Visual result differs from canonical removal at $x/$y", committed[x, y], settled[x, y])
     }
 
     private fun saveArtifact(name: String, write: (java.io.File) -> Unit) {
