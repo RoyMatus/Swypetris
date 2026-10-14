@@ -5,6 +5,24 @@ import org.junit.Test
 
 /** Проверяет пороги наград и независимость очков от уровня. */
 class RewardsTest {
+    @Test fun recordDesignExamplesAgreeWithLiveCumulativeRewards() {
+        val fixtures = listOf(
+            2_466 to List(8) { 0 },
+            42_500 to listOf(1, 1, 1, 1, 0, 0, 0, 0),
+            80_000 to List(8) { 1 },
+            90_000 to listOf(2, 1, 1, 1, 1, 1, 1, 1),
+            788_267 to listOf(10, 10, 10, 10, 10, 10, 9, 9),
+            999_999 to listOf(13, 13, 13, 12, 12, 12, 12, 12)
+        )
+        fixtures.forEach { (score, counts) ->
+            assertEquals(counts, Fruit.entries.map { fruitQuantity(score, it) })
+            for (rounds in listOf(0, 1, 12)) {
+                assertEquals(counts, GameState(active = Piece(Tetromino.O), next = Tetromino.T,
+                    score = score, completedRounds = rounds).fruitCounts)
+            }
+        }
+    }
+
     /** Все пороги включительны, коллекция повторяется после восьмого фрукта. */
     @Test fun fruitThresholdsAndCycles() {
         assertEquals(0, fruitCount(9999))

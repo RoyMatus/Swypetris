@@ -150,8 +150,11 @@ class AbsoluteVictoryUiTest {
             model.absolute.changeName("Roy")
             model.absolute.preparePostcard()
         }
+        // Compose 1.7 filters selectors on the test thread: avoid merged descendant
+        // semantics reads racing the same Owner's main-thread draw.
         compose.waitUntil(timeoutMillis = 10000) {
-            compose.onAllNodes(hasTestTag("sharePostcard")).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(hasTestTag("sharePostcard"), useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
         }
         val chooser = Intent.createChooser(Intent(Intent.ACTION_SEND).setType("image/png"), "Share")
         val resolver = app.packageManager.resolveActivity(chooser, 0)!!.activityInfo.packageName
@@ -163,7 +166,7 @@ class AbsoluteVictoryUiTest {
         automation.serviceInfo = serviceInfo
         try {
             val opened = automation.executeAndWaitForEvent({
-                compose.onNodeWithTag("sharePostcard").performClick()
+                compose.onNodeWithTag("sharePostcard", useUnmergedTree = true).performClick()
             }, { event -> event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
                 event.packageName?.toString() == resolver }, 10000)
             @Suppress("DEPRECATION")

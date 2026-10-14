@@ -10,8 +10,6 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.autofill.AutofillTree
 import androidx.compose.ui.autofill.AutofillType
 import androidx.compose.ui.platform.LocalAutofillTree
@@ -21,18 +19,15 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.left
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.right
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -51,8 +46,8 @@ class ResultsIntegrationTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    /** Current and archived records remain independent and readable at a narrow portrait width. */
-    @Test fun recordSummaryFitsLargeScoresWithoutChangingStoredHistory() {
+    /** The removed summary stays absent while the separate score-only archive remains truthful. */
+    @Test fun recordHistoryKeepsLegacyScoreInlineWithoutMutatingStoredHistory() {
         val application = ApplicationProvider.getApplicationContext<Application>()
         val preferences = GameStorage.preferences(application)
         var model by mutableStateOf(GameViewModel(application, null, { 1000L }, false))
@@ -77,31 +72,19 @@ class ResultsIntegrationTest {
                 assertEquals(archive, model.legacyRecord)
             }
             compose.onNodeWithTag("resultsPage").performScrollToIndex(0)
-            val label = assertSummaryTextFits(hasText("Лучший результат"))
-            val score = assertSummaryTextFits(hasText("$current") and hasAnyAncestor(hasTestTag("recordSummary")))
-            assertFalse("Summary label and score overlap", label.overlaps(score))
-            if (archive > 0) assertSummaryTextFits(hasText("Архивный рекорд: $archive"))
+            compose.onNodeWithText("История рекордов").assertIsDisplayed()
+            compose.onNodeWithTag("recordSummary").assertDoesNotExist()
+            if (archive > 0) {
+                val note = "Архивный рекорд: ${groupedRecordScore(archive)} очков"
+                compose.onNodeWithTag("resultsPage").performScrollToNode(hasText(note))
+                compose.onNodeWithText(note).assertIsDisplayed()
+            }
+            if (current > 0) {
+                compose.onNodeWithTag("resultsPage").performScrollToNode(hasTestTag("recordCard-current"))
+                compose.onNodeWithTag("recordCard-current").assertIsDisplayed()
+            }
             compose.runOnIdle { assertEquals(history, ResultStore(preferences).read()) }
         }
-    }
-
-    private fun assertSummaryTextFits(matcher: SemanticsMatcher): androidx.compose.ui.geometry.Rect {
-        val node = compose.onNode(matcher).assertIsDisplayed()
-        val layouts = mutableListOf<TextLayoutResult>()
-        node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        val layout = layouts.single()
-        assertFalse("Summary text is vertically clipped", layout.didOverflowHeight)
-        // FlowRow can retain a wider paragraph constraint than the actual painted line.
-        // Measure the line coordinates rather than comparing paragraph and node widths.
-        repeat(layout.lineCount) { line ->
-            assertFalse("Summary text is ellipsized", layout.isLineEllipsized(line))
-            assertTrue("Summary line extends outside its text node",
-                layout.getLineLeft(line) >= 0 && layout.getLineRight(line) <= layout.size.width)
-        }
-        val bounds = node.fetchSemanticsNode().boundsInRoot
-        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
-        assertTrue("Summary extends outside the screen", bounds.left >= root.left && bounds.right <= root.right)
-        return bounds
     }
 
     @OptIn(ExperimentalComposeUiApi::class)

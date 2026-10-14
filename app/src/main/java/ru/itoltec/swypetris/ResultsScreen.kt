@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -60,16 +59,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 private const val MAX_RECORD_NAME_LENGTH = 40
 private const val CONFETTI_DURATION_MILLIS = 2600
 private const val CONFETTI_PARTICLES = 24
 private const val CONFETTI_OPACITY = .5f
 private const val SECONDS_PER_MINUTE = 60
-private const val ROUND_COLLECTION_RULES_VERSION = 4
 
 
 private val Ice: Color @Composable get() = menuUiPalette().accent
@@ -79,7 +74,6 @@ private val Muted: Color @Composable get() = menuUiPalette().muted
 
 /** Results and history use menu-style cards that fit the width and scroll only vertically. */
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 fun ResultsScreen(model: GameViewModel) {
     val latest = model.latestResult
     val records = model.recordResults
@@ -108,26 +102,18 @@ fun ResultsScreen(model: GameViewModel) {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { FruitCollection(latest) }
                 }
             }
-            item {
-                AccentPanel(Lavender, Modifier.padding(horizontal = 12.dp)) {
-                    Text("ИСТОРИЯ РЕКОРДОВ", color = Lavender, style = MaterialTheme.typography.labelLarge)
-                    SettingsDivider(Lavender)
-                    FlowRow(Modifier.fillMaxWidth().testTag("recordSummary"),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Лучший результат", color = palette.text)
-                        Text("${model.record}", color = Ice, fontWeight = FontWeight.Bold)
-                    }
-                    if (model.legacyRecord > 0) Text("Архивный рекорд: ${model.legacyRecord}", color = Muted,
-                        style = MaterialTheme.typography.bodySmall)
-                }
+            if (model.legacyRecord > 0) item {
+                Text("Архивный рекорд: ${groupedRecordScore(model.legacyRecord)} очков",
+                    Modifier.padding(horizontal = 12.dp), color = Muted, style = MaterialTheme.typography.bodySmall)
             }
             if (records.isEmpty()) item {
                 AccentPanel(Lavender, Modifier.padding(horizontal = 12.dp)) {
                     Text("Здесь появятся ваши новые рекорды.", color = Muted)
                 }
             }
-            items(records, key = { it.id }) { result -> ResultCard(result) }
+            itemsIndexed(records, key = { _, result -> result.id }) { index, result ->
+                RecordHistoryCard(result, isBest = index == 0)
+            }
         }
     }
 }
@@ -205,29 +191,6 @@ private fun Metric(label: String, value: String, modifier: Modifier) {
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center)
         Text(label, color = Muted, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-/** History card wraps its metrics and awards within the available width. */
-@Composable
-@OptIn(ExperimentalLayoutApi::class)
-private fun ResultCard(result: GameResult) {
-    AccentPanel(Lavender, Modifier.padding(horizontal = 12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(result.name, Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text("${result.score}", Modifier.weight(1f), color = Ice, fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.End)
-        }
-        Text(SimpleDateFormat("dd MMM yyyy · HH:mm", Locale.getDefault()).format(Date(result.dateMillis)),
-            color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth())
-        FlowRow(Modifier.fillMaxWidth().padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Строки: ${result.lines}", color = Muted)
-            Text("Уровень: ${result.level}", color = Muted)
-            Text(formatDuration(result.durationMillis), color = Muted)
-        }
-        result.difficulty?.let { Text(it.title, color = Muted) }
-        Box(Modifier.fillMaxWidth()) { FruitCollection(result) }
     }
 }
 

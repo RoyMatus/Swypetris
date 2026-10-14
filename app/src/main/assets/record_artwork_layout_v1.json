@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 1,
+  "assetSet": "swypetris-record-history-296-v1",
+  "units": "normalized design units, scaled uniformly; never raw device pixels",
+  "canvas": {
+    "width": 1000,
+    "height": 1050
+  },
+  "trophy": {
+    "file": "record_trophy.png",
+    "rect": [
+      0,
+      0,
+      1000,
+      1050
+    ],
+    "fit": "contain",
+    "opacity": 0.84,
+    "zIndex": 0
+  },
+  "fruitOrder": [
+    "CHERRY",
+    "BANANA",
+    "GRAPES",
+    "STRAWBERRY",
+    "APPLE",
+    "PEAR",
+    "PINEAPPLE",
+    "WATERMELON"
+  ],
+  "fruits": [
+    {
+      "id": "CHERRY",
+      "label": "Вишня",
+      "file": "record_fruit_cherry.png",
+      "rect": [
+        5,
+        712,
+        190,
+        207
+      ],
+      "fit": "contain-center",
+      "opacity": 1,
+      "zIndex": 3,
+      "badgeCenter": [
+        100,
+        895
+      ]
+    },
+    {
+      "id": "BANANA",
+      "label": "Банан",
+      "file": "record_fruit_banana.png",
+      "rect": [
+        145,
+        637,
+        193,
+        213
+      ],
+      "fit": "contain-center",
+      "opacity": 1,
+      "zIndex": 1,
+      "badgeCenter": [
+        267,
+        758
+      ]
+    },
+    {
+      "id": "GRAPES",
+      "label": "Виноград",
+      "file": "record_fruit_grapes.png",
+      "rect": [
+        162,
+        765,
+        199,
+        216
+      ],
+      "fit": "contain-center",
+      "opacity": 1,
+      "zIndex": 4,
+      "badgeCenter": [
+        245,
+        954
+      ]
+    },
+    {
+      "id": "STRAWBERRY",
+      "label": "Клубника",
+      "file": "record_fruit_strawberry.png",
+      "rect": [
+        300,
+        792,
+        163,
+        198
+      ],
+      "fit": "contain-center",
+      "opacity": 1,
+      "zIndex": 8,
+      "badgeCenter": [
+        374,
+        990
+      ]
+    },
+    {
+      "id": "APPLE",
+      "label": "Яблоко",
+      "file": "record_fruit_apple.png",
+      "rect": [
+        548,
+        781,
+        174,
+        208
+      ],
+      "fit": "contain-center",
+      "opacity": 1,
+      "zIndex": 6,
+      "badgeCenter": [
+        627,
+        990
+      ]
+    },
+    {
+      "id": "PEAR",
+      "label": "Груша",
+      "file": "record_fruit_pear.png",
+      "rect": [
+        659,
+        688,
+        157,
+        257
+      ],
+      "fit": "contain-center",
+      "opacity": 1,
+      "zIndex": 5,
+      "badgeCenter": [
+        773,
+        938
+      ]
+    },
+    {
+      "id": "PINEAPPLE",
+      "label": "Ананас",
+      "file": "record_fruit_pineapple.png",
+      "rect": [
+        741,
+        558,
+        186,
+        313
+      ],
+      "fit": "contain-center",
+      "opacity": 1,
+      "zIndex": 2,
+      "badgeCenter": [
+        867,
+        815
+      ]
+    },
+    {
+      "id": "WATERMELON",
+      "label": "Арбуз",
+      "file": "record_fruit_watermelon.png",
+      "rect": [
+        806,
+        780,
+        187,
+        198
+      ],
+      "fit": "contain-center",
+      "opacity": 1,
+      "zIndex": 7,
+      "badgeCenter": [
+        938,
+        990
+      ]
+    }
+  ],
+  "badge": {
+    "resource": "record_quantity_badge",
+    "shape": "circle",
+    "diameterDp": 16,
+    "fontSp": 11,
+    "fontWeight": 600,
+    "textColor": "#FFFFFFFF",
+    "displayWhen": "count > 1",
+    "text": "decimal count only; no multiplication sign",
+    "zIndex": 20,
+    "minimumGapDp": 1,
+    "outerReservedPaddingDp": 4,
+    "largeFontDiameterRule": "max(16dp, measured text width + 6dp, measured text height + 4dp)",
+    "largeFontArtworkRule": "stack and uniformly enlarge artwork until every pair of visible badges is separated by at least 1dp; keep normalized centers unchanged"
+  },
+  "visibility": {
+    "fruit": "count > 0 for this persisted result",
+    "badge": "count > 1 for this same fruit",
+    "unearned": "omit completely; keep other fruit slots fixed"
+  },
+  "card": {
+    "variant": "trophy-right",
+    "outerHorizontalPaddingDp": 12,
+    "innerPaddingDp": 14,
+    "betweenCardsDp": 12,
+    "minimumHeroHeightDp": 188,
+    "textArtworkGapDp": 8,
+    "artworkFractionOfInnerWidth": 0.48,
+    "artworkMinSideWidthDp": 144,
+    "artworkMaxSideWidthDp": 184,
+    "minimumTextColumnDp": 144,
+    "stackWhen": "fontScale >= 1.3 OR artwork would be narrower than 144dp OR text would be narrower than 144dp OR measured text/quantity badges do not fit",
+    "stackedArtworkWidthDp": 180,
+    "stackedArtworkAlignment": "center below left-aligned text",
+    "metrics": {
+      "columns": 4,
+      "fallbackColumns": 2,
+      "gapDp": 8,
+      "topPaddingDp": 14,
+      "topMarginDp": 8,
+      "order": [
+        "lines",
+        "level",
+        "duration",
+        "completedRounds"
+      ]
+    },
+    "typography": {
+      "eyebrow": {
+        "text": "Лучший результат",
+        "sp": 12,
+        "weight": 600,
+        "palette": "secondary"
+      },
+      "score": {
+        "sp": 34,
+        "weight": 700,
+        "palette": "accent",
+        "groupSeparator": "U+202F",
+        "wrap": false
+      },
+      "points": {
+        "text": "очков",
+        "sp": 12,
+        "palette": "muted"
+      },
+      "name": {
+        "sp": 18,
+        "weight": 600,
+        "palette": "text"
+      },
+      "date": {
+        "pattern": "dd MMM yyyy · HH:mm",
+        "sp": 12,
+        "palette": "muted"
+      },
+      "metricValue": {
+        "sp": 19,
+        "weight": 500,
+        "palette": "text"
+      },
+      "metricLabel": {
+        "sp": 12,
+        "palette": "muted",
+        "labels": [
+          "Строки",
+          "Уровень",
+          "Время",
+          "Круги"
+        ]
+      }
+    },
+    "preserve": "Existing ThemedCard, ScreenArtHeader, current palette, vertical page scrolling, insets and portrait orientation"
+  },
+  "fixtures": [
+    {
+      "score": 2466,
+      "counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "score": 42500,
+      "counts": [
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "score": 80000,
+      "counts": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "score": 90000,
+      "counts": [
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "score": 788267,
+      "counts": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        9,
+        9
+      ]
+    },
+    {
+      "score": 999999,
+      "counts": [
+        13,
+        13,
+        13,
+        12,
+        12,
+        12,
+        12,
+        12
+      ]
+    }
+  ]
+}
