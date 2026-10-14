@@ -88,9 +88,19 @@ Describe 'Bounded diagnostic output' {
         Test-Path -LiteralPath $marker | Should -BeFalse
     }
     It 'bounds a process timeout while retaining partial stdout' {
-        $exe = (Get-Process -Id $PID).Path
+        if ($IsWindows) {
+            # Avoid pwsh startup consuming the one-second timeout before output.
+            # This owned native loop emits first and is killed by the timeout.
+            $fixture = Join-Path $TestDrive 'hung.cmd'
+            @('@echo off', 'echo partial', 'for /l %%I in (1,1,2147483647) do rem') | Set-Content -LiteralPath $fixture
+            $exe = $env:ComSpec
+            $arguments = @('/d','/c',$fixture)
+        } else {
+            $exe = (Get-Process -Id $PID).Path
+            $arguments = @('-NoProfile','-Command','Write-Output partial; Start-Sleep -Seconds 30')
+        }
         $watch = [Diagnostics.Stopwatch]::StartNew()
-        $result = Invoke-BoundedDiagnostic -Executable $exe -Arguments @('-NoProfile','-Command','Write-Output partial; Start-Sleep -Seconds 30') -OutputFile (Join-Path $TestDrive 'hung.log') -TimeoutSeconds 1
+        $result = Invoke-BoundedDiagnostic -Executable $exe -Arguments $arguments -OutputFile (Join-Path $TestDrive 'hung.log') -TimeoutSeconds 1
         $result.timedOut | Should -BeTrue
         $watch.Elapsed.TotalSeconds | Should -BeLessThan 4
         Get-Content $result.output | Should -Contain partial
