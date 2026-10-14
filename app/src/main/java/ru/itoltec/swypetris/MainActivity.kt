@@ -140,11 +140,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SwypetrisTheme(darkTheme = true, dynamicColor = false) {
-                DisposableEffect(gameModel.paletteId, gameModel.screen) {
+                val menuSkin = rememberMenuSkin(GamePalettes.find(gameModel.paletteId))
+                val menuStyled = usesMenuSkin(gameModel.screen, gameModel.background.draft != null)
+                DisposableEffect(gameModel.paletteId, gameModel.screen, menuStyled) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
                     val palette = GamePalettes.find(gameModel.paletteId)
-                    controller.isAppearanceLightStatusBars = palette.light && gameModel.screen != GameScreen.VICTORY
-                    controller.isAppearanceLightNavigationBars = palette.light && gameModel.screen != GameScreen.VICTORY
+                    val lightBars = if (menuStyled) menuSkin.light else
+                        palette.light && gameModel.screen != GameScreen.VICTORY
+                    controller.isAppearanceLightStatusBars = lightBars
+                    controller.isAppearanceLightNavigationBars = lightBars
                     @Suppress("DEPRECATION")
                     window.statusBarColor = android.graphics.Color.TRANSPARENT
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -226,30 +230,41 @@ internal fun SwypetrisApp(model: GameViewModel, updates: AppUpdates? = null, onE
     BackHandler(enabled = model.launchIntroPending || model.screen != GameScreen.MENU) {
         if (model.background.draft != null) model.background.cancel() else model.navigation.back()
     }
+    SwypetrisScreens(model, updates, onExit)
+}
+
+/** Applies menu presentation only to the screens owned by the menu. */
+@Composable
+private fun SwypetrisScreens(model: GameViewModel, updates: AppUpdates?, onExit: () -> Unit) {
     val palette = GamePalettes.find(model.paletteId)
-    CompositionLocalProvider(LocalGamePalette provides palette) {
-    MaterialTheme(colorScheme = palette.scheme(), typography = MaterialTheme.typography) {
-    Surface(color = palette.background, contentColor = palette.text, modifier = Modifier.fillMaxSize()) {
-        val safeInsets = WindowInsets.safeDrawing
-        val fullBleed = model.screen == GameScreen.PLAYING || model.screen == GameScreen.VICTORY ||
-            model.background.draft != null
-        Box(Modifier.fillMaxSize().then(if (fullBleed) Modifier else Modifier.windowInsetsPadding(safeInsets))) {
-            if (model.background.draft != null) BackgroundCropPreview(model.background) else {
-                if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
-                    LaunchIntroMotion.approachProgress(model.launchIntroMillis))
-                key(model.screen) {
-                    AppScreen(model, updates, onExit)
+    val menuSkin = screenMenuSkin(palette, model.screen, model.background.draft != null)
+    CompositionLocalProvider(LocalGamePalette provides palette, LocalMenuSkin provides menuSkin) {
+        MaterialTheme(colorScheme = menuSkin?.scheme() ?: palette.scheme(), typography = MaterialTheme.typography) {
+            Surface(color = menuSkin?.background ?: palette.background,
+                contentColor = menuSkin?.text ?: palette.text, modifier = Modifier.fillMaxSize()) {
+                val safeInsets = WindowInsets.safeDrawing
+                val fullBleed = model.screen == GameScreen.PLAYING || model.screen == GameScreen.VICTORY ||
+                    model.background.draft != null
+                Box(Modifier.fillMaxSize().then(
+                    if (fullBleed) Modifier else Modifier.windowInsetsPadding(safeInsets))) {
+                    if (model.background.draft != null) BackgroundCropPreview(model.background) else {
+                        if (model.screen == GameScreen.MENU) ThemeBackdrop(palette,
+                            LaunchIntroMotion.approachProgress(model.launchIntroMillis))
+                        key(model.screen) {
+                            AppScreen(model, updates, onExit)
+                        }
+                    }
                 }
             }
+            if (model.screen in listOf(GameScreen.MENU, GameScreen.SETTINGS) && updates != null)
+                AppUpdateDialogs(model, updates)
         }
     }
 }
 
-    if (model.screen in listOf(GameScreen.MENU, GameScreen.SETTINGS) && updates != null)
-        AppUpdateDialogs(model, updates)
-
-    }
-}
+@Composable
+private fun screenMenuSkin(palette: GamePalette, screen: GameScreen, cropPreview: Boolean): MenuSkin? =
+    rememberMenuSkin(palette).takeIf { usesMenuSkin(screen, cropPreview) }
 
 /** Fits one HUD line without clipping its text at large font scales or long scores. */
 @Composable

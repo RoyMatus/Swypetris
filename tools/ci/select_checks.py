@@ -78,6 +78,9 @@ FULL_SOURCES = {
     "GameContent.kt", "GameBoard.kt", "BlockAppearance.kt", "BlockMaterial.kt",
     "ThemeSounds.kt",
     "MainMenu.kt", "MenuAction.kt", "AppNavigation.kt",
+    "MenuControlState.kt", "MenuControls.kt", "MenuDialogs.kt", "MenuMotion.kt",
+    "MenuProgress.kt", "MenuScene.kt", "MenuSkin.kt", "MenuSurfaces.kt",
+    "MenuToggleControls.kt", "MenuUiButtons.kt", "MenuVectorDrawable.kt",
     "GameSession.kt", "GameTimeline.kt", "GameViewModel.kt", "MainActivity.kt",
     "UpdateFailure.kt", "UpdateApk.kt", "UpdateDelivery.kt", "UpdateDialog.kt", "UpdateDownload.kt", "UpdateInstaller.kt",
 }

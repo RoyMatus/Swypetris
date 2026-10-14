@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -43,7 +43,7 @@ internal fun MusicPicker(model: GameViewModel) {
             stopObservingWindowFocus(host, listener)
         }
     }
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     val accent = palette.piece(Tetromino.J)
     val description = when (model.musicSelection) {
         MusicSelection.Off -> "Музыка выключена"
@@ -57,7 +57,7 @@ internal fun MusicPicker(model: GameViewModel) {
     }
     @Composable fun selector() {
         Box {
-            OutlinedButton(onClick = {
+            MenuOutlinedButton(onClick = {
                 if (!expanded) { model.musicPopup.begin(); expanded = true }
             },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("musicPicker"),

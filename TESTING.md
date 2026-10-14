@@ -53,6 +53,12 @@ and exports screenshots/gfxinfo. It has no ComposeTestRule and is skipped in
 ordinary regression. Headless emulator and shared-host overhead are part of the
 measurement; no physical-device frame rate or baseline speedup is implied.
 
+`MenuFrameEvidenceTest` requires `menuFrames=true`. It records the real menu
+Activity while switching the twelve approved themes twice, exporting observed
+frame timings, process memory and screenshots. It is skipped in ordinary
+regression; measurements are specific to the selected device and observation
+interval, with no frame-rate threshold or memory-leak verdict.
+
 For development checkpoints, use `./tools/Verify-Tests.ps1 -Suite FocusedJvm -TestClass BackgroundCropTest,GameEngineTest` or `-Suite FocusedAndroid -TestClass SmokeTest -Serial emulator-5554`. Short and fully qualified class names are accepted; methods, wildcards, missing classes and empty selections are rejected. Focused JVM runs do not generate whole-app coverage. The original `Fast` and `Android` modes remain available; Fast builds debug, runs debug lint/JVM/JaCoCo, but does not run detekt, Sonar or device tests and does not replace the mandatory final local gate.
 
 Every completed Gradle invocation writes a timestamped log and JSON summary in ignored `app/build/verification/`: elapsed seconds, source commit/dirty flag, selected classes, Java/PowerShell/OS and explicit emulator identity when applicable. XML reports must be complete, successful and match a focused selection. Fresh execution rejects stale reports. JVM `UP-TO-DATE` and `FROM-CACHE` results are explicitly labelled reused rather than freshly executed; device tests must execute. Failed invocations retain their log and failed summary. No environment dump or signing credentials are recorded.

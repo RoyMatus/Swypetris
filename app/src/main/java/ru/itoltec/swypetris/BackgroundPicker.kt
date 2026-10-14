@@ -46,18 +46,20 @@ private const val BACKGROUND_VEIL_ALPHA = .72f
 
 @Composable
 internal fun BackgroundPicker(background: CustomBackground) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val resolver = LocalContext.current.contentResolver
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
         background.choose(resolver, it)
     }
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().testTag("customBackgroundEnabled")
-            .toggleable(background.enabled, role = Role.Checkbox, onValueChange = background::changeEnabled),
+            .toggleable(background.enabled, interactionSource = interaction, indication = null,
+                role = Role.Checkbox, onValueChange = background::changeEnabled),
             verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(background.enabled, onCheckedChange = null)
+            MenuCheckbox(background.enabled, onCheckedChange = null, interactionSource = interaction)
             Text("Использовать свой фон", Modifier.weight(1f))
         }
-        OutlinedButton(onClick = { picker.launch(arrayOf("image/*")) }, enabled = !background.busy,
+        MenuOutlinedButton(onClick = { picker.launch(arrayOf("image/*")) }, enabled = !background.busy,
             modifier = Modifier.fillMaxWidth().testTag("chooseBackground")) {
             Text(if (background.busy) "Загрузка…" else "Выбрать файл")
         }

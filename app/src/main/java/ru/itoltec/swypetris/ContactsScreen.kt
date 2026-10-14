@@ -55,7 +55,7 @@ fun ContactsScreen(model: GameViewModel) {
     val clipboard = LocalClipboardManager.current
     val messages = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     var showShareApp by remember { mutableStateOf(false) }
     var showApkDownload by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(palette.background), contentAlignment = Alignment.TopCenter) {
@@ -79,7 +79,8 @@ fun ContactsScreen(model: GameViewModel) {
                 val accent = palette.piece(Tetromino.T)
                 ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("О ПРИЛОЖЕНИИ", color = accent, fontFamily = FontFamily.Monospace,
+                        Text("О ПРИЛОЖЕНИИ", color = LocalMenuSkin.current?.text ?: accent,
+                            fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                         SettingsDivider(accent)
                         Text("Swypetris · © 2026 RoyMatus", color = palette.text,
@@ -102,12 +103,13 @@ fun ContactsScreen(model: GameViewModel) {
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun ContactCard(contact: DeveloperContact, index: Int, onOpen: () -> Unit, onCopy: () -> Unit) {
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     val accent = listOf(palette.accent, palette.secondary, palette.gold)[index]
     ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         Column(Modifier.fillMaxWidth().padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(contact.title.uppercase(), color = accent, fontFamily = FontFamily.Monospace,
+            Text(contact.title.uppercase(), color = LocalMenuSkin.current?.text ?: accent,
+                fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             SettingsDivider(accent)
             Text(contact.address, color = palette.text, style = MaterialTheme.typography.bodyLarge)
@@ -117,7 +119,7 @@ private fun ContactCard(contact: DeveloperContact, index: Int, onOpen: () -> Uni
                     onOpen()
                 }
                 AppActionButton("Копировать", ActionStyle.TEXT, Modifier.testTag("copy${contact.name}"),
-                    LocalGamePalette.current.piece(Tetromino.J)) {
+                    menuUiPalette().piece(Tetromino.J)) {
                     onCopy()
                 }
             }
@@ -127,11 +129,12 @@ private fun ContactCard(contact: DeveloperContact, index: Int, onOpen: () -> Uni
 
 @Composable
 private fun ShareAppSection(onStore: () -> Unit, onApk: () -> Unit) {
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     val accent = palette.piece(Tetromino.S)
     ThemedCard(accent, Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("shareAppSection")) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("ПОДЕЛИТЬСЯ ПРИЛОЖЕНИЕМ", color = accent, fontFamily = FontFamily.Monospace,
+            Text("ПОДЕЛИТЬСЯ ПРИЛОЖЕНИЕМ", color = LocalMenuSkin.current?.text ?: accent,
+                fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             SettingsDivider(accent)
             AppActionButton("RuStore", ActionStyle.SECONDARY,

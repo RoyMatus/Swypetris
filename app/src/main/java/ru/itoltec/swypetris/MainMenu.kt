@@ -2,6 +2,7 @@ package ru.itoltec.swypetris
 
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -63,11 +65,10 @@ internal fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: 
     var menuOrigin by remember { mutableStateOf(Offset.Zero) }
     var logoBounds by remember { mutableStateOf(Rect.Zero) }
     val intro = model.launchIntroPending
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     val primary = primaryMenuActions(model, palette)
     val secondary = secondaryMenuActions(model, palette)
     Box(Modifier.fillMaxSize().onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
-        MenuTetrominoBackdrop(logoBounds, Modifier.matchParentSize())
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
             contentAlignment = Alignment.BottomCenter) {
             val gap = (maxHeight * .01f).coerceIn(3.dp, 8.dp)
@@ -106,9 +107,10 @@ internal fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: 
                         enabled = !intro, destructive = true, onClick = onExit)
                 }
             }
-            TextButton(onClick = onCheckUpdates, enabled = !intro,
-                modifier = Modifier.align(Alignment.BottomStart).testTag("versionCheck")) {
-                Text(BuildConfig.VERSION_NAME, color = palette.muted,
+            MenuTextButton(onClick = onCheckUpdates, enabled = !intro, role = "link",
+                modifier = Modifier.align(Alignment.BottomStart).heightIn(min = 48.dp).testTag("versionCheck")) {
+                Text(BuildConfig.VERSION_NAME,
+                    color = if (LocalMenuSkin.current == null) palette.muted else Color.Unspecified,
                     style = MaterialTheme.typography.labelSmall)
             }
         }
@@ -122,15 +124,29 @@ internal fun MenuTile(label: String, accent: Color, tag: String,
     icon: ImageVector,
     style: ActionStyle = ActionStyle.SECONDARY, height: Dp = 64.dp,
     enabled: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
-    OutlinedButton(
+    val skin = LocalMenuSkin.current
+    val interaction = remember { MutableInteractionSource() }
+    val role = when (tag) {
+        "newGame" -> "primary"
+        "resumeGame" -> "resume"
+        "exitGame" -> "destructive"
+        else -> tag
+    }
+    MenuNativeControl { OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth().height(height).testTag(tag),
+        modifier = Modifier.fillMaxWidth().height(height).testTag(tag)
+            .menuActionFrame(role, interaction, enabled),
+        interactionSource = interaction,
         shape = RoundedCornerShape(12.dp),
-        colors = if (destructive) ButtonDefaults.outlinedButtonColors(
+        colors = if (skin != null) ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.Transparent, contentColor = menuActionTextColor(role),
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = menuActionTextColor(role, false))
+        else if (destructive) ButtonDefaults.outlinedButtonColors(
             containerColor = LocalGamePalette.current.background.copy(alpha = .8f), contentColor = accent)
         else paletteButtonColors(accent, style),
-        border = paletteButtonBorder(accent, style),
+        border = if (skin != null) null else paletteButtonBorder(accent, style),
         contentPadding = PaddingValues(8.dp)
     ) {
         BoxWithConstraints(contentAlignment = Alignment.Center) {
@@ -142,10 +158,12 @@ internal fun MenuTile(label: String, accent: Color, tag: String,
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (showIcon) Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-                Text(label, fontSize = font.sp, maxLines = 1, fontWeight = FontWeight.Bold,
+                Text(label, fontSize = font.sp, lineHeight = (font * 1.2f).sp,
+                    maxLines = 1, fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center)
             }
         }
+    }
     }
 }
 

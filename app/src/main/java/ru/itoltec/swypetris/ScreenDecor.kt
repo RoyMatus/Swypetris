@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -44,30 +46,38 @@ private const val DARK_PANEL_TINT = .09f
 /** Compact day/night artwork shared by the non-gameplay screens. */
 @Composable
 internal fun ScreenArtHeader(title: String, subtitle: String, onBack: (() -> Unit)? = null) {
-    val palette = LocalGamePalette.current
-    val art = ImageBitmap.imageResource(if (palette.light) R.drawable.settings_day_header
-        else R.drawable.settings_synthwave_header)
+    val palette = menuUiPalette()
+    val skin = LocalMenuSkin.current
     Box(Modifier.fillMaxWidth().heightIn(min = 90.dp)) {
-        Image(art, contentDescription = null, modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+        if (skin != null) MenuSceneHeader(LocalGamePalette.current, Modifier.matchParentSize()) else {
+            val art = ImageBitmap.imageResource(if (palette.light) R.drawable.settings_day_header
+                else R.drawable.settings_synthwave_header)
+            Image(art, contentDescription = null, modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop)
+        }
         Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(
             palette.background.copy(alpha = if (palette.light) .16f else .34f), Color.Transparent))))
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 8.dp,
             end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) {
-                OutlinedIconButton(onClick = onBack, modifier = Modifier.size(48.dp).testTag("settingsBack"),
-                    shape = RoundedCornerShape(9.dp), border = BorderStroke(1.dp, palette.accent),
+                val interaction = remember { MutableInteractionSource() }
+                MenuNativeControl { OutlinedIconButton(onClick = onBack,
+                    modifier = Modifier.size(48.dp).testTag("settingsBack")
+                    .menuActionFrame("back", interaction), interactionSource = interaction,
+                    shape = RoundedCornerShape(9.dp),
+                    border = if (skin != null) null else BorderStroke(1.dp, palette.accent),
                     colors = IconButtonDefaults.outlinedIconButtonColors(
-                        containerColor = palette.background.copy(alpha = .75f),
-                        contentColor = if (palette.light) palette.text else Color.White)) {
+                        containerColor = if (skin != null) Color.Transparent else palette.background.copy(alpha = .75f),
+                        contentColor = if (skin != null || palette.light) palette.text else Color.White)) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Вернуться в меню")
-                }
+                } }
                 Spacer(Modifier.width(18.dp))
             }
             Column {
-                Text(title, color = if (palette.light) palette.text else Color.White,
+                Text(title, color = if (skin != null || palette.light) palette.text else Color.White,
                     fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black,
                     fontSize = 24.sp, maxLines = 2)
-                Text(subtitle, color = if (palette.light) palette.text else Color(DARK_SUBTITLE_COLOR),
+                Text(subtitle, color = skin?.muted ?: if (palette.light) palette.text else Color(DARK_SUBTITLE_COLOR),
                     style = MaterialTheme.typography.bodyMedium, maxLines = 2)
             }
         }
@@ -77,9 +87,27 @@ internal fun ScreenArtHeader(title: String, subtitle: String, onBack: (() -> Uni
 /** Theme-aware surface matching the bordered cards in Settings. */
 @Composable
 internal fun ThemedCard(accent: Color, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    if (LocalMenuSkin.current != null) {
+        Box(modifier.menuSurfaceArt("card")) { content() }
+        return
+    }
     val palette = LocalGamePalette.current
     val shape = RoundedCornerShape(12.dp)
     Box(modifier.background(Brush.linearGradient(listOf(
         lerp(palette.panel, accent, if (palette.light) LIGHT_PANEL_TINT else DARK_PANEL_TINT), palette.panel)), shape)
         .border(1.dp, accent, shape)) { content() }
+}
+
+/** Static artwork behind the existing title bounds; typography and page spacing stay owned by the page. */
+@Composable
+internal fun MenuPageTitle(content: @Composable () -> Unit) {
+    Box {
+        if (LocalMenuSkin.current != null) {
+            MenuSceneHeader(LocalGamePalette.current, Modifier.matchParentSize())
+            val skin = checkNotNull(LocalMenuSkin.current)
+            Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(
+                skin.background.copy(alpha = if (skin.light) .16f else .34f), Color.Transparent))))
+        }
+        content()
+    }
 }

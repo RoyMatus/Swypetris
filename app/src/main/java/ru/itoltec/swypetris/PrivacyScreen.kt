@@ -25,7 +25,7 @@ internal fun PrivacyScreen() {
             .replace("\r\n", "\n").trim().split("\n\n")
     }
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp)) {
-        Text("Конфиденциальность", style = MaterialTheme.typography.headlineSmall)
+        MenuPageTitle { Text("Конфиденциальность", style = MaterialTheme.typography.headlineSmall) }
         LazyColumn(Modifier.weight(1f).testTag("privacyPage"), contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             paragraphs.forEach { paragraph -> item { Text(paragraph) } }

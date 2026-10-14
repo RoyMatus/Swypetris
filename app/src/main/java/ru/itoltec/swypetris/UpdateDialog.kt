@@ -19,7 +19,7 @@ private const val PERCENT_SCALE = 100
 internal fun UpdateDeliveryDialog(delivery: UpdateDelivery, model: GameViewModel, recheck: () -> Unit) {
     if (!delivery.showNotice) return
     val notice = delivery.notice ?: return
-    AlertDialog(onDismissRequest = {
+    MenuAlertDialog(onDismissRequest = {
         if (notice !is DeliveryNotice.Installing && notice !is DeliveryNotice.Downloading) delivery.dismiss()
     }, title = { Text("Обновление Swypetris") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -29,7 +29,7 @@ internal fun UpdateDeliveryDialog(delivery: UpdateDelivery, model: GameViewModel
         UpdateDeliveryAction(notice, delivery, model, recheck)
     }, dismissButton = {
         if (notice is DeliveryNotice.Ready || notice is DeliveryNotice.Permission || notice is DeliveryNotice.Failed)
-            TextButton(onClick = delivery::dismiss, modifier = Modifier.testTag("postponeUpdate")) { Text("Позже") }
+            MenuTextButton(onClick = delivery::dismiss, modifier = Modifier.testTag("postponeUpdate")) { Text("Позже") }
     })
 }
 
@@ -38,7 +38,7 @@ private fun UpdateDeliveryMessage(notice: DeliveryNotice) {
     when (notice) {
         is DeliveryNotice.Downloading -> {
             Text("Загрузка: ${notice.received * PERCENT_SCALE / notice.total.coerceAtLeast(1)} %")
-            LinearProgressIndicator(progress = { notice.received.toFloat() / notice.total.coerceAtLeast(1) },
+            MenuProgressIndicator(progress = notice.received.toFloat() / notice.total.coerceAtLeast(1),
                 modifier = Modifier.fillMaxWidth().testTag("updateDownloadProgress"))
         }
         is DeliveryNotice.Ready -> Text(
@@ -60,15 +60,15 @@ private fun UpdateDeliveryMessage(notice: DeliveryNotice) {
 private fun UpdateDeliveryAction(notice: DeliveryNotice, delivery: UpdateDelivery, model: GameViewModel,
     recheck: () -> Unit) {
     when (notice) {
-        is DeliveryNotice.Downloading -> TextButton(onClick = delivery::cancelDownload,
+        is DeliveryNotice.Downloading -> MenuTextButton(onClick = delivery::cancelDownload,
             modifier = Modifier.testTag("cancelUpdateDownload")) { Text("Отменить загрузку") }
-        is DeliveryNotice.Ready -> TextButton(onClick = { delivery.install(model, true) },
+        is DeliveryNotice.Ready -> MenuTextButton(onClick = { delivery.install(model, true) },
             modifier = Modifier.testTag("installUpdate")) { Text("Установить") }
-        DeliveryNotice.Permission -> TextButton(onClick = delivery::requestPermission,
+        DeliveryNotice.Permission -> MenuTextButton(onClick = delivery::requestPermission,
             modifier = Modifier.testTag("updateInstallPermission")) { Text("Открыть настройки") }
-        DeliveryNotice.Confirmation -> TextButton(onClick = delivery::confirmInstallation,
+        DeliveryNotice.Confirmation -> MenuTextButton(onClick = delivery::confirmInstallation,
             modifier = Modifier.testTag("confirmAndroidInstall")) { Text("Подтвердить в Android") }
-        is DeliveryNotice.Failed -> TextButton(onClick = {
+        is DeliveryNotice.Failed -> MenuTextButton(onClick = {
             delivery.dismiss()
             if (!delivery.retry()) recheck()
         }, modifier = Modifier.testTag("retryUpdate")) { Text("Повторить") }

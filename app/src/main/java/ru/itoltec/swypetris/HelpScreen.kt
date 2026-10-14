@@ -22,6 +22,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,7 +45,7 @@ fun HelpScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        item { Text("Как играть", style = MaterialTheme.typography.headlineLarge) }
+        item { MenuPageTitle { Text("Как играть", style = MaterialTheme.typography.headlineLarge) } }
         item { Text("Управление", style = MaterialTheme.typography.titleLarge) }
         controls.forEach { (symbol, label, piece) ->
             item {
@@ -89,11 +91,12 @@ fun HelpScreen() {
 /** A reusable help card with explanatory text and optional content such as the fruit gallery. */
 @Composable
 private fun HelpSection(title: String, body: String, content: @Composable () -> Unit = {}) {
+    val skin = LocalMenuSkin.current
     Surface(
-        Modifier.widthIn(max = 640.dp).fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = LocalGamePalette.current.accent.copy(alpha = .08f),
-        border = BorderStroke(1.dp, LocalGamePalette.current.accent.copy(alpha = .4f))
+        Modifier.widthIn(max = 640.dp).fillMaxWidth().menuSurfaceArt("card"),
+        shape = if (skin == null) RoundedCornerShape(16.dp) else RectangleShape,
+        color = if (skin == null) menuUiPalette().accent.copy(alpha = .08f) else Color.Transparent,
+        border = if (skin == null) BorderStroke(1.dp, menuUiPalette().accent.copy(alpha = .4f)) else null
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge)
@@ -106,13 +109,14 @@ private fun HelpSection(title: String, body: String, content: @Composable () -> 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun HelpControl(symbol: String, label: String, piece: Tetromino) {
-    val accent = LocalGamePalette.current.piece(piece)
+    val skin = LocalMenuSkin.current
+    val accent = menuUiPalette().piece(piece)
     val indicatorColors = paletteButtonColors(accent, ActionStyle.SECONDARY)
     Surface(
-        Modifier.widthIn(max = 640.dp).fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = LocalGamePalette.current.accent.copy(alpha = .08f),
-        border = BorderStroke(1.dp, LocalGamePalette.current.accent.copy(alpha = .4f))
+        Modifier.widthIn(max = 640.dp).fillMaxWidth().menuSurfaceArt("card"),
+        shape = if (skin == null) RoundedCornerShape(16.dp) else RectangleShape,
+        color = if (skin == null) menuUiPalette().accent.copy(alpha = .08f) else Color.Transparent,
+        border = if (skin == null) BorderStroke(1.dp, menuUiPalette().accent.copy(alpha = .4f)) else null
     ) {
         Row(
             Modifier.padding(12.dp),
@@ -120,11 +124,11 @@ private fun HelpControl(symbol: String, label: String, piece: Tetromino) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Surface(
-                Modifier.size(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = indicatorColors.containerColor,
+                Modifier.size(56.dp).menuSurfaceArt("chip"),
+                shape = if (skin == null) RoundedCornerShape(12.dp) else RectangleShape,
+                color = if (skin == null) indicatorColors.containerColor else Color.Transparent,
                 contentColor = indicatorColors.contentColor,
-                border = paletteButtonBorder(accent, ActionStyle.SECONDARY)
+                border = if (skin == null) paletteButtonBorder(accent, ActionStyle.SECONDARY) else null
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(symbol, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)

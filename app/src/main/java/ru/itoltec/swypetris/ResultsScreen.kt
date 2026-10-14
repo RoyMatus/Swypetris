@@ -72,10 +72,10 @@ private const val SECONDS_PER_MINUTE = 60
 private const val ROUND_COLLECTION_RULES_VERSION = 4
 
 
-private val Ice: Color @Composable get() = LocalGamePalette.current.accent
-private val Lavender: Color @Composable get() = LocalGamePalette.current.secondary
-private val Gold: Color @Composable get() = LocalGamePalette.current.gold
-private val Muted: Color @Composable get() = LocalGamePalette.current.muted
+private val Ice: Color @Composable get() = menuUiPalette().accent
+private val Lavender: Color @Composable get() = menuUiPalette().secondary
+private val Gold: Color @Composable get() = menuUiPalette().gold
+private val Muted: Color @Composable get() = menuUiPalette().muted
 
 /** Results and history use menu-style cards that fit the width and scroll only vertically. */
 @Composable
@@ -83,7 +83,7 @@ private val Muted: Color @Composable get() = LocalGamePalette.current.muted
 fun ResultsScreen(model: GameViewModel) {
     val latest = model.latestResult
     val records = model.recordResults
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     Box(Modifier.fillMaxSize().background(palette.background), contentAlignment = Alignment.TopCenter) {
         LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize().testTag("resultsPage"),
             contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
