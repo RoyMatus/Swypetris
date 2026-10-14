@@ -106,9 +106,20 @@ Describe 'Bounded diagnostic output' {
         Get-Content $result.output | Should -Contain partial
     }
     It 'bounds draining inherited stdout after the command exits' {
-        $exe = (Get-Process -Id $PID).Path
         $childPid = Join-Path $TestDrive 'child.pid'
-        $fixture = Join-Path $TestDrive 'inherited-output.ps1'
+        $childFixture = $null
+        if ($IsWindows) {
+            $exe = $env:ComSpec
+            $childFixture = Join-Path $TestDrive ("hold-stdout-{0}.cmd" -f [guid]::NewGuid().ToString('N'))
+            $fixture = Join-Path $TestDrive 'inherited-output.cmd'
+            @('@echo off', 'for /l %%I in (1,1,2147483647) do rem') | Set-Content -LiteralPath $childFixture
+            @('@echo off', 'echo retained',
+                ('start "" /b "' + $exe + '" /d /c ""' + $childFixture + '""'),
+                'exit /b 0') | Set-Content -LiteralPath $fixture
+            $arguments = @('/d','/c',$fixture)
+        } else {
+            $exe = (Get-Process -Id $PID).Path
+            $fixture = Join-Path $TestDrive 'inherited-output.ps1'
         @'
 param([string]$PidFile)
 $start = [Diagnostics.ProcessStartInfo]::new()
@@ -121,15 +132,25 @@ $child.Id | Set-Content -LiteralPath $PidFile
 Write-Output retained
 exit 0
 '@ | Set-Content -LiteralPath $fixture
+            $arguments = @('-NoProfile','-File',$fixture,$childPid)
+        }
         $watch = [Diagnostics.Stopwatch]::StartNew()
         try {
-            $result = Invoke-BoundedDiagnostic -Executable $exe -Arguments @('-NoProfile','-File',$fixture,$childPid) -OutputFile (Join-Path $TestDrive 'inherited.log') -TimeoutSeconds 2 -DrainTimeoutMilliseconds 200
+            $result = Invoke-BoundedDiagnostic -Executable $exe -Arguments $arguments -OutputFile (Join-Path $TestDrive 'inherited.log') -TimeoutSeconds 2 -DrainTimeoutMilliseconds 200
             $result.timedOut | Should -BeFalse
             $result.outputDrainTimedOut | Should -BeTrue
             $watch.Elapsed.TotalSeconds | Should -BeLessThan 4
             Get-Content $result.output | Should -Contain retained
         } finally {
-            if (Test-Path -LiteralPath $childPid) { Stop-Process -Id ([int](Get-Content -LiteralPath $childPid)) -ErrorAction SilentlyContinue }
+            if ($IsWindows) {
+                # Only this unique script can identify the owned inherited-pipe child.
+                $owned = @(Get-CimInstance Win32_Process -Filter "Name = 'cmd.exe'" | Where-Object {
+                    $_.CommandLine -and $_.CommandLine.Contains($childFixture,[StringComparison]::OrdinalIgnoreCase)
+                })
+                foreach ($child in $owned) { Stop-Process -Id $child.ProcessId -ErrorAction Stop }
+            } elseif (Test-Path -LiteralPath $childPid) {
+                Stop-Process -Id ([int](Get-Content -LiteralPath $childPid)) -ErrorAction SilentlyContinue
+            }
         }
     }
     It 'preserves binary screenshot bytes without text conversion' {
