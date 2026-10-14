@@ -1,29 +1,10 @@
 package ru.itoltec.swypetris
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -32,20 +13,10 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 private const val OPAQUE_ARGB_MASK = 0xFF000000L
 private const val LIGHT_GOLD_RGB = 0x8A5700L
-private const val PREVIEW_BLOCK_X_OFFSET = .15f
-private const val PREVIEW_BLOCK_Y_OFFSET = .05f
-private const val PREVIEW_BLOCK_FILL = .89f
 private const val FLAT_FINISH_OUTLINE_BLEND = .36f
 private const val RETRO_STRIPE_DIVISOR = 3
 private const val DRACULA_DOT_RADIUS = .045f
@@ -170,75 +141,10 @@ object GamePalettes {
 
 val LocalGamePalette = staticCompositionLocalOf { GamePalettes.all.first() }
 
-/** Every supported palette is directly selectable from one non-scrolling grid. */
+/** Every supported theme is directly selectable through the approved full-width cards. */
 @Composable
 internal fun PalettePicker(model: GameViewModel) {
-    SettingsLabel("Расцветка", "Выбери стиль игры")
-    Spacer(Modifier.height(8.dp))
-    BoxWithConstraints(Modifier.fillMaxWidth().testTag("paletteGrid")) {
-        val fontScale = LocalDensity.current.fontScale
-        val columns = when {
-            fontScale >= 1.4f && maxWidth < 480.dp -> 1
-            fontScale >= 1.4f -> 2
-            maxWidth >= 600.dp -> 4
-            maxWidth >= 480.dp -> 3
-            maxWidth >= 260.dp -> 2
-            else -> 1
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            GamePalettes.all.chunked(columns).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    row.forEach { item ->
-                        PalettePreviewCard(model, item, Modifier.weight(1f))
-                    }
-                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun PalettePreviewCard(model: GameViewModel, item: GamePalette, modifier: Modifier) {
-    val palette = LocalGamePalette.current
-    val skin = LocalMenuSkin.current
-    val accent = palette.piece(Tetromino.T)
-    val interaction = androidx.compose.runtime.remember {
-        androidx.compose.foundation.interaction.MutableInteractionSource()
-    }
-    val material = blockMaterial(item)
-    val selected = palette.id == item.id
-    val shape = RoundedCornerShape(9.dp)
-    Column(modifier.heightIn(min = 96.dp)
-        .background(if (skin == null) item.background else Color.Transparent, shape)
-        .menuActionFrame("settings", interaction, selected = selected)
-        .then(if (skin == null) Modifier.border(if (selected) 3.dp else 1.dp,
-            if (selected) accent else palette.grid, shape) else Modifier)
-        .clickable(interaction, indication = null) { model.options.setPalette(item.id) }
-        .semantics { this.selected = selected }
-        .testTag("palette_${item.id}_preview").padding(5.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Canvas(Modifier.fillMaxWidth().height(34.dp).background(item.background)
-            .testTag("palette_${item.id}_art")) {
-            val side = minOf(size.width / 4.6f, size.height / 2.4f)
-            val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
-            positions.forEachIndexed { index, (column, row) ->
-                bevelBlock(Offset(column * side + side * PREVIEW_BLOCK_X_OFFSET,
-                    row * side + side * PREVIEW_BLOCK_Y_OFFSET),
-                    Size(side * PREVIEW_BLOCK_FILL, side * PREVIEW_BLOCK_FILL),
-                        item.pieces[index], item.finish, item.texture, material = material,
-                            type = Tetromino.entries[index])
-            }
-        }
-        Text(item.title, Modifier.fillMaxWidth().testTag("palette_${item.id}_label"),
-            color = skin?.text ?: item.text, fontSize = 14.sp, lineHeight = 18.sp,
-            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold
-                else androidx.compose.ui.text.font.FontWeight.Normal,
-            textAlign = TextAlign.Center, minLines = 2, maxLines = 2,
-            overflow = TextOverflow.Ellipsis)
-    }
+    WidePalettePicker(LocalGamePalette.current) { model.options.setPalette(it) }
 }
 
 /** Shares approved filled artwork while retaining outline semantics and existing menu decoration. */
