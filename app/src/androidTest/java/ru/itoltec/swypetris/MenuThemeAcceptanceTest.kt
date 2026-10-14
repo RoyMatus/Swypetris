@@ -4,6 +4,11 @@ import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,6 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
@@ -23,6 +30,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.Constraints
@@ -38,6 +46,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlin.math.pow
 
 /** Runtime geometry/state assertions; optional PNGs are evidence for a separate visual review. */
 class MenuThemeAcceptanceTest {
@@ -47,6 +56,52 @@ class MenuThemeAcceptanceTest {
     private val export: Boolean get() =
         InstrumentationRegistry.getArguments().getString("menuThemeExport") == "true"
     private val directory get() = File(app.getExternalFilesDir(null), "menu-theme-307").apply { mkdirs() }
+
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
+    @Test fun staticHeadersKeepTokenTextReadableOverEveryAuthoredSceneAtPortraitSizes() {
+        var theme by mutableStateOf("classic")
+        var viewport by mutableStateOf(MenuViewport(360, 800, 1f))
+        var tokens: MenuSkin? = null
+        compose.setContent {
+            val palette = GamePalettes.find(theme)
+            val skin = rememberMenuSkin(palette)
+            androidx.compose.runtime.SideEffect { tokens = skin }
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(
+                DpSize(viewport.width.dp, viewport.height.dp))) {
+                CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, viewport.font),
+                    LocalGamePalette provides palette,
+                    LocalMenuSkin provides skin.copy(text = Color.Transparent, muted = Color.Transparent)) {
+                    MaterialTheme(colorScheme = skin.scheme()) {
+                        Column(Modifier.requiredSize(viewport.width.dp, viewport.height.dp).testTag("headerProbe")) {
+                            ScreenArtHeader("Настройки", "Настрой игру под себя", onBack = {})
+                            Spacer(Modifier.height(24.dp))
+                            MenuPageTitle {
+                                Text("Конфиденциальность", color = menuUiPalette().text,
+                                    style = MaterialTheme.typography.headlineSmall)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val fixtures = listOf(MenuViewport(360, 800, 1f), MenuViewport(320, 569, 1f),
+            MenuViewport(320, 711, 2f))
+        for (palette in GamePalettes.all) for (fixture in fixtures) {
+            compose.runOnIdle { theme = palette.id; viewport = fixture }
+            compose.waitForIdle()
+            val skin = checkNotNull(tokens)
+            assertEquals("Foreground tokens must match the rendered theme", palette.id, skin.id)
+            val background = compose.onNodeWithTag("headerProbe").captureToImage().asAndroidBitmap()
+            val origin = compose.onNodeWithTag("headerProbe").fetchSemanticsNode().boundsInRoot
+            listOf(Triple("Настройки", skin.text, 3.0), Triple("Настрой игру под себя", skin.muted, 4.5),
+                Triple("Конфиденциальность", skin.text, 3.0)).forEach { (label, color, threshold) ->
+                val bounds = compose.onNodeWithText(label).fetchSemanticsNode().boundsInRoot.translate(-origin.topLeft)
+                val contrast = HeaderContrastOracle.minimum(background, bounds, color.toArgb())
+                assertTrue("${palette.id}/$fixture/$label: actual background contrast=$contrast < $threshold",
+                    contrast >= threshold)
+            }
+        }
+    }
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun allTwelveThemesKeepActionSemanticsInBothContinueStates() {
@@ -273,4 +328,45 @@ class MenuThemeAcceptanceTest {
     private fun Rect.containsRect(other: Rect): Boolean = other.left >= left - 1f && other.top >= top - 1f &&
         other.right <= right + 1f && other.bottom <= bottom + 1f
     private data class MenuViewport(val width: Int, val height: Int, val font: Float)
+}
+
+/** Transparent text retains its measured layout while exposing the actual painted background. */
+private object HeaderContrastOracle {
+    private const val MAX_CHANNEL = 255.0
+    private const val LINEAR_THRESHOLD = .04045
+    private const val LINEAR_DIVISOR = 12.92
+    private const val ENCODED_OFFSET = .055
+    private const val ENCODED_DIVISOR = 1.055
+    private const val CHANNEL_EXPONENT = 2.4
+    private const val LUMINANCE_OFFSET = .05
+    private const val RED_WEIGHT = .2126
+    private const val GREEN_WEIGHT = .7152
+    private const val BLUE_WEIGHT = .0722
+
+    fun minimum(image: Bitmap, bounds: Rect, foreground: Int): Double {
+        var minimum = Double.POSITIVE_INFINITY
+        val foregroundLuminance = luminance(foreground)
+        val left = bounds.left.toInt().coerceIn(0, image.width - 1)
+        val top = bounds.top.toInt().coerceIn(0, image.height - 1)
+        val right = bounds.right.toInt().coerceIn(left + 1, image.width)
+        val bottom = bounds.bottom.toInt().coerceIn(top + 1, image.height)
+        for (y in top until bottom) for (x in left until right) {
+            val background = luminance(image.getPixel(x, y))
+            val ratio = (maxOf(foregroundLuminance, background) + LUMINANCE_OFFSET) /
+                (minOf(foregroundLuminance, background) + LUMINANCE_OFFSET)
+            minimum = minOf(minimum, ratio)
+        }
+        return minimum
+    }
+
+    private fun luminance(color: Int): Double =
+        linear(android.graphics.Color.red(color)) * RED_WEIGHT +
+            linear(android.graphics.Color.green(color)) * GREEN_WEIGHT +
+            linear(android.graphics.Color.blue(color)) * BLUE_WEIGHT
+
+    private fun linear(channel: Int): Double {
+        val normalized = channel / MAX_CHANNEL
+        return if (normalized <= LINEAR_THRESHOLD) normalized / LINEAR_DIVISOR
+            else ((normalized + ENCODED_OFFSET) / ENCODED_DIVISOR).pow(CHANNEL_EXPONENT)
+    }
 }
