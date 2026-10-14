@@ -36,6 +36,27 @@ if (Test-Path -LiteralPath $OutputDirectory) { throw 'Promotion output directory
 $stage = Join-Path $project ('app/build/verification/promotion-stage-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 $null = New-Item -ItemType Directory -Path $stage -Force
 $log = Join-Path $stage 'sonar.log'
+# The scanner reads this app build path (build.gradle.kts), not the eventual
+# promoted evidence snapshot. Bind that live input before launching analysis.
+$coverageRelative = 'app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml'
+$coverageHash = [string]$source.files.$coverageRelative
+if ($coverageHash -notmatch '^[a-fA-F0-9]{64}$') { throw 'Full evidence must bind the PR JaCoCo report.' }
+$boundCoverage = Join-Path (Split-Path -Parent (Resolve-Path -LiteralPath $EvidencePath).Path) $coverageRelative
+if (!(Test-Path -LiteralPath $boundCoverage -PathType Leaf)) { throw 'Bound PR JaCoCo report is missing.' }
+if ((Get-FileHash -LiteralPath $boundCoverage -Algorithm SHA256).Hash.ToLowerInvariant() -cne $coverageHash.ToLowerInvariant()) {
+    throw 'Bound PR JaCoCo report hash does not match Full evidence.'
+}
+$liveCoverage = Join-Path $project $coverageRelative
+if (Test-Path -LiteralPath $liveCoverage -PathType Leaf) {
+    Copy-Item -LiteralPath $liveCoverage -Destination (Join-Path $stage 'previous-jacoco.xml')
+}
+$null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent $liveCoverage)
+Copy-Item -LiteralPath $boundCoverage -Destination $liveCoverage -Force
+if ((Get-FileHash -LiteralPath $liveCoverage -Algorithm SHA256).Hash.ToLowerInvariant() -cne $coverageHash.ToLowerInvariant()) {
+    throw 'Staged main Sonar JaCoCo report hash does not match Full evidence.'
+}
+@{report=$coverageRelative;sha256=$coverageHash.ToLowerInvariant()} | ConvertTo-Json |
+    Set-Content -LiteralPath (Join-Path $stage 'coverage-input.json') -Encoding utf8
 $oldJava = $env:JAVA_HOME
 $timer = [Diagnostics.Stopwatch]::StartNew()
 try {
@@ -48,6 +69,9 @@ try {
     } finally { Pop-Location }
     $timer.Stop()
     if ($code -ne 0) { throw "Main Sonar analysis failed; retained log: $log" }
+    if ((Get-FileHash -LiteralPath $liveCoverage -Algorithm SHA256).Hash.ToLowerInvariant() -cne $coverageHash.ToLowerInvariant()) {
+        throw 'Main Sonar JaCoCo report changed during analysis; promotion cannot use this result.'
+    }
     Assert-LocalReleaseMain $client $project $head
     & $Python $helper promote --root $project --head $head --base $source.base --evidence $EvidencePath `
         --destination $OutputDirectory --pr-number $PullRequestNumber --sonar-log $log --sonar-seconds $timer.Elapsed.TotalSeconds
