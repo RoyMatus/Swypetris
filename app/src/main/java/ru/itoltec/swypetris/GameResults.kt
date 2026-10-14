@@ -10,12 +10,23 @@ enum class Fruit(val title: String) {
     APPLE("Яблоко"), PEAR("Груша"), PINEAPPLE("Ананас"), WATERMELON("Арбуз")
 }
 
+private const val MIN_KNOWN_RESULT_RULES_VERSION = 2
+internal const val ROUND_COLLECTION_RULES_VERSION = 4
+
 /** Counts awards earned at each fruit threshold, including multiple thresholds crossed at once. */
 fun fruitCount(score: Int): Int = score.coerceAtLeast(0) / GameRules.FRUIT_STEP
 
 /** Returns how many times a particular [fruit] has been earned in this game. */
 fun fruitQuantity(score: Int, fruit: Fruit): Int =
     (fruitCount(score) / Fruit.entries.size) + if (fruit.ordinal < fruitCount(score) % Fruit.entries.size) 1 else 0
+
+/** Uses known recorded rules only; old single collections never acquire invented repeat awards. */
+internal fun recordFruitQuantities(result: GameResult): List<Int>? = when (result.rulesVersion) {
+    in MIN_KNOWN_RESULT_RULES_VERSION until ROUND_COLLECTION_RULES_VERSION ->
+        Fruit.entries.map { fruitQuantity(result.score, it).coerceAtMost(1) }
+    in ROUND_COLLECTION_RULES_VERSION..GameRules.VERSION -> Fruit.entries.map { fruitQuantity(result.score, it) }
+    else -> null
+}
 
 /** Final game result with a rules version; active play time excludes pauses,
     and old rules do not compete with new ones. */
@@ -60,7 +71,7 @@ class ResultStore(private val preferences: SharedPreferences) {
     }
 }
 
-/** Old storage stays intact; only chronological personal bests are displayed. */
+/** Keeps chronological personal-best eligibility, then ranks display by score, newer date and stable ID. */
 fun recordHistory(results: List<GameResult>): List<GameResult> {
     val best = mutableMapOf<Pair<Int, Difficulty?>, Int>()
     val ids = mutableSetOf<String>()
@@ -72,4 +83,5 @@ fun recordHistory(results: List<GameResult>): List<GameResult> {
         }
     }
     return results.filter { it.id in ids }.distinctBy { it.id }
+        .sortedWith(compareByDescending<GameResult> { it.score }.thenByDescending { it.dateMillis }.thenBy { it.id })
 }

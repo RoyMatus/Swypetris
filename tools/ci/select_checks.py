@@ -82,6 +82,7 @@ FULL_SOURCES = {
     "MenuProgress.kt", "MenuScene.kt", "MenuSkin.kt", "MenuSurfaces.kt",
     "MenuToggleControls.kt", "MenuUiButtons.kt", "MenuVectorDrawable.kt",
     "WidePalettePicker.kt",
+    "RecordHistoryCard.kt", "RecordArtwork.kt",
     "GameSession.kt", "GameTimeline.kt", "GameViewModel.kt", "MainActivity.kt",
     "UpdateFailure.kt", "UpdateApk.kt", "UpdateDelivery.kt", "UpdateDialog.kt", "UpdateDownload.kt", "UpdateInstaller.kt",
 }
