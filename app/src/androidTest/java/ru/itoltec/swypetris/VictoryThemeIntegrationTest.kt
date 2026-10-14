@@ -357,7 +357,8 @@ class VictoryThemeIntegrationTest {
                 val label = compose.onNodeWithTag("palette_${item.id}_label", useUnmergedTree = true)
                 val labelNode = label.assertTextEquals(item.title).fetchSemanticsNode()
                 val labelBounds = labelNode.boundsInRoot
-                assertTrue("${item.title}: label overlaps preview at $scale", labelBounds.top >= art.bottom)
+                assertTrue("${item.title}: label overlaps preview at $scale",
+                    labelBounds.right <= art.left || labelBounds.bottom <= art.top)
                 assertTrue("${item.title}: label exceeds card at $scale",
                     labelBounds.bottom <= card.fetchSemanticsNode().boundsInRoot.bottom)
                 val layout = mutableListOf<TextLayoutResult>()

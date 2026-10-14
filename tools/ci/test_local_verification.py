@@ -45,7 +45,7 @@ class LocalCommitTests(unittest.TestCase):
     def test_menu_presentation_helpers_require_complete_regression(self):
         source = self.root / 'app/src/main/java/ru/itoltec/swypetris'
         source.mkdir(parents=True)
-        for name in ('MenuSkin.kt', 'MenuScene.kt', 'MenuProgress.kt'):
+        for name in ('MenuSkin.kt', 'MenuScene.kt', 'MenuProgress.kt', 'WidePalettePicker.kt'):
             (source / name).write_text('package ru.itoltec.swypetris\n')
         gate.validate_source_inventory(self.root)
         for path in source.glob('*.kt'):
