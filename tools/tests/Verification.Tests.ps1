@@ -4,6 +4,70 @@ BeforeAll {
     function Write-TestXml([string]$Path, [string]$Body) { Set-Content -LiteralPath $Path -Value $Body -Encoding utf8; $Path }
     $passing = '<testsuite tests="1" failures="0" errors="0"><testcase classname="ru.itoltec.swypetris.SmokeTest" name="smoke"/></testsuite>'
 }
+Describe 'Verification runner SDK and emulator preflight' {
+    BeforeEach {
+        $fixture = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path "$fixture/tools/release","$fixture/sdk/platform-tools","$fixture/app/src/androidTest/java/ru/itoltec/swypetris" -Force | Out-Null
+        Copy-Item "$project/tools/Verify-Tests.ps1","$project/tools/Verification.psm1","$project/tools/Verification-Preflight.psm1","$project/tools/ExecutionProfile.psm1" "$fixture/tools"
+        Set-Content "$fixture/sdk/platform-tools/adb.exe" 'fixture; readiness module is isolated below'
+        Set-Content "$fixture/app/src/androidTest/java/ru/itoltec/swypetris/SmokeTest.kt" "package ru.itoltec.swypetris`nclass SmokeTest { @Test fun works() {} }"
+        @'
+function Assert-EmulatorReady {
+    param([string]$AdbCommand,[string]$Serial)
+    if ($env:ANDROID_HOME -ne $env:SWYPETRIS_FIXTURE_SDK -or $env:ANDROID_SDK_ROOT -ne $env:SWYPETRIS_FIXTURE_SDK) { throw 'SDK not propagated to readiness' }
+    if ($AdbCommand -ne (Join-Path $env:SWYPETRIS_FIXTURE_SDK 'platform-tools/adb.exe') -or $Serial -ne 'emulator-5560') { throw 'Wrong explicit readiness inputs' }
+    Add-Content -LiteralPath (Join-Path $env:SWYPETRIS_FIXTURE_ROOT 'ready.log') 'readiness'
+    if ($env:SWYPETRIS_FIXTURE_READINESS -eq 'failed') { throw 'Blocking system window: fixture original failure' }
+    [pscustomobject]@{ready=$true;api=35;model='Fixture';buildFingerprint='fixture/image'}
+}
+Export-ModuleMember -Function Assert-EmulatorReady
+'@ | Set-Content "$fixture/tools/Emulator-Readiness.psm1"
+        @'
+param([string]$Serial,[string]$SdkDirectory)
+throw 'fixture diagnostic collection failed'
+'@ | Set-Content "$fixture/tools/release/Save-EmulatorDiagnostics.ps1"
+        Set-Content "$fixture/gradlew.bat" "@echo off`r`necho invoked > gradle-called.log`r`necho %ANDROID_HOME% > sdk-home.log`r`necho %ANDROID_SDK_ROOT% > sdk-root.log`r`nexit /b 7"
+        $java = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME 'bin/java.exe' } else { (Get-ChildItem "$env:USERPROFILE/.jdks/*/bin/java.exe" | Where-Object FullName -Match 'jbr-21' | Select-Object -First 1).FullName }
+        if (!$java) { throw 'This Windows integration fixture needs the local JDK 21.' }
+        $jdk = Split-Path (Split-Path $java)
+        $previousHome = $env:ANDROID_HOME
+        $previousRoot = $env:ANDROID_SDK_ROOT
+        $previousSerial = $env:ANDROID_SERIAL
+        Remove-Item Env:ANDROID_HOME,Env:ANDROID_SDK_ROOT -ErrorAction SilentlyContinue
+        $env:SWYPETRIS_FIXTURE_SDK = (Resolve-Path "$fixture/sdk").Path
+        $env:SWYPETRIS_FIXTURE_ROOT = $fixture
+        $env:SWYPETRIS_FIXTURE_READINESS = 'passed'
+    }
+    AfterEach {
+        [Environment]::SetEnvironmentVariable('ANDROID_HOME',$previousHome,'Process')
+        [Environment]::SetEnvironmentVariable('ANDROID_SDK_ROOT',$previousRoot,'Process')
+        [Environment]::SetEnvironmentVariable('ANDROID_SERIAL',$previousSerial,'Process')
+        Remove-Item Env:SWYPETRIS_FIXTURE_SDK,Env:SWYPETRIS_FIXTURE_ROOT,Env:SWYPETRIS_FIXTURE_READINESS -ErrorAction SilentlyContinue
+        Get-Module -All | Where-Object { $_.Path -and $_.Path.StartsWith($fixture, [StringComparison]::OrdinalIgnoreCase) } | Remove-Module -Force
+        Import-Module (Join-Path $PSScriptRoot '../Verification.psm1') -Force
+    }
+    It 'propagates one explicit SDK to readiness and Gradle and restores the environment after failure' -Skip:(!$IsWindows) {
+        & "$fixture/tools/Verify-Tests.ps1" -Suite FocusedAndroid -TestClass SmokeTest -Serial emulator-5560 -JavaHome $jdk -SdkDirectory "$fixture/sdk" | Out-Null
+        $LASTEXITCODE | Should -Be 1
+        Get-Content "$fixture/ready.log" | Should -Be readiness
+        (Get-Content "$fixture/sdk-home.log").Trim() | Should -Be (Resolve-Path "$fixture/sdk").Path
+        (Get-Content "$fixture/sdk-root.log").Trim() | Should -Be (Resolve-Path "$fixture/sdk").Path
+        $env:ANDROID_HOME | Should -BeNullOrEmpty
+        $env:ANDROID_SDK_ROOT | Should -BeNullOrEmpty
+        $env:ANDROID_SERIAL | Should -Be $previousSerial
+    }
+    It 'blocks Gradle and retains the original readiness failure when diagnostics also fail' -Skip:(!$IsWindows) {
+        $env:SWYPETRIS_FIXTURE_READINESS = 'failed'
+        $output = & "$fixture/tools/Verify-Tests.ps1" -Suite FocusedAndroid -TestClass SmokeTest -Serial emulator-5560 -JavaHome $jdk -SdkDirectory "$fixture/sdk"
+        $LASTEXITCODE | Should -Be 1
+        Test-Path "$fixture/gradle-called.log" | Should -BeFalse
+        $summary = Get-ChildItem "$fixture/app/build/verification" -Filter '*.json' | ForEach-Object { Get-Content $_.FullName -Raw | ConvertFrom-Json }
+        $summary.error | Should -Be 'Blocking system window: fixture original failure'
+        ($output -join ' ') | Should -Match 'fixture diagnostic collection failed'
+        $env:ANDROID_HOME | Should -BeNullOrEmpty
+        $env:ANDROID_SDK_ROOT | Should -BeNullOrEmpty
+    }
+}
 Describe 'Focused verification selection' {
     It 'resolves short and qualified classes' {
         @(Resolve-VerificationClasses $project FocusedJvm @('BackgroundCropTest', 'ru.itoltec.swypetris.GameEngineTest')) | Should -HaveCount 2

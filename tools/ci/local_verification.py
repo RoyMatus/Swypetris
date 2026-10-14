@@ -138,6 +138,8 @@ def validate(path, root, head, base, full=False, check_clean=True):
         raise ValueError('Unbound or missing report files')
     if any(c.get('log') not in files for c in checks):
         raise ValueError('Missing check logs')
+    from verification_checkpoint import validate_reused_checks
+    validate_reused_checks(path, doc)
     if doc['schema'] == 2:
         validate_promotion(path, root, doc)
     if expected['mode'] != 'none':

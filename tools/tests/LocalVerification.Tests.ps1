@@ -4,8 +4,8 @@ BeforeAll {
         $global:LASTEXITCODE = 0
         if ($args -contains 'plan') {
             $toolSelection = if ($global:localGateTestTools) { 'true' } else { 'false' }
-            @{mode='none';jvm='';android='';github_scripts=$toolSelection;release_scripts='false';ci_scripts='false';windows_release_tools='false'} | ConvertTo-Json -Compress
-        } elseif ($global:localGateTestReject) { $global:LASTEXITCODE = 1 }
+            @{mode=$(if($global:localGateTestApp){'full'}else{'none'});jvm='';android='';github_scripts=$toolSelection;release_scripts='false';ci_scripts='false';windows_release_tools='false'} | ConvertTo-Json -Compress
+        } elseif ($args -contains 'validate' -and $global:localGateTestReject) { $global:LASTEXITCODE = 1 }
     }
     function Invoke-FakeLocalToolProcess { $global:LASTEXITCODE = 0; 'Windows tool fixture passed' }
 }
@@ -14,11 +14,19 @@ Describe 'Local orchestrator completion transaction' {
         $global:localGateTestReject = $false
         $global:localGateTestFail = $false
         $global:localGateTestTools = $false
+        $global:localGateTestApp = $false
         Mock git {
             $global:LASTEXITCODE = 0
             if ($args -contains 'rev-parse') { 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }
             if ($args -contains 'diff' -and $global:localGateTestFail) { $global:LASTEXITCODE = 1 }
         }
+    }
+    It 'rejects missing PR identity before tool suites or Gradle' {
+        $global:localGateTestApp = $true
+        $global:localGateTestTools = $true
+        Mock Get-Process { throw 'Tool suite ran before preflight' }
+        { & $runner -BaseSha ('b'*40) -Python Invoke-FakeLocalPython -OutputDirectory (Join-Path $TestDrive 'early-pr') } | Should -Throw '*PullRequestNumber*'
+        Should -Invoke Get-Process -Times 0 -Exactly
     }
     It 'publishes evidence only after successful final validation' {
         $destination = Join-Path $TestDrive 'success'
