@@ -4,11 +4,15 @@ param(
     [string[]]$TestClass,
     [string]$Serial,
     [string]$JavaHome,
+    [string]$SdkDirectory,
     [string]$Reason,
     [ValidateRange(1,64)][int]$MaxWorkers
 )
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'Verification.psm1') -Force
+if ($Suite -in @('Android','FocusedAndroid') -or $SdkDirectory) {
+    Import-Module (Join-Path $PSScriptRoot 'Verification-Preflight.psm1')
+}
+Import-Module (Join-Path $PSScriptRoot 'Verification.psm1')
 $project = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $classes = @(Resolve-VerificationClasses -Project $project -Suite $Suite -TestClass $TestClass | Sort-Object -Unique)
 $deviceSuite = $Suite -in @('Android', 'FocusedAndroid')
@@ -19,18 +23,6 @@ if ($JavaHome) {
     $JavaHome = (Resolve-Path -LiteralPath $JavaHome).Path
 } elseif (!$env:JAVA_HOME -and !(Get-Command java -ErrorAction SilentlyContinue)) {
     throw 'Java is unavailable. Set JAVA_HOME or pass -JavaHome.'
-}
-if ($deviceSuite) {
-    if ($Serial -notmatch '^emulator-\d+$') { throw 'Android checks require an explicit emulator serial.' }
-    $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($IsWindows) { Join-Path $env:LOCALAPPDATA 'Android/Sdk' } else { Join-Path $env:HOME 'Android/Sdk' }
-    $adb = Join-Path $sdk $(if ($IsWindows) { 'platform-tools/adb.exe' } else { 'platform-tools/adb' })
-    if (!(Test-Path -LiteralPath $adb)) { $adb = (Get-Command adb -ErrorAction Stop).Source }
-    $devices = & $adb devices -l
-    if ($LASTEXITCODE -ne 0 -or !($devices | Where-Object { $_ -match "^$([regex]::Escape($Serial))\s+device\b" })) {
-        try { & (Join-Path $PSScriptRoot 'release/Save-EmulatorDiagnostics.ps1') -Serial $Serial }
-        catch { Write-Output "Diagnostic capture failed: $($_.Exception.Message)" }
-        throw "Emulator $Serial is not connected and ready."
-    }
 }
 $directory = Join-Path $project 'app/build/verification'
 New-Item -ItemType Directory -Force -Path $directory | Out-Null
@@ -44,19 +36,31 @@ $summary.reason = if ($Reason) { $Reason } else { 'Not recorded' }
 $summary.maxWorkers = if ($MaxWorkers) { $MaxWorkers } else { $null }
 $previousJavaHome = $env:JAVA_HOME
 $previousSerial = $env:ANDROID_SERIAL
+$previousAndroidHome = $env:ANDROID_HOME
+$previousAndroidRoot = $env:ANDROID_SDK_ROOT
 $exitCode = 1
 try {
+    if ($deviceSuite -or $SdkDirectory) {
+        $sdk = Resolve-VerificationSdk -Project $project -SdkDirectory $SdkDirectory
+        $env:ANDROID_HOME = $sdk
+        $env:ANDROID_SDK_ROOT = $sdk
+        $summary.sdkDirectory = $sdk
+    }
     if ($JavaHome) { $env:JAVA_HOME = $JavaHome }
     $java = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME $javaBinary } else { (Get-Command java).Source }
     $javaVersion = @(& $java -version 2>&1)
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read Java version.' }
     $summary.java = $javaVersion[0].ToString()
     if ($deviceSuite) {
+        if ($Serial -notmatch '^emulator-\d+$') { throw 'Android checks require an explicit emulator serial.' }
         $env:ANDROID_SERIAL = $Serial
-        $summary.deviceModel = (& $adb -s $Serial shell getprop ro.product.model).Trim()
-        if ($LASTEXITCODE -ne 0) { throw 'Cannot read emulator model.' }
-        $summary.deviceApi = (& $adb -s $Serial shell getprop ro.build.version.sdk).Trim()
-        if ($LASTEXITCODE -ne 0) { throw 'Cannot read emulator API.' }
+        $adb = Join-Path $sdk $(if ($IsWindows) { 'platform-tools/adb.exe' } else { 'platform-tools/adb' })
+        if (!(Test-Path -LiteralPath $adb -PathType Leaf)) { throw "Selected SDK is missing adb: $sdk" }
+        Import-Module (Join-Path $PSScriptRoot 'Emulator-Readiness.psm1')
+        $ready = Assert-EmulatorReady -AdbCommand $adb -Serial $Serial
+        $summary.deviceModel = $ready.model
+        $summary.deviceApi = $ready.api
+        $summary.deviceBuildFingerprint = $ready.buildFingerprint
     }
     $tasks = @(Get-VerificationTasks -Suite $Suite -Classes $classes)
     if ($MaxWorkers) { $tasks += "--max-workers=$MaxWorkers" }
@@ -102,12 +106,14 @@ try {
     Write-Output "Verification failed: $($_.Exception.Message)"
     if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 40 }
     if ($deviceSuite) {
-        try { & (Join-Path $PSScriptRoot 'release/Save-EmulatorDiagnostics.ps1') -Serial $Serial }
+        try { & (Join-Path $PSScriptRoot 'release/Save-EmulatorDiagnostics.ps1') -Serial $Serial -SdkDirectory $sdk }
         catch { Write-Output "Diagnostic capture failed: $($_.Exception.Message)" }
     }
 } finally {
     if ($null -eq $previousJavaHome) { Remove-Item Env:JAVA_HOME -ErrorAction SilentlyContinue } else { $env:JAVA_HOME = $previousJavaHome }
     if ($null -eq $previousSerial) { Remove-Item Env:ANDROID_SERIAL -ErrorAction SilentlyContinue } else { $env:ANDROID_SERIAL = $previousSerial }
+    if ($null -eq $previousAndroidHome) { Remove-Item Env:ANDROID_HOME -ErrorAction SilentlyContinue } else { $env:ANDROID_HOME = $previousAndroidHome }
+    if ($null -eq $previousAndroidRoot) { Remove-Item Env:ANDROID_SDK_ROOT -ErrorAction SilentlyContinue } else { $env:ANDROID_SDK_ROOT = $previousAndroidRoot }
     $timer.Stop()
     $summary.durationSeconds = [math]::Round($timer.Elapsed.TotalSeconds, 3)
     $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath "$stem.json" -Encoding utf8
