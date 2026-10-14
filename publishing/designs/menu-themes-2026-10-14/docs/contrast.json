@@ -1,0 +1,86 @@
+[
+  {
+    "id": "classic",
+    "textOnPanel": 14.1413,
+    "mutedOnPanel": 10.5976,
+    "primaryLabel": 6.8785,
+    "onControl": 12.243
+  },
+  {
+    "id": "monokai",
+    "textOnPanel": 13.9434,
+    "mutedOnPanel": 9.7019,
+    "primaryLabel": 13.9434,
+    "onControl": 12.2064
+  },
+  {
+    "id": "gruvbox",
+    "textOnPanel": 12.9942,
+    "mutedOnPanel": 8.5931,
+    "primaryLabel": 12.9942,
+    "onControl": 8.6243
+  },
+  {
+    "id": "vscode",
+    "textOnPanel": 13.9237,
+    "mutedOnPanel": 8.1512,
+    "primaryLabel": 13.9237,
+    "onControl": 9.2909
+  },
+  {
+    "id": "dracula",
+    "textOnPanel": 13.3591,
+    "mutedOnPanel": 7.9913,
+    "primaryLabel": 13.3591,
+    "onControl": 13.678
+  },
+  {
+    "id": "nord",
+    "textOnPanel": 8.7044,
+    "mutedOnPanel": 7.4267,
+    "primaryLabel": 8.7044,
+    "onControl": 9.464
+  },
+  {
+    "id": "solarized_light",
+    "textOnPanel": 10.6099,
+    "mutedOnPanel": 4.9248,
+    "primaryLabel": 10.6099,
+    "onControl": 6.122
+  },
+  {
+    "id": "solarized_dark",
+    "textOnPanel": 12.0518,
+    "mutedOnPanel": 7.2019,
+    "primaryLabel": 12.0518,
+    "onControl": 10.0414
+  },
+  {
+    "id": "github_light",
+    "textOnPanel": 14.8392,
+    "mutedOnPanel": 5.7432,
+    "primaryLabel": 5.1921,
+    "onControl": 5.1921
+  },
+  {
+    "id": "tokyo_night",
+    "textOnPanel": 11.2122,
+    "mutedOnPanel": 6.8995,
+    "primaryLabel": 11.2122,
+    "onControl": 11.036
+  },
+  {
+    "id": "catppuccin",
+    "textOnPanel": 8.6935,
+    "mutedOnPanel": 7.1001,
+    "primaryLabel": 8.6935,
+    "onControl": 12.1714
+  },
+  {
+    "id": "synthwave_84",
+    "textOnPanel": 16.2042,
+    "mutedOnPanel": 10.3414,
+    "primaryLabel": 8.2035,
+    "onControl": 13.0593
+  }
+]

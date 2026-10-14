@@ -1,0 +1,89 @@
+{
+  "themes": [
+    {
+      "id": "classic",
+      "title": "Classic / Early color PC",
+      "background": "menu_scene_classic.png",
+      "motion": "menu_motion_classic.json",
+      "tracks": 8
+    },
+    {
+      "id": "monokai",
+      "title": "Monokai",
+      "background": "menu_scene_monokai.png",
+      "motion": "menu_motion_monokai.json",
+      "tracks": 13
+    },
+    {
+      "id": "gruvbox",
+      "title": "Gruvbox",
+      "background": "menu_scene_gruvbox.png",
+      "motion": "menu_motion_gruvbox.json",
+      "tracks": 8
+    },
+    {
+      "id": "vscode",
+      "title": "VSCode Dark+",
+      "background": "menu_scene_vscode.png",
+      "motion": "menu_motion_vscode.json",
+      "tracks": 6
+    },
+    {
+      "id": "dracula",
+      "title": "Dracula",
+      "background": "menu_scene_dracula.png",
+      "motion": "menu_motion_dracula.json",
+      "tracks": 5
+    },
+    {
+      "id": "nord",
+      "title": "Nord",
+      "background": "menu_scene_nord.png",
+      "motion": "menu_motion_nord.json",
+      "tracks": 38
+    },
+    {
+      "id": "solarized_light",
+      "title": "Solarized Light",
+      "background": "menu_scene_solarized_light.png",
+      "motion": "menu_motion_solarized_light.json",
+      "tracks": 3
+    },
+    {
+      "id": "solarized_dark",
+      "title": "Solarized Dark",
+      "background": "menu_scene_solarized_dark.png",
+      "motion": "menu_motion_solarized_dark.json",
+      "tracks": 8
+    },
+    {
+      "id": "github_light",
+      "title": "GitHub Light",
+      "background": "menu_scene_github_light.png",
+      "motion": "menu_motion_github_light.json",
+      "tracks": 4
+    },
+    {
+      "id": "tokyo_night",
+      "title": "Tokyo Night",
+      "background": "menu_scene_tokyo_night.png",
+      "motion": "menu_motion_tokyo_night.json",
+      "tracks": 46
+    },
+    {
+      "id": "catppuccin",
+      "title": "Catppuccin Mocha",
+      "background": "menu_scene_catppuccin.png",
+      "motion": "menu_motion_catppuccin.json",
+      "tracks": 7
+    },
+    {
+      "id": "synthwave_84",
+      "title": "SynthWave '84",
+      "background": "menu_scene_synthwave_84.png",
+      "motion": "menu_motion_synthwave_84.json",
+      "tracks": 6
+    }
+  ],
+  "totalTracks": 152
+}

@@ -1,0 +1,208 @@
+{
+  "result": "PASS",
+  "scope": "Asset validation only; no Android build or application tests",
+  "themes": 12,
+  "animationTracks": 152,
+  "keyframes": 5844,
+  "xmlFilesParsed": 932,
+  "svgFilesParsed": 708,
+  "contrastPairs": 72,
+  "minimumContrast": 4.9248,
+  "iconBytes": 557080,
+  "iconSha256": "2e1c7d64feb61a109bbf9c5156202c2f29cb7d7b0c0609271365c5b8e7fe3c16",
+  "iconByteIdentical": true,
+  "pngFiles": [
+    {
+      "file": "reference/01-classic.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/02-monokai.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/03-gruvbox.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/04-vscode.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/05-dracula.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/06-nord.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/07-solarized-light.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/08-solarized-dark.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/09-github-light.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/10-tokyo-night.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/11-catppuccin.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/12-synthwave-84.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "reference/current-wordmark-source.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "file": "store/icon-source.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGB"
+    },
+    {
+      "file": "store/rustore-icon-512.png",
+      "width": 512,
+      "height": 512,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/ic_launcher_artwork.png",
+      "width": 512,
+      "height": 512,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_catppuccin.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_classic.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_dracula.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_github_light.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_gruvbox.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_monokai.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_nord.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_solarized_dark.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_solarized_light.png",
+      "width": 941,
+      "height": 1671,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_synthwave_84.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_tokyo_night.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_scene_vscode.png",
+      "width": 941,
+      "height": 1672,
+      "mode": "RGB"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_sprite_bat.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_sprite_cat.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_sprite_cloud.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/res/drawable-nodpi/menu_sprite_leaf.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    }
+  ]
+}

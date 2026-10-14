@@ -1,0 +1,109 @@
+{
+  "generator": "Built-in image_gen; scene/sprite PNG bytes unchanged; icon export resized only",
+  "date": "2026-10-14",
+  "assets": [
+    {
+      "id": "classic",
+      "path": "android/res/drawable-nodpi/menu_scene_classic.png",
+      "generatedFile": "exec-ebbdde30-604d-464c-94e0-518314e8cd61.png",
+      "prompt": "Use case: precise-object-edit. Production game environment clean plate, not a mockup. Edit the reference start screen into its pristine BACKGROUND ONLY. Remove ALL SWYPETRIS lettering, every button, text, UI panel, UI icon, version label. Inpaint those regions with continuous matching paving, trees and cathedral base. Preserve the exact approved cathedral architecture, silhouette, size, location, all towers and walls and streetlights, viewpoint and original portrait 9:16 framing, pixel art detail and lighting. Do not move or enlarge cathedral; keep its main cross near x57%,y5%, ground horizon near y51%. Preserve scene above erased UI with maximum fidelity. Keep selected EARLY COLOR PC Classic exactly: cobalt BLUE DAY sky, cream SOLID unstriped sun, red brick cathedral, blue and gold stone paving. No new motifs. Static architectural lighting and distant cloud painting may remain. No text or logo anywhere, no frame, no game pieces. Output one full portrait 941x1672 or proportional high-resolution PNG. This is a final game background asset; no preview labels, no phone mockup."
+    },
+    {
+      "id": "monokai",
+      "path": "android/res/drawable-nodpi/menu_scene_monokai.png",
+      "generatedFile": "exec-d59afa1a-b3e2-47a9-bbff-67feb1a47ff4.png",
+      "prompt": "Use case: precise-object-edit. Production game clean background. Remove ALL text, SWYPETRIS lettering, every UI button/panel/icon from this approved reference screen. Fill their regions with continuous matching ground paving and cathedral base/trees. Keep architecture size position silhouette, towers walls lamps, exact viewpoint pixel-art detail and 9:16 composition identical. Main cross stays at x57% y5%, square horizon y51%. Keep dark Monokai black/lime/magenta/cyan palette, solid yellow moon and colored dash clouds. Remove ALL floating square particles and twinkling large star sprites. Keep small distant stars and static clouds. No new elements, no game blocks, no UI, no labels. Output one full portrait background, ideally original 941x1672, maximum visual fidelity."
+    },
+    {
+      "id": "gruvbox",
+      "path": "android/res/drawable-nodpi/menu_scene_gruvbox.png",
+      "generatedFile": "exec-cdd058fa-5721-4db0-8754-6cf6dc10f5be.png",
+      "prompt": "Use case: precise-object-edit. Production game environment clean plate, not a mockup. Edit the reference start screen into its pristine BACKGROUND ONLY. Remove ALL SWYPETRIS lettering, every button, text, UI panel, UI icon, version label. Inpaint those regions with continuous matching paving, trees and cathedral base. Preserve the exact approved cathedral architecture, silhouette, size, location, all towers and walls and streetlights, viewpoint and original portrait 9:16 framing, pixel art detail and lighting. Do not move or enlarge cathedral; keep its main cross near x57%,y5%, ground horizon near y51%. Preserve scene above erased UI with maximum fidelity. Keep warm autumn Gruvbox colors and unmistakable square WOODEN BLOCK PAVERS with grain; do not change wood to stone. Remove ALL loose leaves both flying and on the ground (leaves will be separate animated sprites). Keep trees in autumn colors. Static architectural lighting and distant cloud painting may remain. No text or logo anywhere, no frame, no game pieces. Output one full portrait 941x1672 or proportional high-resolution PNG. This is a final game background asset; no preview labels, no phone mockup."
+    },
+    {
+      "id": "vscode",
+      "path": "android/res/drawable-nodpi/menu_scene_vscode.png",
+      "generatedFile": "exec-d8613406-04ce-4ff1-86c4-d1f2ab41500a.png",
+      "prompt": "Use case: precise-object-edit. Production game clean background. Remove ALL text, SWYPETRIS lettering, every UI button/panel/icon from this approved reference screen. Fill their regions with continuous matching ground paving and cathedral base/trees. Keep architecture size position silhouette, towers walls lamps, exact viewpoint pixel-art detail and 9:16 composition identical. Main cross stays at x57% y5%, square horizon y51%. Keep steel blue VSCode Dark+ scene and full white-blue moon, gray cathedral blue/teal roofs. Remove ALL floating wireframe squares and floor glint crosses (added as actual animation later). No new elements, no game blocks, no UI, no labels. Output one full portrait background, ideally original 941x1672, maximum visual fidelity."
+    },
+    {
+      "id": "dracula",
+      "path": "android/res/drawable-nodpi/menu_scene_dracula.png",
+      "generatedFile": "exec-ddab4def-f857-47a7-bc34-3c7a2f6e6896.png",
+      "prompt": "Use case: precise-object-edit. Production game environment clean plate, not a mockup. Edit the reference start screen into its pristine BACKGROUND ONLY. Remove ALL SWYPETRIS lettering, every button, text, UI panel, UI icon, version label. Inpaint those regions with continuous matching paving, trees and cathedral base. Preserve the exact approved cathedral architecture, silhouette, size, location, all towers and walls and streetlights, viewpoint and original portrait 9:16 framing, pixel art detail and lighting. Do not move or enlarge cathedral; keep its main cross near x57%,y5%, ground horizon near y51%. Preserve scene above erased UI with maximum fidelity. Keep purple Dracula night, full unstriped lavender moon, Gothic red cyan purple cathedral and wet reflections. Remove ALL BATS, all wisps of foreground FOG (we add actual animated layers). Keep distant dramatic static cloud banks. Static architectural lighting and distant cloud painting may remain. No text or logo anywhere, no frame, no game pieces. Output one full portrait 941x1672 or proportional high-resolution PNG. This is a final game background asset; no preview labels, no phone mockup."
+    },
+    {
+      "id": "nord",
+      "path": "android/res/drawable-nodpi/menu_scene_nord.png",
+      "generatedFile": "exec-7f277ef8-9391-47c5-95c7-de5c7eb49684.png",
+      "prompt": "Use case: precise-object-edit. Production game clean background. Remove ALL text, SWYPETRIS lettering, every UI button/panel/icon from this approved reference screen. Fill their regions with continuous matching ground paving and cathedral base/trees. Keep architecture size position silhouette, towers walls lamps, exact viewpoint pixel-art detail and 9:16 composition identical. Main cross stays at x57% y5%, square horizon y51%. Keep snowy Nord Arctic architecture and snow already settled on the cathedral, trees and ground, whole solid moon and soft static aurora. Remove airborne snowflakes and large star sprites; animated snow will be drawn as a separate layer. No new elements, no game blocks, no UI, no labels. Output one full portrait background, ideally original 941x1672, maximum visual fidelity."
+    },
+    {
+      "id": "solarized_light",
+      "path": "android/res/drawable-nodpi/menu_scene_solarized_light.png",
+      "generatedFile": "exec-878cfe37-e18a-49ab-a8c4-3a7cf256d50b.png",
+      "prompt": "Use case: precise-object-edit. Production game clean background. Remove ALL text, SWYPETRIS lettering, every UI button/panel/icon from this approved reference screen. Fill their regions with continuous matching ground paving and cathedral base/trees. Keep architecture size position silhouette, towers walls lamps, exact viewpoint pixel-art detail and 9:16 composition identical. Main cross stays at x57% y5%, square horizon y51%. Keep cream golden Solarized Light day scene, solid yellow sun and static concentric halo, light azure clouds and golden turquoise paving. Sun has NO stripes. No new elements, no game blocks, no UI, no labels. Output one full portrait background, ideally original 941x1672, maximum visual fidelity."
+    },
+    {
+      "id": "solarized_dark",
+      "path": "android/res/drawable-nodpi/menu_scene_solarized_dark.png",
+      "generatedFile": "exec-744ddb1a-8280-4b34-bfee-0b7e36713ace.png",
+      "prompt": "Use case: precise-object-edit. Production game environment clean plate. Edit this approved portrait reference into the exact same scene without any UI. Remove ALL SWYPETRIS text, all buttons, panels, UI icons or labels. Reconstruct continuous paving and obscured cathedral base/trees. Preserve existing architecture exact size location silhouette detail, viewpoint, towers walls lamps and horizon at 51% height, cross near x57% y5%. Preserve approved style and portrait 9:16 framing. Keep petrol teal Solarized Dark atmosphere, full amber unstriped moon and amber/teal reflections. No extra objects, no text, no game pieces or UI. One full portrait PNG at941x1672 or same aspect."
+    },
+    {
+      "id": "github_light",
+      "path": "android/res/drawable-nodpi/menu_scene_github_light.png",
+      "generatedFile": "exec-e8d0dd41-9355-4682-a352-4507f37f129e.png",
+      "prompt": "Use case: precise-object-edit. Production game environment clean plate. Edit this approved portrait reference into the exact same scene without any UI. Remove ALL SWYPETRIS text, all buttons, panels, UI icons or labels. Reconstruct continuous paving and obscured cathedral base/trees. Preserve existing architecture exact size location silhouette detail, viewpoint, towers walls lamps and horizon at 51% height, cross near x57% y5%. Preserve approved style and portrait 9:16 framing. Keep bright clean GitHub Light daytime, cyan sky with white clouds, full pale yellow unstriped sun and pale white/blue ground with green square inlays. No extra objects, no text, no game pieces or UI. One full portrait PNG at941x1672 or same aspect."
+    },
+    {
+      "id": "tokyo_night",
+      "path": "android/res/drawable-nodpi/menu_scene_tokyo_night.png",
+      "generatedFile": "exec-e76b391a-76b3-4e38-868d-d95f3a0bdf1d.png",
+      "prompt": "Use case: precise-object-edit. Production game environment clean plate. Edit this approved portrait reference into the exact same scene without any UI. Remove ALL SWYPETRIS text, all buttons, panels, UI icons or labels. Reconstruct continuous paving and obscured cathedral base/trees. Preserve existing architecture exact size location silhouette detail, viewpoint, towers walls lamps and horizon at 51% height, cross near x57% y5%. Preserve approved style and portrait 9:16 framing. Keep deep indigo Tokyo Night atmosphere and neon wet reflections. Remove ALL drawn RAIN streaks and circular RIPPLE rings, which must be animated separately. Preserve wet paving, full unstriped purple moon and static cloud masses. No extra objects, no text, no game pieces or UI. One full portrait PNG at941x1672 or same aspect."
+    },
+    {
+      "id": "catppuccin",
+      "path": "android/res/drawable-nodpi/menu_scene_catppuccin.png",
+      "generatedFile": "exec-03e9f827-20f3-4d6e-b3e2-3e0ecd07171c.png",
+      "prompt": "Use case: precise-object-edit. Production game environment clean plate, not a mockup. Edit the reference start screen into its pristine BACKGROUND ONLY. Remove ALL SWYPETRIS lettering, every button, text, UI panel, UI icon, version label. Inpaint those regions with continuous matching paving, trees and cathedral base. Preserve the exact approved cathedral architecture, silhouette, size, location, all towers and walls and streetlights, viewpoint and original portrait 9:16 framing, pixel art detail and lighting. Do not move or enlarge cathedral; keep its main cross near x57%,y5%, ground horizon near y51%. Preserve scene above erased UI with maximum fidelity. Keep pastel Mocha night with full unstriped cream moon, warm lavender pink clouds and colorful cathedral. Remove the small sleeping CAT entirely plus paw prints (cat will be a separate animated sprite). Static architectural lighting and distant cloud painting may remain. No text or logo anywhere, no frame, no game pieces. Output one full portrait 941x1672 or proportional high-resolution PNG. This is a final game background asset; no preview labels, no phone mockup."
+    },
+    {
+      "id": "synthwave_84",
+      "path": "android/res/drawable-nodpi/menu_scene_synthwave_84.png",
+      "generatedFile": "exec-d24c9f79-767b-43d6-98bb-814e9cfb7b63.png",
+      "prompt": "Use case: precise-object-edit. Production game environment clean plate. Edit this approved portrait reference into the exact same scene without any UI. Remove ALL SWYPETRIS text, all buttons, panels, UI icons or labels. Reconstruct continuous paving and obscured cathedral base/trees. Preserve existing architecture exact size location silhouette detail, viewpoint, towers walls lamps and horizon at 51% height, cross near x57% y5%. Preserve approved style and portrait 9:16 framing. Keep purple chrome SynthWave cathedral, the sunset gradient and ONLY THIS theme's striped sun, glowing purple blue perspective grid. Remove all laser rays and large foreground sparkles, we will animate them separately. Sun's stripes must remain. No extra objects, no text, no game pieces or UI. One full portrait PNG at941x1672 or same aspect."
+    },
+    {
+      "id": "bat",
+      "path": "android/res/drawable-nodpi/menu_sprite_bat.png",
+      "generatedFile": "exec-6caaa1cb-fb02-426a-9343-1fac2ced64ff.png",
+      "prompt": "Use case: background-extraction. A production transparent PNG sprite atlas for the small black violet bats in the reference. Canvas exactly1024x1024 divided into a2x2 equal512x512 grid WITHOUT grid lines. FOUR frames of the SAME small Dracula bat facing viewer, flying: upper-left wings fully raised, upper-right wings spread horizontal, lower-left wings down, lower-right wings spread horizontal. Consistent body size and center in each cell. Pixel-art black indigo body with subtle violet rim, no cartoon face, credible angular bat silhouette, exactly one bat fully contained in each cell with80px padding. Each frame's body center at its cell center. True alpha transparency all empty areas, no scenery no text numbers labels borders shadows or matte. Maintain clear readable silhouette when reduced to32px. Image reference supplies bat style only."
+    },
+    {
+      "id": "leaf",
+      "path": "android/res/drawable-nodpi/menu_sprite_leaf.png",
+      "generatedFile": "exec-448f39c3-01c6-4655-a62d-1cf68bb0f712.png",
+      "prompt": "Use case: background-extraction. Production game sprite: ONE orange amber autumn maple leaf matching the Gruvbox pixel art reference. Isolate one leaf on true alpha transparency,1024x1024 canvas, leaf centered occupying65% width, diagonal short stem, warm orange gold red veins, crisp large pixel clusters, no scene no ground no shadow no text. For drawing at12-26px in game; simple recognizable maple leaf, texture coherent with approved reference."
+    },
+    {
+      "id": "cat",
+      "path": "android/res/drawable-nodpi/menu_sprite_cat.png",
+      "generatedFile": "exec-e35e2f8a-8820-4c32-b008-04b848e09afc.png",
+      "prompt": "Use case: background-extraction. Production transparent2x2 animation atlas, exactly1024x1024, four512x512 cells without visible grid. Extract/recreate the EXACT small sleeping curled pixel-art calico cat at bottom-left of the reference, white face at right, lavender/black patches, warm peach ears, curled tail at left. Four almost identical registered frames at same scale and body position: upper-left resting eyes closed; upper-right same resting with far ear slightly flicked; lower-left resting with curled tail tip slightly raised; lower-right same neutral rest. Do not alter face identity, do not open eyes, no big poses. Cat fully inside each cell with60px clear margin and centered, resting baseline at cell y380. Match pixelart atsmallscale. Emptybackground true transparent alpha, no ground no scenery no pawprints no text labels or grid."
+    },
+    {
+      "id": "cloud",
+      "path": "android/res/drawable-nodpi/menu_sprite_cloud.png",
+      "generatedFile": "exec-2b5fd8c7-8414-4586-a6cc-282e1d6f9a34.png",
+      "prompt": "Use case: stylized-concept. Production2D pixel-art atmospheric sprite on TRUE TRANSPARENT alpha. A single horizontally stretched wispy cumulus cloud, width3xheight, pale cool white/lavender upperlit pixel clusters and subtle blue undersides,16bit detailed pixel art matching a cathedral night/day game, irregular naturally dissolving edges. Centered on1536x1024 canvas with generous transparent margin. No sky no sun no buildings, no rectangular panel, no text. This asset will be tinted and slowly drifted at low opacity above existing distant clouds."
+    },
+    {
+      "id": "launcher-and-store",
+      "path": "store/icon-source.png",
+      "export": "store/rustore-icon-512.png",
+      "prompt": "Use case: logo-brand. Create a production RuStore AND Android launcher icon at EXACTLY512x512 pixels,1:1, full opaque RGB PNG. Input1 is the current512px square icon (format reference only); input2 supplies the new approved cathedral logo identity. New icon: the SAME recognizable colorful pixel-art Saint Basil cathedral as input2 centered, entire cathedral and gold cross contained inside central64% safe square, strong legible silhouette, simplified detail appropriate to a512px icon, red brick and blue-white/green/turquoise onion domes. Deep cobalt blue dusk/day background fills every pixel and all four corners, subtle cream full unstriped sun to upper-left behind the cathedral. A little blue gold paved reflection below provides a base, but cathedral is focal point. NO lettering, NO text or initials, NO stripe cutouts through architecture, NO rounded corners (system clips), NO border, NO transparency, NO badges, NO notification dots. Keep sober crisp retro pixel art coherent with new Classic start screen. The512x512 exact output is essential for store submission. Background must reach the entire square boundary.",
+      "notes": "Format-only 512x512 RGB export; exact identical file supplied as Android artwork. No new in-app wordmark."
+    }
+  ]
+}
