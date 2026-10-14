@@ -58,7 +58,7 @@ internal fun LegalScreen() {
 
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("legalPage"),
         contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("Лицензии и права", style = MaterialTheme.typography.headlineLarge) }
+        item { MenuPageTitle { Text("Лицензии и права", style = MaterialTheme.typography.headlineLarge) } }
         item { Text("Swypetris · © 2026 RoyMatus", style = MaterialTheme.typography.titleMedium) }
         item { Text("Логотип, значок, иллюстрация кубка, игровые звуки и музыкальные " +
             "записи созданы для Swypetris. Сведения о сторонних источниках " +
@@ -73,7 +73,7 @@ internal fun LegalScreen() {
                         Text(notice.credit, style = MaterialTheme.typography.bodyMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             AppActionButton("Источник", ActionStyle.TEXT,
-                                accent = LocalGamePalette.current.piece(Tetromino.J)) {
+                                accent = menuUiPalette().piece(Tetromino.J)) {
                                 try {
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(notice.source)))
                                 } catch (_: ActivityNotFoundException) {
@@ -84,7 +84,7 @@ internal fun LegalScreen() {
                             }
                             notice.licenseAsset?.let { asset ->
                                 AppActionButton("Лицензия", ActionStyle.TEXT, Modifier.testTag("license-$asset"),
-                                    LocalGamePalette.current.piece(Tetromino.T)) {
+                                    menuUiPalette().piece(Tetromino.T)) {
                                     licenseText = notice.title to context.assets.open("licenses/$asset")
                                         .bufferedReader().use { it.readText() }
                                 }
@@ -96,11 +96,11 @@ internal fun LegalScreen() {
         }
     }
     licenseText?.let { (title, body) ->
-        AlertDialog(onDismissRequest = { licenseText = null }, title = { Text(title) },
+        MenuAlertDialog(onDismissRequest = { licenseText = null }, title = { Text(title) },
             text = { LazyColumn { item { Text(body) } } },
             confirmButton = { AppActionButton("Закрыть", ActionStyle.TEXT) { licenseText = null } })
     }
-    if (linkUnavailable) AlertDialog(onDismissRequest = { linkUnavailable = false },
+    if (linkUnavailable) MenuAlertDialog(onDismissRequest = { linkUnavailable = false },
         text = { Text("Нет приложения для открытия ссылки.") },
         confirmButton = { AppActionButton("Закрыть", ActionStyle.TEXT) { linkUnavailable = false } })
 }

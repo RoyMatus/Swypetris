@@ -1,6 +1,9 @@
 package ru.itoltec.swypetris
 
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,19 +30,19 @@ internal fun AppScreen(model: GameViewModel, updates: AppUpdates?, onExit: () ->
 internal fun AppUpdateDialogs(model: GameViewModel, updates: AppUpdates) {
     UpdateDeliveryDialog(updates.delivery, model) { updates.check(true) }
     if (updates.delivery.notice == null) updates.notice?.let { notice ->
-        AlertDialog(onDismissRequest = { if (notice != UpdateNotice.StoreInstalling) updates.dismiss() },
+        MenuAlertDialog(onDismissRequest = { if (notice != UpdateNotice.StoreInstalling) updates.dismiss() },
             title = { Text(if (notice is UpdateNotice.Available) "Доступно обновление" else "Проверка обновлений") },
-            text = { Text(updateNoticeMessage(notice)) },
+            text = { Column(Modifier.verticalScroll(rememberScrollState())) { Text(updateNoticeMessage(notice)) } },
             confirmButton = {
-                if (notice is UpdateNotice.Available) TextButton(onClick = { updates.open(notice.update) },
+                if (notice is UpdateNotice.Available) MenuTextButton(onClick = { updates.open(notice.update) },
                     modifier = Modifier.testTag("confirmUpdate")) { Text("Обновить") }
-                else if (notice is UpdateNotice.StoreReady) TextButton(onClick = { updates
+                else if (notice is UpdateNotice.StoreReady) MenuTextButton(onClick = { updates
                     .installStore(model) }) { Text("Установить") }
-                else if (notice != UpdateNotice.StoreInstalling) TextButton(onClick = updates::dismiss) {
+                else if (notice != UpdateNotice.StoreInstalling) MenuTextButton(onClick = updates::dismiss) {
                     Text("Понятно") }
             },
             dismissButton = if (notice is UpdateNotice.Available || notice is UpdateNotice.StoreReady) ({
-                TextButton(onClick = updates::dismiss, modifier = Modifier.testTag("laterUpdate")) { Text("Позже") }
+                MenuTextButton(onClick = updates::dismiss, modifier = Modifier.testTag("laterUpdate")) { Text("Позже") }
             }) else null)
     }
 

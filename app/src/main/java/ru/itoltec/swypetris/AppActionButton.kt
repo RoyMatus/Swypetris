@@ -1,6 +1,7 @@
 package ru.itoltec.swypetris
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,6 +10,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -20,7 +22,12 @@ import androidx.compose.ui.unit.dp
 /** A palette tint with a readable label, shared by menu tiles and all other buttons. */
 @Composable
 internal fun paletteButtonColors(accent: Color, style: ActionStyle): ButtonColors {
-    val palette = LocalGamePalette.current
+    val skin = LocalMenuSkin.current
+    if (skin != null) return ButtonDefaults.outlinedButtonColors(
+        containerColor = skin.panel, contentColor = skin.text,
+        disabledContainerColor = skin.panel,
+        disabledContentColor = skin.text.copy(alpha = skin.disabledContentAlpha))
+    val palette = menuUiPalette()
     val alpha = when (style) {
         ActionStyle.PRIMARY -> .18f
         ActionStyle.SECONDARY -> .13f
@@ -46,7 +53,21 @@ internal fun AppActionButton(label: String, style: ActionStyle, modifier: Modifi
     val height = if (style == ActionStyle.TEXT) 48.dp else 56.dp
     val shape = RoundedCornerShape(12.dp)
     val contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-    OutlinedButton(onClick, modifier.heightIn(min = height), shape = shape,
-        colors = paletteButtonColors(accent, style), border = paletteButtonBorder(accent, style),
-        contentPadding = contentPadding) { Text(label) }
+    val skin = LocalMenuSkin.current
+    val interaction = remember { MutableInteractionSource() }
+    val role = when {
+        skin == null -> "link"
+        accent == skin.role("destructive") || accent == LocalGamePalette.current.piece(Tetromino.Z) -> "destructive"
+        style == ActionStyle.PRIMARY -> "primary"
+        style == ActionStyle.TEXT -> "back"
+        else -> "link"
+    }
+    MenuNativeControl { OutlinedButton(onClick,
+        modifier.heightIn(min = height).menuActionFrame(role, interaction), shape = shape,
+        interactionSource = interaction,
+        colors = if (skin == null) paletteButtonColors(accent, style) else
+            ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent,
+                contentColor = menuActionTextColor(role)),
+        border = if (skin == null) paletteButtonBorder(accent, style) else null,
+        contentPadding = contentPadding) { Text(label) } }
 }

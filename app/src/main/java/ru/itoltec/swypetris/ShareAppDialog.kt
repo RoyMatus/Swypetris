@@ -107,11 +107,14 @@ private fun DownloadLinkDialog(onDismiss: () -> Unit, directApk: Boolean) {
     val qr = remember(url) { downloadQrBitmap(url).asImageBitmap() }
     var actionUnavailable by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
+    MenuDialog(onDismissRequest = onDismiss) {
+        Surface(shape = if (LocalMenuSkin.current == null) MaterialTheme.shapes.extraLarge else
+                androidx.compose.ui.graphics.RectangleShape,
+            color = if (LocalMenuSkin.current == null) MaterialTheme.colorScheme.surface else
+                androidx.compose.ui.graphics.Color.Transparent,
             modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()
                 .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * .9f)
+                .menuSurfaceArt("dialog")
                 .testTag("shareLinkDialog")
                 .semantics { onClick("Закрыть") { onDismiss(); true } }
                 .pointerInput(onDismiss) { detectTapGestures { onDismiss() } }) {

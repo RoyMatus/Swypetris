@@ -173,8 +173,6 @@ val LocalGamePalette = staticCompositionLocalOf { GamePalettes.all.first() }
 /** Every supported palette is directly selectable from one non-scrolling grid. */
 @Composable
 internal fun PalettePicker(model: GameViewModel) {
-    val palette = LocalGamePalette.current
-    val accent = palette.piece(Tetromino.T)
     SettingsLabel("Расцветка", "Выбери стиль игры")
     Spacer(Modifier.height(8.dp))
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("paletteGrid")) {
@@ -191,40 +189,55 @@ internal fun PalettePicker(model: GameViewModel) {
             GamePalettes.all.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     row.forEach { item ->
-                        val material = blockMaterial(item)
-                        val selected = palette.id == item.id
-                        val shape = RoundedCornerShape(9.dp)
-                        Column(Modifier.weight(1f).heightIn(min = 96.dp)
-                            .background(item.background, shape)
-                            .border(if (selected) 3.dp else 1.dp, if (selected) accent else palette.grid, shape)
-                            .clickable { model.options.setPalette(item.id) }
-                            .semantics { this.selected = selected }
-                            .testTag("palette_${item.id}_preview").padding(5.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Canvas(Modifier.fillMaxWidth().height(34.dp).testTag("palette_${item.id}_art")) {
-                                val side = minOf(size.width / 4.6f, size.height / 2.4f)
-                                val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
-                                positions.forEachIndexed { index, (column, row) ->
-                                    bevelBlock(Offset(column * side + side * PREVIEW_BLOCK_X_OFFSET,
-                                        row * side + side * PREVIEW_BLOCK_Y_OFFSET),
-                                        Size(side * PREVIEW_BLOCK_FILL, side * PREVIEW_BLOCK_FILL),
-                                            item.pieces[index], item.finish, item.texture, material = material,
-                                                type = Tetromino.entries[index])
-                                }
-                            }
-                            Text(item.title, Modifier.fillMaxWidth().testTag("palette_${item.id}_label"),
-                                color = item.text, fontSize = 14.sp, lineHeight = 18.sp,
-                                fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold
-                                    else androidx.compose.ui.text.font.FontWeight.Normal,
-                                textAlign = TextAlign.Center, minLines = 2, maxLines = 2,
-                                overflow = TextOverflow.Ellipsis)
-                        }
+                        PalettePreviewCard(model, item, Modifier.weight(1f))
                     }
                     repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun PalettePreviewCard(model: GameViewModel, item: GamePalette, modifier: Modifier) {
+    val palette = LocalGamePalette.current
+    val skin = LocalMenuSkin.current
+    val accent = palette.piece(Tetromino.T)
+    val interaction = androidx.compose.runtime.remember {
+        androidx.compose.foundation.interaction.MutableInteractionSource()
+    }
+    val material = blockMaterial(item)
+    val selected = palette.id == item.id
+    val shape = RoundedCornerShape(9.dp)
+    Column(modifier.heightIn(min = 96.dp)
+        .background(if (skin == null) item.background else Color.Transparent, shape)
+        .menuActionFrame("settings", interaction, selected = selected)
+        .then(if (skin == null) Modifier.border(if (selected) 3.dp else 1.dp,
+            if (selected) accent else palette.grid, shape) else Modifier)
+        .clickable(interaction, indication = null) { model.options.setPalette(item.id) }
+        .semantics { this.selected = selected }
+        .testTag("palette_${item.id}_preview").padding(5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(Modifier.fillMaxWidth().height(34.dp).background(item.background)
+            .testTag("palette_${item.id}_art")) {
+            val side = minOf(size.width / 4.6f, size.height / 2.4f)
+            val positions = listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 1 to 2)
+            positions.forEachIndexed { index, (column, row) ->
+                bevelBlock(Offset(column * side + side * PREVIEW_BLOCK_X_OFFSET,
+                    row * side + side * PREVIEW_BLOCK_Y_OFFSET),
+                    Size(side * PREVIEW_BLOCK_FILL, side * PREVIEW_BLOCK_FILL),
+                        item.pieces[index], item.finish, item.texture, material = material,
+                            type = Tetromino.entries[index])
+            }
+        }
+        Text(item.title, Modifier.fillMaxWidth().testTag("palette_${item.id}_label"),
+            color = skin?.text ?: item.text, fontSize = 14.sp, lineHeight = 18.sp,
+            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold
+                else androidx.compose.ui.text.font.FontWeight.Normal,
+            textAlign = TextAlign.Center, minLines = 2, maxLines = 2,
+            overflow = TextOverflow.Ellipsis)
     }
 }
 

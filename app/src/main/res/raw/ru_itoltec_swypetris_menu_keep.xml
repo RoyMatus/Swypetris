@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Menu frames and text selectors are selected by their authored theme/role/state names. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/menu_*,@color/menu_*" />

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -59,12 +60,13 @@ import kotlin.math.roundToInt
 /** The four panels follow the approved settings reference while keeping real settings. */
 @Composable
 internal fun SettingsScreen(model: GameViewModel) {
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     var confirmReset by remember { mutableStateOf(false) }
-    val gameplay = palette.piece(Tetromino.I)
-    val assistance = palette.piece(Tetromino.T)
-    val audio = palette.piece(Tetromino.I)
-    val appearance = lerp(palette.piece(Tetromino.T), palette.piece(Tetromino.Z), .35f)
+    val skin = LocalMenuSkin.current
+    val gameplay = skin?.control ?: palette.piece(Tetromino.I)
+    val assistance = skin?.role("help") ?: palette.piece(Tetromino.T)
+    val audio = skin?.control ?: palette.piece(Tetromino.I)
+    val appearance = skin?.role("settings") ?: lerp(palette.piece(Tetromino.T), palette.piece(Tetromino.Z), .35f)
     Column(Modifier.fillMaxSize().background(palette.background).navigationBarsPadding()
         .verticalScroll(rememberScrollState())) {
         ScreenArtHeader("Настройки", "Настрой игру под себя", model.navigation::menu)
@@ -99,9 +101,10 @@ internal fun SettingsScreen(model: GameViewModel) {
             }
             SettingsPanel("ДАННЫЕ", "История игр и рекорды", Icons.Outlined.DeleteOutline,
                 MaterialTheme.colorScheme.error) {
-                OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()
+                MenuOutlinedButton(onClick = { confirmReset = true }, role = "destructive",
+                    modifier = Modifier.fillMaxWidth()
                     .testTag("resetStatistics")) {
-                    Text("Сбросить статистику", color = MaterialTheme.colorScheme.error)
+                    Text("Сбросить статистику")
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -113,14 +116,14 @@ internal fun SettingsScreen(model: GameViewModel) {
 @Composable
 private fun SettingsPanel(title: String, subtitle: String, icon: ImageVector, accent: Color,
     content: @Composable ColumnScope.() -> Unit) {
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     ThemedCard(accent, Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
                 Column {
-                    Text(title, color = accent, fontFamily = FontFamily.Monospace,
+                    Text(title, color = LocalMenuSkin.current?.text ?: accent, fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 2)
                     Text(subtitle, color = palette.muted, fontSize = 11.sp, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
@@ -136,41 +139,58 @@ private fun SettingsPanel(title: String, subtitle: String, icon: ImageVector, ac
 
 @Composable
 internal fun SettingsDivider(accent: Color) {
-    HorizontalDivider(color = accent.copy(alpha = .22f), thickness = 1.dp)
+    HorizontalDivider(modifier = Modifier.menuSurfaceArt("divider"),
+        color = if (LocalMenuSkin.current == null) accent.copy(alpha = .22f) else Color.Transparent,
+        thickness = 1.dp)
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun StartingLevelSetting(model: GameViewModel) {
+    val sliderInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         SettingsLabel("Начальный уровень: ${model.startingLevel}",
             "Чем выше начальный уровень, тем быстрее падают фигуры. Применяется к новой игре.",
             subtitleMaxLines = Int.MAX_VALUE)
         Slider(value = model.startingLevel.toFloat(),
+            interactionSource = sliderInteraction,
+            colors = menuSliderColors(),
+            thumb = { MenuSliderThumb(interactionSource = sliderInteraction) },
+            track = { MenuSliderTrack(it) },
             onValueChange = { model.options.chooseStartingLevel(it.roundToInt()) },
             valueRange = GameRules.MIN_STARTING_LEVEL.toFloat()..GameRules.MAX_STARTING_LEVEL.toFloat(),
             steps = GameRules.MAX_STARTING_LEVEL - GameRules.MIN_STARTING_LEVEL - 1,
             modifier = Modifier.fillMaxWidth().testTag("startingLevel"))
         Text("Следующий уровень после ${model.startingLevel * GameRules.LINES_PER_LEVEL} линий",
-            color = LocalGamePalette.current.muted, fontSize = 11.sp)
+            color = menuUiPalette().muted, fontSize = 11.sp)
     }
 }
 
 @Composable
 private fun RandomThemeSetting(model: GameViewModel) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("randomTheme")
-        .toggleable(model.randomThemeEnabled, role = Role.Checkbox, onValueChange = model.options::setRandomTheme),
+        .toggleable(model.randomThemeEnabled, interactionSource = interaction, indication = null,
+            role = Role.Checkbox, onValueChange = model.options::setRandomTheme),
         verticalAlignment = Alignment.CenterVertically) {
-        Text("Менять тему каждый раунд", Modifier.weight(1f), color = LocalGamePalette.current.text,
+        Text("Менять тему каждый раунд", Modifier.weight(1f), color = menuUiPalette().text,
             textAlign = TextAlign.End)
-        Checkbox(model.randomThemeEnabled, onCheckedChange = null, modifier = Modifier.testTag("randomThemeBox"))
+        MenuCheckbox(model.randomThemeEnabled, onCheckedChange = null,
+            modifier = Modifier.testTag("randomThemeBox"), interactionSource = interaction)
     }
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun VibrationStrengthSetting(model: GameViewModel) {
+    val sliderInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         SettingsLabel("Сила вибрации: ${model.vibrationStrength}%", "0% отключает все виброэффекты")
         Slider(value = model.vibrationStrength.toFloat(),
+            interactionSource = sliderInteraction,
+            colors = menuSliderColors(),
+            thumb = { MenuSliderThumb(interactionSource = sliderInteraction) },
+            track = { MenuSliderTrack(it) },
             onValueChange = { model.options.setVibrationStrength(it.roundToInt()) },
             valueRange = 0f..MAX_VIBRATION_STRENGTH.toFloat(),
             modifier = Modifier.fillMaxWidth().testTag("vibrationStrength"))
@@ -180,17 +200,19 @@ private fun VibrationStrengthSetting(model: GameViewModel) {
 @Composable
 private fun SettingsToggle(title: String, subtitle: String, tag: String, checked: Boolean,
     onChange: (Boolean) -> Unit) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).testTag("${tag}Row")
-        .clickable { onChange(!checked) },
+        .clickable(interaction, indication = null) { onChange(!checked) },
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) { SettingsLabel(title, subtitle) }
-        Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag(tag))
+        MenuSwitch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag(tag),
+            interactionSource = interaction)
     }
 }
 
 @Composable
 internal fun SettingsLabel(title: String, subtitle: String, subtitleMaxLines: Int = 2) {
-    val palette = LocalGamePalette.current
+    val palette = menuUiPalette()
     Column(Modifier.fillMaxWidth()) {
         Text(title, color = palette.text, fontSize = 14.sp, modifier = Modifier.fillMaxWidth(),
             fontWeight = FontWeight.Medium)
@@ -201,20 +223,23 @@ internal fun SettingsLabel(title: String, subtitle: String, subtitleMaxLines: In
 
 @Composable
 private fun ResetStatisticsDialog(model: GameViewModel, onDismiss: () -> Unit) {
-    AlertDialog(
+    MenuAlertDialog(
         onDismissRequest = { onDismiss() },
         title = { Text("Сбросить статистику?") },
         text =
-            { Text("Будут удалены вся история результатов и рекорды, включая старые. " +
-                "Настройки и текущая партия сохранятся.") },
+            { Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Будут удалены вся история результатов и рекорды, включая старые. " +
+                    "Настройки и текущая партия сохранятся.")
+            } },
         confirmButton = {
-            TextButton(onClick = { model.statistics.resetStatistics(); onDismiss() },
+            MenuTextButton(onClick = { model.statistics.resetStatistics(); onDismiss() },
+                role = "destructive",
                 modifier = Modifier.testTag("confirmResetStatistics")) {
-                Text("Сбросить статистику", color = MaterialTheme.colorScheme.error)
+                Text("Сбросить статистику")
             }
         },
         dismissButton = {
-            TextButton(onClick = { onDismiss() }, modifier = Modifier.testTag("cancelResetStatistics")) {
+            MenuTextButton(onClick = { onDismiss() }, modifier = Modifier.testTag("cancelResetStatistics")) {
                 Text("Отмена")
             }
         }
