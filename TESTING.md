@@ -61,6 +61,35 @@ Agree acceptance criteria and material visual/audio references before implementa
 
 Final local PR checks use `tools/ci/select_checks.py` for affected Android classes plus SmokeTest on an explicit API 35 emulator. App checks retain complete debug JVM coverage even with narrow Android selection. Shared/unmapped inputs select full regression. `Invoke-LocalChecks.ps1` records exact head/base and required results; merge uses that evidence, not a hosted status. The exact-main local release gate adds full tool/JVM/Android/quality checks and independent signed artifact/runtime verification. No GitHub Actions or self-hosted runner is used. SonarQube Cloud is the explicit exception: its scanner runs locally and awaits the remote Quality Gate. Missing local capacity blocks completion. Physical-device use remains limited to device-specific behavior.
 
+## TDD for behavior changes
+
+Use TDD by default for new or changed testable logic and reproducible bug fixes. Apply it as work touches behavior; existing code and tests do not need a retrospective rewrite. The ticket's risk-based check plan identifies the scenario, test level and any exception before implementation. Tests express acceptance behavior and boundaries rather than copying implementation details.
+
+| Change | Development approach |
+| --- | --- |
+| Game rules, scoring, collision, progression, timing and state transitions | Small deterministic JVM RED/GREEN cycles; control clocks and random sources. |
+| Reproducible bug | First run a regression test exposing the bug against unchanged production behavior. An existing failing regression can supply RED. |
+| Persistence, migrations, lifecycle or Compose interaction | Test the contract first at the lowest faithful level; use focused instrumentation when real Android behavior is needed. Keep separately testable rules on the JVM. |
+| Behavior-preserving refactoring | Establish a green baseline from valid existing tests; add passing characterization tests for coverage gaps before refactoring. Do not manufacture RED for unchanged behavior. |
+| Subjective visuals or audio | Agree references and acceptance criteria first. Use TDD for changed measurable behavior, and visual/listening acceptance for subjective qualities; record unavailable acceptance as unknown. |
+| Documentation or instructions | Review content, links and consistency; no artificial tests or Android build. |
+
+### Short development cycle
+
+1. **RED:** Write one small test for the next acceptance scenario and run its focused scope before implementing the behavior. For a bug, keep production behavior unchanged until the test reproduces it. Confirm the observed failure is the missing behavior or bug. Missing SDK/device access, unrelated compilation errors, unexplained timeouts and broken fixtures are not behavior RED. For a new API, minimal declarations or stubs may enable compilation; observe the behavioral failure before adding the implementation.
+2. **GREEN:** Implement only enough to satisfy that scenario, then run the same test scope. Keep assertions tied to requirements; document a genuine requirement/test correction instead of weakening checks to fit the code. Add the next scenario through another small cycle rather than implementing a whole feature after one test.
+3. **REFACTOR:** Improve structure where needed while preserving behavior, and rerun affected tests after changes. If no refactor is needed, say so. Broaden checks for coupled behavior or unresolved risk, then complete the existing final PR/release gates at their normal delivery boundaries.
+
+Use the existing `FocusedJvm` or `FocusedAndroid` runners described above; they select classes, not individual methods. `-Reason` can identify the ticket, scenario and RED/GREEN phase without adding a new runner mode. Direct narrower checks remain available under the normal verification policy. Keep compatible caches; a relevant implementation/test change justifies rerunning the affected scope, while an unchanged successful unrelated suite remains reusable. Do not clean, force reruns or run full regression, Sonar and signed builds at every cycle by habit.
+
+### Evidence and exceptions
+
+Retain the actual test identity, expected/observed RED failure, GREEN result and post-refactor result when applicable, with commands and log/report paths. Preserve relevant failing XML under ignored verification output before another run overwrites it. Existing failed runner summaries remain failed; a nonzero exit alone does not identify a valid RED. Label cached/up-to-date results as reused and only claim observed execution when it occurred. A green final report or coverage percentage alone does not demonstrate that tests preceded implementation.
+
+Record exceptions in the ticket's check plan with the reason and alternative verification. The table covers routine exceptions; a reproducible scenario that cannot reasonably be automated needs the concrete limitation and an alternative reproduction/acceptance check. Missing capacity does not waive a required check. Do not claim TDD if RED was not observed or was written after the behavior; report the actual verification performed. Intermediate RED results never authorize merge, and mandatory final evidence must still pass for the exact PR head/current base.
+
+For the first three suitable, independently authorized logic/bug tickets after [#303](https://github.com/RoyMatus/Swypetris/issues/303), link the preceding pilot records in each ticket's check plan and record its position (1/3, 2/3 or 3/3) to avoid restarting the trial in a new chat. Use the normal completion records to retain actual focused-check durations, substantive rework and acceptance scenarios missed during implementation; unknown active-work time stays unknown. On the third completion, summarize all three outcomes and any observed process cost. This is a small process trial, not proof of a causal speedup; it does not authorize starting future tickets or replacing the existing release gates.
+
 ## Current verified inventory
 
 The latest completed broad local snapshot is [PR #255](https://github.com/RoyMatus/Swypetris/pull/255), head `251af6c66a92da7c9cac7f76fba6ca2ac06fedbb` on 2026-10-12: **154 JVM cases** and **175 unique Android cases**, 172 passed and three opt-in skips. These are case counts, not assertions, portrait/font fixtures or repeated executions. The default Android skips are `EnergyScenarioTest` (measurement), `SignedUpdateScenarioTest` (explicit signed-install fixture) and `FireworkRenderingTest` (explicit frame/clip export); a normal full regression does not exercise them. Both #248 motion exports passed separately, without being counted as additional unique regression cases. Subsequent changes still need their own applicable exact-head evidence.
