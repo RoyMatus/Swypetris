@@ -27,13 +27,11 @@ import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,7 +49,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -169,13 +166,13 @@ private fun StartingLevelSetting(model: GameViewModel) {
 @Composable
 private fun RandomThemeSetting(model: GameViewModel) {
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("randomTheme")
+    Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).testTag("randomTheme")
         .toggleable(model.randomThemeEnabled, interactionSource = interaction, indication = null,
-            role = Role.Checkbox, onValueChange = model.options::setRandomTheme),
+            role = Role.Switch, onValueChange = model.options::setRandomTheme),
         verticalAlignment = Alignment.CenterVertically) {
         Text("Менять тему каждый раунд", Modifier.weight(1f), color = menuUiPalette().text,
-            textAlign = TextAlign.End)
-        MenuCheckbox(model.randomThemeEnabled, onCheckedChange = null,
+            fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        MenuSwitch(model.randomThemeEnabled, onCheckedChange = null,
             modifier = Modifier.testTag("randomThemeBox"), interactionSource = interaction)
     }
 }

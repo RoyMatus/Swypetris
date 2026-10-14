@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -22,8 +23,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 private const val BACKGROUND_VEIL_ALPHA = .72f
@@ -52,18 +53,19 @@ internal fun BackgroundPicker(background: CustomBackground) {
         background.choose(resolver, it)
     }
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().testTag("customBackgroundEnabled")
+        Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).testTag("customBackgroundEnabled")
             .toggleable(background.enabled, interactionSource = interaction, indication = null,
-                role = Role.Checkbox, onValueChange = background::changeEnabled),
+                role = Role.Switch, onValueChange = background::changeEnabled),
             verticalAlignment = Alignment.CenterVertically) {
-            MenuCheckbox(background.enabled, onCheckedChange = null, interactionSource = interaction)
-            Text("Использовать свой фон", Modifier.weight(1f))
+            Text("Использовать свой фон", Modifier.weight(1f), color = menuUiPalette().text,
+                fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            MenuSwitch(background.enabled, onCheckedChange = null,
+                modifier = Modifier.testTag("customBackgroundSwitch"), interactionSource = interaction)
         }
         MenuOutlinedButton(onClick = { picker.launch(arrayOf("image/*")) }, enabled = !background.busy,
             modifier = Modifier.fillMaxWidth().testTag("chooseBackground")) {
-            Text(if (background.busy) "Загрузка…" else "Выбрать файл")
+            Text(if (background.busy) "Загрузка…" else "Выбрать файл (до 16 Мб)")
         }
-        Text("Изображение до 16 МиБ. Оригинал не изменяется.")
         background.error?.let { Text(it, Modifier.testTag("backgroundError")) }
     }
 }
