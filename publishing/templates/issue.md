@@ -15,6 +15,8 @@ Intended behavior: <observable before/after>. Authorized files/systems: <scope>.
 
 Risk and selected local check: <risk -> check and evidence>. Final exact-head PR gate: required. Release gate: <required when releasing, otherwise not applicable>. Testing Project value: <choose only if the current Project schema exposes it; otherwise not applicable>.
 
+TDD plan: <acceptance scenario and selected test level for RED/GREEN, or exception reason and alternative checks under [TESTING.md](../../TESTING.md#tdd-for-behavior-changes)>. Trial position: <1/3, 2/3 or 3/3 with prior pilot ticket links while the three-ticket trial is active; otherwise not applicable>.
+
 ## Metadata decision
 
 Work Type: <value and reason>. Priority: <value and reason>. Status: Backlog until actual execution; In Progress when started; Testing during final verification; Done after delivery. Preserve On Hold until resumed. Labels: <values/reasons>. Milestone: <approved target, Unscheduled, Merged - unreleased, Historical - release unverified or Not planned, with evidence>. Project membership: <verified Project number or access limitation>. Derived/inapplicable fields: <reviewer, repository, timestamps, PRs, parent/progress as applicable>. Cancellation: <reason, `not_planned`, and decision summary only if cancelled>.

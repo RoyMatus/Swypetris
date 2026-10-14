@@ -9,6 +9,8 @@ Locate the existing owner of the affected rule, UI state, or persisted session b
 
 Use the current task's execution profile and check plan; diagnose once at the required AGENTS.md boundary, not once per edit or delegated task. Reuse the parent's source findings and successful test evidence. Reserve heavy Gradle/emulator execution with the verification owner before starting it.
 
+Apply the [TDD procedure and exceptions](../../../TESTING.md#tdd-for-behavior-changes) to new or changed testable behavior and reproducible bugs. Derive one scenario from acceptance criteria, observe the focused test's expected RED before implementing that behavior, make the smallest change for GREEN, then refactor and rerun affected tests. Inspect the failure cause; do not weaken the scenario to fit the implementation. Return the actual RED/GREEN evidence or the recorded exception with alternative checks.
+
 For UI changes, derive placement from available space and insets, and check the affected screen at relevant sizes and font scales. For state changes, preserve the existing source of truth across recomposition, navigation, configuration changes, and saved sessions as applicable. Keep gameplay rules out of the UI when the current architecture permits it.
 
 Before replacing graphics or pixel assertions, inspect the source asset's alpha and coverage and the production scaling/filtering path. Compare filtered output with a like-for-like oracle; retain independent source, geometry, layering, clipping, migration and state assertions. At an early checkpoint, run only the affected photo, field, HUD and Next rendering cases and relevant neighbors, then keep the mandatory final gate. Preserve portrait layout and existing visual design.
