@@ -42,6 +42,17 @@ class LocalCommitTests(unittest.TestCase):
         (source / 'GameMusic.kt').write_text('package ru.itoltec.swypetris\n')
         gate.validate_source_inventory(self.root)
 
+    def test_menu_presentation_helpers_require_complete_regression(self):
+        source = self.root / 'app/src/main/java/ru/itoltec/swypetris'
+        source.mkdir(parents=True)
+        for name in ('MenuSkin.kt', 'MenuScene.kt', 'MenuProgress.kt'):
+            (source / name).write_text('package ru.itoltec.swypetris\n')
+        gate.validate_source_inventory(self.root)
+        for path in source.glob('*.kt'):
+            selected = gate.select([path.relative_to(self.root).as_posix()])
+            self.assertEqual('full', selected['mode'])
+            self.assertEqual('', selected['android'])
+
     def test_rejects_wrong_head(self):
         with self.assertRaises(ValueError):
             gate.clean(self.root, self.base, self.base)
