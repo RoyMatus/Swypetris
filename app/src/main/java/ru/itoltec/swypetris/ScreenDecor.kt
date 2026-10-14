@@ -41,6 +41,10 @@ import androidx.compose.ui.unit.sp
 private const val DARK_SUBTITLE_COLOR = 0xFFADB9E3
 private const val LIGHT_PANEL_TINT = .045f
 private const val DARK_PANEL_TINT = .09f
+private const val LIGHT_HEADER_SCRIM_START_ALPHA = .97f
+private const val LIGHT_HEADER_SCRIM_END_ALPHA = .94f
+private const val DARK_HEADER_SCRIM_START_ALPHA = .90f
+private const val DARK_HEADER_SCRIM_END_ALPHA = .85f
 
 
 /** Compact day/night artwork shared by the non-gameplay screens. */
@@ -55,8 +59,9 @@ internal fun ScreenArtHeader(title: String, subtitle: String, onBack: (() -> Uni
             Image(art, contentDescription = null, modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop)
         }
-        Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(
-            palette.background.copy(alpha = if (palette.light) .16f else .34f), Color.Transparent))))
+        val scrim = if (skin != null) menuHeaderScrim(skin) else Brush.horizontalGradient(listOf(
+            palette.background.copy(alpha = if (palette.light) .16f else .34f), Color.Transparent))
+        Box(Modifier.matchParentSize().background(scrim))
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 8.dp,
             end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) {
@@ -105,9 +110,16 @@ internal fun MenuPageTitle(content: @Composable () -> Unit) {
         if (LocalMenuSkin.current != null) {
             MenuSceneHeader(LocalGamePalette.current, Modifier.matchParentSize())
             val skin = checkNotNull(LocalMenuSkin.current)
-            Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(
-                skin.background.copy(alpha = if (skin.light) .16f else .34f), Color.Transparent))))
+            Box(Modifier.matchParentSize().background(menuHeaderScrim(skin)))
         }
         content()
     }
+}
+
+/** Keep token contrast across the full text region, including the brightest scene details. */
+private fun menuHeaderScrim(skin: MenuSkin): Brush {
+    val startAlpha = if (skin.light) LIGHT_HEADER_SCRIM_START_ALPHA else DARK_HEADER_SCRIM_START_ALPHA
+    val endAlpha = if (skin.light) LIGHT_HEADER_SCRIM_END_ALPHA else DARK_HEADER_SCRIM_END_ALPHA
+    return Brush.horizontalGradient(listOf(skin.background.copy(alpha = startAlpha),
+        skin.background.copy(alpha = endAlpha)))
 }
