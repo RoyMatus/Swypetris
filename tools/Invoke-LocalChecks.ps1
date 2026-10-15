@@ -76,9 +76,9 @@ function Invoke-Check([string]$Name, [string]$Command, [string[]]$Arguments) {
             # Sonar and device stages consume the worktree build outputs. A snapshot
             # alone cannot establish that those live outputs still match the tested APK.
             $prior = Get-Content (Join-Path $resumeDirectory $previousCheckpoint) -Raw | ConvertFrom-Json -AsHashtable
-            foreach ($name in @($prior.files.Keys | Where-Object { $_ -like 'app/build/*' })) {
-                $live = Join-Path $project $name
-                if (!(Test-Path -LiteralPath $live -PathType Leaf) -or (Get-FileHash -LiteralPath $live -Algorithm SHA256).Hash.ToLowerInvariant() -cne $prior.files[$name]) { $reuseEligible = $false; break }
+            foreach ($reportPath in @($prior.files.Keys | Where-Object { $_ -like 'app/build/*' })) {
+                $live = Join-Path $project $reportPath
+                if (!(Test-Path -LiteralPath $live -PathType Leaf) -or (Get-FileHash -LiteralPath $live -Algorithm SHA256).Hash.ToLowerInvariant() -cne $prior.files[$reportPath]) { $reuseEligible = $false; break }
             }
         }
         if ($reuseEligible) {
