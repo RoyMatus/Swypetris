@@ -150,6 +150,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `MenuPreparationTest` | Android audio ownership: asynchronous preparation, cancellation and playback gates | Keep; controlled factory completion checks late resource adoption and release without listening. |
 | `UpdatePersistenceTest` | Android update policy: durable asynchronous writes, manual coalescing and cancellation | Keep; controlled commit outcomes check ordering and main-thread responsiveness without networking. |
 | `MusicSettingsFruitTest` | Compose UI: picker, persistence, fruit visuals and gesture safety | Keep; verifies current UI and interaction rules. |
+| `ContactsAboutTest` | Compose UI/intent: approved attribution, full repository URL, portrait/font fit and legal/privacy navigation | Keep; protects exact copy and neighboring actions. |
 | `PublicationTest` | Android UI/assets: offline privacy and store-media export | Keep; validates packaged privacy and generated media. |
 | `ResultsIntegrationTest` | Compose/storage: record name, game-over result and history | Keep; user flow and persistence. |
 | `SessionLifecycleTest` | Android model/storage: preferences, resume, gesture, clear, corruption, victory | Keep; covers current lifecycle rules with controlled clock. |

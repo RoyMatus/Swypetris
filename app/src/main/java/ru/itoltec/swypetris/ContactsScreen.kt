@@ -83,8 +83,16 @@ fun ContactsScreen(model: GameViewModel) {
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                         SettingsDivider(accent)
-                        Text("Swypetris · © 2026 RoyMatus", color = palette.text,
+                        Text("SWYPETRIS\n\n© Первачук Александр Юрьевич aka Roy Matus\n" +
+                            "Создано с использованием ChatGPT", color = palette.text,
                             style = MaterialTheme.typography.bodyMedium)
+                        val repository = "https://github.com/RoyMatus/Swypetris"
+                        AppActionButton(repository, ActionStyle.TEXT,
+                            Modifier.fillMaxWidth().testTag("aboutRepository"), accent) {
+                            if (!openAppDownload(context, repository)) scope.launch {
+                                messages.showSnackbar("Нет приложения для открытия ссылки.")
+                            }
+                        }
                         AppActionButton("Лицензии и права", ActionStyle.SECONDARY,
                             Modifier.fillMaxWidth().testTag("legal"), palette.piece(Tetromino.J),
                                 model.navigation::legal)
