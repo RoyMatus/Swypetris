@@ -1,0 +1,42 @@
+# Epic #308 development review
+
+Reviewed 2026-10-19. Owner: RoyMatus; implementation/review: Codex. All nine implementations and their GitHub releases are delivered. Final combined RuStore publication is pending; this is not an epic-completion claim. Active development, waiting, rework and total delivery durations are unknown. Recorded check durations overlap and are not added into elapsed work or unique coverage.
+
+## Delivered scope and evidence
+
+The three added children were ordered #319, #321, #320: shared score/session/record behavior first, menu input next, audio calibration after theme interaction. This was a scheduling decision; no artificial blocking dependencies were added. #170/#188 stayed On Hold and #324 was not part of this epic.
+
+| Child | Implementation PRs | Verified GitHub release | Selected signed-gate duration |
+| --- | --- | --- | ---: |
+| #306 verification preflight/checkpoint reliability | #309/#310; correction #318 | [1.8.1](https://github.com/RoyMatus/Swypetris/releases/tag/v1.8.1) | 111.450 s |
+| #307 approved menus, themes, animation and icon | #311/#312 | [1.9.0](https://github.com/RoyMatus/Swypetris/releases/tag/v1.9.0) | 253.220 s |
+| #297 wide theme picker | #313/#314 | [1.9.1](https://github.com/RoyMatus/Swypetris/releases/tag/v1.9.1) | 164.829 s |
+| #293 appearance controls/file guidance | #315 | [1.9.2](https://github.com/RoyMatus/Swypetris/releases/tag/v1.9.2) | 180.864 s |
+| #296 ranked records and reward artwork | #316 | [1.10.0](https://github.com/RoyMatus/Swypetris/releases/tag/v1.10.0) | 495.854 s |
+| #295 About attribution/link | #317; verification correction #318 | [1.10.1](https://github.com/RoyMatus/Swypetris/releases/tag/v1.10.1) | 423.840 s |
+| #319 endless score/rounds, record postcards, smaller gameplay fruits | #322 | [1.11.0](https://github.com/RoyMatus/Swypetris/releases/tag/v1.11.0) | 270.984 s |
+| #321 silent menu theme swipes | #323 | [1.11.1](https://github.com/RoyMatus/Swypetris/releases/tag/v1.11.1) | 467.917 s |
+| #320 effect/music balance | #325 | [1.11.2](https://github.com/RoyMatus/Swypetris/releases/tag/v1.11.2) | 281.469 s |
+
+The table selects the actual published candidate's passed gate, not an earlier same-version attempt. The original runner summaries, failed attempts, XML, staged-report receipts and signed/public provenance remain in retained local verification output.
+
+Selected final Full evidence: #319 retained 172 reused JVM results and executed 221 Android passes/five documented skips (896.106 s Android wrapper); #321 executed 176 JVM and 233 Android passes/five skips (958.380 s wrapper); #320 executed 181 JVM and 233 Android passes/five skips (1041.725 s wrapper). Each also passed Python/Pester, strict lint/detekt/JaCoCo and Sonar. Final #320 Python/Pester stages took 29.875/64.669 s; fresh main Sonar took 152.302 s and independent public release verification 37.920 s. These are different scopes and resource states, not comparative benchmarks. Signed-build reused/from-cache tasks remain labelled as reused.
+
+## Failures, retries and limits
+
+- Rendering/picker/history changes exposed actual geometry, ordering and neighboring UI assertions. Corrections retained independent source-alpha, geometry, clipping, lifecycle and persistence checks. Frame samples on the software emulator do not establish physical performance.
+- Stale JaCoCo at main promotion required #314; checkpoint variable shadowing required #318. Bound report staging later verified source identity and reversible checkout-root substitutions without dropping findings. Failed candidates were not published.
+- #293 signed smoke encountered a SystemUI ANR; diagnostics were preserved and a new complete signed gate passed. Install success was not reported as instrumentation acceptance.
+- #319 Sonar JRE provisioning failed HTTP403. Existing supported local-JDK configuration avoided only JRE downloading, retaining analysis and the Quality Gate; the transient service failure's cause is unknown. An obsolete large-fruit assertion and then a detekt LongMethod failure required focused corrections and a new passing final gate.
+- #321 Sonar reported S3776 complexity36 although the remote gate was OK. The owned native run was interrupted with diagnostics; helper extraction preserved behavior. Intermediate ReturnCount/loop-jump failures were fixed before the final gate, with no suppression or assertion removal.
+- #320 TDD observed three expected assertion failures in five gain cases, then GREEN. Six lint ResourceType fixture errors were corrected using actual resource IDs. The 24-by-8 measurements are supporting evidence; the owner supplied global listening acceptance. Detailed headphone/per-comparison metadata was not supplied and is not reconstructed.
+- Unauthenticated public downloads used bounded HTTP206 ranges with Content-Range, size, hash and certificate checks. Publication was not repeated after a transfer problem. No general speedup is inferred.
+- RuStore APK upload initially timed out without an HTTP response. A bounded HTTP1.1 attempt sent 81,309,870 bytes in40.731 s and returned HTTP400 because the old draft was pinned to code32. Deletion returned HTTP403; the owner removed the stale draft. New final draft2064894379 was created with reviewed metadata. A later native upload returned HTTP200/codeOK in50.395 s; the canonical icon and all three screenshots were accepted and their CDN hashes matched. Submission then returned HTTP400: `Unable to submit. There can be only one main APK file`. Interrupted uploads may have persisted despite missing acknowledgements; the hidden DRAFT package array does not prove absence. The exact count is unknown. Further APK/commit retries stopped; recovery and actual moderation/publication remain pending.
+- The owner's subsequent IDE sync report exposed the missing official Gradle9.3.1 source ZIP checksum (#326). Strict classpath resolution reproduced the same failure in19 s, then passed with the single publisher-corroborated checksum in5 s. The first final-gate Sonar run failed in the Git provider with cross-drive `other has different root`; verification moved to an existing same-drive worktree, retaining diagnostics and ordinary checks. A release/debug signer mismatch then stopped installation; only Swypetris was removed from the owned emulator. #326 merged through PR #327 after 181 reused JVM results, strict lint/detekt/JaCoCo and Sonar, 233 fresh Android passes/five skips (1076.861 s runner), plus 131 Python and 181 Pester passes/two skips. The IDE checkout was synchronized to verified main; interactive IDE reload was not observed.
+- Local duplicate-log removal was rejected by automatic review. Originals and hash-verified copies were retained; the final signed gate used a local D-drive checkout with diagnosed capacity. No cloud checks, runner, credential expansion or unrelated process termination occurred.
+
+## Evidence-supported improvements
+
+Stage bound analysis inputs together and validate hashes, source identity and reversible root adaptation before promotion. Preserve completed unchanged checkpoints and distinguish cached results from fresh execution. Keep public transfers byte/time bounded. Do not retry an ambiguous RuStore APK upload merely because the hidden DRAFT package array is empty: retain the transport result and resolve server-side identity first. Preserve JSON declaration values while canonicalizing object-key order for receipt comparisons; actual value changes must still fail. Add the known HUD layering neighbor to fruit-geometry checkpoints. Validate these practices against unchanged assertions and required final gates; the observed evidence supports no percentage productivity or cold-versus-warm causal claim.
+
+Final exact release identity, compliance findings and actual store outcome belong in [the 1.11.2 compliance report](release-v1.11.2-compliance.md). Remaining action: complete actual RuStore moderation/publication, update this outcome, link the review from #308 and reconcile completion. Branch/worktree cleanup follows epic completion as directed by the owner.
