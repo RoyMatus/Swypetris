@@ -1,6 +1,6 @@
-# Issue #320: provisional effect calibration
+# Issue #320: effect calibration and owner acceptance
 
-**Status: candidate; listening acceptance is not performed. Do not treat this report as release approval.**
+**Status: delivered in GitHub 1.11.2; the owner confirmed listening acceptance on 2026-10-19.** Numerical measurements below support the calibration and do not establish perceived loudness by themselves.
 
 The original 24 theme recordings and eight music files are unchanged. The existing ThemeSounds pair owns separate DROP/CLEAR playback gains; AndroidGameFeedback passes the selected gain to both SoundPool channels. Music stays at its existing 0.4 gain. Stop-before-next, event timing, sample loading, settings and vibration behavior are unchanged.
 
@@ -60,7 +60,7 @@ Observed offline measurement durations: before 29.561 s; after 28.109 s. No caus
 | trepak | -23.3 | -25.1 / -23.5 / -21.8 | -12.3 |
 | vo_sadu | -23.7 | -25.3 / -23.6 / -22.4 | -13.5 |
 
-Numbers below are effect max M minus music active median, in LU (negative means lower in this digital model). All 192 subjective comparisons remain **not performed**.
+Numbers below are effect max M minus music active median, in LU (negative means lower in this digital model). No individual listening log for the 192 comparisons was supplied; the owner's global acceptance is recorded below.
 
 | Effect | barynya | kalinka | kamarinskaya | korobeiniki | sugar_plum | svetit_mesyat | trepak | vo_sadu |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -91,12 +91,12 @@ Numbers below are effect max M minus music active median, in LU (negative means 
 
 The sum-of-separate-true-peaks upper bound is at most -7.2 dBFS for these files/gains, with one effect stream. This supports digital mixing headroom; it does not prove device DSP/speaker behavior or repeated-event comfort.
 
-## Acceptance still required
+## Owner listening acceptance
 
-No listener, documented comfortable Pixel 7 speaker/headphone level or actual subjective result is available. The phone is reachable but its keyguard is locked; installation/player success cannot replace hearing. The existing emulator capture endpoint was previously denied, and its allowlist was not changed. No new recording tooling was built.
+The owner explicitly confirmed in this session on 2026-10-19: "На слух подтверждаю все ок" (listening confirmed, everything is OK), and instructed completion of the epic. This resolved the earlier acceptance hold. Detailed headphone model, headphone level, comfort rating and per-comparison results were not supplied and remain unrecorded. The agent did not hear the physical output. The previously denied emulator capture endpoint was not retried or its allowlist changed; no host microphone or new recording tooling was used.
 
-Required before merge/release: actual Pixel 7 speaker and headphone audition across all effects/tracks, repeated drops and multi-line clears, with music on/off at a recorded fixed comfortable level. Confirm recognizability, balance and fatigue; revise the provisional gains if needed. Keep these results separate from automated checks. Final exact-head and signed/public release gates remain required.
+Separate objective Pixel 7 smoke confirmed unlocked application launch, saved-game continuation, Korobeiniki playback through the speaker and hard drop (score 1642 to 1658). The observed speaker level was 17/25 and was unchanged; the original music-Off selection was restored. These observations establish exercised behavior, not a listening result. All 1140 ZIP entry payloads in the final signed APK match the owner-accepted branch candidate byte-for-byte. The final APK was installed and pulled back with an identical SHA-256, without uninstall/data clear and with first-install time preserved.
 
 ## Automated development checks
 
-Five JVM gain-routing/safety tests observed three expected behavior assertion failures before implementation, then passed; the final fixture uses real raw-resource IDs and passed in 25.140 s. Initial lint failed six ResourceType errors in that fixture; the IDs were corrected without changing assertions. Final strict debug lint and detekt passed (88 s Gradle). Eighteen fresh native audio/settings/vibration cases passed in 169.502 s, including all 24 original recording hashes and SoundPool load/cache/stop/release behavior. These are objective checks, not listening evidence. Final exact-head/full and release evidence are recorded separately in the PR; the mandatory subjective acceptance above remains unknown.
+Five JVM gain-routing/safety tests observed three expected behavior assertion failures before implementation, then passed; the final fixture uses real raw-resource IDs and passed in 25.140 s. Initial lint failed six ResourceType errors in that fixture; the IDs were corrected without changing assertions. Final strict debug lint and detekt passed (88 s Gradle). Eighteen fresh native audio/settings/vibration cases passed in 169.502 s, including all 24 original recording hashes and SoundPool load/cache/stop/release behavior. These are objective checks, not listening evidence. Final Full passed 181 fresh JVM cases and 233 fresh Android cases with five documented opt-in skips, plus Python/Pester and Sonar. Exact-main signed verification passed in 281.469 s and independent public verification in 37.920 s. [PR #325](https://github.com/RoyMatus/Swypetris/pull/325) and [1.11.2](https://github.com/RoyMatus/Swypetris/releases/tag/v1.11.2) retain the delivery identity; the [public provenance](https://github.com/RoyMatus/Swypetris/releases/download/v1.11.2/local-release-provenance.json) binds the actual artifacts and certificates.
