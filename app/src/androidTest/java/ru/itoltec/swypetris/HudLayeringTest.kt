@@ -68,19 +68,7 @@ class HudLayeringTest {
             pairs.chunked(2).zipWithNext().forEach { (above, below) ->
                 assertTrue(below.first().top >= above.maxOf { it.bottom })
             }
-            Fruit.entries.forEachIndexed { index, fruit ->
-                val icon = compose.onNodeWithTag("earnedFruitIcon_${fruit.name}").fetchSemanticsNode().boundsInRoot
-                val cell = pairs[index]
-                // The old HUD slot stays fixed; only the artwork shrinks by the requested factor.
-                val previousArtworkSize = minOf(30 * density, cell.width * .8f).coerceAtLeast(density)
-                assertEquals("Gameplay fruit width is two-thirds of its former size",
-                    previousArtworkSize / 1.5f, icon.width, 1f)
-                assertEquals("Gameplay fruit height is two-thirds of its former size",
-                    previousArtworkSize / 1.5f, icon.height, 1f)
-                assertEquals(cell.left, icon.left, 1f)
-                assertEquals(cell.top, icon.top, 1f)
-                assertTrue(icon.right <= cell.right && icon.bottom <= cell.bottom)
-            }
+            assertReducedFruitArtwork(pairs, density)
             val unobscured = compose.onRoot().captureToImage().toPixelMap()
             val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
             val area = compose.onNodeWithTag("gameArea").fetchSemanticsNode().boundsInRoot
@@ -107,6 +95,22 @@ class HudLayeringTest {
             assertTrue("Must exercise icon overlap $w", coveredIcons > 0)
             assertTrue("Must exercise quantity overlap $w", coveredLabels > 0)
             assertEquals(20 * density, area.right - fruits.right, 1f)
+        }
+    }
+
+    private fun assertReducedFruitArtwork(cells: List<androidx.compose.ui.geometry.Rect>, density: Float) {
+        Fruit.entries.forEachIndexed { index, fruit ->
+            val icon = compose.onNodeWithTag("earnedFruitIcon_${fruit.name}").fetchSemanticsNode().boundsInRoot
+            val cell = cells[index]
+            // The old HUD slot stays fixed; only the artwork shrinks by the requested factor.
+            val previousArtworkSize = minOf(30 * density, cell.width * .8f).coerceAtLeast(density)
+            assertEquals("Gameplay fruit width is two-thirds of its former size",
+                previousArtworkSize / 1.5f, icon.width, 1f)
+            assertEquals("Gameplay fruit height is two-thirds of its former size",
+                previousArtworkSize / 1.5f, icon.height, 1f)
+            assertEquals(cell.left, icon.left, 1f)
+            assertEquals(cell.top, icon.top, 1f)
+            assertTrue(icon.right <= cell.right && icon.bottom <= cell.bottom)
         }
     }
 
