@@ -2583,6 +2583,11 @@
             <sha256 value="0091271ff703c77a01128e1323d9598d1ea74a1f0e7639241f6b2b4576ec2f1d" origin="Verified 2026-10-11 against https://repo.maven.apache.org/maven2/dev/drewhamilton/poko/poko-annotations-jvm/0.22.0/poko-annotations-jvm-0.22.0.module.sha256 (repository SHA-256 sidecar)"/>
          </artifact>
       </component>
+      <component group="gradle" name="gradle" version="9.3.1">
+         <artifact name="gradle-9.3.1-src.zip">
+            <sha256 value="57968e8a09157d7e467486a69224f24eb992df66474a51c0810cb6dc101d654d" origin="Verified 2026-10-19 against https://services.gradle.org/distributions/gradle-9.3.1-src.zip.sha256 (official distribution SHA-256 sidecar)"/>
+         </artifact>
+      </component>
       <component group="io.github.classgraph" name="classgraph" version="4.8.172">
          <artifact name="classgraph-4.8.172.jar">
             <sha256 value="c16b1e231a738992f72950b525cefbe054a408ff642eccbb21cadd5470a05f22" origin="Verified 2026-10-11 against https://repo.maven.apache.org/maven2/io/github/classgraph/classgraph/4.8.172/classgraph-4.8.172.jar (direct artifact)"/>
