@@ -53,7 +53,8 @@ class AndroidGameFeedback(private val context: Context) : GameFeedback {
         val pair = samples.getValue(selected)
         val sample = if (event == FeedbackEvent.DROP) pair.first else pair.second
         if (sound && sample in loaded) {
-            val stream = pool.play(sample, 0.55f, 0.55f, 1, 0, 1f)
+            val volume = selected.volume(event)
+            val stream = pool.play(sample, volume, volume, 1, 0, 1f)
             if (stream != 0) streams.add(stream)
         }
         vibrate(if (event == FeedbackEvent.DROP) HapticPulse.Drop else HapticPulse.Clear, vibration)
