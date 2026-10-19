@@ -59,14 +59,14 @@ data class GameState(
     val board: List<List<Tetromino?>> = BoardGeometry.empty(),
     val active: Piece,
     val next: Tetromino,
-    val score: Int = 0,
+    val score: Long = 0,
     val lines: Int = 0,
     val generation: Int = 0,
     val gameOver: Boolean = false,
     val clearingRows: List<Int> = emptyList(),
     val completedClears: Int = 0,
     val accelerated: Boolean = false,
-    val completedRounds: Int = 0,
+    val completedRounds: Long = 0,
     val victoryPending: Boolean = false,
     val topOut: TopOut? = null,
     val lockRemaining: Long = LockRules.DELAY_MILLIS,
@@ -84,13 +84,11 @@ data class GameState(
     val blockAppearances: List<List<BlockAppearance?>> = emptyList()
 ) {
     init { require(startingLevel in GameRules.MIN_STARTING_LEVEL..GameRules.MAX_STARTING_LEVEL) }
-    /** Terminal victory is distinct from collecting the eight fruits in an ordinary round. */
-    val absoluteVictory: Boolean get() = score >= GameRules.MAX_SCORE
     /** Number of fruits earned in this round, including the complete set on the victory screen. */
     val roundFruits: Int get() = (score / GameRules.FRUIT_STEP - completedRounds * Fruit.entries.size).coerceIn(0,
-        Fruit.entries.size)
+        Fruit.entries.size.toLong()).toInt()
     /** Cumulative collected quantity for each fruit in display order across all completed/current rounds. */
-    val fruitCounts: List<Int> get() = Fruit.entries.map { fruitQuantity(score, it) }
+    val fruitCounts: List<Long> get() = Fruit.entries.map { fruitQuantity(score, it) }
     /** Derives the current level from cleared lines using the shared rules. */
     val level: Int get() = GameRules.level(lines, startingLevel)
     val gravityNanos: Long get() = GameRules.gravityNanos(level, startingLevel)
@@ -106,6 +104,7 @@ class GameEngine(private val random: Random = Random.Default) {
     private val commands = CommandApplication()
     private val placements = PlacementApplication()
     private val pieces = PieceBag()
+    internal val savedGame = SavedGameRecovery()
     /** Snapshots the unconsumed seven-bag order for a resumable session. */
     internal fun remainingBag(): List<Tetromino> = bag.toList()
     /** Restores the unconsumed seven-bag order without drawing another piece. */
@@ -130,19 +129,24 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Clears the board after victory while keeping score and speed. */
     fun nextRound(state: GameState): GameState {
-        if (!state.victoryPending || state.absoluteVictory) return state
+        if (!state.victoryPending) return state
         val fresh = newGame(state.startingLevel)
         return fresh.copy(score = state.score, lines = state.lines,
             generation = state.generation + 1, completedClears = state.completedClears,
             completedRounds = state.completedRounds + 1)
     }
 
+    /** Old terminal saves may have locked their active piece before the next spawn. Keep the settled field. */
+    internal inner class SavedGameRecovery {
+        fun resumeRetiredVictory(state: GameState): GameState {
+            val continuing = state.copy(victoryPending = false)
+            return if (fits(continuing, continuing.active)) continuing else placements.spawnNext(continuing)
+        }
+    }
+
     /** Marks victory after scoring; victory takes precedence over spawn-blocked loss. */
     internal fun checkVictory(state: GameState): GameState =
-        if (state.absoluteVictory)
-            state.copy(score = GameRules.MAX_SCORE, victoryPending = true, gameOver = false, topOut = null,
-                clearingRows = emptyList())
-        else if (state.clearingRows.isEmpty() && state.roundFruits == Fruit.entries.size)
+        if (state.clearingRows.isEmpty() && state.roundFruits == Fruit.entries.size)
             state.copy(victoryPending = true, gameOver = false) else state
 
     /** Checks that every cell of [piece] is inside the board and unoccupied. */
@@ -162,7 +166,6 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Airborne time never consumes the clock or replenishes its reset budget. */
     fun advanceLock(state: GameState, elapsed: Long, allowLock: Boolean = true): GameState {
-        if (state.absoluteVictory) return checkVictory(state)
         return if (state.gameOver || state.victoryPending || state.clearingRows.isNotEmpty()) state
         else if (!grounded(state)) state else {
         val timed = state.copy(lockRemaining = (state.lockRemaining - elapsed.coerceAtLeast(0)).coerceAtLeast(0))
@@ -172,7 +175,6 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Applies one command; invalid movement and commands after loss leave state unchanged. */
     fun apply(state: GameState, command: GameCommand): GameState {
-        if (state.absoluteVictory) return checkVictory(state)
         return if (state.gameOver || state.victoryPending || state.clearingRows.isNotEmpty()) state
         else checkVictory(commands.apply(state, command))
     }
@@ -211,7 +213,7 @@ class GameEngine(private val random: Random = Random.Default) {
                         GameRules.dropScore(command,
                         distance)),
                         hardDropCells = distance, lastRotationKick = if (distance == 0) state.lastRotationKick else -1)
-                    if (dropped.absoluteVictory) dropped else placements.lock(dropped)
+                    placements.lock(dropped)
                 }
                 GameCommand.HOLD -> {
                     hold(state)
@@ -250,8 +252,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Removes marked rows and awards points exactly once after the animation. */
     fun finishClear(state: GameState): GameState {
-        if (state.absoluteVictory || state.clearingRows.isEmpty())
-            return if (state.absoluteVictory) checkVictory(state) else state
+        if (state.clearingRows.isEmpty()) return state
         val cleared = state.clearingRows.size
         val remaining = state.board.filterIndexed { index, _ -> index !in state.clearingRows }
         val board = List(cleared) { List<Tetromino?>(10) { null } } + remaining
@@ -292,7 +293,6 @@ class GameEngine(private val random: Random = Random.Default) {
 
         /** Spawns the next piece after locking without a clear or once a clear finishes. */
         fun spawnNext(state: GameState): GameState {
-            if (state.absoluteVictory) return checkVictory(state)
             val nextState = state.copy(active = spawnPiece(state.next), next = pieces.draw(),
                 generation = state.generation + 1,
                 accelerated = false, lockRemaining = LockRules.DELAY_MILLIS, lockResets = 0, holdUsed = false,

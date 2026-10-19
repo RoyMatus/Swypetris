@@ -176,7 +176,7 @@ class GameUiTest {
         compose.onNodeWithTag("gameArea").performTouchInput {
             swipe(center, center + Offset(0f, distance), 100)
         }
-        var score = 0
+        var score = 0L
         compose.runOnIdle {
             assertEquals(1, model().game!!.generation)
             assertTrue(model().game!!.score > 0)
@@ -188,7 +188,7 @@ class GameUiTest {
         }
         compose.onNodeWithText("Новая игра").performClick()
         compose.runOnIdle {
-            assertEquals(0, model().game!!.score)
+            assertEquals(0L, model().game!!.score)
             assertEquals(0, model().game!!.generation)
             model().pause()
         }

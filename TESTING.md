@@ -129,9 +129,13 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `RecordHistoryTest` | JVM: strict records per difficulty and legacy group | Keep; UI results test checks persistence and entry. |
 | `RewardsTest` | JVM: fruit thresholds, fixed line reward, cell-based gesture steps | Keep; all three are current rules, though the gesture case spans two areas. |
 | `VictoryRulesTest` | JVM: threshold, overshoot, second round, victory over loss | Keep; state transitions are independent of the victory UI test. |
-| `AbsoluteVictoryRulesTest` | JVM: terminal score cap, exact/overshot boundaries, frozen commands, queue and next-round guard | Keep; preserves scoring and line counters below and at 999 999. |
-| `AbsoluteVictoryIntegrationTest` | Android: terminal journal, name validation, restored postcard phase, static PNG bytes and read-only URI | Keep; checks platform serialization and image sharing independently of layout. |
-| `AbsoluteVictoryUiTest` | Compose: name entry and postcard across portrait viewports and larger fonts | Keep; verifies reachable actions and in-memory image/bounds contracts. |
+| `AbsoluteVictoryRulesTest` | JVM: retired score boundary, normal spawning/loss and overflow-safe larger scores | Updated for endless play; no terminal score is introduced. |
+| `EndlessProgressionTest` | JVM: movement/scoring across 999,999 and subsequent ordinary rounds with unchanged gravity | Protects continuation beyond the retired cap. |
+| `AbsoluteVictoryIntegrationTest` | Android: recovery from retired terminal saves, exact numeric persistence, same-ID record continuation and actual postcard PNG/read-only URI | Preserves old saves/history and tests image sharing independently of layout. |
+| `AbsoluteVictoryUiTest` | Compose: round-record share arrow and Continue across portrait/font sizes, native chooser cancellation/return | Replaces the retired terminal name-entry flow. |
+| `RoundRecordSharingTest` | Android: strict record-at-start eligibility, ties, repeated qualifying rounds, lifecycle and restoration | Sharing never writes a result or ends the run. |
+| `RecordShareFailureTest` | Compose: dismissible missing-receiver error and continued play without a history write | A recoverable share error must preserve the round. |
+| `EndlessScoreUiTest` | Compose: full Long record score at narrow portrait/large font | Oversized scores wrap between digit groups without clipping. |
 | `BrandNavigationTest` | Android UI: menu order, compact layout, contacts and intent failure | Keep; needs Compose and platform intents. |
 | `EnergyScenarioTest` | Android measurement: repeatable gameplay workload | Keep opt-in; its real-time sleep is for measurement, never a normal correctness assertion. |
 | `ForegroundUiTest` | Android lifecycle: locked portrait board bounds, notification shade, task reuse, insets | Keep; requires system UI and Activity state. |
@@ -219,7 +223,7 @@ changes. Run summaries identify subsequent tested heads.
 | Supported behavior | Owning regression groups |
 | --- | --- |
 | Spawn, collision, rotation, locking, hidden rows and loss | Engine, SRS, hidden-buffer, placement, lock-delay and geometry; GameplaySurface/Foreground UI. |
-| Scoring, progression, fruits, ordinary/absolute victory | Scoring/Progression/Rewards/Victory/AbsoluteVictory rules; session/theme/absolute UI/integration; motion/particles and #248 clips. |
+| Scoring, progression, fruits, rounds and record sharing | Scoring/Progression/Rewards/Victory/Endless rules; session/theme/record-share UI/integration and retired-terminal migration; motion/particles and opt-in captures. |
 | Gestures, Hold, Ghost and Next | GestureController/GestureHold/Hold and queue rules; GestureDensity/HoldIntegration/NextQueue/GameUi. |
 | Pause/Continue, navigation, recreation and durable saves | Foreground/SessionLifecycle/SessionWrite/GameTimer/LaunchIntroRecreation, navigation and saved queue. |
 | Settings, results and historical data | StartingLevel/Vibration/MusicSettings/StatisticsReset; ResultsIntegration/RecordHistory/HistoryCache, archive/current ordering and long labels. |

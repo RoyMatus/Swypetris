@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -63,7 +65,7 @@ internal fun RecordHistoryCard(result: GameResult, isBest: Boolean) {
 }
 
 @Composable
-private fun BestRecordHero(result: GameResult, date: String, quantities: List<Int>, palette: GamePalette) {
+private fun BestRecordHero(result: GameResult, date: String, quantities: List<Long>, palette: GamePalette) {
     val contract = rememberRecordArtworkContract()
     val artworkWidthNeeded = recordArtworkMinimumWidth(quantities, contract)
     val textMeasurer = rememberTextMeasurer()
@@ -112,13 +114,15 @@ private fun CompactRecordIdentity(result: GameResult, date: String, palette: Gam
         val stacked = scoreWidth > maxWidth * .42f
         val fontScaleFactor = if (scoreWidth > maxWidth) maxWidth / scoreWidth else 1f
         val scoreSize = (24f * fontScaleFactor).coerceAtLeast(14f).sp
+        val wrappedScore = breakableRecordScore(score, maxWidth, scoreSize)
         if (stacked) {
             Column(Modifier.fillMaxWidth()) {
                 Text(result.name, Modifier.fillMaxWidth().testTag("recordName-${result.id}"),
                     fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold, color = palette.text)
-                Text(score, Modifier.fillMaxWidth().testTag("recordScore-${result.id}"),
+                Text(wrappedScore,
+                    Modifier.fillMaxWidth().testTag("recordScore-${result.id}"),
                     fontSize = scoreSize, lineHeight = 30.sp, fontWeight = FontWeight.Bold,
-                    color = palette.accent, textAlign = TextAlign.End, maxLines = 1, softWrap = false)
+                    color = palette.accent, textAlign = TextAlign.End)
             }
         } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Top) {
@@ -157,9 +161,10 @@ private fun BestRecordIdentity(
         Text("Лучший результат", fontSize = 12.sp, lineHeight = 16.sp,
             fontWeight = FontWeight.SemiBold, color = palette.secondary,
             modifier = Modifier.testTag("bestRecordEyebrow"))
-        Text(groupedScore, Modifier.width(availableWidthDp.dp).testTag("recordScore-${result.id}"),
+        Text(breakableRecordScore(groupedScore, availableWidthDp.dp, 34.sp),
+            Modifier.width(availableWidthDp.dp).testTag("recordScore-${result.id}"),
             fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Bold,
-            color = palette.accent, maxLines = 1, softWrap = false)
+            color = palette.accent)
         Text("очков", color = palette.muted, fontSize = 12.sp, lineHeight = 16.sp)
         Spacer(Modifier.height(8.dp))
         Text(result.name, Modifier.fillMaxWidth().testTag("recordName-${result.id}"),
@@ -167,6 +172,16 @@ private fun BestRecordIdentity(
         Text(date, Modifier.fillMaxWidth().testTag("recordDate-${result.id}"),
             color = palette.muted, fontSize = 12.sp, lineHeight = 16.sp)
     }
+}
+
+/** Preserve the normal score typography; only an oversized value may wrap between digit groups. */
+@Composable
+private fun breakableRecordScore(score: String, width: Dp, fontSize: TextUnit): String {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val measured = measurer.measure(score, style = TextStyle(fontSize = fontSize, fontWeight = FontWeight.Bold),
+        constraints = Constraints()).size.width
+    return if (measured > with(density) { width.toPx() }) score.replace('\u202F', ' ') else score
 }
 
 @Composable
@@ -202,7 +217,7 @@ private fun HistoryMetrics(result: GameResult, circlesKnown: Boolean, palette: G
     }
 }
 
-internal fun groupedRecordScore(score: Int): String {
+internal fun groupedRecordScore(score: Long): String {
     val raw = score.toString()
     val start = if (raw.startsWith('-')) 1 else 0
     return buildString {

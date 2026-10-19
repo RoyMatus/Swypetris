@@ -5,7 +5,7 @@ import org.junit.Test
 
 class RecordHistoryTest {
     private fun result(id: Int, score: Int, mode: Difficulty? = null, version: Int = 4) =
-        GameResult("$id", id.toLong(), "Игрок", score, 0, 1, 0, version, difficulty = mode)
+        GameResult("$id", id.toLong(), "Игрок", score.toLong(), 0, 1, 0, version, difficulty = mode)
 
     @Test fun onlyStrictChronologicalRecordsWithinEachGroup() {
         val history = listOf(result(1, 100), result(2, 50), result(3, 100), result(4, 200),

@@ -61,8 +61,9 @@ class PostcardProvider : FileProvider()
 
 /** A fixed-size image is independent of device size, animation phase, and screenshot permissions. */
 internal object AbsolutePostcard {
-    fun create(context: Context, name: String): Bitmap {
+    fun create(context: Context, name: String, score: Long): Bitmap {
         require(name.isNotBlank() && name.length <= MAX_PLAYER_NAME_LENGTH)
+        require(score >= 0)
         val result = createBitmap(POSTCARD_WIDTH, POSTCARD_HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
         val artwork = BitmapFactory.decodeResource(context.resources, R.drawable.victory_foreground)
@@ -77,11 +78,11 @@ internal object AbsolutePostcard {
             }
         } finally { artwork.recycle() }
         frame(canvas)
-        text(canvas, "Я прошёл Swypetris!", CAPTION_SIZE, CAPTION_TOP, Color.WHITE)
+        text(canvas, "Мой рекорд в Swypetris!", CAPTION_SIZE, CAPTION_TOP, Color.WHITE)
         text(canvas, name.trim(), NAME_SIZE, NAME_TOP, POSTCARD_GOLD, NAME_HEIGHT)
-        text(canvas, "АБСОЛЮТНЫЙ\nПОБЕДИТЕЛЬ", TITLE_SIZE, TITLE_TOP, POSTCARD_GOLD, TITLE_HEIGHT)
-        text(canvas, "Максимальный счёт", SCORE_LABEL_SIZE, SCORE_LABEL_TOP, Color.WHITE)
-        text(canvas, "999 999", SCORE_SIZE, SCORE_TOP, POSTCARD_GOLD)
+        text(canvas, "НОВЫЙ\nРЕКОРД", TITLE_SIZE, TITLE_TOP, POSTCARD_GOLD, TITLE_HEIGHT)
+        text(canvas, "Счёт", SCORE_LABEL_SIZE, SCORE_LABEL_TOP, Color.WHITE)
+        text(canvas, groupedRecordScore(score), SCORE_SIZE, SCORE_TOP, POSTCARD_GOLD)
         return result
     }
 

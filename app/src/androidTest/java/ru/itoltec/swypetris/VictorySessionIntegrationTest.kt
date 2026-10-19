@@ -31,7 +31,7 @@ class VictorySessionIntegrationTest {
             now += 100
             model.input.command(GameCommand.SOFT_DROP)
             assertEquals(GameScreen.VICTORY, model.screen)
-            assertEquals(80000, model.game!!.score)
+            assertEquals(80000L, model.game!!.score)
             assertEquals(1, music.modes.count { it == MusicMode.RECORD })
             assertTrue(model.results.isEmpty())
 
@@ -44,11 +44,11 @@ class VictorySessionIntegrationTest {
 
             model.nextRound()
             assertEquals(GameScreen.PLAYING, model.screen)
-            assertEquals(80000, model.game!!.score)
+            assertEquals(80000L, model.game!!.score)
             assertEquals(100, model.game!!.lines)
             assertEquals(initialGravity, model.game!!.gravityMillis)
             assertEquals(11, model.game!!.level)
-            assertEquals(1, model.game!!.completedRounds)
+            assertEquals(1L, model.game!!.completedRounds)
             assertEquals(0, model.game!!.roundFruits)
             assertTrue(model.game!!.board.flatten().all { it == null })
             val state = model.game
@@ -57,7 +57,7 @@ class VictorySessionIntegrationTest {
 
             repeat(30) { model.input.command(GameCommand.HARD_DROP) }
             assertEquals(1, model.results.size)
-            assertEquals(1, model.results.single().completedRounds)
+            assertEquals(1L, model.results.single().completedRounds)
             assertEquals(100L, model.results.single().durationMillis)
         }
     }

@@ -119,7 +119,7 @@ class GameTimerTest {
         finishClear(model)
         assertEquals(10, model.game!!.lines)
         assertEquals(2, model.game!!.level)
-        assertEquals(100, model.game!!.score)
+        assertEquals(100L, model.game!!.score)
         assertEquals(now + 952L, timer.deadline)
         model.pause()
         val restored = GameViewModel(app, null, { now }, false)
@@ -135,7 +135,7 @@ class GameTimerTest {
     }
 
     @Test fun terminalStatesCancelTimerAndNextRoundSchedulesAgain() = main {
-        val model = model(state().copy(score = GameRules.ROUND_SCORE - 1))
+        val model = model(state().copy(score = GameRules.ROUND_SCORE.toLong() - 1))
         model.input.command(GameCommand.SOFT_DROP)
         assertEquals(GameScreen.VICTORY, model.screen)
         assertNull(timer.action)

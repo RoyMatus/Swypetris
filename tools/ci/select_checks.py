@@ -74,7 +74,7 @@ SOURCE_GROUPS = {
 FULL_SOURCES = {
     "VictoryArtwork.kt", "VictoryFireworks.kt", "VictoryLayout.kt",
     "BackgroundCrop.kt", "BackgroundStore.kt", "BackgroundPicker.kt", "CustomBackground.kt",
-    "AbsolutePostcard.kt", "AbsoluteVictoryScreen.kt",
+    "AbsolutePostcard.kt", "RecordShareAction.kt",
     "GameContent.kt", "GameBoard.kt", "BlockAppearance.kt", "BlockMaterial.kt",
     "ThemeSounds.kt",
     "MainMenu.kt", "MenuAction.kt", "AppNavigation.kt",

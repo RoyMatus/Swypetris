@@ -95,10 +95,10 @@ class LineClearUiTest {
             model.simulation.advanceFrame(now)
             assertTrue(model.game!!.clearingRows.isEmpty())
             assertEquals(1, model.game!!.generation)
-            assertEquals(100, model.game!!.score)
+            assertEquals(100L, model.game!!.score)
             assertEquals(Tetromino.T, model.game!!.active.type)
             model.simulation.advanceFrame(now)
-            assertEquals(100, model.game!!.score)
+            assertEquals(100L, model.game!!.score)
         }
         val cleared = compose.onNodeWithTag("board").captureToImage().toPixelMap()
         assertNotEquals(white[white.width / 20, bottomRowY],
@@ -119,7 +119,7 @@ class LineClearUiTest {
             assertTrue(model.game!!.clearingRows.isEmpty())
             now += 300
             model.simulation.advanceFrame(now)
-            assertEquals(0, model.game!!.score)
+            assertEquals(0L, model.game!!.score)
             assertEquals(0, model.game!!.generation)
         }
     }
@@ -270,7 +270,7 @@ class LineClearUiTest {
             }
             compose.runOnIdle {
                 assertEquals(1, model.game!!.generation)
-                assertEquals(800, model.game!!.score)
+                assertEquals(800L, model.game!!.score)
                 assertTrue("Must render several real animation frames", costs.size >= 5)
             }
         } finally {
@@ -303,10 +303,10 @@ class LineClearUiTest {
             now++
             restored.simulation.advanceFrame(now)
             assertEquals(1, restored.game!!.generation)
-            assertEquals(100, restored.game!!.score)
+            assertEquals(100L, restored.game!!.score)
             restored.simulation.advanceFrame(now)
             assertEquals(1, restored.game!!.generation)
-            assertEquals(100, restored.game!!.score)
+            assertEquals(100L, restored.game!!.score)
             restored.pause()
         }
     }

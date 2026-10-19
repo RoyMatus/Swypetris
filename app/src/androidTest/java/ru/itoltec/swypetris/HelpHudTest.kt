@@ -91,7 +91,8 @@ class HelpHudTest {
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 Box(Modifier.size(320.dp, 480.dp)) {
-                    val state = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = score, lines = lines)
+                    val state = GameState(active = Piece(Tetromino.O), next = Tetromino.T,
+                        score = score.toLong(), lines = lines)
                     Board(state)
                     GameHud(state)
                 }

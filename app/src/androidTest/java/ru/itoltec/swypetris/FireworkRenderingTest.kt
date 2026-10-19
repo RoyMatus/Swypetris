@@ -123,14 +123,14 @@ private object RealVictoryCapture {
     fun export(application: Application, phase: String) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val root = File(application.getExternalFilesDir(null), "victory-motion/$phase")
-        for (absolute in listOf(false, true)) {
-            seed(application, absolute)
+        for (laterRound in listOf(false, true)) {
+            seed(application, laterRound)
             // startActivitySync/ActivityScenario waits for idle, which a live animation need not reach.
             application.startActivity(android.content.Intent(application, MainActivity::class.java)
                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-            val activity = awaitScene(instrumentation, absolute)
+            val activity = awaitScene(instrumentation)
             try {
-                val directory = File(root, if (absolute) "absolute" else "round")
+                val directory = File(root, if (laterRound) "later-round" else "round")
                 check(directory.isDirectory || directory.mkdirs())
                 record(instrumentation, activity, directory)
             } finally {
@@ -144,7 +144,7 @@ private object RealVictoryCapture {
                 check(destroyed) { "Recorded Activity did not finish" }
             }
         }
-        val postcard = AbsolutePostcard.create(application, "Roy")
+        val postcard = AbsolutePostcard.create(application, "Roy", 1_040_000)
         try {
             File(root, "postcard.png").outputStream().use {
                 check(postcard.compress(Bitmap.CompressFormat.PNG, 100, it))
@@ -155,18 +155,17 @@ private object RealVictoryCapture {
     private fun seed(application: Application, absolute: Boolean) {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             val model = GameViewModel(application, GameState(active = Piece(Tetromino.O), next = Tetromino.T,
-                score = if (absolute) GameRules.MAX_SCORE - 1 else 79999, completedRounds = if (absolute) 12 else 0),
+                score = if (absolute) 1_039_999L else 79999, completedRounds = if (absolute) 12L else 0L),
                 { 1000L }, false)
             model.options.setSound(false)
             model.options.setVibration(false)
             model.options.chooseMusic(MusicSelection.Off)
             model.input.command(GameCommand.SOFT_DROP)
-            if (absolute) model.absolute.changeName("Roy")
             model.onBackground()
         }
     }
 
-    private fun awaitScene(instrumentation: android.app.Instrumentation, absolute: Boolean): MainActivity {
+    private fun awaitScene(instrumentation: android.app.Instrumentation): MainActivity {
         val deadline = SystemClock.elapsedRealtime() + READY_MILLIS
         var ready: MainActivity? = null
         while (ready == null && SystemClock.elapsedRealtime() < deadline) {
@@ -177,7 +176,7 @@ private object RealVictoryCapture {
                     val model = ViewModelProvider(activity)[GameViewModel::class.java]
                     model.navigation.finishLaunchIntro()
                     model.resume()
-                    if (model.screen == if (absolute) GameScreen.ABSOLUTE_VICTORY else GameScreen.VICTORY)
+                    if (model.screen == GameScreen.VICTORY)
                         ready = activity
                 }
             }

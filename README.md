@@ -80,7 +80,7 @@ The current rules version is **7**. Placement awards use the level **before** th
 - **Combo:** consecutive line-clearing placements add `50 × combo count × level`; the first clear has count zero.
 - **Perfect Clear:** emptying the entire logical board adds 800 / 1,200 / 1,800 / 2,000 × level for one / two / three / four lines. A back-to-back four-line Perfect Clear adds 3,200 × level instead.
 - **Manual Soft Drop:** 1 point per cell. **Hard Drop:** 2 points per cell. These awards are not multiplied by level.
-- Automatic gravity gives no points. The current game's maximum score is **999,999 points**.
+- Automatic gravity gives no points. Play continues beyond **999,999 points** with the existing maximum falling speed.
 
 ### Fruits and victory rounds
 
@@ -90,11 +90,11 @@ Every **10,000 points** awards the next fruit:
 
 Collecting all eight completes a round: the first victory threshold is **80,000 points**. A dedicated victory screen shows a block-built trophy, the fruit collection, the completed round, and total score. Play waits for an explicit continuation action.
 
-Both victory screens use pixel fireworks with launches, compact flashes, outward sparks, falling trails and fading embers. Animation stops while backgrounded; on Android 8.0+, disabled system animations use a static fallback.
+The round-victory screen uses pixel fireworks with launches, compact flashes, outward sparks, falling trails and fading embers. Animation stops while backgrounded; on Android 8.0+, disabled system animations use a static fallback.
 
 The next round starts on an empty board while retaining **score, cleared lines, level, starting level, and speed**. Points above the threshold are retained. Each additional round requires another 80,000 cumulative points. Fruit quantities reflect total score, including awards that cross several thresholds at once.
 
-Reaching **999,999** ends the game in Absolute Victory, including an award that would overshoot the limit. The final score is capped, and no further gameplay round begins. Enter a name to create a static victory postcard and share it through Android; the saved celebration/postcard can be restored after reopening the app.
+There is no terminal score victory. At a round victory, a score strictly above the record before the current run unlocks a bottom-right share arrow. It creates a static PNG postcard with the actual score and saved player name, then opens Android sharing. Every later qualifying round in the same run can also be shared. Cancelling sharing or returning from another app retains the victory and Next round action. Sharing does not finish the run or write a result. Older absolute-victory saves recover into playable sessions.
 
 ### Pause, autosave, and personal results
 
@@ -227,7 +227,7 @@ steps = начальный уровень - 1 + (уровень - начальн
 - **Комбо:** последовательные размещения с очисткой добавляют `50 × номер комбо × уровень`; у первой очистки номер равен нулю.
 - **Perfect Clear:** полное опустошение логического поля добавляет 800 / 1 200 / 1 800 / 2 000 × уровень за одну / две / три / четыре строки. Для back-to-back Perfect Clear на четыре строки добавляется 3 200 × уровень вместо 2 000.
 - **Ручной спуск:** 1 очко за клетку. **Мгновенный бросок:** 2 очка за клетку. Эти награды не умножаются на уровень.
-- Автоматическое падение очков не даёт. Максимальный счёт текущей партии — **999 999 очков**.
+- Автоматическое падение очков не даёт. Игра продолжается и после **999 999 очков**; предел скорости падения сохраняется.
 
 ### Фрукты и победные круги
 
@@ -237,11 +237,11 @@ steps = начальный уровень - 1 + (уровень - начальн
 
 Сбор всех восьми завершает круг: первая победа наступает при **80 000 очков**. Отдельный экран победы показывает кубок из блоков, коллекцию фруктов, пройденный круг и общий счёт. Продолжение требует явного нажатия кнопки.
 
-Оба экрана победы показывают пиксельный салют: взлёт, короткую вспышку, разлёт искр, падение следов и затухание. В фоне анимация останавливается; на Android 8.0+ при отключённых системных анимациях используется неподвижный вариант.
+Экран победы в круге показывает пиксельный салют: взлёт, короткую вспышку, разлёт искр, падение следов и затухание. В фоне анимация останавливается; на Android 8.0+ при отключённых системных анимациях используется неподвижный вариант.
 
 Следующий круг начинается на пустом поле, сохраняя **очки, очищенные линии, уровень, начальный уровень и скорость**. Очки сверх порога сохраняются. Каждый следующий круг требует ещё 80 000 очков в общем счёте. Количество фруктов определяется суммарными очками, включая награды, пересекающие сразу несколько порогов.
 
-При достижении **999 999** партия завершается абсолютной победой, в том числе если награда превышает этот предел. Итоговый счёт ограничивается этим значением, следующий игровой круг не начинается. После ввода имени можно создать неподвижную победную открытку и поделиться ею через Android; сохранённая победа/открытка восстанавливается после повторного запуска.
+Победы, завершающей игру по счёту, больше нет. Если счёт при победе в круге строго выше рекорда до начала партии, справа внизу появляется стрелка отправки. Она создаёт открытку PNG с реальным счётом и сохранённым именем игрока, затем открывает системный выбор приложения. Можно поделиться и каждым последующим подходящим кругом той же партии. После отмены отправки или возврата из другого приложения остаются победный экран и кнопка следующего круга. Отправка не завершает партию и не записывает результат. Старые сохранения абсолютной победы восстанавливаются для продолжения игры.
 
 ### Пауза, автосохранение и личные результаты
 

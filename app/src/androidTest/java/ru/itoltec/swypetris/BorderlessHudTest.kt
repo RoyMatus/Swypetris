@@ -67,7 +67,7 @@ class BorderlessHudTest {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale),
                 LocalGamePalette provides palette) {
                 val state = GameState(active = Piece(Tetromino.S, y = 8), next = next,
-                    held = held, score = scoreValue)
+                    held = held, score = scoreValue.toLong())
                 Box(Modifier.size(width.dp, height.dp).windowInsetsPadding(
                     WindowInsets(left = 12.dp, top = 52.dp, right = 8.dp, bottom = 0.dp))) {
                     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -93,7 +93,7 @@ class BorderlessHudTest {
         }
     }
     private fun stateFruitCounts(score: Int) = GameState(active = Piece(Tetromino.O), next = Tetromino.T,
-        score = score).fruitCounts
+        score = score.toLong()).fruitCounts
 
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun framelessHoldMatchesActiveMaterialInBothAvailabilityStates() {

@@ -51,11 +51,11 @@ class ScoringTest {
         val engine = GameEngine()
         val rotated = engine.apply(fullZero(), GameCommand.CLOCKWISE)
         val locked = engine.apply(rotated, GameCommand.HARD_DROP)
-        assertEquals(400, locked.score)
+        assertEquals(400L, locked.score)
         assertEquals(Spin.FULL, locked.placement!!.spin)
         assertEquals(locked, engine.finishClear(locked))
         val tick = engine.apply(locked, GameCommand.TICK)
-        assertEquals(400, tick.score)
+        assertEquals(400L, tick.score)
     }
 
     @Test fun clearUsesCapturedLevelAndCannotBeAwardedTwice() {
@@ -65,10 +65,10 @@ class ScoringTest {
         board[BoardGeometry.row(10)][0] = Tetromino.L
         val start = GameState(board = board, active = Piece(Tetromino.I,x=2,y=16,rotation=1), next = Tetromino.O)
         val pending = engine.apply(start, GameCommand.HARD_DROP)
-        assertEquals(0, pending.score)
+        assertEquals(0L, pending.score)
         assertEquals(1, pending.placement!!.level)
         val finished = engine.finishClear(pending.copy(score = 10000, lines = 100))
-        assertEquals(10800, finished.score)
+        assertEquals(10800L, finished.score)
         assertEquals(finished, engine.finishClear(finished))
     }
 }

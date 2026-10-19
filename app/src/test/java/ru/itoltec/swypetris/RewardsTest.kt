@@ -7,32 +7,32 @@ import org.junit.Test
 class RewardsTest {
     @Test fun recordDesignExamplesAgreeWithLiveCumulativeRewards() {
         val fixtures = listOf(
-            2_466 to List(8) { 0 },
-            42_500 to listOf(1, 1, 1, 1, 0, 0, 0, 0),
-            80_000 to List(8) { 1 },
-            90_000 to listOf(2, 1, 1, 1, 1, 1, 1, 1),
-            788_267 to listOf(10, 10, 10, 10, 10, 10, 9, 9),
-            999_999 to listOf(13, 13, 13, 12, 12, 12, 12, 12)
+            2_466 to List(8) { 0L },
+            42_500 to listOf(1L, 1L, 1L, 1L, 0L, 0L, 0L, 0L),
+            80_000 to List(8) { 1L },
+            90_000 to listOf(2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L),
+            788_267 to listOf(10L, 10L, 10L, 10L, 10L, 10L, 9L, 9L),
+            999_999 to listOf(13L, 13L, 13L, 12L, 12L, 12L, 12L, 12L)
         )
         fixtures.forEach { (score, counts) ->
-            assertEquals(counts, Fruit.entries.map { fruitQuantity(score, it) })
+            assertEquals(counts, Fruit.entries.map { fruitQuantity(score.toLong(), it) })
             for (rounds in listOf(0, 1, 12)) {
                 assertEquals(counts, GameState(active = Piece(Tetromino.O), next = Tetromino.T,
-                    score = score, completedRounds = rounds).fruitCounts)
+                    score = score.toLong(), completedRounds = rounds.toLong()).fruitCounts)
             }
         }
     }
 
     /** Все пороги включительны, коллекция повторяется после восьмого фрукта. */
     @Test fun fruitThresholdsAndCycles() {
-        assertEquals(0, fruitCount(9999))
-        assertEquals(1, fruitCount(10000))
-        assertEquals(1, fruitQuantity(10000, Fruit.CHERRY))
-        assertEquals(0, fruitQuantity(10000, Fruit.BANANA))
-        assertEquals(2, fruitQuantity(90000, Fruit.CHERRY))
-        assertEquals(1, fruitQuantity(90000, Fruit.BANANA))
+        assertEquals(0L, fruitCount(9999))
+        assertEquals(1L, fruitCount(10000))
+        assertEquals(1L, fruitQuantity(10000, Fruit.CHERRY))
+        assertEquals(0L, fruitQuantity(10000, Fruit.BANANA))
+        assertEquals(2L, fruitQuantity(90000, Fruit.CHERRY))
+        assertEquals(1L, fruitQuantity(90000, Fruit.BANANA))
         for (score in listOf(0, 10000, 20000, 80000, 90000, 200000)) {
-            assertEquals(fruitCount(score), Fruit.entries.sumOf { fruitQuantity(score, it) })
+            assertEquals(fruitCount(score.toLong()), Fruit.entries.sumOf { fruitQuantity(score.toLong(), it) })
         }
     }
 
@@ -40,7 +40,7 @@ class RewardsTest {
     @Test fun scoreUsesCapturedLevelAndPerfectClearBonus() {
         val engine = GameEngine()
         val state = engine.newGame().copy(lines = 100, clearingRows = listOf(16, 17, 18, 19).map(BoardGeometry::row))
-        assertEquals(30800, engine.finishClear(state).score)
+        assertEquals(30800L, engine.finishClear(state).score)
     }
 
     /** Cell width controls movement, and holding never creates repeated actions. */

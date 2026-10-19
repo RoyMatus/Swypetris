@@ -32,15 +32,15 @@ class StatisticsResetTest {
         compose.onNodeWithTag("cancelResetStatistics").assertExists().performClick()
         compose.runOnIdle {
             assertEquals(1, model.results.size)
-            assertEquals(6789, model.legacyRecord)
+            assertEquals(6789L, model.legacyRecord)
         }
 
         compose.onNodeWithTag("resetStatistics").performClick()
         compose.onNodeWithTag("confirmResetStatistics").performClick()
         compose.runOnIdle {
             assertTrue(model.results.isEmpty())
-            assertEquals(0, model.legacyRecord)
-            assertEquals(0, model.record)
+            assertEquals(0L, model.legacyRecord)
+            assertEquals(0L, model.record)
             assertEquals(state, model.game)
             assertTrue(ResultStore(preferences).read().isEmpty())
             assertFalse(preferences.contains("record"))
@@ -51,7 +51,7 @@ class StatisticsResetTest {
             assertFalse(preferences.getBoolean("sound", true))
             val restarted = GameViewModel(app, null, { 1000L }, false)
             assertTrue(restarted.results.isEmpty())
-            assertEquals(0, restarted.legacyRecord)
+            assertEquals(0L, restarted.legacyRecord)
             assertEquals(state, restarted.game)
         }
     }

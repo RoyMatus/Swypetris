@@ -37,12 +37,12 @@ object GameStorage {
     }
 
     /** Returns the best score from stored record keys and results saved under older rule versions. */
-    fun legacyRecord(preferences: SharedPreferences): Int = legacyRecord(preferences, ResultStore(preferences).read())
+    fun legacyRecord(preferences: SharedPreferences): Long = legacyRecord(preferences, ResultStore(preferences).read())
 
     /** Reuses an already loaded history while retaining every legacy preference-key rule. */
-    internal fun legacyRecord(preferences: SharedPreferences, results: List<GameResult>): Int = maxOf(
-        preferences.getInt("record", 0), preferences.getInt("legacy_record", 0),
-        (2 until GameRules.VERSION).maxOfOrNull { preferences.getInt("record_v$it", 0) } ?: 0,
+    internal fun legacyRecord(preferences: SharedPreferences, results: List<GameResult>): Long = maxOf(
+        preferences.getInt("record", 0).toLong(), preferences.getInt("legacy_record", 0).toLong(),
+        (2 until GameRules.VERSION).maxOfOrNull { preferences.getInt("record_v$it", 0).toLong() } ?: 0,
         results.filter { it.rulesVersion < GameRules.VERSION }.maxOfOrNull { it.score } ?: 0
     )
 

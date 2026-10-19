@@ -141,7 +141,7 @@ class MusicSettingsFruitTest {
         var count by mutableIntStateOf(0)
         compose.setContent {
             Box(Modifier.size(320.dp,480.dp)) {
-                val state=GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=count*10000)
+                val state=GameState(active=Piece(Tetromino.T),next=Tetromino.O,score=count.toLong()*10000)
                 Board(state); GameHud(state)
             }
         }
@@ -190,7 +190,7 @@ class MusicSettingsFruitTest {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale),
                 LocalGamePalette provides GamePalettes.find(theme)) {
                 Box(Modifier.size(width.dp, 640.dp)) {
-                    GameHud(GameState(active = Piece(Tetromino.T), next = Tetromino.O, score = score))
+                    GameHud(GameState(active = Piece(Tetromino.T), next = Tetromino.O, score = score.toLong()))
                 }
             }
         }
@@ -421,7 +421,7 @@ class MusicSettingsFruitTest {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val directory = File(app.getExternalFilesDir(null), "fruit-hud-259").apply { mkdirs() }
         for (value in listOf(54430, 254430)) {
-            compose.runOnIdle { state = state.copy(score = value) }
+            compose.runOnIdle { state = state.copy(score = value.toLong()) }
             compose.onNodeWithTag("score").assertTextEquals(value.toString())
             val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
             File(directory, "$value.png").outputStream().use {

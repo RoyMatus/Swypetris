@@ -59,8 +59,8 @@ class ResultsIntegrationTest {
         for ((current, archive) in listOf(Int.MAX_VALUE to 0, 100 to Int.MAX_VALUE,
             0 to Int.MAX_VALUE, 0 to 0)) {
             val history = listOfNotNull(
-                if (current > 0) GameResult("current", 1000L, "Current", current, 0, 1, 0L) else null,
-                if (archive > 0) GameResult("archive", 500L, "Archive", archive, 0, 1, 0L,
+                if (current > 0) GameResult("current", 1000L, "Current", current.toLong(), 0, 1, 0L) else null,
+                if (archive > 0) GameResult("archive", 500L, "Archive", archive.toLong(), 0, 1, 0L,
                     rulesVersion = GameRules.VERSION - 1) else null)
             compose.runOnIdle {
                 preferences.edit().clear().commit()
@@ -68,14 +68,14 @@ class ResultsIntegrationTest {
                 ResultStore(preferences).write(history)
                 model = GameViewModel(application, null, { 1000L }, false)
                 model.navigation.showResults()
-                assertEquals(current, model.record)
-                assertEquals(archive, model.legacyRecord)
+                assertEquals(current.toLong(), model.record)
+                assertEquals(archive.toLong(), model.legacyRecord)
             }
             compose.onNodeWithTag("resultsPage").performScrollToIndex(0)
             compose.onNodeWithText("История рекордов").assertIsDisplayed()
             compose.onNodeWithTag("recordSummary").assertDoesNotExist()
             if (archive > 0) {
-                val note = "Архивный рекорд: ${groupedRecordScore(archive)} очков"
+                val note = "Архивный рекорд: ${groupedRecordScore(archive.toLong())} очков"
                 compose.onNodeWithTag("resultsPage").performScrollToNode(hasText(note))
                 compose.onNodeWithText(note).assertIsDisplayed()
             }
@@ -94,7 +94,7 @@ class ResultsIntegrationTest {
         val board = List(BoardGeometry.TOTAL_ROWS) { MutableList<Tetromino?>(10) { null } }.also { it[BoardGeometry
             .row(0)][4] = Tetromino.Z }
         fun recordState(score: Int) = GameState(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
-            next = Tetromino.O, score = score)
+            next = Tetromino.O, score = score.toLong())
         var model by mutableStateOf(GameViewModel(application, recordState(10000), { 1000L }, false))
         lateinit var autofillTree: AutofillTree
         compose.setContent {
@@ -147,8 +147,8 @@ class ResultsIntegrationTest {
                 }
             }
             compose.runOnIdle {
-                assertEquals(4321, model.legacyRecord)
-                assertEquals(0, model.record)
+                assertEquals(4321L, model.legacyRecord)
+                assertEquals(0L, model.record)
                 now += 100
                 model.pause()
                 now += 5000
@@ -219,12 +219,12 @@ class ResultsIntegrationTest {
             assertEquals(GameScreen.GAME_OVER, model.screen)
             val restored = ResultStore(preferences).read().single()
             assertEquals("Алексей", restored.name)
-            assertEquals(10000, restored.score)
-            assertEquals(1, fruitCount(restored.score))
+            assertEquals(10000L, restored.score)
+            assertEquals(1L, fruitCount(restored.score))
             val fresh = GameViewModel(application, null, clock, false)
-            assertEquals(10000, fresh.record)
+            assertEquals(10000L, fresh.record)
             assertEquals(model.results, fresh.results)
-            assertEquals(4321, fresh.legacyRecord)
+            assertEquals(4321L, fresh.legacyRecord)
         }
     }
 

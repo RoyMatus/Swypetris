@@ -22,7 +22,7 @@ class ProgressionTest {
             assertEquals(start.level, pending.placement!!.level)
             assertEquals(start.level, pending.level)
             val completed = engine.finishClear(pending)
-            assertEquals(GameRules.lineScore(count) * start.level, completed.score)
+            assertEquals(GameRules.lineScore(count).toLong() * start.level, completed.score)
             assertEquals(1 + (lines + count) / 10, completed.level)
             assertEquals(GameRules.gravityMillis(completed.level), completed.gravityMillis)
             assertTrue(completed.gravityMillis < start.gravityMillis)
@@ -35,14 +35,14 @@ class ProgressionTest {
         val start = GameState(board = board, active = Piece(Tetromino.I,x=3,y=18), next = Tetromino.O, lines = 9)
         val completed = engine.finishClear(engine.apply(start, GameCommand.HARD_DROP))
         assertTrue(completed.placement!!.perfectClear)
-        assertEquals(900, completed.score)
+        assertEquals(900L, completed.score)
         assertEquals(2, completed.level)
     }
 
     @Test fun dropPointsAndFruitsCannotAdvanceLevel() {
         val start = GameState(active = Piece(Tetromino.O), next = Tetromino.T, score = 9999, lines = 9)
         val soft = engine.apply(start, GameCommand.SOFT_DROP)
-        assertEquals(10000, soft.score)
+        assertEquals(10000L, soft.score)
         assertEquals(1, soft.roundFruits)
         assertEquals(1, soft.level)
         assertEquals(start.gravityMillis, soft.gravityMillis)
@@ -63,7 +63,7 @@ class ProgressionTest {
         assertEquals(won.gravityMillis, next.gravityMillis)
         val completed = engine.finishClear(engine.apply(clearStart(4,Int.MAX_VALUE-1), GameCommand.HARD_DROP))
         assertEquals(Int.MAX_VALUE, completed.lines)
-        assertEquals(GameRules.MAX_SCORE, completed.score)
+        assertEquals(Int.MAX_VALUE.toLong(), completed.score)
         assertEquals(214748365, completed.level)
     }
     @Test fun higherStartsWaitForCumulativeFirstGoalAndKeepPreClearScoring() {
@@ -81,7 +81,7 @@ class ProgressionTest {
             val pending = engine.apply(clearStart(4, goal - 1).copy(startingLevel = start), GameCommand.HARD_DROP)
             assertEquals(start, pending.placement!!.level)
             val completed = engine.finishClear(pending)
-            assertEquals(800 * start, completed.score)
+            assertEquals((800 * start).toLong(), completed.score)
             assertEquals(start + 1, completed.level)
             assertEquals(0.0f, GameRules.progress(0, start), .00001f)
             assertEquals((goal - 1f) / goal, GameRules.progress(goal - 1, start), .00001f)
@@ -101,12 +101,12 @@ class ProgressionTest {
     }
     @Test fun cumulativeFruitCountsFollowEveryTenThousandPointAward() {
         val base = GameState(active = Piece(Tetromino.O), next = Tetromino.T)
-        assertEquals(List(Fruit.entries.size) { 0 }, base.fruitCounts)
-        assertEquals(listOf(1, 0, 0, 0, 0, 0, 0, 0), base.copy(score = 10000).fruitCounts)
-        assertEquals(List(Fruit.entries.size) { 1 }, base.copy(score = 80000).fruitCounts)
-        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), base.copy(score = 90000).fruitCounts)
-        assertEquals(List(Fruit.entries.size) { 2 }, base.copy(score = 160000).fruitCounts)
-        assertEquals(listOf(3, 2, 2, 2, 2, 2, 2, 2), base.copy(score = 170000).fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 0L }, base.fruitCounts)
+        assertEquals(listOf(1L, 0L, 0L, 0L, 0L, 0L, 0L, 0L), base.copy(score = 10000).fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 1L }, base.copy(score = 80000).fruitCounts)
+        assertEquals(listOf(2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L), base.copy(score = 90000).fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 2L }, base.copy(score = 160000).fruitCounts)
+        assertEquals(listOf(3L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), base.copy(score = 170000).fruitCounts)
         assertEquals(1, base.copy(score = 179999, completedRounds = 2).roundFruits)
         assertEquals(2, base.copy(score = 180000, completedRounds = 2).roundFruits)
     }

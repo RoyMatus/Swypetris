@@ -1,4 +1,4 @@
-﻿package ru.itoltec.swypetris
+package ru.itoltec.swypetris
 
 import android.animation.ValueAnimator
 import android.os.Build
@@ -73,19 +73,19 @@ internal val LocalVictoryAnimations = staticCompositionLocalOf<Boolean?> { null 
 
 /** Complete fruit set with cumulative quantities; unearned silhouettes are dimmed. */
 @Composable
-internal fun RoundFruitCollection(counts: List<Int>, iconSize: Dp = 28.dp) {
+internal fun RoundFruitCollection(counts: List<Long>, iconSize: Dp = 28.dp) {
     Row(Modifier.testTag("fruitCollection"), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         Fruit.entries.forEachIndexed { index, fruit ->
-            val count = counts.getOrElse(index) { 0 }
+            val count = counts.getOrElse(index) { 0L }
             RoundFruit(fruit, count, iconSize, LocalGamePalette.current.text)
         }
     }
 }
 
 @Composable
-private fun RoundFruit(fruit: Fruit, count: Int, iconSize: Dp, quantityColor: Color) {
+private fun RoundFruit(fruit: Fruit, count: Long, iconSize: Dp, quantityColor: Color) {
     Row(Modifier.clearAndSetSemantics {
-        contentDescription = "${fruit.title}: ${if (count == 0) "ещё не получен" else "собрано $count"}"
+        contentDescription = "${fruit.title}: ${if (count == 0L) "ещё не получен" else "собрано $count"}"
     }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(1.dp)) {
         if (count > 1) Text("$count ×", fontSize = 10.sp, color = quantityColor)
         FruitIcon(fruit, Modifier.size(iconSize).alpha(if (count > 0) 1f else UNEARNED_FRUIT_OPACITY))
@@ -94,12 +94,12 @@ private fun RoundFruit(fruit: Fruit, count: Int, iconSize: Dp, quantityColor: Co
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun VictoryFruitCollection(counts: List<Int>) {
+private fun VictoryFruitCollection(counts: List<Long>) {
     FlowRow(Modifier.fillMaxWidth().testTag("fruitCollection"),
         horizontalArrangement = Arrangement.spacedBy(FRUIT_GAP_DP.dp, Alignment.CenterHorizontally),
         verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Fruit.entries.forEachIndexed { index, fruit ->
-            RoundFruit(fruit, counts.getOrElse(index) { 0 }, 28.dp, Color.White)
+            RoundFruit(fruit, counts.getOrElse(index) { 0L }, 28.dp, Color.White)
         }
     }
 }
@@ -107,8 +107,8 @@ private fun VictoryFruitCollection(counts: List<Int>) {
 /** Victory pauses the game until the player explicitly starts the next round. */
 @Composable
 internal fun VictoryScreen(model: GameViewModel) {
-    val state = model.game ?: return
-    VictoryScene(model) { layout -> VictoryContent(state, model::nextRound, layout) }
+    if (model.game == null) return
+    VictoryScene(model) { layout -> VictoryContent(model, layout) }
 }
 
 /** Shared, lifecycle-aware celebration; terminal victory replaces only the foreground content. */
@@ -157,8 +157,8 @@ private fun rememberVictoryAnimation(model: GameViewModel): Boolean {
 }
 
 @Composable
-private fun VictoryContent(state: GameState, onNextRound: () -> Unit,
-    layout: VictoryLayout) {
+private fun VictoryContent(model: GameViewModel, layout: VictoryLayout) {
+    val state = model.game ?: return
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
         val topSpace = maxHeight * layout.contentTop
         Column(Modifier.fillMaxSize()) {
@@ -182,9 +182,13 @@ private fun VictoryContent(state: GameState, onNextRound: () -> Unit,
             }
             Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
                 contentAlignment = Alignment.Center) {
-                VictoryActionButton("Следующий круг",
-                    Modifier.widthIn(max = 440.dp).fillMaxWidth().testTag("nextRound"),
-                    onNextRound)
+                Row(Modifier.widthIn(max = if (model.canShareRoundRecord) 496.dp else 440.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    VictoryActionButton("Следующий круг",
+                        Modifier.weight(1f).testTag("nextRound"), model::nextRound)
+                    if (model.canShareRoundRecord) RecordShareAction(state.score, model.playerName)
+                }
             }
         }
     }

@@ -247,6 +247,6 @@ class ResultsHistoryIntegrationTest {
 
     private fun result(id: String, score: Int, date: Long, difficulty: Difficulty?,
         rulesVersion: Int = GameRules.VERSION) =
-        GameResult(id, date, "Игрок $id", score, lines = score / 1000, level = 4, durationMillis = 60_000L,
+        GameResult(id, date, "Игрок $id", score.toLong(), lines = score / 1000, level = 4, durationMillis = 60_000L,
             rulesVersion = rulesVersion, completedRounds = 2, difficulty = difficulty)
 }

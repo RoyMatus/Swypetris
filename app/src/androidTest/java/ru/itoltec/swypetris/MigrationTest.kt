@@ -47,7 +47,7 @@ class MigrationTest {
             GameStorage.migrate(settings, sessions)
             assertNull(SessionStore(sessions).read())
             assertTrue(ResultStore(settings).read().isEmpty())
-            assertEquals(0, GameStorage.legacyRecord(settings))
+            assertEquals(0L, GameStorage.legacyRecord(settings))
             assertEquals(0, settings.getInt("record_v${GameRules.VERSION}", -1))
             retained.forEach { (key, value) -> assertEquals(value, settings.all[key]) }
             assertEquals("keep", sessions.getString("unrelated", null))
@@ -78,7 +78,7 @@ class MigrationTest {
             val first = GameViewModel(app, null, { 1000L }, false)
             assertNull(first.game)
             assertTrue(first.results.isEmpty())
-            assertEquals(0, first.record)
+            assertEquals(0L, first.record)
             first.newGame()
             first.input.command(GameCommand.LEFT)
             first.pause()

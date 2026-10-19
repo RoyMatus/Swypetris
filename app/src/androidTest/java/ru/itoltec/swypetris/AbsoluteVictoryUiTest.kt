@@ -1,159 +1,76 @@
 package ru.itoltec.swypetris
 
-import android.graphics.Bitmap
 import android.content.Intent
 import android.accessibilityservice.AccessibilityService
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.ForcedSize
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.then
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** Verify controls at narrow, tall and tablet portrait sizes, including larger accessible fonts. */
+/** Replaces retired terminal forms with a non-terminal, accessible record-share action. */
 class AbsoluteVictoryUiTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createComposeRule()
 
-    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
-    @Test fun bothScreensAnimateBehindAStaticPostcardAndVisibleActions() {
+    @Test fun recordShareAndContinueFitPortraitSizesAndLargeFonts() {
         val model = GameViewModel(ApplicationProvider.getApplicationContext(),
             GameState(active = Piece(Tetromino.O), next = Tetromino.T,
-                score = GameRules.MAX_SCORE - 1, completedRounds = 12), { 1000L }, false)
-        compose.mainClock.autoAdvance = false
+                score = 1_039_999, completedRounds = 12), { 1000L }, false)
+        var size by mutableStateOf(DpSize(320.dp, 640.dp))
+        var scale by mutableStateOf(1f)
         compose.setContent {
-            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(393.dp, 873.dp))) {
-                SwypetrisApp(model) {}
-            }
-        }
-        compose.runOnIdle {
-            model.input.command(GameCommand.SOFT_DROP)
-            model.absolute.changeName("Roy")
-        }
-        val entry = animatedFrames()
-        assertMovingSky(entry)
-        compose.onNodeWithTag("preparePostcard").assertIsDisplayed()
-        compose.runOnIdle { model.absolute.preparePostcard() }
-        compose.waitUntil(timeoutMillis = 10000) {
-            compose.mainClock.advanceTimeByFrame()
-            compose.onAllNodes(hasTestTag("postcardPreview")).fetchSemanticsNodes().isNotEmpty()
-        }
-        compose.runOnIdle {
-            model.advanceVictoryAnimation(VictoryMotion.PERIOD_MILLIS - model.victoryAnimationMillis)
-        }
-        val postcard = compose.onNodeWithTag("postcardPreview").captureToImage().asAndroidBitmap()
-        val ready = animatedFrames {
-            assertTrue("Postcard pixels must stay static while the sky animates",
-                postcard.sameAs(compose.onNodeWithTag("postcardPreview").captureToImage().asAndroidBitmap()))
-        }
-        assertMovingSky(ready)
-        compose.onNodeWithTag("sharePostcard").assertIsDisplayed()
-        compose.onNodeWithTag("nextRound").assertDoesNotExist()
-    }
-
-    @androidx.annotation.RequiresApi(26)
-    private fun animatedFrames(check: () -> Unit = {}): List<Bitmap> {
-        return listOf(300L, 2000L, 1700L).map { duration ->
-            compose.mainClock.advanceTimeBy(duration)
-            compose.waitForIdle()
-            check()
-            capture()
-        }
-    }
-
-    private fun assertMovingSky(frames: List<Bitmap>) {
-        val first = frames.first()
-        val sky = Bitmap.createBitmap(first, 0, 0, first.width, first.height / 7)
-        try {
-            frames.drop(1).forEach { frame ->
-                val other = Bitmap.createBitmap(frame, 0, 0, frame.width, frame.height / 7)
-                try { assertFalse("Fireworks must change above the foreground", sky.sameAs(other)) }
-                finally { other.recycle() }
-            }
-        } finally { sky.recycle() }
-    }
-
-    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
-    @Test fun nameEntryAndPostcardFitMultipleSizesAndFontScales() {
-        val model = GameViewModel(ApplicationProvider.getApplicationContext(),
-            GameState(active = Piece(Tetromino.O), next = Tetromino.T,
-                score = GameRules.MAX_SCORE - 1, completedRounds = 12), { 1000L }, false)
-        var viewport by mutableStateOf(DpSize(320.dp, 640.dp))
-        var fontScale by mutableStateOf(1.5f)
-        compose.setContent {
-            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(viewport) then
-                DeviceConfigurationOverride.FontScale(fontScale)) {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(size)
+                then DeviceConfigurationOverride.FontScale(scale)) {
                 CompositionLocalProvider(LocalVictoryAnimations provides false) { SwypetrisApp(model) {} }
             }
         }
         compose.runOnIdle { model.input.command(GameCommand.SOFT_DROP) }
-        for (size in viewports()) {
-            viewport = size
-            compose.waitForIdle()
-            compose.onNodeWithTag("absoluteName").performScrollTo().assertIsDisplayed()
-            compose.onNodeWithTag("preparePostcard").assertIsDisplayed()
+        for (width in listOf(320, 393, 600, 800)) for (font in listOf(1f, 2f)) {
+            compose.runOnIdle { size = DpSize(width.dp, (width * 2).dp); scale = font }
+            compose.onNodeWithTag("nextRound").assertIsDisplayed()
+            compose.onNodeWithTag("shareRoundRecord").assertIsDisplayed()
+            val next = compose.onNodeWithTag("nextRound").fetchSemanticsNode().boundsInRoot
+            val share = compose.onNodeWithTag("shareRoundRecord").fetchSemanticsNode().boundsInRoot
+            assertTrue(next.right <= share.left)
+            assertTrue(share.height > 0 && share.width > 0)
         }
-        compose.onNodeWithTag("preparePostcard").performClick()
-        compose.runOnIdle { assertEquals(true, model.absoluteNameError) }
-        compose.onNodeWithTag("absoluteName").performScrollTo().performTextInput("Александра")
-        compose.onNodeWithTag("preparePostcard").performClick()
-        compose.waitUntil(timeoutMillis = 10000) { model.postcardReady }
-        for (size in viewports()) {
-            viewport = size
-            fontScale = 2f
-            compose.waitForIdle()
-            // Configuration overrides can restart the background image generation.
-            compose.waitUntil(timeoutMillis = 10000) {
-                compose.onAllNodes(hasTestTag("postcardPreview")).fetchSemanticsNodes().isNotEmpty()
-            }
-            compose.onNodeWithTag("absoluteVictoryPage").performScrollToNode(hasTestTag("postcardPreview"))
-            compose.onNodeWithTag("postcardPreview").assertIsDisplayed()
-            compose.onNodeWithTag("sharePostcard").assertIsDisplayed()
-        }
-        compose.onNodeWithTag("nextRound").assertDoesNotExist()
+        compose.onNodeWithTag("nextRound").performClick()
+        compose.runOnIdle { assertEquals(GameScreen.PLAYING, model.screen) }
+        compose.onNodeWithTag("shareRoundRecord").assertDoesNotExist()
     }
-
-    private fun viewports() = listOf(DpSize(320.dp, 640.dp), DpSize(393.dp, 873.dp),
-        DpSize(600.dp, 960.dp), DpSize(800.dp, 1280.dp))
 
     @Test fun shareButtonOpensNativeAndroidSharesheet() {
         val app = ApplicationProvider.getApplicationContext<android.app.Application>()
         val model = GameViewModel(app,
             GameState(active = Piece(Tetromino.O), next = Tetromino.T,
-                score = GameRules.MAX_SCORE, completedRounds = 12), { 1000L }, false)
+                score = 1_039_999, completedRounds = 12), { 1000L }, false)
         compose.setContent {
             CompositionLocalProvider(LocalVictoryAnimations provides false) { SwypetrisApp(model) {} }
         }
         compose.runOnIdle {
-            model.absolute.changeName("Roy")
-            model.absolute.preparePostcard()
+            model.input.command(GameCommand.SOFT_DROP)
         }
         // Compose 1.7 filters selectors on the test thread: avoid merged descendant
         // semantics reads racing the same Owner's main-thread draw.
         compose.waitUntil(timeoutMillis = 10000) {
-            compose.onAllNodes(hasTestTag("sharePostcard"), useUnmergedTree = true)
+            compose.onAllNodes(hasTestTag("shareRoundRecord"), useUnmergedTree = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
         val chooser = Intent.createChooser(Intent(Intent.ACTION_SEND).setType("image/png"), "Share")
@@ -166,7 +83,7 @@ class AbsoluteVictoryUiTest {
         automation.serviceInfo = serviceInfo
         try {
             val opened = automation.executeAndWaitForEvent({
-                compose.onNodeWithTag("sharePostcard", useUnmergedTree = true).performClick()
+                compose.onNodeWithTag("shareRoundRecord", useUnmergedTree = true).performClick()
             }, { event -> event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
                 event.packageName?.toString() == resolver }, 10000)
             @Suppress("DEPRECATION")
@@ -186,8 +103,10 @@ class AbsoluteVictoryUiTest {
                 }, 10000)
                 @Suppress("DEPRECATION")
                 dismissed.recycle()
-                // Backgrounding the app can legitimately return the model to the menu.
-                compose.onRoot().assertIsDisplayed()
+                // Cancelling external sharing retains the celebration and its continuation action.
+                compose.onNodeWithTag("nextRound").assertIsDisplayed()
+                compose.onNodeWithTag("shareRoundRecord").assertIsDisplayed()
+                compose.runOnIdle { assertEquals(GameScreen.VICTORY, model.screen) }
             } finally {
                 serviceInfo.flags = originalFlags
                 automation.serviceInfo = serviceInfo
@@ -195,6 +114,4 @@ class AbsoluteVictoryUiTest {
         }
     }
 
-    @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
-    private fun capture(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
 }

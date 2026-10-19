@@ -224,10 +224,10 @@ private fun FruitCollection(result: GameResult) {
         if (result.rulesVersion >= ROUND_COLLECTION_RULES_VERSION) {
             Text("Пройдено кругов: ${result.completedRounds}", color = Muted)
             val current = (fruitCount(result.score) - result.completedRounds * Fruit.entries.size)
-                .coerceIn(0, Fruit.entries.size)
+                .coerceIn(0, Fruit.entries.size.toLong()).toInt()
             RoundFruitCollection(List(Fruit.entries.size) { index -> if (index < current) 1 else 0 })
         } else {
-            val current = fruitCount(result.score).coerceAtMost(Fruit.entries.size)
+            val current = fruitCount(result.score).coerceAtMost(Fruit.entries.size.toLong()).toInt()
             RoundFruitCollection(List(Fruit.entries.size) { index -> if (index < current) 1 else 0 })
         }
     }

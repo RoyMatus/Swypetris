@@ -27,7 +27,7 @@ class GameFeedbackIntegrationTest {
         model.input.pointerMove(141f, 170f, 1570)
         val dropped = model.game!!
         assertEquals(1, dropped.generation)
-        assertEquals(36, dropped.score)
+        assertEquals(36L, dropped.score)
         assertEquals(listOf(Triple(FeedbackEvent.DROP, true, true)), recorder.calls)
         model.input.pointerMove(141f, 170f, 1580)
         model.input.pointerUp(141f, 170f, 1590)
