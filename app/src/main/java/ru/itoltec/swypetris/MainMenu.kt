@@ -59,6 +59,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerInputChange
 import kotlin.math.abs
 
 private const val MENU_COLUMN_FRACTION = .5f
@@ -130,25 +132,37 @@ private fun Modifier.menuThemeSwipes(model: GameViewModel, intro: Boolean): Modi
     if (intro) return@pointerInput
     val threshold = maxOf(viewConfiguration.touchSlop, MENU_THEME_SWIPE_DISTANCE_DP.dp.toPx())
     awaitEachGesture {
-        val first = awaitFirstDown(requireUnconsumed = false)
-        if (first.isConsumed) return@awaitEachGesture
-        while (true) {
-            val event = awaitPointerEvent()
-            if (event.changes.size != 1) return@awaitEachGesture
-            val change = event.changes.single()
-            if (change.id != first.id || change.isConsumed) return@awaitEachGesture
-            val distance = change.position - first.position
-            if (abs(distance.y) > threshold && abs(distance.y) >= abs(distance.x)) return@awaitEachGesture
-            val horizontal = abs(distance.x) > threshold &&
-                abs(distance.x) > abs(distance.y) * MENU_THEME_HORIZONTAL_BIAS
-            if (horizontal) change.consume()
-            if (!change.pressed) {
-                if (horizontal) model.options.cyclePalette(forward = distance.x < 0)
-                return@awaitEachGesture
-            }
-        }
+        readMenuThemeSwipe(threshold)?.let(model.options::cyclePalette)
     }
 }
+
+private suspend fun AwaitPointerEventScope.readMenuThemeSwipe(threshold: Float): Boolean? {
+    val first = awaitFirstDown(requireUnconsumed = false)
+    if (first.isConsumed) return null
+    return completeMenuThemeSwipe(first, threshold)
+}
+
+private suspend fun AwaitPointerEventScope.completeMenuThemeSwipe(first: PointerInputChange,
+    threshold: Float): Boolean? {
+    while (true) {
+        val change = awaitPointerEvent().changes.singleOrNull()
+            ?.takeIf { it.isValidMenuSwipe(first, threshold) } ?: break
+        val distance = change.position - first.position
+        val direction = distance.menuThemeDirection(threshold)
+        if (direction != null) change.consume()
+        if (!change.pressed) return direction
+    }
+    return null
+}
+
+private fun PointerInputChange.isValidMenuSwipe(first: PointerInputChange, threshold: Float): Boolean {
+    val distance = position - first.position
+    val vertical = abs(distance.y) > threshold && abs(distance.y) >= abs(distance.x)
+    return id == first.id && !isConsumed && !vertical
+}
+
+private fun Offset.menuThemeDirection(threshold: Float): Boolean? =
+    if (abs(x) > threshold && abs(x) > abs(y) * MENU_THEME_HORIZONTAL_BIAS) x < 0 else null
 
 /** Compact rectangular button whose label adapts to increased font size. */
 @Composable
