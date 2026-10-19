@@ -125,6 +125,8 @@ Selections persist between launches:
 
 Themes: **Classic, Monokai, Gruvbox Dark, VS Code Dark+, Dracula, Nord, Solarized Light, Solarized Dark, GitHub Light, Tokyo Night, Catppuccin Mocha, and SynthWave '84**. They affect piece and interface colors, block textures and finishes, and themed artwork. Solarized Light and GitHub Light use light backgrounds. The picker previews the blocks.
 
+On the main menu, swipe left over the logo or empty space for the next theme, or right for the previous one. This manual selection is saved and disables random theme changes.
+
 ### Music, sound, and vibration
 
 The gameplay playlist contains eight bundled electronic arrangements: **Korobeiniki, Kalinka, Kamarinskaya, Barynya, Svetit mesyats, Vo sadu li, v ogorode, Trepak, and Dance of the Sugar Plum Fairy**.
@@ -271,6 +273,8 @@ steps = начальный уровень - 1 + (уровень - начальн
 | Цветовая тема | Двенадцать тем; по умолчанию классическая. |
 
 Темы: **Классическая, Monokai, Gruvbox Dark, VS Code Dark+, Dracula, Nord, Solarized Light, Solarized Dark, GitHub Light, Tokyo Night, Catppuccin Mocha и SynthWave '84**. Они меняют цвета фигур и интерфейса, текстуры и обработку блоков, тематическое оформление иллюстраций. Solarized Light и GitHub Light используют светлый фон. В настройках есть предварительный просмотр блоков.
+
+В главном меню свайп влево по логотипу или свободной области выбирает следующую тему, вправо — предыдущую. Выбор сохраняется и отключает случайную смену тем.
 
 ### Музыка, звуки и вибрация
 

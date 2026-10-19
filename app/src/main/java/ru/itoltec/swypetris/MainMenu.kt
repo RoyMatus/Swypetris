@@ -56,8 +56,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerInputChange
+import kotlin.math.abs
 
 private const val MENU_COLUMN_FRACTION = .5f
+private const val MENU_THEME_SWIPE_DISTANCE_DP = 48
+private const val MENU_THEME_HORIZONTAL_BIAS = 1.5f
 
 /** Primary gameplay actions sit above compact navigation; the logo keeps the final intro position. */
 @Composable
@@ -68,7 +76,8 @@ internal fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: 
     val palette = menuUiPalette()
     val primary = primaryMenuActions(model, palette)
     val secondary = secondaryMenuActions(model, palette)
-    Box(Modifier.fillMaxSize().onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
+    Box(Modifier.fillMaxSize().testTag("mainMenuSurface").menuThemeSwipes(model, intro)
+        .onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
             contentAlignment = Alignment.BottomCenter) {
             val gap = (maxHeight * .01f).coerceIn(3.dp, 8.dp)
@@ -117,6 +126,43 @@ internal fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: 
         if (intro) LaunchIntroOverlay(model, logoBounds, Modifier.matchParentSize())
     }
 }
+
+/** Child controls consume their down event first; only a complete free-area swipe selects a theme. */
+private fun Modifier.menuThemeSwipes(model: GameViewModel, intro: Boolean): Modifier = pointerInput(model, intro) {
+    if (intro) return@pointerInput
+    val threshold = maxOf(viewConfiguration.touchSlop, MENU_THEME_SWIPE_DISTANCE_DP.dp.toPx())
+    awaitEachGesture {
+        readMenuThemeSwipe(threshold)?.let(model.options::cyclePalette)
+    }
+}
+
+private suspend fun AwaitPointerEventScope.readMenuThemeSwipe(threshold: Float): Boolean? {
+    val first = awaitFirstDown(requireUnconsumed = false)
+    if (first.isConsumed) return null
+    return completeMenuThemeSwipe(first, threshold)
+}
+
+private suspend fun AwaitPointerEventScope.completeMenuThemeSwipe(first: PointerInputChange,
+    threshold: Float): Boolean? {
+    while (true) {
+        val change = awaitPointerEvent().changes.singleOrNull()
+            ?.takeIf { it.isValidMenuSwipe(first, threshold) } ?: break
+        val distance = change.position - first.position
+        val direction = distance.menuThemeDirection(threshold)
+        if (direction != null) change.consume()
+        if (!change.pressed) return direction
+    }
+    return null
+}
+
+private fun PointerInputChange.isValidMenuSwipe(first: PointerInputChange, threshold: Float): Boolean {
+    val distance = position - first.position
+    val vertical = abs(distance.y) > threshold && abs(distance.y) >= abs(distance.x)
+    return id == first.id && !isConsumed && !vertical
+}
+
+private fun Offset.menuThemeDirection(threshold: Float): Boolean? =
+    if (abs(x) > threshold && abs(x) > abs(y) * MENU_THEME_HORIZONTAL_BIAS) x < 0 else null
 
 /** Compact rectangular button whose label adapts to increased font size. */
 @Composable
