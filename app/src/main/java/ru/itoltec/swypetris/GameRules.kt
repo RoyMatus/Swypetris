@@ -20,7 +20,6 @@ object GameRules {
     const val MIN_GRAVITY_NANOS = 833_334L
     const val FRUIT_STEP = 10_000
     const val ROUND_SCORE = FRUIT_STEP * 8
-    const val MAX_SCORE = 999_999
 
     const val LINES_PER_LEVEL = 10
     const val GRAVITY_PROGRESSION_STRETCH = 4.5
@@ -100,5 +99,6 @@ object GameRules {
         (gravityNanos(level, startingLevel) + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI
 }
 
-/** Only score is capped at absolute victory; line counters retain their own overflow bound. */
-internal fun GameRules.addScore(score: Int, points: Int): Int = add(score, points).coerceAtMost(MAX_SCORE)
+/** Numeric overflow protection does not end a game. */
+internal fun GameRules.addScore(score: Long, points: Int): Long =
+    score + points.coerceAtLeast(0).toLong().coerceAtMost(Long.MAX_VALUE - score)

@@ -6,8 +6,9 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-private const val SESSION_FORMAT_VERSION = 5
+private const val SESSION_FORMAT_VERSION = 6
 private const val LEGACY_SESSION_FORMAT_VERSION = 4
+private const val RETIRED_TERMINAL_SCORE = 999_999L
 
 
 /** Uptime itself is never persisted: all clocks are elapsed or remaining game time. */
@@ -18,12 +19,10 @@ internal data class GameSession(
     val playedMillis: Long,
     val clearMillis: Long,
     val gravityRemainingNanos: Long,
-    val recordAtStart: Int,
+    val recordAtStart: Long,
     val finishedAt: Long = 0L,
     val lockFractionNanos: Long = 0L,
-    val clearFractionNanos: Long = 0L,
-    val absoluteName: String = "",
-    val postcardReady: Boolean = false
+    val clearFractionNanos: Long = 0L
 )
 
 /** SharedPreferences applies ordered, atomic file replacements off the UI thread.
@@ -120,8 +119,7 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                 .put("clearMillis", session.clearMillis).put("gravityRemainingNanos", session.gravityRemainingNanos)
                 .put("lockFractionNanos", session.lockFractionNanos).put("clearFractionNanos",
                     session.clearFractionNanos)
-                .put("recordAtStart", session.recordAtStart).put("finishedAt", session.finishedAt)
-                .put("absoluteName", session.absoluteName).put("postcardReady", session.postcardReady).toString()
+                .put("recordAtStart", session.recordAtStart).put("finishedAt", session.finishedAt).toString()
                 .dropLast(1) + "," + board + "}"
         }
 
@@ -139,10 +137,10 @@ internal class SessionStore(private val preferences: SharedPreferences) {
             val clearing = root.getJSONArray("clearingRows").let { a -> List(a.length()) { a.getInt(it) } }
             require(clearing.size <= GameRules.MAX_CLEAR_LINES && clearing.distinct().size == clearing.size &&
                 clearing.all { it in board.indices && board[it].all { cell -> cell != null } })
-            val state = GameState(board, piece, Tetromino.valueOf(root.getString("next")),
-                root.getInt("score"), root.getInt("lines"), root.getInt("generation"), root.getBoolean("gameOver"),
+            val decoded = GameState(board, piece, Tetromino.valueOf(root.getString("next")),
+                root.gameCounter("score"), root.getInt("lines"), root.getInt("generation"), root.getBoolean("gameOver"),
                 clearing, root.getInt("completedClears"), root.getBoolean("accelerated"),
-                root.getInt("completedRounds"), root.getBoolean("victoryPending"),
+                root.gameCounter("completedRounds"), root.getBoolean("victoryPending"),
                 root.getString("topOut").let { if (it.isEmpty()) null else TopOut.valueOf(it) },
                 root.optLong("lockRemaining", LockRules.DELAY_MILLIS), root.optInt("lockResets", 0),
                 root.optString("held").let { if (it.isEmpty()) null else Tetromino.valueOf(it) },
@@ -155,16 +153,16 @@ internal class SessionStore(private val preferences: SharedPreferences) {
                         p.getInt("level")) },
                 startingLevel = if (root.has("startingLevel")) root.getInt("startingLevel") else 1,
                 blockAppearances = readSessionAppearances(root, board))
-            validateSessionState(state)
             val bag = root.getJSONArray("bag").let { a -> List(a.length()) { Tetromino.valueOf(a.getString(it)) } }
             require(bag.size <= Tetromino.entries.size && bag.distinct().size == bag.size)
-            val session = GameSession(root.getString("id"), state, bag, root.getLong("playedMillis"),
-                root.getLong("clearMillis"), root.getLong("gravityRemainingNanos"), root.getInt("recordAtStart"),
+            val session = GameSession(root.getString("id"), decoded, bag, root.getLong("playedMillis"),
+                root.getLong("clearMillis"), root.getLong("gravityRemainingNanos"), root.gameCounter("recordAtStart"),
                     root.getLong("finishedAt"),
-                root.getLong("lockFractionNanos"), root.getLong("clearFractionNanos"),
-                root.optString("absoluteName", ""), root.optBoolean("postcardReady", false))
-            validateSessionClocks(session)
-            return session
+                root.getLong("lockFractionNanos"), root.getLong("clearFractionNanos"))
+            val recovered = recoverRetiredVictory(session, root.getInt("version"))
+            validateSessionState(recovered.state)
+            validateSessionClocks(recovered)
+            return recovered
         }
     }
 }
@@ -233,7 +231,7 @@ private fun validateSessionState(state: GameState) {
 
 private fun validateSessionVictory(state: GameState) {
     require(!state.victoryPending || (!state.gameOver && state.clearingRows.isEmpty() &&
-        (state.absoluteVictory || state.roundFruits == Fruit.entries.size)))
+        state.roundFruits == Fruit.entries.size))
 }
 
 private fun validateSessionClocks(session: GameSession) {
@@ -246,8 +244,17 @@ private fun validateSessionClocks(session: GameSession) {
     require(state.lockRemaining > 0 || session.lockFractionNanos == 0L)
     require(session.clearMillis < LineClearAnimation.TOTAL_MILLIS || session.clearFractionNanos == 0L)
     require(!state.gameOver || session.finishedAt > 0)
-    require(session.absoluteName.length <= MAX_PLAYER_NAME_LENGTH)
-    require(!session.postcardReady || (state.absoluteVictory && session.absoluteName.isNotBlank()))
+}
+
+/** Old terminal snapshots resume without resetting the settled field, score or seven-bag queue. */
+private fun recoverRetiredVictory(session: GameSession, format: Int): GameSession {
+    val state = session.state
+    val retiredScore = format < SESSION_FORMAT_VERSION && state.score == RETIRED_TERMINAL_SCORE
+    if (!retiredScore || !state.victoryPending || state.roundFruits == Fruit.entries.size) return session
+    val engine = GameEngine().also { it.restoreBag(session.bag) }
+    val continuing = engine.savedGame.resumeRetiredVictory(state)
+    return session.copy(state = continuing, bag = engine.remainingBag(),
+        finishedAt = if (continuing.gameOver) session.finishedAt else 0L)
 }
 
 private fun validateSessionPlacement(placement: PlacementResult?) {

@@ -50,7 +50,7 @@ class SessionWriteTest {
             state.gravityNanos, 0)
         val restored = SessionStore.decode(SessionStore.encode(session))
         assertEquals(session, restored)
-        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), restored.state.fruitCounts)
+        assertEquals(listOf(2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L), restored.state.fruitCounts)
     }
 
 }

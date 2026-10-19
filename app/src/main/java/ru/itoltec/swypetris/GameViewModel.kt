@@ -14,8 +14,7 @@ private enum class MusicPopupTransfer { NONE, OPENING, CLOSING }
 
 /** A paused game is owned by the model while the ordinary menu is displayed. */
 enum class GameScreen {
-    MENU, SETTINGS, HELP, CONTACTS, PRIVACY, LEGAL, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY,
-    ABSOLUTE_VICTORY, POSTCARD
+    MENU, SETTINGS, HELP, CONTACTS, PRIVACY, LEGAL, PLAYING, GAME_OVER, RESULTS, RECORD, VICTORY
 }
 
 /**
@@ -39,7 +38,6 @@ class GameViewModel internal constructor(
     internal val options = Options()
     internal val statistics = Statistics()
     internal val navigation = Navigation()
-    internal val absolute = AbsoluteVictory()
     internal val musicPopup = MusicPopup()
 
     /** The standard Android constructor uses a monotonic clock and an automatic game loop. */
@@ -71,12 +69,6 @@ class GameViewModel internal constructor(
         private set
     var playerName by mutableStateOf(preferences.getString("player_name", "") ?: "")
         private set
-    var absoluteName by mutableStateOf(restored?.absoluteName ?: "")
-        private set
-    var postcardReady by mutableStateOf(restored?.postcardReady ?: false)
-        private set
-    var absoluteNameError by mutableStateOf(false)
-        private set
     var musicSelection by mutableStateOf(MusicSelection.restore(preferences.getString("music_selection", null),
         preferences.getBoolean("music", true)))
         private set
@@ -89,6 +81,10 @@ class GameViewModel internal constructor(
     val launchIntroPending by derivedStateOf { launchIntroMillis < LaunchIntroMotion.DURATION }
     val launchLogoAssembled by derivedStateOf { launchIntroMillis >= 2650L }
     private var recordAtStart = restored?.recordAtStart ?: statistics.bestFor()
+    /** Every qualifying round compares with the immutable record before this run, including after restoration. */
+    internal val canShareRoundRecord: Boolean get() = game?.let {
+        it.victoryPending && !it.gameOver && it.score > recordAtStart
+    } == true
     private var playedMillis = restored?.playedMillis ?: 0L
     private var lastPlayFrame = clock()
     private var gestureConfig = GestureConfig()
@@ -135,14 +131,6 @@ class GameViewModel internal constructor(
         this.feedback.setVibrationStrength(vibrationStrength)
         this.feedback.setPalette(paletteId)
         restored?.let { engine.restoreBag(it.bag) }
-        game?.takeIf { it.absoluteVictory }?.let {
-            game = engine.checkVictory(it)
-            if (finishedAt == 0L) finishedAt = System.currentTimeMillis()
-            statistics.saveResult(game!!, clock())
-            requestRecordName = false
-            if (initialState != null) screen = absolute.destination()
-            simulation.saveSession()
-        }
         gestures.setEnabled(game?.clearingRows?.isEmpty() != false)
         if (restored?.state?.gameOver == true) {
             statistics.saveResult(restored.state, clock())
@@ -156,51 +144,8 @@ class GameViewModel internal constructor(
 
     /** Retains the looping celebration phase across Activity recreation and pauses. */
     fun advanceVictoryAnimation(delta: Long) {
-        if (activeForeground && screen in listOf(GameScreen.VICTORY, GameScreen.ABSOLUTE_VICTORY, GameScreen.POSTCARD))
+        if (activeForeground && screen == GameScreen.VICTORY)
             victoryAnimationMillis = VictoryMotion.advance(victoryAnimationMillis, delta)
-    }
-
-    /** Terminal flow operations share the model's session and journal; they never resume play. */
-    internal inner class AbsoluteVictory {
-        fun destination(): GameScreen = if (postcardReady) GameScreen.POSTCARD else GameScreen.ABSOLUTE_VICTORY
-
-        /** The terminal flow persists input independently of whether its Activity is visible. */
-        fun changeName(name: String) {
-            if (screen != GameScreen.ABSOLUTE_VICTORY) return
-            val limited = name.replace('\n', ' ').replace('\r', ' ').take(MAX_PLAYER_NAME_LENGTH)
-            absoluteName = if (limited.lastOrNull()?.isHighSurrogate() == true) limited.dropLast(1) else limited
-            absoluteNameError = false
-            simulation.saveSession()
-        }
-
-        /** Validation never substitutes a default name for a missing postcard recipient. */
-        fun preparePostcard() {
-            if (!activeForeground || screen != GameScreen.ABSOLUTE_VICTORY) return
-            val entered = absoluteName.trim()
-            if (entered.isEmpty()) { absoluteNameError = true; return }
-            absoluteName = entered
-            playerName = entered
-            preferences.edit { putString("player_name", entered) }
-            results = results.map { if (it.id == currentResultId) it.copy(name = entered) else it }
-            latestResult = latestResult?.copy(name = entered)
-            resultStore.write(results)
-            postcardReady = true
-            screen = GameScreen.POSTCARD
-            simulation.saveSession()
-        }
-
-        fun finish(state: GameState, now: Long) {
-            finishedAt = System.currentTimeMillis()
-            simulation.saveSession()
-            statistics.saveResult(state, now)
-            requestRecordName = false
-            gestures.cancel()
-            feedback.stop()
-            music?.setPlaying(false)
-            screen = GameScreen.ABSOLUTE_VICTORY
-            victoryAnimationMillis = 0L
-            if (musicEnabled) music?.setMode(MusicMode.RECORD)
-        }
     }
 
     /** Retains intro progress across Activity recreation; background time does not advance it. */
@@ -243,9 +188,6 @@ class GameViewModel internal constructor(
         currentResultId = null
         latestResult = null
         requestRecordName = false
-        absoluteName = ""
-        absoluteNameError = false
-        postcardReady = false
         feedback.stop()
         gestures.cancel()
         game = engine.newGame(startingLevel)
@@ -265,9 +207,7 @@ class GameViewModel internal constructor(
     fun resume() {
         if (!activeForeground || screen == GameScreen.PLAYING) return
         if (game == null || game?.gameOver == true) return
-        if (game?.absoluteVictory == true) {
-            screen = absolute.destination()
-        } else if (game?.victoryPending == true) {
+        if (game?.victoryPending == true) {
             screen = GameScreen.VICTORY
         } else {
             if (game?.clearingRows?.isNotEmpty() == true) feedback
@@ -292,7 +232,7 @@ class GameViewModel internal constructor(
             lastGameFrame = now
             clearElapsedMillis = timeline.clearMillis
             screen = GameScreen.MENU
-        } else if (screen in listOf(GameScreen.VICTORY, GameScreen.ABSOLUTE_VICTORY, GameScreen.POSTCARD))
+        } else if (screen == GameScreen.VICTORY)
             screen = GameScreen.MENU
         simulation.syncOrdinaryMusic()
         feedback.stop()
@@ -305,7 +245,15 @@ class GameViewModel internal constructor(
     fun onBackground() {
         foreground = false
         musicPopup.lifecycle(false)
-        pause()
+        lifecyclePause()
+    }
+
+    private fun lifecyclePause() {
+        if (screen == GameScreen.VICTORY) {
+            feedback.stop()
+            simulation.syncOrdinaryMusic()
+            simulation.saveSession()
+        } else pause()
     }
 
     /** Returning to the foreground restores only the music appropriate for the current screen. */
@@ -319,7 +267,7 @@ class GameViewModel internal constructor(
     fun onWindowFocusChanged(focused: Boolean) {
         windowFocused = focused
         musicPopup.hostFocusChanged(focused)
-        if (!activeForeground) pause()
+        if (!activeForeground) lifecyclePause()
         else simulation.syncOrdinaryMusic()
     }
 
@@ -348,7 +296,7 @@ class GameViewModel internal constructor(
             focused = hasFocus
             // A live popup losing native focus is an external interruption, not its dismissal.
             transfer = MusicPopupTransfer.NONE
-            if (!activeForeground) pause()
+            if (!activeForeground) lifecyclePause()
             else simulation.syncOrdinaryMusic()
         }
 
@@ -362,7 +310,7 @@ class GameViewModel internal constructor(
             view = null
             focused = false
             if (host.hasWindowFocus()) onWindowFocusChanged(true)
-            else if (!activeForeground) pause()
+            else if (!activeForeground) lifecyclePause()
         }
 
         fun lifecycle(resumed: Boolean) {
@@ -521,8 +469,7 @@ class GameViewModel internal constructor(
             val state = game ?: return
             sessionStore.write(GameSession(sessionId, state, engine.remainingBag(), playedMillis,
                 timeline.clearMillis, timeline.gravityRemainingNanos, recordAtStart, finishedAt,
-                timeline.lockFractionNanos, timeline.clearElapsedNanos % GameRules.NANOS_PER_MILLI,
-                absoluteName, postcardReady))
+                timeline.lockFractionNanos, timeline.clearElapsedNanos % GameRules.NANOS_PER_MILLI))
         }
 
         /** Publishes and checkpoints state; a spawn rebases the pointer instead of canceling it. */
@@ -547,7 +494,6 @@ class GameViewModel internal constructor(
 
         private fun acceptConclusion(previous: GameState, updated: GameState, now: Long) {
             when {
-                updated.absoluteVictory && !previous.absoluteVictory -> absolute.finish(updated, now)
                 updated.victoryPending && !previous.victoryPending -> {
                     playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
                     lastPlayFrame = now
@@ -646,16 +592,16 @@ class GameViewModel internal constructor(
     /** Statistics operations use the model's state; they do not keep a second copy. */
     internal inner class Statistics {
         /** Historical rules and difficulty records remain separate from the new Marathon record. */
-        fun bestFor(): Int = results.filter { it.difficulty == null && it.rulesVersion == GameRules.VERSION }
+        fun bestFor(): Long = results.filter { it.difficulty == null && it.rulesVersion == GameRules.VERSION }
             .maxOfOrNull { it.score } ?: 0
 
         /** Clears saved results without changing settings or the current game's state. */
         fun resetStatistics() {
             GameStorage.clearStatistics(preferences)
             results = emptyList()
-            legacyRecord = 0
-            record = 0
-            recordAtStart = 0
+            legacyRecord = 0L
+            record = 0L
+            recordAtStart = 0L
             latestResult = null
             currentResultId = null
             requestRecordName = false
@@ -667,13 +613,14 @@ class GameViewModel internal constructor(
             if (currentResultId != null) return
             if (screen == GameScreen.PLAYING) playedMillis += (now - lastPlayFrame).coerceAtLeast(0)
             lastPlayFrame = now
-            val result = results.firstOrNull { it.id == sessionId } ?: GameResult(sessionId, finishedAt,
-                "Игрок", state.score, state.lines, state.level, playedMillis, completedRounds = state.completedRounds)
+            val name = results.firstOrNull { it.id == sessionId }?.name ?: "Игрок"
+            val result = GameResult(sessionId, finishedAt, name, state.score, state.lines, state.level, playedMillis,
+                completedRounds = state.completedRounds)
             latestResult = result
             currentResultId = result.id
             requestRecordName = state.score > recordAtStart
-            if (requestRecordName && results.none { it.id == result.id }) {
-                results = listOf(result) + results
+            if (requestRecordName) {
+                results = listOf(result) + results.filterNot { it.id == result.id }
                 resultStore.write(results)
             }
             record = bestFor()

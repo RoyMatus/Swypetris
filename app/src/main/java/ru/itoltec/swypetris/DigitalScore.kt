@@ -14,7 +14,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 
 /** Score remains score; level progress has its own source of truth. */
-internal fun displayScore(score: Int): String = "$score"
+internal fun displayScore(score: Long): String = "$score"
 
 internal const val SCORE_MAX_SCALE = 1.08f
 private const val DIGIT_WIDTH = .48f

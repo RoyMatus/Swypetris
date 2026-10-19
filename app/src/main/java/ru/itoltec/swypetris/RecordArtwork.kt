@@ -113,19 +113,19 @@ internal fun rememberRecordArtworkContract(): RecordArtworkContract {
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
-internal fun RecordFruitRow(quantities: List<Int>, recordId: String, modifier: Modifier = Modifier) {
+internal fun RecordFruitRow(quantities: List<Long>, recordId: String, modifier: Modifier = Modifier) {
     val contract = rememberRecordArtworkContract()
     val density = LocalDensity.current.density
     FlowRow(modifier.fillMaxWidth(),
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
         contract.fruits.forEach { artwork ->
-            val count = quantities.getOrElse(artwork.fruit.ordinal) { 0 }
+            val count = quantities.getOrElse(artwork.fruit.ordinal) { 0L }
             if (count > 0) {
                 val badgeDiameter = if (count > 1) rememberBadgeSize(count.toString(), contract, density) * 2f else 0f
                 val itemSize = max(28f, badgeDiameter)
                 Box(Modifier.size(itemSize.dp).clearAndSetSemantics {
-                    contentDescription = if (count == 1) artwork.label else "${artwork.label}, $count"
+                    contentDescription = if (count == 1L) artwork.label else "${artwork.label}, $count"
                     testTag = "recordFruit-$recordId-${artwork.fruit.ordinal}"
                 }) {
                     Image(ImageBitmap.imageResource(artwork.fruit.drawableResource()), contentDescription = null,
@@ -149,11 +149,11 @@ internal fun RecordFruitRow(quantities: List<Int>, recordId: String, modifier: M
 }
 
 @Composable
-internal fun recordArtworkMinimumWidth(quantities: List<Int>, contract: RecordArtworkContract): Float {
+internal fun recordArtworkMinimumWidth(quantities: List<Long>, contract: RecordArtworkContract): Float {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current.density
     val visibleBadges = contract.fruits.mapNotNull { fruit ->
-        val count = quantities.getOrElse(fruit.fruit.ordinal) { 0 }
+        val count = quantities.getOrElse(fruit.fruit.ordinal) { 0L }
         if (count <= 1) return@mapNotNull null
         val diameter = measuredBadgeDiameter(count.toString(), contract, measurer, density,
             LocalDensity.current.fontScale)
@@ -181,7 +181,7 @@ internal fun recordArtworkMinimumWidth(quantities: List<Int>, contract: RecordAr
 
 @Composable
 internal fun RecordArtwork(
-    quantities: List<Int>,
+    quantities: List<Long>,
     recordId: String,
     widthDp: Float,
     modifier: Modifier = Modifier,
@@ -199,7 +199,7 @@ internal fun RecordArtwork(
                     (trophy.height / contract.canvasWidth * widthDp).dp)
                 .alpha(contract.trophyOpacity))
         contract.fruits.sortedBy { it.zIndex }.forEach { artwork ->
-            val count = quantities.getOrElse(artwork.fruit.ordinal) { 0 }
+            val count = quantities.getOrElse(artwork.fruit.ordinal) { 0L }
             if (count > 0) {
                 Box(Modifier.offset((artwork.rect.x / contract.canvasWidth * widthDp).dp,
                     (artwork.rect.y / contract.canvasWidth * widthDp).dp)
@@ -207,7 +207,7 @@ internal fun RecordArtwork(
                         (artwork.rect.height / contract.canvasWidth * widthDp).dp)
                     .alpha(artwork.opacity).zIndex(artwork.zIndex)
                     .semantics(mergeDescendants = true) {
-                        contentDescription = if (count == 1) artwork.label else "${artwork.label}, $count"
+                        contentDescription = if (count == 1L) artwork.label else "${artwork.label}, $count"
                     }.testTag("recordFruit-$recordId-${artwork.fruit.ordinal}")) {
                     Image(ImageBitmap.imageResource(artwork.fruit.drawableResource()), contentDescription = null,
                         contentScale = ContentScale.Fit, filterQuality = FilterQuality.None,
@@ -216,7 +216,7 @@ internal fun RecordArtwork(
             }
         }
         contract.fruits.forEach { artwork ->
-            val count = quantities.getOrElse(artwork.fruit.ordinal) { 0 }
+            val count = quantities.getOrElse(artwork.fruit.ordinal) { 0L }
             if (count > 1) {
                 val text = count.toString()
                 val measured = rememberBadgeSize(text, contract, density)

@@ -13,15 +13,22 @@ enum class Fruit(val title: String) {
 private const val MIN_KNOWN_RESULT_RULES_VERSION = 2
 internal const val ROUND_COLLECTION_RULES_VERSION = 4
 
+/** JSON counters must be exact nonnegative integers; never silently narrow fractions or oversized values. */
+internal fun JSONObject.gameCounter(key: String): Long {
+    val value = get(key)
+    require(value is Int || value is Long)
+    return (value as Number).toLong().also { require(it >= 0) }
+}
+
 /** Counts awards earned at each fruit threshold, including multiple thresholds crossed at once. */
-fun fruitCount(score: Int): Int = score.coerceAtLeast(0) / GameRules.FRUIT_STEP
+fun fruitCount(score: Long): Long = score.coerceAtLeast(0) / GameRules.FRUIT_STEP
 
 /** Returns how many times a particular [fruit] has been earned in this game. */
-fun fruitQuantity(score: Int, fruit: Fruit): Int =
+fun fruitQuantity(score: Long, fruit: Fruit): Long =
     (fruitCount(score) / Fruit.entries.size) + if (fruit.ordinal < fruitCount(score) % Fruit.entries.size) 1 else 0
 
 /** Uses known recorded rules only; old single collections never acquire invented repeat awards. */
-internal fun recordFruitQuantities(result: GameResult): List<Int>? = when (result.rulesVersion) {
+internal fun recordFruitQuantities(result: GameResult): List<Long>? = when (result.rulesVersion) {
     in MIN_KNOWN_RESULT_RULES_VERSION until ROUND_COLLECTION_RULES_VERSION ->
         Fruit.entries.map { fruitQuantity(result.score, it).coerceAtMost(1) }
     in ROUND_COLLECTION_RULES_VERSION..GameRules.VERSION -> Fruit.entries.map { fruitQuantity(result.score, it) }
@@ -34,12 +41,12 @@ data class GameResult(
     val id: String,
     val dateMillis: Long,
     val name: String,
-    val score: Int,
+    val score: Long,
     val lines: Int,
     val level: Int,
     val durationMillis: Long,
     val rulesVersion: Int = GameRules.VERSION,
-    val completedRounds: Int = 0,
+    val completedRounds: Long = 0,
     val difficulty: Difficulty? = null
 )
 
@@ -51,8 +58,9 @@ class ResultStore(private val preferences: SharedPreferences) {
         (0 until array.length()).mapNotNull { index -> runCatching {
             val row = array.getJSONObject(index)
             GameResult(row.getString("id"), row.getLong("date"), row.getString("name"),
-                row.getInt("score"), row.getInt("lines"), row.getInt("level"), row.getLong("duration"),
-                    row.optInt("rulesVersion", 2), row.optInt("completedRounds", 0),
+                row.gameCounter("score"), row.getInt("lines"), row.getInt("level"), row.getLong("duration"),
+                    row.optInt("rulesVersion", 2),
+                if (row.has("completedRounds")) row.gameCounter("completedRounds") else 0,
                 Difficulty.find(row.optString("difficulty")))
         }.getOrNull() }
     }.getOrDefault(emptyList())
@@ -73,7 +81,7 @@ class ResultStore(private val preferences: SharedPreferences) {
 
 /** Keeps chronological personal-best eligibility, then ranks display by score, newer date and stable ID. */
 fun recordHistory(results: List<GameResult>): List<GameResult> {
-    val best = mutableMapOf<Pair<Int, Difficulty?>, Int>()
+    val best = mutableMapOf<Pair<Int, Difficulty?>, Long>()
     val ids = mutableSetOf<String>()
     results.asReversed().sortedBy { it.dateMillis }.forEach { result ->
         val key = result.rulesVersion to result.difficulty

@@ -39,8 +39,8 @@ class HistoryCacheTest {
                 { 1000L }, false)
             assertEquals(1, counting.historyReads)
             assertEquals(listOf(current, old), model.results)
-            assertEquals(700, model.legacyRecord)
-            assertEquals(1000, model.record)
+            assertEquals(700L, model.legacyRecord)
+            assertEquals(1000L, model.record)
             assertEquals(GameStorage.legacyRecord(actual), model.legacyRecord)
         }
     }
@@ -65,7 +65,7 @@ class HistoryCacheTest {
             assertEquals(GameScreen.RECORD, model.screen)
             val withRecord = model.recordResults
             assertNotSame(initial, withRecord)
-            assertEquals(listOf(200, 100), withRecord.map { it.score })
+            assertEquals(listOf(200L, 100L), withRecord.map { it.score })
             assertSame(withRecord, model.recordResults)
 
             model.statistics.saveRecordName("Updated")

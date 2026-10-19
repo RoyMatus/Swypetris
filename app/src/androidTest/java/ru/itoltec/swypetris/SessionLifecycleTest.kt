@@ -39,7 +39,7 @@ class SessionLifecycleTest {
         val snapshot = GameSession("fruits", collected, listOf(Tetromino.I), 0, 0, 1_000_000_000, 0)
         val restored = SessionStore.decode(SessionStore.encode(snapshot))
         assertEquals(snapshot, restored)
-        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), restored.state.fruitCounts)
+        assertEquals(listOf(2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L), restored.state.fruitCounts)
         assertEquals(1, restored.state.roundFruits)
     }
 
@@ -188,7 +188,7 @@ class SessionLifecycleTest {
         now++
         restored.simulation.advanceFrame(now)
         assertEquals(1, restored.game!!.generation)
-        assertEquals(100, restored.game!!.score)
+        assertEquals(100L, restored.game!!.score)
         assertEquals(10, restored.game!!.lines)
         assertEquals(2, restored.game!!.level)
         assertEquals(1, restored.game!!.placement!!.level)
@@ -237,7 +237,7 @@ class SessionLifecycleTest {
             val board = state().board.map { it.toMutableList() }
             board[BoardGeometry.row(0)][4] = Tetromino.Z
             return model(state().copy(board = board, active = Piece(Tetromino.O, x = 0, y = 18),
-                score = score)).also { it.input.command(GameCommand.HARD_DROP) }
+                score = score.toLong())).also { it.input.command(GameCommand.HARD_DROP) }
         }
         val record = finish(100)
         assertEquals(2, record.results.size)
@@ -247,9 +247,9 @@ class SessionLifecycleTest {
         assertEquals(legacy, record.results.last())
         val ordinary = finish(50)
         assertEquals(2, ordinary.results.size)
-        assertEquals(50, ordinary.latestResult!!.score)
+        assertEquals(50L, ordinary.latestResult!!.score)
         assertFalse(ordinary.requestRecordName)
-        assertEquals(100, ordinary.record)
+        assertEquals(100L, ordinary.record)
     }
 
     @Test fun corruptedSaveDoesNotClearPreferencesOrResults() {
@@ -273,6 +273,6 @@ class SessionLifecycleTest {
         restored.resume()
         assertEquals(GameScreen.VICTORY, restored.screen)
         restored.nextRound()
-        assertEquals(1, restored.game!!.completedRounds)
+        assertEquals(1L, restored.game!!.completedRounds)
     }
 }

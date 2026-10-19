@@ -121,6 +121,7 @@ private const val SCORE_FONT_FIT_STEPS = 12
 private const val SCORE_PULSE_LEG_MILLIS = 110
 private const val FRUIT_COLUMNS = 2
 private const val MAX_HUD_FRUIT_SIZE_DP = 30f
+private const val GAMEPLAY_FRUIT_SHRINK_FACTOR = 1.5f
 private const val PHOTO_SCORE_BACKDROP_ALPHA = .72f
 private val fruitBadgeBackground = Color(0xFF242424)
 
@@ -380,7 +381,8 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
                 verticalAlignment = Alignment.CenterVertically) {
                 row.forEach { (fruit, count) ->
                     Box(Modifier.size(itemWidth, itemHeight).testTag("earnedFruit_${fruit.name}")) {
-                        FruitIcon(fruit, Modifier.align(Alignment.TopStart).size(iconSize)
+                        FruitIcon(fruit, Modifier.align(Alignment.TopStart)
+                            .size(iconSize / GAMEPLAY_FRUIT_SHRINK_FACTOR)
                             .testTag("earnedFruitIcon_${fruit.name}"))
                         if (count > 1) {
                             val label = count.toString()

@@ -63,7 +63,7 @@ class GameEngineTest {
         val ghost = engine.ghost(start)
         val result = engine.apply(start, GameCommand.HARD_DROP)
         assertEquals(18, ghost.y)
-        assertEquals(36, result.score)
+        assertEquals(36L, result.score)
         assertEquals(1, result.generation)
         ghost.cells().forEach { assertEquals(Tetromino.O, result.board[BoardGeometry.row(it.y)][it.x]) }
     }
@@ -77,7 +77,7 @@ class GameEngineTest {
 
         assertEquals(8, engine.ghost(stacked).y)
         assertEquals(0, stacked.active.y)
-        assertEquals(0, stacked.score)
+        assertEquals(0L, stacked.score)
         assertEquals(Tetromino.I, stacked.board[BoardGeometry.row(10)][0])
     }
 
@@ -85,11 +85,11 @@ class GameEngineTest {
     @Test fun softDropAndGravityWaitForLockDelay() {
         val start = state(Piece(Tetromino.O, y = 17))
         val soft = engine.apply(start, GameCommand.SOFT_DROP)
-        assertEquals(1, soft.score)
+        assertEquals(1L, soft.score)
         assertEquals(0, soft.generation)
         assertEquals(0, engine.apply(soft, GameCommand.TICK).generation)
         assertEquals(1, engine.advanceLock(soft, 500).generation)
-        assertEquals(0, engine.apply(start, GameCommand.TICK).score)
+        assertEquals(0L, engine.apply(start, GameCommand.TICK).score)
     }
 
     /** Одновременное удаление 1–4 строк начисляет базовую награду и сохраняет верхние блоки. */
@@ -102,7 +102,7 @@ class GameEngineTest {
             val pending = engine.apply(start.copy(board = board, lines = 9), GameCommand.HARD_DROP)
             assertEquals((20 - count..19).map(BoardGeometry::row), pending.clearingRows)
             assertEquals(9, pending.lines)
-            assertEquals(0, pending.score)
+            assertEquals(0L, pending.score)
             assertEquals(0, pending.generation)
             assertEquals(start.next, pending.next)
             GameCommand.entries.forEach { assertEquals(pending, engine.apply(pending, it)) }
@@ -111,7 +111,7 @@ class GameEngineTest {
             assertEquals(1, result.generation)
             assertEquals(result, engine.finishClear(result))
             assertEquals(9 + count, result.lines)
-            assertEquals(listOf(0, 100, 300, 500, 800)[count], result.score)
+            assertEquals(listOf(0L, 100L, 300L, 500L, 800L)[count], result.score)
             assertEquals(2, result.level)
             assertEquals(Tetromino.L, result.board[BoardGeometry.row(10 + count)][0])
         }
@@ -152,30 +152,30 @@ class GameEngineTest {
     /** Fruit quantities accumulate by 10,000-point awards and survive round boundaries. */
     @Test fun fruitCountsAccumulateAcrossRoundsAndOvershoot() {
         val base = state()
-        assertEquals(List(Fruit.entries.size) { 0 }, base.fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 0L }, base.fruitCounts)
 
         val firstComplete = base.copy(score = 80000, victoryPending = true)
-        assertEquals(List(Fruit.entries.size) { 1 }, firstComplete.fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 1L }, firstComplete.fruitCounts)
         assertEquals(8, firstComplete.roundFruits)
 
         val roundTwo = engine.nextRound(firstComplete)
-        assertEquals(1, roundTwo.completedRounds)
+        assertEquals(1L, roundTwo.completedRounds)
         assertEquals(0, roundTwo.roundFruits)
-        assertEquals(List(Fruit.entries.size) { 1 }, roundTwo.fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 1L }, roundTwo.fruitCounts)
 
         val firstRepeat = roundTwo.copy(score = 90000)
-        assertEquals(listOf(2, 1, 1, 1, 1, 1, 1, 1), firstRepeat.fruitCounts)
+        assertEquals(listOf(2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L), firstRepeat.fruitCounts)
         assertEquals(1, firstRepeat.roundFruits)
 
         val overshoot = roundTwo.copy(score = 105001)
-        assertEquals(listOf(2, 2, 1, 1, 1, 1, 1, 1), overshoot.fruitCounts)
+        assertEquals(listOf(2L, 2L, 1L, 1L, 1L, 1L, 1L, 1L), overshoot.fruitCounts)
         assertEquals(2, overshoot.roundFruits)
 
         val thirdRound = roundTwo.copy(score = 170000, completedRounds = 2)
-        assertEquals(listOf(3, 2, 2, 2, 2, 2, 2, 2), thirdRound.fruitCounts)
+        assertEquals(listOf(3L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), thirdRound.fruitCounts)
         assertEquals(1, thirdRound.roundFruits)
 
-        assertEquals(List(Fruit.entries.size) { 0 }, engine.newGame().fruitCounts)
+        assertEquals(List(Fruit.entries.size) { 0L }, engine.newGame().fruitCounts)
     }
 
 }

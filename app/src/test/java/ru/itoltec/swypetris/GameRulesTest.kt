@@ -18,7 +18,7 @@ class GameRulesTest {
         assertEquals(90L, GameRules.threshold(10))
         assertTrue(GameRules.nextThreshold(Int.MAX_VALUE) > Int.MAX_VALUE.toLong())
         for (score in listOf(899,900,999,1000,2125,Int.MAX_VALUE))
-            assertEquals("$score", displayScore(score))
+            assertEquals("$score", displayScore(score.toLong()))
         assertEquals(Int.MAX_VALUE, GameRules.add(Int.MAX_VALUE, 1500))
     }
 
@@ -27,17 +27,17 @@ class GameRulesTest {
         val engine = GameEngine()
         var state = GameState(active = Piece(Tetromino.O), next = Tetromino.T)
         state = engine.apply(state, GameCommand.TICK)
-        assertEquals(0, state.score)
+        assertEquals(0L, state.score)
         assertFalse(state.accelerated)
         state = engine.apply(state, GameCommand.SOFT_DROP)
-        assertEquals(1, state.score)
+        assertEquals(1L, state.score)
         assertTrue(state.accelerated)
         state = engine.apply(state, GameCommand.HARD_DROP)
-        assertEquals(33, state.score)
+        assertEquals(33L, state.score)
         assertFalse(state.accelerated)
         val floor = GameState(active = Piece(Tetromino.O, y = 18), next = Tetromino.T, score = 18)
         for (command in listOf(GameCommand.TICK, GameCommand.SOFT_DROP, GameCommand.HARD_DROP)) {
-            assertEquals(18, engine.apply(floor, command).score)
+            assertEquals(18L, engine.apply(floor, command).score)
         }
         assertFalse(engine.newGame().accelerated)
     }
@@ -59,7 +59,7 @@ class GameRulesTest {
         val finished = engine.finishClear(clearing)
         assertFalse(finished.accelerated)
         assertNull(feedbackEvent(clearing, finished, GameCommand.TICK))
-        assertEquals(101, finished.score)
+        assertEquals(101L, finished.score)
         assertEquals(finished, engine.finishClear(finished))
     }
 }
