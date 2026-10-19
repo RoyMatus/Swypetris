@@ -134,6 +134,12 @@ object GamePalettes {
     /** Maps unknown or legacy IDs to the classic palette. */
     fun find(id: String?): GamePalette = all.firstOrNull { it.id == id } ?: all.first()
 
+    /** Adjacent manual selection follows the existing stable palette order. */
+    internal fun adjacentId(current: String, forward: Boolean): String {
+        val index = all.indexOf(find(current))
+        return all[(index + if (forward) 1 else all.size - 1) % all.size].id
+    }
+
     /** Pick independently of piece generation; a round changes away from the current theme. */
     internal fun randomId(current: String, random: kotlin.random.Random): String =
         all.filterNot { it.id == current }.random(random).id

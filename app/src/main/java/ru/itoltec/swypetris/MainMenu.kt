@@ -56,8 +56,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.abs
 
 private const val MENU_COLUMN_FRACTION = .5f
+private const val MENU_THEME_SWIPE_DISTANCE_DP = 48
+private const val MENU_THEME_HORIZONTAL_BIAS = 1.5f
 
 /** Primary gameplay actions sit above compact navigation; the logo keeps the final intro position. */
 @Composable
@@ -68,7 +74,8 @@ internal fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: 
     val palette = menuUiPalette()
     val primary = primaryMenuActions(model, palette)
     val secondary = secondaryMenuActions(model, palette)
-    Box(Modifier.fillMaxSize().onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
+    Box(Modifier.fillMaxSize().testTag("mainMenuSurface").menuThemeSwipes(model, intro)
+        .onGloballyPositioned { menuOrigin = it.positionInRoot() }) {
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
             contentAlignment = Alignment.BottomCenter) {
             val gap = (maxHeight * .01f).coerceIn(3.dp, 8.dp)
@@ -115,6 +122,31 @@ internal fun MainMenu(model: GameViewModel, onExit: () -> Unit, onCheckUpdates: 
             }
         }
         if (intro) LaunchIntroOverlay(model, logoBounds, Modifier.matchParentSize())
+    }
+}
+
+/** Child controls consume their down event first; only a complete free-area swipe selects a theme. */
+private fun Modifier.menuThemeSwipes(model: GameViewModel, intro: Boolean): Modifier = pointerInput(model, intro) {
+    if (intro) return@pointerInput
+    val threshold = maxOf(viewConfiguration.touchSlop, MENU_THEME_SWIPE_DISTANCE_DP.dp.toPx())
+    awaitEachGesture {
+        val first = awaitFirstDown(requireUnconsumed = false)
+        if (first.isConsumed) return@awaitEachGesture
+        while (true) {
+            val event = awaitPointerEvent()
+            if (event.changes.size != 1) return@awaitEachGesture
+            val change = event.changes.single()
+            if (change.id != first.id || change.isConsumed) return@awaitEachGesture
+            val distance = change.position - first.position
+            if (abs(distance.y) > threshold && abs(distance.y) >= abs(distance.x)) return@awaitEachGesture
+            val horizontal = abs(distance.x) > threshold &&
+                abs(distance.x) > abs(distance.y) * MENU_THEME_HORIZONTAL_BIAS
+            if (horizontal) change.consume()
+            if (!change.pressed) {
+                if (horizontal) model.options.cyclePalette(forward = distance.x < 0)
+                return@awaitEachGesture
+            }
+        }
     }
 }
 

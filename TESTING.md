@@ -119,6 +119,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `GameEngineTest` | JVM: movement, collision, rotation, drops, line clears, game over, bag, gravity | Add stacked-board ghost case; the original ghost check used an empty board. |
 | `GameFeedbackTest` | JVM: command-to-feedback rules, global intensity, zero suppression and fixed-strength fallback | Keep; integration feedback test checks playback effects separately. |
 | `GameLayoutTest` | JVM: fruit placement across sizes/shapes and random round-theme selection | Keep; Android UI tests separately check rendered bounds. |
+| `PaletteCycleTest` | JVM: stable ordered theme selection, forward/backward wrap, unknown-ID fallback and unchanged authored list | Keep; independent of pointer routing and persistence checks. |
 | `GameRulesTest` | JVM: score and level boundaries, mixed descent, feedback priority | Keep; assertions match current score rules. |
 | `GestureControllerTest` | JVM: taps, rotation, reversal, diagonal protection, hard drop, piece change, clear | Keep; each boundary or state transition protects a distinct input behavior. |
 | `LaunchIntroMotionTest` | JVM: deterministic animation progress and haptic values | Keep; device tests check rendered intro and lifecycle. |
@@ -188,6 +189,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `MaterialFrameEvidenceTest` | Opt-in native Activity: production clock, dense board, movement, gfxinfo and screenshots | Skip ordinarily; no Compose test clock, and no timing threshold on a shared software emulator. |
 | `ThemeSoundIntegrationTest` | Android resources/model/native audio: all 24 approved hashes, manual/random/restored selection, timed/command events, load/cache/stop/release | Keep; `themeSoundCapture=true` additionally runs a real-time repeated gameplay audio workload with and without music. Markers alone do not establish subjective listening acceptance. |
 | `MenuSkyTest` | Compose pixels/lifecycle: anchored artwork, background/disabled clocks and isolated wide crop | Keep; its 640×360 artwork crop is not a landscape application viewport. |
+| `MenuThemeSwipeTest` | Compose/model: silent logo/free-area theme cycling, every control's exclusion/actions, canceled/multiple/short/vertical input, saved game/palette, intro and portrait/font text/geometry | Keep; gestures use the real menu surface and shared manual-selection owner. |
 | `NextQueueTest` | Compose bounds: spawn-position preview and suppression when obstructed | Keep; separate from saved seven-bag ordering. |
 | `ShareAppTest` | Android QR/intent: canonical store/latest-release links and sharing | Keep; decoded content and platform payloads. |
 | `ShareDialogInteractionTest` | Compose touch/intent: Share without background dismissal | Keep; event propagation and chooser payload. |

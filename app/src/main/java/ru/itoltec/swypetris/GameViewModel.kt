@@ -565,6 +565,9 @@ class GameViewModel internal constructor(
             preferences.edit().putString("palette", paletteId).apply()
         }
 
+        /** Uses the same persistent manual selection as the settings picker. */
+        fun cyclePalette(forward: Boolean) = setPalette(GamePalettes.adjacentId(paletteId, forward))
+
         /** Enabling takes effect at the next round, never mid-game or on resume. */
         fun setRandomTheme(enabled: Boolean) {
             randomThemeEnabled = enabled
