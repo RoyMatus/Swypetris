@@ -118,6 +118,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `DifficultyTest` | JVM: Easy/Medium/Hard curves, late-game bounds, selected difficulty across rounds | Keep; covers current three-mode progression. |
 | `GameEngineTest` | JVM: movement, collision, rotation, drops, line clears, game over, bag, gravity | Add stacked-board ghost case; the original ghost check used an empty board. |
 | `GameFeedbackTest` | JVM: command-to-feedback rules, global intensity, zero suppression and fixed-strength fallback | Keep; integration feedback test checks playback effects separately. |
+| `ThemeSoundGainTest` | JVM: per-event gain routing, Classic CLEAR outlier attenuation, finite positive attenuation bounds and fallback | Keep; numerical safety cannot establish perceived loudness or replace Pixel speaker/headphone audition. |
 | `GameLayoutTest` | JVM: fruit placement across sizes/shapes and random round-theme selection | Keep; Android UI tests separately check rendered bounds. |
 | `PaletteCycleTest` | JVM: stable ordered theme selection, forward/backward wrap, unknown-ID fallback and unchanged authored list | Keep; independent of pointer routing and persistence checks. |
 | `GameRulesTest` | JVM: score and level boundaries, mixed descent, feedback priority | Keep; assertions match current score rules. |
