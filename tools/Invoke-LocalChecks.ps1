@@ -39,6 +39,7 @@ $checks = [System.Collections.Generic.List[object]]::new()
 $started = [datetime]::UtcNow
 try {
     if ($selection.mode -ne 'none') {
+        $scm = Assert-VerificationScmRoot -Project $project
         $identity = Assert-VerificationAnalysisIdentity -Project $project -Mode $Mode -Head $headSha -Base $BaseSha -PullRequestNumber $PullRequestNumber -BaseBranch $BaseBranch
     }
     $environment = Resolve-VerificationEnvironment -Project $project -RequiresAndroid ($selection.mode -ne 'none') -JavaHome $JavaHome -SdkDirectory $SdkDirectory
@@ -176,7 +177,11 @@ try {
         $common = @('--build-cache','--console=plain',"--max-workers=$MaxWorkers")
         Invoke-Check 'quality' $gradle (@(':app:assembleDebug',':app:assembleDebugAndroidTest',':app:lintDebug',':app:detekt',':app:test',':app:jacocoDebugUnitTestReport') + $common)
         Invoke-Check 'quality-reports' $Python @('tools/ci/verify_quality_results.py')
-        $sonar = @('sonar','-Dsonar.qualitygate.wait=true',"-Dsonar.scm.revision=$headSha")
+        $signer=Get-ChildItem (Join-Path $environment.sdkDirectory 'build-tools') -Filter apksigner.bat -Recurse |
+            Sort-Object FullName -Descending | Select-Object -First 1
+        if(!$signer){throw 'Android apksigner is required before installation.'}
+        Assert-VerificationInstallSigner -Adb $adb -Serial $Serial -ApkPath (Join-Path $project 'app/build/outputs/apk/debug/app-debug.apk') -ApkSigner $signer.FullName -Directory $OutputDirectory
+        $sonar = @('sonar','-Dsonar.qualitygate.wait=true',"-Dsonar.scm.revision=$headSha",'-Dsonar.scanner.skipJreProvisioning=true',"-Dsonar.scanner.javaExePath=$(Join-Path $JavaHome 'bin/java.exe')")
         if ($PullRequestNumber -gt 0) {
             $branch = $identity.branch
             $sonar += @("-Dsonar.pullrequest.key=$PullRequestNumber","-Dsonar.pullrequest.branch=$branch","-Dsonar.pullrequest.base=$BaseBranch")

@@ -79,26 +79,27 @@ class ThemeSoundIntegrationTest {
     }
 
     @Test fun nativePoolCachesAllPairsStopsOldStreamsAndNeverReplaysPendingLoads() {
+        val profile = DeliveryPhaseProfile("theme-native-pool")
         val app = ApplicationProvider.getApplicationContext<Application>()
         lateinit var feedback: AndroidGameFeedback
-        compose.runOnIdle { feedback = AndroidGameFeedback(app) }
+        profile.measure("setup") { compose.runOnUiThread { feedback = AndroidGameFeedback(app) } }
         val pool = field<Any>(feedback, "pool")
         try {
             for (palette in GamePalettes.all) {
-                compose.runOnIdle {
+                profile.measure("select-load") { compose.runOnUiThread {
                     feedback.setPalette(palette.id)
                     assertTrue(field<List<Int>>(feedback, "streams").isEmpty())
                     if (palette.id != "classic") {
                         feedback.play(FeedbackEvent.DROP, sound = true, vibration = false)
                         assertTrue(field<List<Int>>(feedback, "streams").isEmpty())
                     }
-                }
-                compose.waitUntil(5000) {
+                } }
+                profile.measure("load-wait") { compose.waitUntil(5000) {
                     val pair = field<Map<ThemeSoundPair, Pair<Int, Int>>>(feedback, "samples")
                         .getValue(ThemeSounds.forPalette(palette.id))
                     field<Set<Int>>(feedback, "loaded").containsAll(listOf(pair.first, pair.second))
-                }
-                compose.runOnIdle {
+                } }
+                profile.measure("play-assertions") { compose.runOnUiThread {
                     assertTrue(field<List<Int>>(feedback, "streams").isEmpty())
                     for (event in FeedbackEvent.entries) {
                         feedback.play(event, sound = true, vibration = false)
@@ -108,10 +109,10 @@ class ThemeSoundIntegrationTest {
                     assertTrue(field<List<Int>>(feedback, "streams").isEmpty())
                     feedback.play(FeedbackEvent.CLEAR, sound = false, vibration = false)
                     assertTrue(field<List<Int>>(feedback, "streams").isEmpty())
-                }
+                } }
             }
             ThemeSoundAudition.recordIfRequested(feedback)
-            compose.runOnIdle {
+            compose.runOnUiThread {
                 val cached = field<Map<ThemeSoundPair, Pair<Int, Int>>>(feedback, "samples").toMap()
                 assertEquals(12, cached.size)
                 for (palette in GamePalettes.all) feedback.setPalette(palette.id)
@@ -126,7 +127,8 @@ class ThemeSoundIntegrationTest {
                 assertTrue(field<List<Int>>(feedback, "streams").isEmpty())
             }
         } finally {
-            compose.runOnIdle { feedback.release() }
+            compose.runOnUiThread { feedback.release() }
+            profile.close()
         }
     }
 

@@ -6,6 +6,9 @@ Describe 'Main promotion scanner consumes bound PR coverage' -Skip:(!$IsWindows)
         $live = Join-Path $fixture $coverageRelative
         New-Item -ItemType Directory -Force -Path "$fixture/tools/release",(Split-Path $bound),(Split-Path $live) | Out-Null
         Copy-Item (Join-Path $PSScriptRoot '../release/Promote-LocalEvidence.ps1') "$fixture/tools/release"
+        # This fixture isolates coverage staging. SCM-root behavior has its own real-module tests.
+        'function Assert-VerificationScmRoot { param($Project) @{compatible=$true} }; Export-ModuleMember -Function Assert-VerificationScmRoot' |
+            Set-Content "$fixture/tools/Verification-Preflight.psm1"
         @'
 function New-GitHubClient { param($Repository) @{} }
 function Invoke-GitHubRest {

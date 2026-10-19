@@ -6,6 +6,8 @@ param(
     [string]$JavaHome,
     [string]$SdkDirectory,
     [string]$Reason,
+    [switch]$ProfilePhases,
+    [ValidatePattern('^[a-f0-9]{32}$')][string]$ProfileRunId,
     [ValidateRange(1,64)][int]$MaxWorkers
 )
 $ErrorActionPreference = 'Stop'
@@ -63,6 +65,13 @@ try {
         $summary.deviceBuildFingerprint = $ready.buildFingerprint
     }
     $tasks = @(Get-VerificationTasks -Suite $Suite -Classes $classes)
+    if($ProfilePhases){
+        if(!$deviceSuite){throw 'Phase profiling requires an Android suite.'}
+        if(!$ProfileRunId){$ProfileRunId=[guid]::NewGuid().ToString('N')}
+        $tasks+='-Pandroid.testInstrumentationRunnerArguments.deliveryPhaseProfile=true'
+        $tasks+="-Pandroid.testInstrumentationRunnerArguments.deliveryPhaseProfileRunId=$ProfileRunId"
+        $summary.profileRunId=$ProfileRunId
+    }
     if ($MaxWorkers) { $tasks += "--max-workers=$MaxWorkers" }
     Push-Location $project
     try {

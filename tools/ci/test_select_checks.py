@@ -9,6 +9,17 @@ from verify_android_results import verify
 
 
 class SelectionTests(unittest.TestCase):
+    def test_fruit_geometry_checks_include_neighboring_hud_layers(self):
+        result = select(["app/src/main/java/ru/itoltec/swypetris/PixelFruit.kt"])
+        self.assertEqual("selected", result["mode"])
+        self.assertIn("ru.itoltec.swypetris.HudLayeringTest", result["android"].split(","))
+        self.assertIn("ru.itoltec.swypetris.BorderlessHudTest", result["android"].split(","))
+
+    def test_shared_phase_profiler_keeps_full_android_regression(self):
+        result = select(["app/src/androidTest/java/ru/itoltec/swypetris/DeliveryPhaseProfile.kt"])
+        self.assertEqual("full", result["mode"])
+        self.assertEqual("", result["android"])
+
     def test_docs_and_ai_instructions_need_no_tests(self):
         result = select(["README.md", "AGENTS.md", ".agents/skills/demo/SKILL.md", ".codex/agents/scout.toml"])
         self.assertEqual("none", result["mode"])

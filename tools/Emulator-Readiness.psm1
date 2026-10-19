@@ -68,4 +68,4 @@ function Assert-EmulatorReady {
     }
     [pscustomobject]@{ serial=$Serial; api=[int]$api; model=$model; buildFingerprint=$fingerprint; ready=$true; durationSeconds=$timer.Elapsed.TotalSeconds }
 }
-Export-ModuleMember -Function Assert-EmulatorReady
+Export-ModuleMember -Function Assert-EmulatorReady,Invoke-EmulatorReadinessCommand

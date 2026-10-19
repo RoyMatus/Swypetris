@@ -12,6 +12,8 @@ $ErrorActionPreference = 'Stop'
 if (!$IsWindows) { throw 'Mandatory promotion requires the Windows local executor.' }
 $project = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 Import-Module (Join-Path $project 'tools/GitHub-Api.psm1') -Force
+Import-Module (Join-Path $project 'tools/Verification-Preflight.psm1') -Force
+$null=Assert-VerificationScmRoot -Project $project
 . (Join-Path $PSScriptRoot 'Local-Release.ps1')
 $client = New-GitHubClient 'RoyMatus/Swypetris'
 $head = (& git -C $project rev-parse HEAD).Trim()
@@ -64,7 +66,7 @@ try {
     $gradle = Join-Path $project 'gradlew.bat'
     Push-Location $project
     try {
-        & $gradle sonar '-Dsonar.qualitygate.wait=true' "-Dsonar.scm.revision=$head" '-Dsonar.branch.name=main' '--build-cache' '--console=plain' "--max-workers=$MaxWorkers" *> $log
+        & $gradle sonar '-Dsonar.qualitygate.wait=true' "-Dsonar.scm.revision=$head" '-Dsonar.branch.name=main' '-Dsonar.scanner.skipJreProvisioning=true' "-Dsonar.scanner.javaExePath=$java" '--build-cache' '--console=plain' "--max-workers=$MaxWorkers" *> $log
         $code = $LASTEXITCODE
     } finally { Pop-Location }
     $timer.Stop()

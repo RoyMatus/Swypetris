@@ -65,15 +65,27 @@ class NextQueueTest {
     /** Non-overlapping preview cells retain their faint fill for every shape and rotation. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun previewIsIndependentOfActiveShapeRotationAndHeight() {
+        DeliveryPhaseProfile("next-preview-matrix").use(::assertPreviewMatrix)
+    }
+
+    @androidx.annotation.RequiresApi(26)
+    private fun assertPreviewMatrix(profile: DeliveryPhaseProfile) {
         var state by mutableStateOf(GameState(active = spawnPiece(Tetromino.O), next = Tetromino.I))
-        compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } }
+        fun update(next: Tetromino, active: Piece) = profile.measure("update") {
+            compose.runOnIdle { state = state.copy(next = next, active = active) }
+        }
+        fun capture() = profile.measure("capture") { compose.onNodeWithTag("board").captureToImage().toPixelMap() }
+        fun compare(descended: PixelMap, spawned: PixelMap) = profile.measure("compare") {
+            assertUncoveredPreview(state, descended, spawned)
+        }
+        profile.measure("setup") { compose.setContent { Box(Modifier.size(220.dp, 484.dp)) { Board(state) } } }
         for (next in Tetromino.entries) for (active in Tetromino.entries) for (rotation in 0..3) {
-            compose.runOnIdle { state = state.copy(next = next, active = Piece(active, y = 8, rotation = rotation)) }
-            val descended = compose.onNodeWithTag("board").captureToImage().toPixelMap()
+            update(next, Piece(active, y = 8, rotation = rotation))
+            val descended = capture()
             for (y in listOf(-2, -1, 0, 1)) {
-                compose.runOnIdle { state = state.copy(active = state.active.copy(y = y)) }
-                val spawned = compose.onNodeWithTag("board").captureToImage().toPixelMap()
-                assertUncoveredPreview(state, descended, spawned)
+                update(next, state.active.copy(y = y))
+                val spawned = capture()
+                compare(descended, spawned)
             }
         }
     }

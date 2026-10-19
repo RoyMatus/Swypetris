@@ -1,0 +1,25 @@
+// Opt-in IDE/toolchain check. Never generates verification metadata or changes dependencies.
+settingsEvaluated { settings ->
+    settings.dependencyResolutionManagement.repositories.ivy {
+        name = 'OfficialGradleSourcesVerification'
+        url = uri('https://services.gradle.org/distributions')
+        patternLayout { artifact '[artifact]-[revision]-[classifier].[ext]' }
+        metadataSources { artifact() }
+        content { includeModule('gradle', 'gradle') }
+    }
+}
+projectsEvaluated {
+    rootProject.tasks.register('verifyIdeGradleSources') {
+        group = 'verification'
+        description = 'Resolve the current Gradle source ZIP with strict dependency verification.'
+        doLast {
+            if (gradle.startParameter.dependencyVerificationMode.toString() != 'STRICT') {
+                throw new GradleException('IDE source verification requires STRICT dependency verification.')
+            }
+            def source = rootProject.dependencies.create("gradle:gradle:${gradle.gradleVersion}:src@zip")
+            def files = rootProject.configurations.detachedConfiguration(source).resolve()
+            if (files.size() != 1) throw new GradleException('Expected exactly one Gradle source ZIP.')
+            logger.lifecycle("Verified IDE Gradle source archive: ${files.first().name}")
+        }
+    }
+}

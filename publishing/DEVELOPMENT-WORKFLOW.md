@@ -1,5 +1,7 @@
 # Efficient development with evidence
 
+Operational commands for RuStore reconciliation, environment checks, portable evidence, worktree completion and opt-in test profiling: [DELIVERY-EFFICIENCY.md](DELIVERY-EFFICIENCY.md). Use its short feedback and listening handoffs before the final gate; retain the existing required evidence and quality thresholds.
+
 Run verification locally using [EXECUTION-PROFILES.md](EXECUTION-PROFILES.md). Diagnose before an epic, continuation on another machine or standalone ticket; share its profile and budget across agents. Missing local capacity blocks required checks and never authorizes cloud execution. SonarQube Cloud remains the explicit analysis-service exception. Exact-head local PR evidence and exact-main signed release gates remain mandatory. See CI.md and TESTING.md for scope.
 
 ## Prepare an issue or epic

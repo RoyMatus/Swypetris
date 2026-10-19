@@ -1,5 +1,33 @@
 Import-Module (Join-Path $PSScriptRoot 'Verification.psm1')
 Import-Module (Join-Path $PSScriptRoot 'ExecutionProfile.psm1')
+Import-Module (Join-Path $PSScriptRoot 'Emulator-Readiness.psm1')
+function Assert-VerificationScmRoot {
+    param([string]$Project)
+    $common=Invoke-CheckedGit $Project @('rev-parse','--path-format=absolute','--git-common-dir')
+    if (![IO.Path]::IsPathRooted($common) -or
+        ![string]::Equals([IO.Path]::GetPathRoot([IO.Path]::GetFullPath($Project)),[IO.Path]::GetPathRoot($common),[StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Sonar SCM requires worktree and Git common directory on the same volume. Use a compatible local checkout; do not disable SCM.'
+    }
+    [pscustomobject]@{compatible=$true;commonDirectory=$common}
+}
+function Assert-VerificationInstallSigner {
+    param([string]$Adb,[ValidatePattern('^emulator-\d+$')][string]$Serial,[string]$ApkPath,[string]$ApkSigner,[string]$Directory)
+    $installed=Invoke-EmulatorReadinessCommand $Adb @('-s',$Serial,'shell','pm','list','packages','ru.itoltec.swypetris') 10000
+    if ($installed -cnotmatch '(?m)^package:ru\.itoltec\.swypetris\s*$') {return}
+    $paths=Invoke-EmulatorReadinessCommand $Adb @('-s',$Serial,'shell','pm','path','ru.itoltec.swypetris') 10000
+    $base=@($paths -split '\r?\n'|Where-Object {$_ -cmatch '^package:/data/app/[^\r\n]+/base\.apk$'})
+    if($base.Count -ne 1){throw 'Cannot identify installed Swypetris base APK.'}
+    $destination=Join-Path $Directory ('installed-'+[guid]::NewGuid().ToString('N')+'.apk')
+    $null=Invoke-EmulatorReadinessCommand $Adb @('-s',$Serial,'pull',$base[0].Substring(8),$destination) 10000
+    $fingerprints=@(foreach($file in @($ApkPath,$destination)){
+        $lines=@(& $ApkSigner verify --print-certs $file 2>&1)
+        if($LASTEXITCODE -ne 0){throw 'Cannot verify candidate/installed APK signature.'}
+        $certMatches=@($lines|Select-String '^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$')
+        if($certMatches.Count -ne 1){throw 'Ambiguous APK signer; inspect before installation.'}
+        $certMatches[0].Matches[0].Groups[1].Value
+    })
+    if($fingerprints[0] -cne $fingerprints[1]){throw "Swypetris signer mismatch on $Serial. Use a dedicated debug emulator or explicitly reset only the owned test app. No automatic uninstall performed."}
+}
 function Resolve-VerificationSdk {
     param([string]$Project,[string]$SdkDirectory)
     $localSdk=$null
@@ -50,4 +78,4 @@ function Resolve-VerificationEnvironment {
     }
     [pscustomobject]@{androidRequired=$true;javaHome=(Resolve-Path $JavaHome).Path;sdkDirectory=$sdk;javaVersion=$javaVersion;platform=$platform;adb=(Join-Path $sdk 'platform-tools/adb.exe')}
 }
-Export-ModuleMember -Function Resolve-VerificationEnvironment,Resolve-VerificationSdk,Assert-VerificationAnalysisIdentity
+Export-ModuleMember -Function Resolve-VerificationEnvironment,Resolve-VerificationSdk,Assert-VerificationAnalysisIdentity,Assert-VerificationScmRoot,Assert-VerificationInstallSigner

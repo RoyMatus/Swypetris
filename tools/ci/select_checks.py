@@ -102,7 +102,7 @@ GROUP_TESTS = {
     "navigation": ((), ("BrandNavigationTest", "GameUiTest", "ForegroundUiTest")),
     "intro": (("LaunchIntroMotionTest",), ("LaunchIntroTest", "LaunchIntroRecreationTest")),
     "visual": (("GameLayoutTest", "MenuSkyMotionTest", "VictoryMotionTest"),
-               ("HelpHudTest", "GameUiTest", "VictoryThemeIntegrationTest", "MenuSkyTest")),
+               ("HelpHudTest", "GameUiTest", "VictoryThemeIntegrationTest", "MenuSkyTest", "HudLayeringTest", "BorderlessHudTest")),
     "settings": (("DifficultyTest", "PlaylistClockTest"),
                  ("GameUiTest", "MusicSettingsFruitTest", "StatisticsResetTest", "VibrationSettingsTest", "StartingLevelTest")),
     "legal": ((), ("LegalScreenTest", "PublicationTest", "ShareAppTest")),
@@ -172,7 +172,7 @@ def select(paths: list[str]) -> dict[str, str]:
         if path.startswith("app/src/androidTest/java/ru/itoltec/swypetris/") and name.endswith(".kt"):
             app = True
             test = path.removeprefix("app/src/androidTest/java/ru/itoltec/swypetris/")
-            if "/" in test or not Path(path).is_file() or name == "IsolatedStorageRule.kt":
+            if "/" in test or not Path(path).is_file() or name in {"IsolatedStorageRule.kt", "DeliveryPhaseProfile.kt"}:
                 full = True
             elif name != "EnergyScenarioTest.kt":
                 android.add(name.removesuffix(".kt"))

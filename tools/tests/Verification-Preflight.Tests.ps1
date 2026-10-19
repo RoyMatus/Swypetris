@@ -1,7 +1,41 @@
 BeforeAll {
     Import-Module (Join-Path $PSScriptRoot '../Verification-Preflight.psm1') -Force
 }
+Describe 'Installed application signature preflight' {
+    BeforeEach {
+        $signer=Join-Path $TestDrive 'signer-fixture.ps1'
+        Set-Content $signer '$global:LASTEXITCODE=0; "Signer #1 certificate SHA-256 digest: " + ("a"*64)'
+        Mock Invoke-EmulatorReadinessCommand -ModuleName Verification-Preflight {
+            param($AdbCommand,$Arguments,$TimeoutMilliseconds)
+            if($Arguments -contains 'list'){'package:ru.itoltec.swypetris'}
+            elseif($Arguments -contains 'path'){'package:/data/app/test/ru.itoltec.swypetris/base.apk'}
+            elseif($Arguments -contains 'pull'){Set-Content -LiteralPath $Arguments[-1] 'fixture APK'}
+            else {throw 'Unexpected device mutation.'}
+        }
+    }
+    It 'accepts matching verified signers without installing or resetting the app' {
+        {Assert-VerificationInstallSigner -Adb fixture -Serial emulator-5580 -ApkPath candidate.apk -ApkSigner $signer -Directory $TestDrive}|Should -Not -Throw
+        Should -Invoke Invoke-EmulatorReadinessCommand -ModuleName Verification-Preflight -Times 3 -Exactly
+    }
+    It 'blocks a different installed signer before installation and never uninstalls' {
+        Set-Content $signer '$global:LASTEXITCODE=0; $hash=if($args[-1] -like "*installed-*"){ "b"*64 }else{ "a"*64 }; "Signer #1 certificate SHA-256 digest: " + $hash'
+        {Assert-VerificationInstallSigner -Adb fixture -Serial emulator-5580 -ApkPath candidate.apk -ApkSigner $signer -Directory $TestDrive}|Should -Throw '*signer mismatch*'
+        Should -Invoke Invoke-EmulatorReadinessCommand -ModuleName Verification-Preflight -Times 0 -ParameterFilter {$Arguments -contains 'uninstall'}
+    }
+    It 'fails closed when apksigner cannot verify a signature' {
+        Set-Content $signer '$global:LASTEXITCODE=1; "verification failed"'
+        {Assert-VerificationInstallSigner -Adb fixture -Serial emulator-5580 -ApkPath candidate.apk -ApkSigner $signer -Directory $TestDrive}|Should -Throw '*Cannot verify*'
+    }
+}
 Describe 'Scope-aware verification prerequisites' {
+    It 'rejects cross-volume Sonar SCM roots before running checks' -Skip:(!$IsWindows) {
+        Mock Invoke-CheckedGit -ModuleName Verification-Preflight { 'D:\repo\.git' }
+        { Assert-VerificationScmRoot -Project 'C:\repo-worktree' } | Should -Throw '*same volume*'
+    }
+    It 'accepts a worktree and Git directory on the same volume' -Skip:(!$IsWindows) {
+        Mock Invoke-CheckedGit -ModuleName Verification-Preflight { 'C:\repo\.git' }
+        (Assert-VerificationScmRoot -Project 'C:\repo-worktree').compatible | Should -BeTrue
+    }
     It 'keeps documentation scope free of Android and Sonar requirements' {
         $result = Resolve-VerificationEnvironment -Project $TestDrive -RequiresAndroid $false
         $result.androidRequired | Should -BeFalse
