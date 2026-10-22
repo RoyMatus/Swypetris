@@ -4,7 +4,7 @@ All builds, JVM/Android/tool tests and signed release verification run on local 
 
 ## Scope and commands
 
-The project has one Android module, `:app`, AGP 9.1.1, Gradle 9.3.1, Java 11 source/target compatibility and JUnit Platform/Vintage. Use JDK 21 and the configured Android SDK. [TESTING.md](../TESTING.md) owns the inventory; `tools/ci/select_checks.py` owns conservative path-to-check selection. “CI” in retained helper names does not authorize hosted execution.
+The project has one Android module, `:app`, AGP 9.1.1, Gradle 9.8.2, Java 11 source/target compatibility and JUnit Platform/Vintage. Use JDK 21 and the configured Android SDK. [TESTING.md](../TESTING.md) owns the inventory; `tools/ci/select_checks.py` owns conservative path-to-check selection. “CI” in retained helper names does not authorize hosted execution.
 
 | Change | Required local checks |
 | --- | --- |

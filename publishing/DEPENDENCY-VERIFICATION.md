@@ -5,11 +5,18 @@ in `gradle/verification-metadata.xml`. Normal builds use strict verification.
 Dependencies, plugin versions and repositories remain declared in the existing
 Gradle files; verification does not lock or upgrade the dependency graph.
 
+The baseline also covers IDE attachments (sources, Javadoc and Compose sample
+sources), the Gradle source distribution, and the JaCoCo/ASM artifacts used by
+local checks. A wrapper upgrade can change embedded Kotlin and default JaCoCo
+versions. Review those artifacts and confirm an actual IDE Gradle Sync as well
+as local checks: `help` and a basic Tooling API model do not request every IDE
+attachment.
+
 ## Reviewing an intentional dependency change
 
 1. Review the dependency/version change and publisher source first. Keep the
    original metadata and resolved graph available for comparison.
-2. On a trusted machine, generate candidate entries using Gradle 9.3.1's
+2. On a trusted machine, generate candidate entries using Gradle 9.8.2's
    `--refresh-dependencies --write-verification-metadata sha256` options.
    Refresh is necessary because warmed metadata caches can omit parent POM/BOM
    checksums during bootstrap ([Gradle issue #19228](https://github.com/gradle/gradle/issues/19228)).
@@ -44,4 +51,4 @@ SDK downloads, GitHub Actions and Sonar scanner engine/analyzer downloads outsid
 Gradle's resolver are outside this metadata's coverage and retain their existing
 controls. No claim of complete supply-chain verification is made.
 
-Reference: [Gradle 9.3.1 dependency verification](https://docs.gradle.org/9.3.1/userguide/dependency_verification.html).
+Reference: [Gradle 9.8.2 dependency verification](https://docs.gradle.org/9.8.2/userguide/dependency_verification.html).
