@@ -13,7 +13,7 @@ The project has one Android module, `:app`, AGP 9.1.1, Gradle 9.8.2, Java 11 sou
 | Documentation/instructions only | Diff, links, selection and evidence; no Android build, device tests or Sonar |
 | Allowlisted local API/verification/host tooling | Selected Pester/Python contract tests; no app build unless app/build inputs also change |
 | Release automation | Selected local PowerShell/Python tests including actual platform-specific release-tool tests |
-| Exact-main release candidate | Full regression plus independent release lint, signed APK/AAB signature/certificate checks and signed APK runtime smoke |
+| Exact-main release candidate | Full regression plus independent release lint, signed APK/AAB signature/certificate checks, signed APK runtime smoke and the prepublication [required supplemental release scenarios](../TESTING.md#required-release-scenarios) |
 
 For intermediate development, use `tools/Verify-Tests.ps1` with `FocusedJvm` or `FocusedAndroid`, explicit `-TestClass`, `-MaxWorkers`, and an explicit emulator `-Serial` for device work. `Fast` runs debug build/lint/JVM/JaCoCo, not detekt/Sonar/device checks; it is not the complete final gate. The final PR/release regression entrypoint is `tools/Invoke-LocalChecks.ps1`; inspect its parameter help for the current interface. Merge through `tools/Manage-PullRequest.ps1` with the resulting evidence.
 
@@ -46,6 +46,8 @@ Provide the existing organization/project configuration and an analysis token to
 The dedicated Swypetris gate retains new-code reliability/maintainability A, duplication at most 3%, and no High-or-higher new security issues. Medium/Low findings and hotspots require review. Coverage remains reported without a gate threshold; do not silently change these rules. The scanner excludes generated/build directories and PNG/OGG/WAV assets, includes Kotlin/Java sources and consumes complete debug JVM JaCoCo XML. Check imported coverage and analysis identity rather than equating scanner startup with success.
 
 ## Local release and historical evidence
+
+Every release also requires the [four supplemental scenarios](../TESTING.md#required-release-scenarios), with the live signed-update scenario after publication. The ordinary opt-in skip allowlist is not a release acceptance waiver. Keep `EnergyScenarioTest` excluded unless separately requested. These additional checks are agent-enforced release steps; the current scripts do not activate them automatically.
 
 `tools/release/Verify-LocalRelease.ps1` validates full local evidence for the exact current main commit, builds signed APK/AAB using the existing release builder, checks public certificate fingerprints and exercises the signed APK on an explicit emulator. It writes local release provenance binding commit, version, evidence and artifact hashes. Verification never publishes.
 
