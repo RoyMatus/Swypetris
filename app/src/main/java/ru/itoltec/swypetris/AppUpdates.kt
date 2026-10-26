@@ -1,6 +1,8 @@
 package ru.itoltec.swypetris
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
@@ -99,7 +101,6 @@ internal class AppUpdates(private val activity: ComponentActivity,
     private val clock: () -> Long = System::currentTimeMillis,
     private val elapsedClock: () -> Long = SystemClock::elapsedRealtime,
     private val githubUpdate: () -> AvailableUpdate? = ::fetchGitHubUpdate) {
-    val delivery = UpdateDelivery(activity)
     private val githubChecks = GitHubChecks()
     private val storeChecks = StoreChecks()
     private val storeManager by lazy { RuStoreAppUpdateManagerFactory.create(activity) }
@@ -110,6 +111,7 @@ internal class AppUpdates(private val activity: ComponentActivity,
         private set
 
     init {
+        activity.lifecycleScope.launch(Dispatchers.IO) { removeLegacyUpdate(activity.applicationContext) }
         // The removed setting must never retain an old automatic download/install grant.
         if (listOf("automatic", "automatic_choice", "automatic_store_attempt").any(preferences::contains))
             preferences.edit().remove("automatic").remove("automatic_choice")
@@ -117,7 +119,6 @@ internal class AppUpdates(private val activity: ComponentActivity,
     }
 
     fun check(manual: Boolean) {
-        if (manual && delivery.showReady()) return
         if (checking) {
             if (manual) manualRequested = true
             return
@@ -302,7 +303,13 @@ internal class AppUpdates(private val activity: ComponentActivity,
     fun open(update: AvailableUpdate) {
         notice = null
         if (!update.fromRuStore) {
-            delivery.download(update)
+            try {
+                val page = "https://github.com/RoyMatus/Swypetris/releases/tag/v${update.versionName}"
+                require(Regex("\\d+\\.\\d+\\.\\d+").matches(update.versionName))
+                activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page)))
+            } catch (_: android.content.ActivityNotFoundException) {
+                notice = UpdateNotice.Failed
+            }
             return
         }
         // A fresh AppUpdateInfo is required after the availability check.
@@ -357,7 +364,6 @@ internal class AppUpdates(private val activity: ComponentActivity,
 
     fun close() {
         storeChecks.clearListener()
-        delivery.close()
     }
 
     private fun installedVersionCode(): Long {

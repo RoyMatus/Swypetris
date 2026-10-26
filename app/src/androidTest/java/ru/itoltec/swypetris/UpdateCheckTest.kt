@@ -75,12 +75,12 @@ class UpdateCheckTest {
             if (offered) compose.onNodeWithTag("laterUpdate").assertIsDisplayed().performClick()
             compose.runOnIdle {
                 assertNull(updates.notice)
-                assertNull(updates.delivery.notice)
+                assertFalse(java.io.File(compose.activity.noBackupFilesDir, "updates/ready.apk").exists())
             }
             compose.onNodeWithTag("newGame").assertIsDisplayed().performClick()
             compose.runOnIdle {
                 assertEquals(GameScreen.PLAYING, model.screen)
-                assertNull(updates.delivery.notice)
+                assertFalse(java.io.File(compose.activity.noBackupFilesDir, "updates/ready.apk").exists())
             }
         } finally {
             compose.runOnIdle { model.pause(); updates.close(); preferences.edit().clear().commit() }
