@@ -31,3 +31,5 @@ The former `release-signing` Environment and stored secrets are historical confi
 Before a major/substantial release, complete [RELEASE-COMPLIANCE.md](RELEASE-COMPLIANCE.md) for exact intended artifacts using current official RuStore and GitHub requirements. Mandatory violations or unverified owner items block publication independently of technical checks.
 
 Automatic remote branch deletion does not clean local worktrees. Inspect ownership, open PRs, unmerged work and artifacts before cleanup; never remove another process's work. Reconcile Projects locally with [tools/PROJECT-SYNC.md](../tools/PROJECT-SYNC.md); after ProjectAccessError stop Project operations until credentials change.
+
+User-request/ticket scope is also subject to the [RuStore compliance gate](RUSTORE-COMPLIANCE.md). Confirmed conflicts must not be implemented; the store_compliance role reviews substantial or uncertain scope and final publication evidence.
