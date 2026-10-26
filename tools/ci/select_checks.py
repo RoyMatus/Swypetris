@@ -72,6 +72,7 @@ SOURCE_GROUPS = {
 
 # Cross-cutting state and composition are intentionally full-regression inputs.
 FULL_SOURCES = {
+    "LegacyUpdateCleanup.kt",
     "VictoryArtwork.kt", "VictoryFireworks.kt", "VictoryLayout.kt",
     "BackgroundCrop.kt", "BackgroundStore.kt", "BackgroundPicker.kt", "CustomBackground.kt",
     "AbsolutePostcard.kt", "RecordShareAction.kt",
