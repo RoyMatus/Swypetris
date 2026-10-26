@@ -26,14 +26,14 @@ internal fun AppScreen(model: GameViewModel, updates: AppUpdates?, onExit: () ->
 
 @Composable
 internal fun AppUpdateDialogs(model: GameViewModel, updates: AppUpdates) {
-    UpdateDeliveryDialog(updates.delivery, model) { updates.check(true) }
-    if (updates.delivery.notice == null) updates.notice?.let { notice ->
+    updates.notice?.let { notice ->
         MenuAlertDialog(onDismissRequest = { if (notice != UpdateNotice.StoreInstalling) updates.dismiss() },
             title = { Text(if (notice is UpdateNotice.Available) "Доступно обновление" else "Проверка обновлений") },
             text = { Column(Modifier.verticalScroll(rememberScrollState())) { Text(updateNoticeMessage(notice)) } },
             confirmButton = {
                 if (notice is UpdateNotice.Available) MenuTextButton(onClick = { updates.open(notice.update) },
-                    modifier = Modifier.testTag("confirmUpdate")) { Text("Обновить") }
+                    modifier = Modifier.testTag("confirmUpdate")) {
+                    Text(if (notice.update.fromRuStore) "Обновить" else "Открыть страницу версии") }
                 else if (notice is UpdateNotice.StoreReady) MenuTextButton(onClick = { updates
                     .installStore(model) }) { Text("Установить") }
                 else if (notice != UpdateNotice.StoreInstalling) MenuTextButton(onClick = updates::dismiss) {

@@ -5,15 +5,15 @@ import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** Opt-in live GitHub fixture. The shell verifies the installed version after process replacement. */
+/** Opt-in release integrity fixture; the distributed app no longer installs APKs. */
 class SignedUpdateScenarioTest {
     @get:Rule(order = 0) val storage = IsolatedStorageRule()
     @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
@@ -28,43 +28,30 @@ class SignedUpdateScenarioTest {
                 JSONObject(connection.inputStream.use { it.readBytesLimited(256 * 1024) }.toString(Charsets.UTF_8))
             } finally { connection.disconnect() }
         }
-        val update = runBlocking {
+        runBlocking {
             withContext(Dispatchers.IO) {
-                requireNotNull(parseGitHubRelease(
-                    args.getString("signedReleaseJson")?.let { JSONObject(java.io.File(it).readText()) }
+                val update = requireNotNull(parseGitHubRelease(
+                    args.getString("signedReleaseJson")?.let { JSONObject(File(it).readText()) }
                         ?: json("https://api.github.com/repos/RoyMatus/Swypetris/releases/tags/v$version"),
                     json("https://github.com/RoyMatus/Swypetris/releases/download/v$version/update.json")))
-            }
-        }
-        lateinit var delivery: UpdateDelivery
-        compose.runOnIdle { delivery = UpdateDelivery(compose.activity) }
-        compose.waitUntil(5000) {
-            (UpdateDelivery::class.java.getDeclaredField("operation").apply { isAccessible = true }
-                .get(delivery) as? kotlinx.coroutines.Job)?.isActive != true
-        }
-        try {
-            compose.runOnIdle { delivery.download(update) }
-            compose.waitUntil(180_000) { delivery.notice is DeliveryNotice.Ready ||
-                delivery.notice is DeliveryNotice.Failed }
-            if (args.getString("expectSignerMismatch") == "true") {
-                assertEquals(UpdateFailureReason.SIGNER.userMessage, (delivery.notice as DeliveryNotice.Failed).message)
-                assertFalse(java.io.File(compose.activity.noBackupFilesDir, "updates/ready.apk").exists())
-            } else {
-                assertTrue("Download result: ${delivery.notice}", delivery.notice is DeliveryNotice.Ready)
-                if (args.getString("commitSignedUpdate") == "true") {
-                    compose.runOnIdle {
-                        delivery.install(androidx.lifecycle
-                            .ViewModelProvider(compose.activity)[GameViewModel::class.java], true)
+                val file = File(compose.activity.cacheDir, "release-integrity.apk")
+                val connection = openUpdateConnection(requireNotNull(update.apkUrl))
+                try {
+                    connection.inputStream.use {
+                        copyUpdate(it, file, update.sizeBytes, requireNotNull(update.sha256), {}, {})
                     }
-                    compose.waitUntil(30_000) {
-                        delivery.notice == DeliveryNotice.Confirmation || delivery.notice is DeliveryNotice.Failed ||
-                            delivery.notice == null
+                    val result = runCatching { validateUpdateApk(compose.activity, file, update) }
+                    if (args.getString("expectSignerMismatch") == "true") {
+                        assertEquals(UpdateFailureReason.SIGNER, (result.exceptionOrNull() as UpdateFailure).reason)
+                    } else {
+                        result.getOrThrow()
+                        assertTrue(file.isFile)
                     }
-                    assertFalse("Installer rejected update: ${delivery.notice}",
-                        delivery.notice is DeliveryNotice.Failed)
-                    compose.runOnIdle { delivery.confirmInstallation() }
+                } finally {
+                    connection.disconnect()
+                    removeUpdateFile(file)
                 }
             }
-        } finally { compose.runOnIdle { delivery.close() } }
+        }
     }
 }

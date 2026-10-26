@@ -64,7 +64,7 @@ class AutomaticUpdatesTest {
                     false, "0".repeat(64), 1)
                 updates.showAvailable(update, manual = false)
                 assertTrue(updates.notice is UpdateNotice.Available)
-                assertNull(updates.delivery.notice)
+                assertFalse(java.io.File(activity.noBackupFilesDir, "updates/ready.apk").exists())
                 assertFalse(preferences().contains("automatic"))
             } finally { updates.close() }
         }
