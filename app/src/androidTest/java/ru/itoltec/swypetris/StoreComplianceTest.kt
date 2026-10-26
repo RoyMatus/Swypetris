@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.PatternMatcher
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -29,13 +31,13 @@ class StoreComplianceTest {
 
     @Test fun githubUpdateOpensReleasePageWithoutDownloadingAnApk() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        var opened: Intent? = null
-        val monitor = object : Instrumentation.ActivityMonitor() {
-            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
-                opened = intent
-                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
-            }
+        val filter = IntentFilter(Intent.ACTION_VIEW).apply {
+            addDataScheme("https")
+            addDataAuthority("github.com", null)
+            addDataPath("/RoyMatus/Swypetris/releases/tag/v9.9.9", PatternMatcher.PATTERN_LITERAL)
         }
+        val monitor = Instrumentation.ActivityMonitor(
+            filter, Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null), true)
         instrumentation.addMonitor(monitor)
         try {
             compose.runOnIdle {
@@ -43,9 +45,7 @@ class StoreComplianceTest {
                 try {
                     updates.open(AvailableUpdate(Long.MAX_VALUE, "9.9.9",
                         "https://example.invalid/untrusted.apk", false))
-                    assertEquals(Intent.ACTION_VIEW, opened?.action)
-                    assertEquals("https://github.com/RoyMatus/Swypetris/releases/tag/v9.9.9",
-                        opened?.dataString)
+                    assertEquals("Expected the exact GitHub release page", 1, monitor.hits)
                     assertFalse(java.io.File(compose.activity.noBackupFilesDir, "updates/ready.apk").exists())
                 } finally { updates.close() }
             }
