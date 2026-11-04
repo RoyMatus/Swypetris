@@ -1,18 +1,17 @@
 ---
 name: ci-policy
-description: Change or review Swypetris local verification policy, merge evidence and release gates.
+description: Change or review Swypetris verification selection, evidence validation and merge/release enforcement.
 ---
 
 # Verification policy
 
-Read [publishing/CI.md](../../../publishing/CI.md), [publishing/POLICY.md](../../../publishing/POLICY.md), the affected local runner and `tools/ci/select_checks.py`; these own scope, commands and enforcement. Inspect actual GitHub rules before changing protection settings.
+Read the affected contract in [CI.md](../../../publishing/CI.md), its enforcing runner/validator and `tools/ci/select_checks.py`. Use [POLICY.md](../../../publishing/POLICY.md) for enforcement ownership and trust boundaries; inspect actual GitHub rules before protection maintenance and verify settings afterward.
 
-Run builds, JVM/Android/tool tests and signed release verification locally. Do not dispatch GitHub Actions, install a self-hosted Actions runner or use a cloud fallback. Missing local capacity means verification is blocked. SonarQube Cloud is the explicit service exception: run its scanner locally and await the Quality Gate. Never weaken lint, tests, report validation, dependency verification or Sonar failures.
+Preserve these invariants when changing policy:
 
-Use the parent's diagnosed execution profile and reservation; one owner schedules heavy Gradle/emulator work. Preserve caches and failed-run diagnostics. Unknown/shared execution inputs retain conservative full regression. Validate selector, report and local evidence contracts for policy changes. Windows is the only mandatory verification platform; Linux/WSL is not required. Optional Unix tests do not gate merges or releases, and their omission is not proof of Unix behavior.
+- All execution stays local under [execution profiles](../../../publishing/EXECUTION-PROFILES.md); the locally run Sonar scanner awaits the remote Quality Gate. No Actions or cloud fallback.
+- Unknown/shared inputs retain conservative full regression. Validate affected selector, report and evidence contracts; never weaken lint, tests, dependency verification or Sonar failures. Windows is mandatory; optional Unix coverage is not implied by Windows results.
+- Merge evidence binds a clean exact head/current main base. `Manage-PullRequest.ps1` rejects failed/incomplete/stale evidence and merges with expected head SHA. Preserve PR/main/tag protections and the explicit limitation that UI/other API merges bypass local evidence validation.
+- Exact-main release verification independently checks full regression, original signing certificates and signed runtime behavior, artifact hashes and provenance (including historical cloud provenance). Verification never publishes; the separate publisher requires authorization and the [compliance review](../../../publishing/RELEASE-COMPLIANCE.md). Preserve private keys/access and separate device/store acceptance.
 
-The final PR gate binds local evidence to a clean exact head and current main base. Manage-PullRequest.ps1 must reject stale, incomplete or failed evidence and use the expected head SHA when merging. GitHub PR/no-force-push/no-deletion protections remain, but UI merges bypass local test verification: this limitation must remain explicit. Archived workflows are historical fixtures, never execution entrypoints.
-
-Release verification independently checks the exact main commit, complete regression, signatures/certificate fingerprints and signed APK runtime behavior. Verification does not publish; use the separate local publisher only with explicit release authorization. Preserve protected release tags, artifact hashes and provenance, including verification of historical cloud releases. Signing keys stay private. Do not change access or secrets without assignment.
-
-Before a major/substantial release, follow [RELEASE-COMPLIANCE.md](../../../publishing/RELEASE-COMPLIANCE.md), review current RuStore and GitHub requirements and resolve mandatory violations or unverified owner items. Technical gates do not replace store/device acceptance.
+Archived workflows are historical fixtures, never execution entrypoints. Reuse existing check evidence and diagnostics; policy editing does not authorize publication or changes to secrets/access.

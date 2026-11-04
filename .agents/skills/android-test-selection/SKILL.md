@@ -1,16 +1,20 @@
 ---
 name: android-test-selection
-description: Select proportionate local Android build, JVM, instrumentation, and release checks for a Swypetris code change.
+description: Choose risk-based local checks for Swypetris changes and distinguish development checks from final PR and release gates.
 ---
 
 # Android test selection
 
-Use [publishing/CI.md](../../../publishing/CI.md) for commands and CI scope, `tools/ci/select_checks.py` for path mappings, and [TESTING.md](../../../TESTING.md) for the inventory. Do not copy their matrices here.
+Map each changed behavior to a plausible failure mode and the smallest useful check:
 
-Choose local checks from changed behavior and plausible failure modes: focused JVM tests for logic; explicit-device instrumentation for UI, lifecycle or platform integration; relevant size/font-scale inspection for visuals; broader regression only for cross-system risk or unresolved failures. Instruction-only edits need review, not Android builds. A release candidate needs the documented release scope and signing checks.
+- Game logic/geometry: affected JVM classes and coupled state rules.
+- Compose/platform/persistence: relevant instrumentation, explicit device serial and affected JVM rules.
+- Visuals: relevant portrait sizes/aspect ratios/font scales and appearance evidence; semantics alone cannot prove rendering.
+- Instructions: diff, links and consistency, no Android build. Local tools: focused tool/contract tests.
+- Cross-system changes or unresolved regression: broaden for the actual risk. Release candidates retain full regression and independent signing/runtime acceptance.
 
-For [TDD cycles](../../../TESTING.md#tdd-for-behavior-changes), select the smallest test scope that observes the required behavior. Prefer the existing focused class runners; preserve RED logs and relevant XML before later runs overwrite reports. Rerun affected tests after implementation or refactoring because their inputs changed; reuse unrelated valid evidence. A full suite, Sonar scan or signed build is not required for each cycle. Apply the documented exception and alternative checks when TDD is unsuitable, while retaining the mandatory final PR/release scope.
+Use [CI.md](../../../publishing/CI.md) for mandatory final scope/commands, `tools/ci/select_checks.py` for conservative path mappings, and [TESTING.md](../../../TESTING.md) for inventory, TDD exceptions and supplemental release scenarios. Development checkpoints do not replace the exact-head PR or exact-main release gate.
 
-Use the task's diagnosed execution profile from AGENTS.md and `publishing/EXECUTION-PROFILES.md`; child agents reuse the parent's profile. Choose scope independently of location: a weak host does not justify a broader suite. Run one verification owner per worktree/device, reuse successful unchanged evidence, and expand only when changed behavior or a failure requires it. The final local PR gate must reuse valid evidence rather than repeat an identical successful suite. All checks run locally; missing local capacity blocks completion, with no cloud fallback. Use `-MaxWorkers` from the profile rather than editing shared Gradle settings for one computer.
+Run `tools/Verify-Tests.ps1 -Suite FocusedJvm|FocusedAndroid -TestClass <classes>` with `-JavaHome`, explicit `-Serial` for device work and `-MaxWorkers` from the [host profile](../../../publishing/EXECUTION-PROFILES.md). Direct narrower Gradle/adb checks are allowed. Preserve RED logs/XML before GREEN overwrites them; full regression/Sonar/signing is not required for each TDD cycle.
 
-Use `tools/Verify-Tests.ps1` for supported standard suites (JavaHome and explicit Serial as needed); direct Gradle/adb is appropriate for narrower checks. Follow AGENTS.md device policy. Retain the runner's completed result and reports, and distinguish build/install success from exercised behavior. Report actual checks and limitations.
+Reuse applicable passing results and coordinate with the single heavy-check owner under [AGENTS.md](../../../AGENTS.md). Record executed versus cached results and remaining coverage; build/install success is not exercised behavior.

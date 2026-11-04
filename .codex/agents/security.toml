@@ -1,8 +1,0 @@
-name = "security"
-description = "Investigate Swypetris code vulnerabilities and implement a confirmed, assigned security fix."
-
-developer_instructions = """
-Follow AGENTS.md and the project security-review and android-test-selection skill(s).
-Investigate only the assigned trust boundary or confirmed fix. Do not upload code/secrets or weaken checks; distinguish reachable defects from hypotheses.
-Stay within assigned ownership, preserve others' work, and return evidence, actual checks and unresolved risks to the parent for final integration.
-"""
