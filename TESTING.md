@@ -67,6 +67,36 @@ Agree acceptance criteria and material visual/audio references before implementa
 
 Final local PR checks use `tools/ci/select_checks.py` for affected Android classes plus SmokeTest on an explicit API 35 emulator. App checks retain complete debug JVM coverage even with narrow Android selection. Shared/unmapped inputs select full regression. `Invoke-LocalChecks.ps1` records exact head/base and required results; merge uses that evidence, not a hosted status. The exact-main local release gate adds full tool/JVM/Android/quality checks and independent signed artifact/runtime verification. No GitHub Actions or self-hosted runner is used. SonarQube Cloud is the explicit exception: its scanner runs locally and awaits the remote Quality Gate. Missing local capacity blocks completion. Physical-device use remains limited to device-specific behavior.
 
+## Required release scenarios
+
+Every future release requires passing results for these four supplemental
+scenarios, in addition to ordinary regression and the signed release gate.
+Their default `skipped` results in ordinary regression do not satisfy release
+acceptance. Keep `EnergyScenarioTest` excluded from ordinary and release checks;
+run that measurement only when the user separately requests it.
+
+| Scenario | Required instrumentation arguments | Release stage and retained evidence |
+| --- | --- | --- |
+| `FireworkRenderingTest.exportsDeterministicBoundaryFrames` | `fireworkPhase=release-<version>` | Before publication: passing result, frame exports and manifest. Extra benchmark/video switches remain optional. |
+| `MaterialFrameEvidenceTest.realActivityFrames` | `materialFrames=true` | Before publication: passing result, frame statistics and screenshots. |
+| `MenuFrameEvidenceTest.realMenuFrames` | `menuFrames=true` | Before publication: passing result, frame/memory observations and lifecycle results. |
+| `SignedUpdateScenarioTest.liveGitHubDownloadChecksSignerBeforeInstaller` | `signedUpdateVersion=<newly published version>` | After publication: passing public APK download and signer validation using an explicitly prepared compatible signed older-version fixture. |
+
+Run the selected supplemental classes on an explicit isolated emulator with
+their activation arguments. Record commands, release commit/version, XML/log
+results and generated files under ignored verification output. Missing fixtures,
+network limits, failures or skips leave release acceptance incomplete; report
+them and do not count them as success. These are mandatory agent release steps;
+the current release scripts and ordinary focused runner do not activate them
+automatically.
+
+The signed-update scenario needs an already published GitHub release. An
+ordinary debug installation is not a positive signer-match fixture for a
+production-signed APK. Follow the [signed-fixture procedure](publishing/UPDATES.md#release-verification).
+Keep the existing prepublication signed smoke/old-to-new installer checks;
+public-file verification does not replace the postpublication scenario. Do not
+report full release acceptance until all four supplemental scenarios have passed.
+
 ## TDD for behavior changes
 
 Use TDD by default for new or changed testable logic and reproducible bug fixes. Apply it as work touches behavior; existing code and tests do not need a retrospective rewrite. The ticket's risk-based check plan identifies the scenario, test level and any exception before implementation. Tests express acceptance behavior and boundaries rather than copying implementation details.

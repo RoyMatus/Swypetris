@@ -16,7 +16,9 @@ Before delivery, run `tools/release/Test-DeliveryEnvironment.ps1 -JavaHome '<JDK
 
 The verifier checks full evidence, APK/AAB signatures and public certificate fingerprints, then resets only Swypetris on the selected emulator for signed runtime smoke. This can erase that emulator's Swypetris data. It produces an immutable snapshot and `local-release-provenance.json` under ignored verification output, binding the exact commit/version, artifact/report hashes, certificates and diagnostics. It does not publish or replace physical-device/store acceptance.
 
-3. Only when publication is explicitly authorized, review English notes and preview the separate publisher:
+3. Before publication, complete the three rendering/export checks in [Required release scenarios](../TESTING.md#required-release-scenarios), with their explicit activation arguments and evidence for the release commit/version. Keep `EnergyScenarioTest` excluded. The current verifier does not activate these scenarios automatically.
+
+4. Only when publication is explicitly authorized, review English notes and preview the separate publisher:
 
 ```powershell
 ./tools/release/Publish-LocalRelease.ps1 -ProvenancePath '<local-release-provenance.json>' `
@@ -24,7 +26,9 @@ The verifier checks full evidence, APK/AAB signatures and public certificate fin
 # Remove -WhatIf only for the authorized publication.
 ```
 
-The publisher refuses an existing release/tag, stages assets as a draft and publishes only after validation. Never overwrite protected tags or a release after a partial failure; inspect and preserve diagnostics before recovery. After publication, use `Verify-PublishedRelease.ps1 -Tag v<version> -LocalProvenance -JavaHome <JDK>` to validate public files. The historical `-ReleaseRunId` path remains available for releases published by the former cloud process.
+The publisher refuses an existing release/tag, stages assets as a draft and publishes only after validation. Never overwrite protected tags or a release after a partial failure; inspect and preserve diagnostics before recovery.
+
+5. After publication, use `Verify-PublishedRelease.ps1 -Tag v<version> -LocalProvenance -JavaHome <JDK>` to validate public files, then run the mandatory `SignedUpdateScenarioTest` against the newly published version with the compatible signed fixture described in [TESTING.md](../TESTING.md#required-release-scenarios). Retain its passing result. An absent fixture, failed download or skipped test leaves postpublication acceptance incomplete. The public-file verifier does not run this instrumentation scenario automatically. The historical `-ReleaseRunId` path remains available for releases published by the former cloud process.
 
 Signing material remains outside the repository in `$env:USERPROFILE/.swypetris-signing` by default (`-SigningDirectory` can select an authorized alternative). Preserve the separate app/upload keys and DPAPI credentials. Never print/upload keys or credentials. `Build-Release.ps1` alone builds and verifies artifact signatures but does not provide full regression/runtime evidence or authorize publication. Backup instructions below remain applicable; the version-specific store text is historical.
 
