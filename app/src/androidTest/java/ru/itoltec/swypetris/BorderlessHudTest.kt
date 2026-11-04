@@ -235,8 +235,11 @@ class BorderlessHudTest {
                 if (item.top < it.bottom) assertTrue(item.left >= it.right)
             }
             if (count > 1) {
+                // The Int.MAX_VALUE fixture earns 26,843–26,844 of each fruit.
+                val expected = if (value == Int.MAX_VALUE) "26.8K" else count.toString()
                 compose.onNodeWithTag("earnedFruitCount_${fruit.name}")
-                    .assertTextEquals("$count")
+                    .assertTextEquals(expected)
+                    .assertContentDescriptionEquals("${fruit.title}: $count")
             }
             previous = item
         }

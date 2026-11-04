@@ -179,7 +179,7 @@ class MusicSettingsFruitTest {
         }
     }
 
-    /** Odd rows reserve the right cell; badge growth cannot move or resize artwork. */
+    /** Partial rows keep their three-column alignment; quantity growth cannot move artwork. */
     @androidx.test.filters.SdkSuppress(minSdkVersion = 26)
     @Test fun fruitColumnsAndBadgesStayStableAcrossCountsAndPortraitSizes() {
         var score by mutableIntStateOf(0)
@@ -217,8 +217,23 @@ class MusicSettingsFruitTest {
             val fruit = Fruit.entries[index]
             val icon = compose.onNodeWithTag("earnedFruitIcon_${fruit.name}")
                 .fetchSemanticsNode().boundsInRoot
-            if (index % 2 == 0) assertEquals(first.left, icon.left, 1f)
-            else assertTrue(icon.left > first.right)
+            val column = index % 3
+            val rowStart = index - column
+            val row = compose.onNodeWithTag("earnedFruitIcon_${Fruit.entries[rowStart].name}")
+                .fetchSemanticsNode().boundsInRoot
+            assertEquals("Three fruits share each row", row.top, icon.top, 1f)
+            if (column == 0) assertEquals(first.left, icon.left, 1f)
+            else {
+                val previous = compose.onNodeWithTag("earnedFruitIcon_${Fruit.entries[index - 1].name}")
+                    .fetchSemanticsNode().boundsInRoot
+                assertTrue("Neighboring fruit icons remain separate", icon.left >= previous.right)
+            }
+            if (index >= 3) {
+                val above = compose.onNodeWithTag("earnedFruitIcon_${Fruit.entries[index - 3].name}")
+                    .fetchSemanticsNode().boundsInRoot
+                assertEquals("Partial rows retain column positions", above.left, icon.left, 1f)
+                assertTrue(icon.top >= above.bottom)
+            }
         }
     }
 
@@ -243,6 +258,9 @@ class MusicSettingsFruitTest {
                 val bounds = badge.fetchSemanticsNode().boundsInRoot
                 assertTrue(bounds.left >= cell.left && bounds.right <= cell.right + 1f)
                 assertTrue(bounds.top >= cell.top && bounds.bottom <= cell.bottom + 1f)
+                assertTrue("Quantity slightly overlaps its own rendered icon",
+                    bounds.left < icon.right && bounds.right > icon.left &&
+                        bounds.top < icon.bottom && bounds.bottom > icon.top)
             }
         }
     }

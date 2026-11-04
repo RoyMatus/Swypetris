@@ -92,7 +92,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
@@ -119,11 +118,10 @@ import ru.itoltec.swypetris.ui.theme.SwypetrisTheme
 
 private const val SCORE_FONT_FIT_STEPS = 12
 private const val SCORE_PULSE_LEG_MILLIS = 110
-private const val FRUIT_COLUMNS = 2
+private const val FRUIT_COLUMNS = 3
 private const val MAX_HUD_FRUIT_SIZE_DP = 30f
 private const val GAMEPLAY_FRUIT_SHRINK_FACTOR = 1.5f
 private const val PHOTO_SCORE_BACKDROP_ALPHA = .72f
-private val fruitBadgeBackground = Color(0xFF242424)
 
 
 /** Current score scale exposed for testing a single pulse with a controlled Compose clock. */
@@ -372,9 +370,10 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
     if (fruits.isEmpty()) return
     val itemWidth = ((width - FRUIT_GAP.dp * (FRUIT_COLUMNS - 1)) / FRUIT_COLUMNS).coerceAtLeast(1.dp)
     val iconSize = minOf(MAX_HUD_FRUIT_SIZE_DP.dp, itemWidth * .8f).coerceAtLeast(1.dp)
-    val badgeWidth = minOf(18.dp, itemWidth * .52f)
+    val renderedIconSize = iconSize / GAMEPLAY_FRUIT_SHRINK_FACTOR
+    val badgeWidth = minOf(18.dp, itemWidth)
     val badgeHeight = minOf(14.dp, badgeWidth)
-    val itemHeight = iconSize + badgeHeight * .5f
+    val itemHeight = renderedIconSize + badgeHeight * .5f
     Column(modifier, verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
         fruits.chunked(FRUIT_COLUMNS).forEach { row ->
             Row(Modifier.fillMaxWidth(),
@@ -383,23 +382,15 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
                 row.forEach { (fruit, count) ->
                     Box(Modifier.size(itemWidth, itemHeight).testTag("earnedFruit_${fruit.name}")) {
                         FruitIcon(fruit, Modifier.align(Alignment.TopStart)
-                            .size(iconSize / GAMEPLAY_FRUIT_SHRINK_FACTOR)
+                            .size(renderedIconSize)
                             .testTag("earnedFruitIcon_${fruit.name}"))
                         if (count > 1) {
-                            val label = count.toString()
-                            val font = fittedHudFont(label, 10.sp, (badgeWidth - 2.dp).coerceAtLeast(1.dp),
-                                badgeHeight)
-                            val badgeLeft = minOf(itemWidth - badgeWidth, iconSize - badgeWidth * .5f)
+                            val badgeLeft = minOf(itemWidth - badgeWidth,
+                                renderedIconSize - badgeWidth * .5f).coerceAtLeast(0.dp)
                             Box(Modifier.align(Alignment.BottomStart).offset(x = badgeLeft)
-                                .size(badgeWidth, badgeHeight)
-                                .background(fruitBadgeBackground, RoundedCornerShape(4.dp)),
+                                .size(badgeWidth, badgeHeight).testTag("earnedFruitQuantity_${fruit.name}"),
                                 contentAlignment = Alignment.Center) {
-                                Text(label, maxLines = 1, softWrap = false,
-                                    style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
-                                        platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                                    color = Color.White,
-                                    modifier = Modifier.testTag("earnedFruitCount_${fruit.name}")
-                                        .semantics { contentDescription = "${fruit.title}: $count" })
+                                FruitQuantity(fruit, count, badgeWidth, badgeHeight)
                             }
                         }
                     }
@@ -408,6 +399,23 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
             }
         }
     }
+}
+
+/** Decorative stroke shares the fill's layout but exposes no duplicate accessibility label. */
+@Composable
+private fun FruitQuantity(fruit: Fruit, count: Long, width: Dp, height: Dp) {
+    val label = fruitQuantityLabel(count)
+    val font = fittedHudFont(label, 10.sp, (width - 2.dp).coerceAtLeast(1.dp), height)
+    val style = TextStyle(fontSize = font, lineHeight = font * 1.2f, letterSpacing = 0.sp,
+        textAlign = TextAlign.Center, platformStyle = PlatformTextStyle(includeFontPadding = false))
+    val strokeWidth = with(LocalDensity.current) { 1.dp.toPx() }
+    val textWidth = Modifier.width((width - 2.dp).coerceAtLeast(1.dp))
+    Text(label, maxLines = 1, softWrap = false, color = Color.Black,
+        style = style.copy(drawStyle = Stroke(width = strokeWidth)),
+        modifier = textWidth.clearAndSetSemantics {})
+    Text(label, maxLines = 1, softWrap = false, color = Color.White, style = style,
+        modifier = textWidth.testTag("earnedFruitCount_${fruit.name}")
+            .semantics { contentDescription = "${fruit.title}: $count" })
 }
 
 
