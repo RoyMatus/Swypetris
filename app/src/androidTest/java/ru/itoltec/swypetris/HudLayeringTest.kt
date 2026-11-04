@@ -61,11 +61,11 @@ class HudLayeringTest {
             val pairs = Fruit.entries.map { compose.onNodeWithTag("earnedFruit_${it.name}")
                 .fetchSemanticsNode().boundsInRoot }
             val firstRow = pairs.count { abs(it.top - pairs.first().top) < 1f }
-            assertEquals("Fruit rows use two evenly distributed items", minOf(2, pairs.size), firstRow)
-            pairs.chunked(2).forEach { row ->
+            assertEquals("Fruit rows use three evenly distributed items", minOf(3, pairs.size), firstRow)
+            pairs.chunked(3).forEach { row ->
                 row.forEach { assertEquals(row.first().top, it.top, 1f) }
             }
-            pairs.chunked(2).zipWithNext().forEach { (above, below) ->
+            pairs.chunked(3).zipWithNext().forEach { (above, below) ->
                 assertTrue(below.first().top >= above.maxOf { it.bottom })
             }
             assertReducedFruitArtwork(pairs, density)
