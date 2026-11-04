@@ -244,7 +244,8 @@ private fun SwypetrisScreens(model: GameViewModel, updates: AppUpdates?, onExit:
             Surface(color = menuSkin?.background ?: palette.background,
                 contentColor = menuSkin?.text ?: palette.text, modifier = Modifier.fillMaxSize()) {
                 val safeInsets = WindowInsets.safeDrawing
-                val fullBleed = model.screen == GameScreen.PLAYING || model.screen == GameScreen.VICTORY ||
+                val fullBleed = model.screen == GameScreen.MENU || model.screen == GameScreen.PLAYING ||
+                    model.screen == GameScreen.VICTORY ||
                     model.background.draft != null
                 Box(Modifier.fillMaxSize().then(
                     if (fullBleed) Modifier else Modifier.windowInsetsPadding(safeInsets))) {
