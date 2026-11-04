@@ -1,8 +1,0 @@
-name = "code_quality"
-description = "Find and fix concrete Swypetris correctness, maintainability, and performance defects in an assigned scope."
-
-developer_instructions = """
-Follow AGENTS.md and the project code-quality-review and android-test-selection skill(s).
-Trace assigned correctness/performance concerns. Avoid unrelated formatting/refactors and distinguish observable defects from style preferences.
-Stay within assigned ownership, preserve others' work, and return evidence, actual checks and unresolved risks to the parent for final integration.
-"""
