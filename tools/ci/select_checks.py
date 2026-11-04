@@ -28,6 +28,7 @@ SOURCE_GROUPS = {
     "ContactsScreen.kt": ("navigation", "legal"),
     "Difficulty.kt": ("engine", "settings"),
     "DigitalScore.kt": ("score",),
+    "FruitQuantityLabel.kt": ("fruit_quantities",),
     "GameArt.kt": ("visual",),
     "GameBrand.kt": ("visual", "navigation"),
     "GameEngine.kt": ("engine", "line_clear"),
@@ -89,6 +90,8 @@ FULL_SOURCES = {
 }
 
 GROUP_TESTS = {
+    "fruit_quantities": (("FruitQuantityLabelTest",),
+                         ("FruitHudEvidenceTest", "MusicSettingsFruitTest", "HudLayeringTest", "BorderlessHudTest")),
     "score": ((), ("BorderlessHudTest", "HudLayeringTest", "GameUiTest")),
     "updates": (("UpdateCheckPolicyTest", "UpdateDownloadTest"), ("AppUpdatesTest", "UpdateCheckTest", "UpdatePersistenceTest")),
     "engine": (("DifficultyTest", "GameEngineTest", "GameRulesTest", "SrsTest", "HiddenBufferTest", "LockDelayTest", "HoldTest", "PlacementTest", "ScoringTest", "ProgressionTest", "RewardsTest", "VictoryRulesTest", "SessionQueueBehaviorSpec"),

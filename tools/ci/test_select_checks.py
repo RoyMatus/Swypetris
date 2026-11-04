@@ -9,6 +9,13 @@ from verify_android_results import verify
 
 
 class SelectionTests(unittest.TestCase):
+    def test_fruit_quantity_labels_cover_formatting_and_rendered_hud(self):
+        result = select(["app/src/main/java/ru/itoltec/swypetris/FruitQuantityLabel.kt"])
+        self.assertEqual("selected", result["mode"])
+        self.assertIn("ru.itoltec.swypetris.FruitQuantityLabelTest", result["jvm"].split(","))
+        for name in ("FruitHudEvidenceTest", "MusicSettingsFruitTest", "HudLayeringTest", "BorderlessHudTest", "SmokeTest"):
+            self.assertIn("ru.itoltec.swypetris." + name, result["android"].split(","))
+
     def test_docs_and_ai_instructions_need_no_tests(self):
         result = select(["README.md", "AGENTS.md", ".agents/skills/demo/SKILL.md", ".codex/agents/scout.toml"])
         self.assertEqual("none", result["mode"])
