@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -54,7 +55,7 @@ private val ACTION_EDGE = listOf(Color(0xFFB5FF70), Color(0xFF20B843), Color(0xF
 /** Full-screen night sky stays fixed beneath the two animated fireworks. */
 @Composable
 internal fun VictoryBackdrop(layout: VictoryLayout) {
-    Canvas(Modifier.fillMaxSize().testTag("victoryBackdrop")) { drawVictoryBackdrop(layout) }
+    Canvas(Modifier.fillMaxSize().graphicsLayer().testTag("victoryBackdrop")) { drawVictoryBackdrop(layout) }
 }
 
 /** Shared rendering also supplies the static postcard without a screenshot or UI dependency. */
@@ -90,7 +91,7 @@ internal fun DrawScope.drawVictoryBackdrop(layout: VictoryLayout) {
 @Composable
 internal fun VictoryForeground(layout: VictoryLayout) {
     val artwork = ImageBitmap.imageResource(R.drawable.victory_foreground)
-    Canvas(Modifier.fillMaxSize().testTag("victoryArtwork").semantics {
+    Canvas(Modifier.fillMaxSize().graphicsLayer().testTag("victoryArtwork").semantics {
         contentDescription = "Кубок из блоков и восемь фруктов"
     }) { drawVictoryForeground(artwork, layout) }
 }

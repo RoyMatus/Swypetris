@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -66,9 +67,10 @@ internal fun ThemeBackdrop(palette: GamePalette, approach: Float = 1f) {
 @Composable
 internal fun rememberMenuSkyTime(enabled: Boolean, themeId: String = ""): State<Double> {
     val owner = LocalLifecycleOwner.current
+    val focused = LocalWindowInfo.current.isWindowFocused
     val seconds = remember(themeId, enabled) { mutableStateOf(0.0) }
-    LaunchedEffect(owner, enabled, themeId) {
-        if (enabled) owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+    LaunchedEffect(owner, enabled, themeId, focused) {
+        if (enabled && focused) owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = withInfiniteAnimationFrameNanos { it }
             while (true) {
                 val now = withInfiniteAnimationFrameNanos { it }

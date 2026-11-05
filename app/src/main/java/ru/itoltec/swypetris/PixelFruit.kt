@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import kotlin.math.round
@@ -171,7 +172,7 @@ private val fruitSprites = mapOf(
 fun FruitIcon(fruit: Fruit, modifier: Modifier = Modifier) {
     val sprite = fruitSprites.getValue(fruit)
     val palette = LocalGamePalette.current
-    Canvas(modifier.semantics { contentDescription = fruit.title }) {
+    Canvas(modifier.graphicsLayer().semantics { contentDescription = fruit.title }) {
         val cell = minOf(size.width, size.height) / 16f
         val origin = Offset((size.width - cell * 16) / 2, (size.height - cell * 16) / 2)
         sprite.rows.forEachIndexed { y, row ->

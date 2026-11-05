@@ -12,12 +12,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
@@ -152,6 +155,30 @@ class MenuSkyTest {
         compose.runOnIdle { active = time.value }
         compose.mainClock.advanceTimeBy(5000)
         compose.runOnIdle { assertEquals(active, time.value, .00001) }
+    }
+
+    @Test fun clockFreezesWhileWindowIsUnfocusedAndResumesWithoutLosingItsPhase() {
+        compose.mainClock.autoAdvance = false
+        var focused by mutableStateOf(true)
+        lateinit var time: State<Double>
+        compose.setContent {
+            val host = LocalWindowInfo.current
+            val window = remember(host) { object : WindowInfo by host {
+                override val isWindowFocused: Boolean get() = focused
+            } }
+            CompositionLocalProvider(LocalWindowInfo provides window) {
+                time = rememberMenuSkyTime(true, "classic")
+            }
+        }
+        compose.mainClock.advanceTimeBy(1000)
+        compose.runOnIdle { assertTrue(time.value > .5); focused = false }
+        compose.mainClock.advanceTimeByFrame()
+        var frozen = 0.0
+        compose.runOnIdle { frozen = time.value }
+        compose.mainClock.advanceTimeBy(10000)
+        compose.runOnIdle { assertEquals(frozen, time.value, .00001); focused = true }
+        compose.mainClock.advanceTimeBy(100)
+        compose.runOnIdle { assertTrue(time.value - frozen in 0.01..0.15) }
     }
 
     @androidx.annotation.RequiresApi(26)

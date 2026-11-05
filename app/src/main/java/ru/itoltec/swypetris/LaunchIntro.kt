@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.contentDescription
@@ -41,13 +42,14 @@ internal val LocalLaunchIntroAnimations = staticCompositionLocalOf<Boolean?> { n
 internal fun LaunchIntroClock(model: GameViewModel) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
+    val focused = LocalWindowInfo.current.isWindowFocused
     val override = LocalLaunchIntroAnimations.current
     val animate = override ?: remember(context) {
         Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
     }
-    LaunchedEffect(model, owner, animate) {
+    LaunchedEffect(model, owner, animate, focused) {
         if (!animate) model.navigation.finishLaunchIntro()
-        else owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+        else if (focused) owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = withFrameNanos { it }
             var remainder = 0L
             while (model.launchIntroPending) {

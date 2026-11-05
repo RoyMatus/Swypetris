@@ -77,7 +77,7 @@ run that measurement only when the user separately requests it.
 
 | Scenario | Required instrumentation arguments | Release stage and retained evidence |
 | --- | --- | --- |
-| `FireworkRenderingTest.exportsDeterministicBoundaryFrames` | `fireworkPhase=release-<version>` | Before publication: passing result, frame exports and manifest. Extra benchmark/video switches remain optional. |
+| `FireworkRenderingTest.exportsDeterministicBoundaryFrames` | `fireworkPhase=release-<version>` (replace version dots with underscores, e.g. `release-v1_11_5`) | Before publication: passing result, frame exports and manifest. Extra benchmark/video switches remain optional. |
 | `MaterialFrameEvidenceTest.realActivityFrames` | `materialFrames=true` | Before publication: passing result, frame statistics and screenshots. |
 | `MenuFrameEvidenceTest.realMenuFrames` | `menuFrames=true` | Before publication: passing result, frame/memory observations and lifecycle results. |
 | `SignedUpdateScenarioTest.liveGitHubDownloadChecksSignerBeforeInstaller` | `signedUpdateVersion=<newly published version>` | After publication: passing public APK download and signer validation using an explicitly prepared compatible signed older-version fixture. |
@@ -97,7 +97,38 @@ Keep the existing prepublication signed smoke and old-to-new package-replacement
 public-file verification does not replace the postpublication scenario. Do not
 report full release acceptance until all four supplemental scenarios have passed.
 
+## Opt-in physical-device energy measurements
+
+`tools/Measure-Energy.ps1` requires an explicit serial and compatible installed app/test APKs.
+Its default workload remains gameplay. Use `-Menu` for idle menu, `-Palette classic`
+or `-Palette github_light` for a fixed theme, `-NoMusic` to isolate music, and
+`-SeededClears` for gameplay with a guaranteed two-line clear at each workload reset.
+The clear fixture is synthetic, and the remaining pieces are random; report that limitation.
+The workload uses isolated test preferences and does not change the player's saved session.
+
+Start with three 600-second runs per active scenario on an unplugged physical device.
+Retain the APK identity, original/restored display settings, charging/network conditions,
+thermal snapshots, instrumentation logs and raw traces under ignored `app/build/energy`.
+The workload uses the actual Activity clock, not the virtual clock of Compose test rules.
+Measure background/screen-off behavior separately; a foreground workload does not establish
+Android lifecycle suspension. Emulator runs only validate the harness.
+
+Perfetto sessions are stopped through detached-session attach/stop so final producer data
+is written. Analyze with `trace_processor_shell query --full-sort -f tools/energy-metrics.sql <trace>`;
+require one complete workload marker
+with the expected duration before using the result. Inspect `stats` for both `error` and
+`data_loss`, and report unavailable frame or hardware counters. Battery charge is in microampere-hours;
+power-rail energy and current cover the whole device, including the measurement driver and other apps.
+Do not sum potentially overlapping rails or attribute all device drain to Swypetris.
+Compare repeated comparable conditions and variability before claiming an improvement.
+
 ## TDD for behavior changes
+
+`CollisionCheckTest` also enforces a bounded allocation budget for repeated collision checks
+using the mandatory local JDK's thread-allocation counters. It warms the code first, keeps
+fixtures outside the measured interval and compares coordinates/collision decisions against
+the original projection across all figures, rotations and board edges. Its allocation result
+is not an Android battery or timing benchmark.
 
 Use TDD by default for new or changed testable logic and reproducible bug fixes. Apply it as work touches behavior; existing code and tests do not need a retrospective rewrite. The ticket's risk-based check plan identifies the scenario, test level and any exception before implementation. Tests express acceptance behavior and boundaries rather than copying implementation details.
 
@@ -147,6 +178,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `BackgroundRenderingTest` | Compose: portrait sizes, font scale, light/dark backgrounds and unchanged geometry/piece pixels | Keep; saves renders for inspection. |
 | `DifficultyTest` | JVM: Easy/Medium/Hard curves, late-game bounds, selected difficulty across rounds | Keep; covers current three-mode progression. |
 | `GameEngineTest` | JVM: movement, collision, rotation, drops, line clears, game over, bag, gravity | Add stacked-board ghost case; the original ghost check used an empty board. |
+| `CollisionCheckTest` | JVM: original projection/collision/landing/grounding equivalence across 37,800 positions and warmed collision/landing allocation budgets | Keep; detects geometry regressions and object churn without a timing threshold. |
 | `GameFeedbackTest` | JVM: command-to-feedback rules, global intensity, zero suppression and fixed-strength fallback | Keep; integration feedback test checks playback effects separately. |
 | `ThemeSoundGainTest` | JVM: per-event gain routing, Classic CLEAR outlier attenuation, finite positive attenuation bounds and fallback | Keep; numerical safety cannot establish perceived loudness or replace Pixel speaker/headphone audition. |
 | `GameLayoutTest` | JVM: fruit placement across sizes/shapes and random round-theme selection | Keep; Android UI tests separately check rendered bounds. |
@@ -169,7 +201,10 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `RecordShareFailureTest` | Compose: dismissible missing-receiver error and continued play without a history write | A recoverable share error must preserve the round. |
 | `EndlessScoreUiTest` | Compose: full Long record score at narrow portrait/large font | Oversized scores wrap between digit groups without clipping. |
 | `BrandNavigationTest` | Android UI: menu order, compact layout, contacts and intent failure | Keep; needs Compose and platform intents. |
-| `EnergyScenarioTest` | Android measurement: repeatable gameplay workload | Keep opt-in; its real-time sleep is for measurement, never a normal correctness assertion. |
+| `EnergyScenarioTest` | Android measurement: gameplay or idle menu, palette/music variants and optional seeded two-line clears | Keep opt-in; its real-time sleep is for measurement, never a normal correctness assertion. |
+| `AnimationFocusTest` | Compose clock: intro/celebration freeze while unfocused and resume from the same phase | Keep; complements lifecycle and menu-clock coverage. |
+| `BoardInvalidationTest` | Compose draw invalidation: active-piece-only changes skip settled artwork, semantics remain current, next/settled updates repaint | Keep; catches stale caches and redundant redraws. |
+| `DigitalScoreRenderingTest` | Compose pixels: cached digits match the original renderer at the same origin for 20 value/size/color cases | Keep; checks live value updates, all digit masks, Long scores and geometry-cache invalidation. |
 | `ForegroundUiTest` | Android lifecycle: locked portrait board bounds, notification shade, task reuse, insets | Keep; requires system UI and Activity state. |
 | `GameFeedbackIntegrationTest` | Android integration: sound/vibration settings and single-event behavior | Keep; complements pure feedback rules. |
 | `VibrationSettingsTest` | Compose UI: 0/50/100% slider input, persisted intensity, narrow/tablet portrait screens and large fonts | Update fixture/name; retain every input, persistence and reachability assertion. |
@@ -219,7 +254,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `MaterialRenderingTest` | Compose pixels/state: twelve materials/fields, seven pigments, light score without backdrop, two portrait sizes/fonts and every Settings card | Keep; optional source-comparison exports/software timings supplement assertions. |
 | `MaterialFrameEvidenceTest` | Opt-in native Activity: production clock, dense board, movement, gfxinfo and screenshots | Skip ordinarily; no Compose test clock, and no timing threshold on a shared software emulator. |
 | `ThemeSoundIntegrationTest` | Android resources/model/native audio: all 24 approved hashes, manual/random/restored selection, timed/command events, load/cache/stop/release | Keep; `themeSoundCapture=true` additionally runs a real-time repeated gameplay audio workload with and without music. Markers alone do not establish subjective listening acceptance. |
-| `MenuSkyTest` | Compose pixels/lifecycle: anchored artwork, background/disabled clocks and isolated wide crop | Keep; its 640×360 artwork crop is not a landscape application viewport. |
+| `MenuSkyTest` | Compose pixels/lifecycle: anchored artwork, background/unfocused/disabled clocks and isolated wide crop | Keep; its 640×360 artwork crop is not a landscape application viewport. |
 | `MenuThemeSwipeTest` | Compose/model: silent logo/free-area theme cycling, every control's exclusion/actions, canceled/multiple/short/vertical input, saved game/palette, intro and portrait/font text/geometry | Keep; gestures use the real menu surface and shared manual-selection owner. |
 | `NextQueueTest` | Compose bounds: spawn-position preview and suppression when obstructed | Keep; separate from saved seven-bag ordering. |
 | `ShareAppTest` | Android QR/intent: canonical store/latest-release links and sharing | Keep; decoded content and platform payloads. |

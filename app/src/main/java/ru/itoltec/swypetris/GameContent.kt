@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -50,7 +51,7 @@ internal const val GAME_GRID_ROWS = BoardGeometry.VISIBLE_ROWS + SPAWN_DISPLAY_R
 @Composable
 internal fun GameGridBackground(geometry: GameplayGeometry) {
     val palette = LocalGamePalette.current
-    Canvas(Modifier.fillMaxSize().testTag("gridBackground")) {
+    Canvas(Modifier.fillMaxSize().graphicsLayer().testTag("gridBackground")) {
         for (column in 0..BoardGeometry.WIDTH) {
             val x = column * size.width / BoardGeometry.WIDTH
             drawLine(palette.grid, Offset(x, 0f), Offset(x, size.height))
@@ -74,9 +75,12 @@ internal fun GameContent(model: GameViewModel, state: GameState, topInset: Dp? =
         WindowInsets.statusBars.union(WindowInsets.displayCutout).getTop(this).toDp()
     }
     val palette = LocalGamePalette.current
+    val fieldBrush = remember(palette) {
+        Brush.verticalGradient(listOf(palette.glass,
+            lerp(palette.glass, palette.background, if (palette.light) LIGHT_GLASS_BLEND else DARK_GLASS_BLEND)))
+    }
     CompositionLocalProvider(LocalBlockMaterial provides blockMaterial(palette)) {
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(palette.glass,
-        lerp(palette.glass, palette.background, if (palette.light) LIGHT_GLASS_BLEND else DARK_GLASS_BLEND))))
+    Box(Modifier.fillMaxSize().background(fieldBrush)
         .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))) {
         val hints = model.hintsEnabled
         val landing = remember(state.board, state.active, state.clearingRows, hints) {

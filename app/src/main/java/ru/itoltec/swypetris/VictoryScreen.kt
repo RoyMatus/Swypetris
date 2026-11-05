@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -131,6 +132,7 @@ internal fun VictoryScene(model: GameViewModel, celebration: VictoryCelebration 
 @Composable
 private fun rememberVictoryAnimation(model: GameViewModel): Boolean {
     val owner = LocalLifecycleOwner.current
+    val focused = LocalWindowInfo.current.isWindowFocused
     var systemEnabled by remember { mutableStateOf(Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
         ValueAnimator.areAnimatorsEnabled()) }
     val animate = LocalVictoryAnimations.current ?: systemEnabled
@@ -142,8 +144,8 @@ private fun rememberVictoryAnimation(model: GameViewModel): Boolean {
         owner.lifecycle.addObserver(observer)
         onDispose { owner.lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(model, owner, animate) {
-        if (animate) owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+    LaunchedEffect(model, owner, animate, focused) {
+        if (animate && focused) owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = withInfiniteAnimationFrameNanos { it }
             while (true) {
                 val now = withInfiniteAnimationFrameNanos { it }

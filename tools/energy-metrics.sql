@@ -1,8 +1,8 @@
--- Run with trace_processor_shell query -f tools/energy-metrics.sql <trace>.
+-- Run with trace_processor_shell query --full-sort -f tools/energy-metrics.sql <trace>.
 -- CPU includes the identical instrumentation driver. Scheduling slices are not wakeup counts.
 CREATE PERFETTO TABLE energy_window AS
 SELECT s.ts, s.dur, pt.upid FROM slice s JOIN process_track pt ON s.track_id = pt.id
-WHERE s.name = 'SwypetrisEnergyGameplay' AND s.dur > 0;
+WHERE s.name IN ('SwypetrisEnergyGameplay', 'SwypetrisEnergyMenu') AND s.dur > 0;
 
 SELECT COUNT(*) AS workload_markers, ROUND(SUM(dur) / 1e9, 3) AS workload_seconds FROM energy_window;
 
@@ -27,6 +27,25 @@ FROM counter c JOIN counter_track ct ON c.track_id = ct.id CROSS JOIN energy_win
 WHERE ct.name GLOB 'power.rails.*' AND c.ts BETWEEN w.ts AND w.ts + w.dur
 GROUP BY ct.id HAVING COUNT(*) > 1 ORDER BY ct.name;
 
+-- Charge counters are microampere-hours. Use the sampled interval, not the later file transfer.
+WITH samples AS (
+    SELECT c.ts, c.value,
+           ROW_NUMBER() OVER (ORDER BY c.ts) AS first_row,
+           ROW_NUMBER() OVER (ORDER BY c.ts DESC) AS last_row
+    FROM counter c JOIN counter_track ct ON c.track_id = ct.id CROSS JOIN energy_window w
+    WHERE ct.name = 'batt.charge_uah' AND c.ts BETWEEN w.ts AND w.ts + w.dur
+), endpoints AS (
+    SELECT COUNT(*) AS charge_samples, (MAX(ts) - MIN(ts)) / 1e9 AS sample_seconds,
+           MAX(CASE WHEN first_row = 1 THEN value END) AS first_charge_uah,
+           MAX(CASE WHEN last_row = 1 THEN value END) AS last_charge_uah
+    FROM samples
+)
+SELECT charge_samples, ROUND(sample_seconds, 3) AS sample_seconds,
+       first_charge_uah, last_charge_uah,
+       ROUND((first_charge_uah - last_charge_uah) / 1000.0, 3) AS device_charge_used_mah,
+       ROUND((first_charge_uah - last_charge_uah) / 1000.0 * 3600 / sample_seconds, 3) AS device_mah_per_hour
+FROM endpoints;
+
 -- App doFrame CPU-side durations, not complete presentation latency or GPU duration.
 SELECT COUNT(*) AS frame_callbacks, ROUND(AVG(s.dur) / 1e6, 3) AS mean_do_frame_ms,
        ROUND(PERCENTILE(s.dur, 95) / 1e6, 3) AS p95_do_frame_ms,
@@ -43,4 +62,4 @@ FROM actual_frame_timeline_slice a JOIN process p USING (upid) CROSS JOIN energy
 WHERE p.upid = w.upid AND a.surface_frame_token != 0 AND a.dur > 0
       AND a.ts BETWEEN w.ts AND w.ts + w.dur;
 
-SELECT name, value FROM stats WHERE severity = 'error' AND value > 0;
+SELECT name, value FROM stats WHERE severity IN ('error', 'data_loss') AND value > 0;
