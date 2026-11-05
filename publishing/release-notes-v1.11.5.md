@@ -1,5 +1,5 @@
 # Swypetris 1.11.5
 
-- Paused the menu sky animation while another window has focus, reducing unnecessary rendering behind system panels and dialogs.
-- Returning to the menu continues the animation from its previous phase.
-- Reduced temporary allocations in collision and landing-position checks while preserving piece coordinates and game rules.
+- Reduced temporary allocations in collision, grounding and landing-position checks while preserving game rules.
+- Reused static field, grid, fruit and celebration drawing, score digit paths and unchanged HUD data.
+- Paused menu, intro and celebration animation clocks while another window has focus; returning continues the previous phase.

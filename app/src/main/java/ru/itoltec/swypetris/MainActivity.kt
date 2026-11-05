@@ -302,7 +302,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
     horizontalInsets: PaddingValues = PaddingValues(0.dp), bottomInset: Dp = 0.dp,
     scoreBackdrop: Boolean = false,
     pieceOverlay: @Composable () -> Unit = {}) {
-    val displayed = displayScore(state.score)
+    val displayed = remember(state.score) { displayScore(state.score) }
     val scale = rememberScorePulse(state)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -311,7 +311,7 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
         val rightMargin = GAMEPLAY_HUD_MARGIN.dp +
             horizontalInsets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
         val cellWidth = maxWidth / BoardGeometry.WIDTH
-        val nextCells = spawnPiece(state.next).cells()
+        val nextCells = remember(state.next) { spawnPiece(state.next).cells() }
         val hintLeft = cellWidth * nextCells.minOf { it.x }
         val hintRight = cellWidth * (nextCells.maxOf { it.x } + 1)
         val leftLaneWidth = (hintLeft - leftMargin - 4.dp).coerceAtLeast(1.dp)
@@ -366,8 +366,10 @@ internal fun GameHud(state: GameState, headerHeight: Dp = 48.dp,
 /** Fixed cells keep fruit columns and icon bounds stable as quantities change. */
 @Composable
 private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
-    val fruits = Fruit.entries.zip(state.fruitCounts).filter { it.second > 0 }
-    if (fruits.isEmpty()) return
+    val fruitRows = remember(fruitCount(state.score)) {
+        Fruit.entries.zip(state.fruitCounts).filter { it.second > 0 }.chunked(FRUIT_COLUMNS)
+    }
+    if (fruitRows.isEmpty()) return
     val itemWidth = ((width - FRUIT_GAP.dp * (FRUIT_COLUMNS - 1)) / FRUIT_COLUMNS).coerceAtLeast(1.dp)
     val iconSize = minOf(MAX_HUD_FRUIT_SIZE_DP.dp, itemWidth * .8f).coerceAtLeast(1.dp)
     val renderedIconSize = iconSize / GAMEPLAY_FRUIT_SHRINK_FACTOR
@@ -375,7 +377,7 @@ private fun EarnedFruits(state: GameState, width: Dp, modifier: Modifier) {
     val badgeHeight = minOf(14.dp, badgeWidth)
     val itemHeight = renderedIconSize + badgeHeight * .5f
     Column(modifier, verticalArrangement = Arrangement.spacedBy(FRUIT_GAP.dp)) {
-        fruits.chunked(FRUIT_COLUMNS).forEach { row ->
+        fruitRows.forEach { row ->
             Row(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {

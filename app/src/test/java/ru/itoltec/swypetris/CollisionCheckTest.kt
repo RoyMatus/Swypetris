@@ -7,6 +7,7 @@ import org.junit.Test
 
 class CollisionCheckTest {
     private val engine = GameEngine()
+    @Volatile private var lastLanding: Piece? = null
 
     @Test fun collisionChecksMatchVisibleCellsAcrossRotationsAndBoardEdges() {
         val empty = BoardGeometry.empty()
@@ -31,7 +32,18 @@ class CollisionCheckTest {
                     state.board[BoardGeometry.row(cell.y)][cell.x] == null
             }
             assertEquals("$piece", expected, engine.fits(state, piece))
+            var landing = piece
+            while (referenceFits(state, landing.copy(y = landing.y + 1))) landing = landing.copy(y = landing.y + 1)
+            val activeState = state.copy(active = piece)
+            assertEquals("Landing $piece", landing, engine.ghost(activeState))
+            assertEquals("Grounded $piece", !referenceFits(state, piece.copy(y = piece.y + 1)),
+                engine.grounded(activeState))
         }
+    }
+
+    private fun referenceFits(state: GameState, piece: Piece): Boolean = referenceCells(piece).all { cell ->
+        cell.x in 0 until BoardGeometry.WIDTH && BoardGeometry.row(cell.y) in state.board.indices &&
+            state.board[BoardGeometry.row(cell.y)][cell.x] == null
     }
 
     /** Original object-based projection is an independent oracle for the primitive path. */
@@ -63,5 +75,24 @@ class CollisionCheckTest {
         println("Collision checks: $bytes bytes / $checks calls = $bytesPerCheck bytes/call")
         // Allows a small iterator; rejects allocating a list and four transformed cells per check.
         assertTrue("Collision checks allocate $bytesPerCheck bytes/call", bytesPerCheck <= 64.0)
+    }
+
+    @Test fun landingSearchAvoidsAllocatingIntermediatePieces() {
+        val bean = ManagementFactory.getThreadMXBean() as com.sun.management.ThreadMXBean
+        assertTrue(bean.isThreadAllocatedMemorySupported)
+        bean.isThreadAllocatedMemoryEnabled = true
+        val states = Tetromino.entries.flatMap { type -> (0..3).map {
+            GameState(active = Piece(type, rotation = it), next = Tetromino.O)
+        } }
+        val checks = 100_000
+        repeat(checks) { lastLanding = engine.ghost(states[it % states.size]) }
+        val thread = Thread.currentThread().threadId()
+        val before = bean.getThreadAllocatedBytes(thread)
+        repeat(checks) { lastLanding = engine.ghost(states[it % states.size]) }
+        val after = bean.getThreadAllocatedBytes(thread)
+        assertTrue(before >= 0 && after >= before)
+        val bytesPerCheck = (after - before).toDouble() / checks
+        println("Landing search: $bytesPerCheck bytes/call")
+        assertTrue("Landing search allocates $bytesPerCheck bytes/call", bytesPerCheck <= 64.0)
     }
 }

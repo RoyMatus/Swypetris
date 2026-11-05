@@ -1,13 +1,14 @@
 package ru.itoltec.swypetris
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
@@ -24,10 +25,11 @@ private val digitSegments = intArrayOf(0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d,
 /** Narrow seven-segment digits, including faint inactive segments, without a bundled font. */
 @Composable
 internal fun DigitalScore(value: String, height: Dp, modifier: Modifier = Modifier, color: Color = Color.White) {
-    Canvas(modifier.size(height * digitalScoreAspect(value.length), height)
-        .semantics { text = AnnotatedString(value) }) {
-        value.forEachIndexed { index, character ->
-            val mask = if (character in '0'..'9') digitSegments[character - '0'] else 0x40
+    val currentValue = rememberUpdatedState(value)
+    val digits = value.length
+    Spacer(modifier.size(height * digitalScoreAspect(digits), height)
+        .semantics { text = AnnotatedString(value) }.drawWithCache {
+        val paths = List(digits) { index ->
             val x = index * (DIGIT_WIDTH + DIGIT_GAP) * size.height
             val width = DIGIT_WIDTH * size.height
             val thickness = .075f * size.height
@@ -42,21 +44,27 @@ internal fun DigitalScore(value: String, height: Dp, modifier: Modifier = Modifi
                 RectSegment(Offset(x, thickness), thickness, middle - thickness * 1.5f),
                 RectSegment(Offset(x + thickness / 2, middle - thickness / 2), width - thickness, thickness)
             )
-            segments.forEachIndexed { segment, bounds ->
-                digitalSegment(bounds, color.copy(alpha = if (mask and (1 shl segment) != 0) 1f else .10f))
+            segments.map(::digitalSegmentPath)
+        }
+        onDrawBehind {
+            currentValue.value.forEachIndexed { index, character ->
+                val mask = if (character in '0'..'9') digitSegments[character - '0'] else 0x40
+                paths[index].forEachIndexed { segment, path ->
+                    drawPath(path, color.copy(alpha = if (mask and (1 shl segment) != 0) 1f else .10f))
+                }
             }
         }
-    }
+    })
 }
 
 internal fun digitalScoreAspect(digits: Int): Float = digits * DIGIT_WIDTH + (digits - 1).coerceAtLeast(0) * DIGIT_GAP
 
 private data class RectSegment(val at: Offset, val width: Float, val height: Float)
 
-private fun DrawScope.digitalSegment(segment: RectSegment, color: Color) {
+private fun digitalSegmentPath(segment: RectSegment): Path {
     val (at, width, height) = segment
     val bevel = minOf(width, height) / 2
-    val path = Path().apply {
+    return Path().apply {
         if (width > height) {
             moveTo(at.x, at.y + height / 2)
             lineTo(at.x + bevel, at.y)
@@ -74,5 +82,4 @@ private fun DrawScope.digitalSegment(segment: RectSegment, color: Color) {
         }
         close()
     }
-    drawPath(path, color)
 }

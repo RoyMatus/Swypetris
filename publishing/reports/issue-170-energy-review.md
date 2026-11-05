@@ -4,7 +4,7 @@ Measurement date: 2026-11-05. Publication scope authorized by the owner: GitHub 
 
 ## Finding and change
 
-The menu sky continued rendering behind the expanded notification shade even though the Activity remained RESUMED. `rememberMenuSkyTime` now requires window focus as well as its existing enabled/lifecycle conditions. Losing focus freezes the phase; regaining focus continues from that phase. A later gameplay optimization removes temporary coordinate objects from collision checks using the same shared coordinate projection. Artwork, animation speed, layout, gameplay and audio rules are preserved.
+The menu sky continued rendering behind the expanded notification shade even though the Activity remained RESUMED. `rememberMenuSkyTime` now requires window focus as well as its existing enabled/lifecycle conditions. Losing focus freezes the phase; regaining focus continues from that phase. The later source audit also removes collision/landing/grounding allocations, redundant static drawing and HUD/digit reconstruction, and suspends intro/celebration clocks on focus loss. Artwork, animation speed, layout, gameplay and audio rules are preserved.
 
 Three 120-second measurements per build on the physical Pixel show the following:
 
@@ -22,7 +22,7 @@ Physical Pixel 7, Android 17 build CP3A.261005.002.A1; Wi-Fi adb, unplugged. Ini
 
 Selected endpoint battery temperatures: visible menu before 26.2–28.4 C / after 27.9–28.7 C; shade before 28.4–28.7 C / after 28.4–28.6 C; gameplay before 27.5–28.9 C / after 27.9–28.9 C. These are endpoint ranges, not continuously sampled maxima or proof of identical thermal conditions.
 
-Public baseline 1.11.4/code 37, release commit `d6a60627c9c617c44593d8cd3d886e2189ebcd16`: installed APK SHA-256 `a69ddac18d42161ab25473b917d4a1f451b3c0ec024457fe2f30d1797b945c75`, matching the public release asset. Task base `ced5adf48c0302108ebf0dca9d14779f1196fa8e` has identical application source/build configuration. Physical focus-fix candidate 1.11.5/code 38 SHA-256: `ce9424fb3eef2f33c12befff5a226a19ebefe483f69fd6412b648eba753aa8a9`. Both use the existing app signer. **Physical after samples predate the later collision-allocation optimization**; its battery impact is not measured. Exact-main artifacts and final acceptance belong to the release compliance report.
+Public baseline 1.11.4/code 37, release commit `d6a60627c9c617c44593d8cd3d886e2189ebcd16`: installed APK SHA-256 `a69ddac18d42161ab25473b917d4a1f451b3c0ec024457fe2f30d1797b945c75`, matching the public release asset. Task base `ced5adf48c0302108ebf0dca9d14779f1196fa8e` has identical application source/build configuration. Physical focus-fix candidate 1.11.5/code 38 SHA-256: `ce9424fb3eef2f33c12befff5a226a19ebefe483f69fd6412b648eba753aa8a9`. Both use the existing app signer. **Physical after samples predate the later broad-audit changes**; their additional battery impact is not measured. Exact-main artifacts and final acceptance belong to the release compliance report.
 
 ## Visible menu comparison
 
@@ -63,9 +63,28 @@ A linear estimate from the observed candidate gameplay rates is approximately **
 
 `fits` previously created a list of four transformed cells on every collision check, including repeated checks down the board for the landing hint/hard drop. A shared inline primitive-coordinate projection now serves both collision checks and the existing list-returning renderer interface; collision checks consume coordinates directly. Rules, cell order, rotations and timing remain the same.
 
-A warmed local JDK 21 allocation test over 100,000 checks measured **27,542,704 bytes before / 176 bytes after** (275.42704 / 0.00176 bytes per call). The original implementation failed the allocation budget; the optimized implementation passed. ThreadMXBean reports approximate per-thread allocated heap bytes; it is not live heap size. This is JVM allocation evidence, not an Android energy percentage or an end-to-end speed benchmark. No further long phone series was run; complete optimization of every game subsystem is not established.
+A warmed local JDK 21 allocation test over 100,000 checks measured **27,542,704 bytes before / 440 bytes in the final development run** (275.42704 / 0.0044 bytes per call). The original implementation failed the allocation budget; the optimized implementation passed. Tiny post-optimization totals varied across warm runs; they include measurement/runtime bookkeeping. ThreadMXBean reports approximate per-thread allocated heap bytes; it is not live heap size. This is JVM allocation evidence, not an Android energy percentage or an end-to-end speed benchmark. No further long phone series was run; complete optimization of every game subsystem is not established.
 
-Correctness comparison covers 37,800 cases: seven figures, four rotations, two boards (empty/occupied), x=-4..10 and y=-24..20. Both projected cells and collision decisions match the original object-based projection, including hidden rows and out-of-bounds positions. `CollisionCheckTest` (2 cases), the affected `GameEngineTest` suite and detekt passed; RED/GREEN logs/XML are retained under `setup/collision-*`.
+Correctness comparison covers 37,800 cases: seven figures, four rotations, two boards (empty/occupied), x=-4..10 and y=-24..20. Projected cells, collision, landing and grounding decisions match the original object-based projection, including hidden rows and out-of-bounds positions. The landing search now increments a primitive drop offset and creates only its final piece; grounded checks use the same collision owner without creating a trial piece. Its warmed allocation budget failed at **1,138.28608 bytes/call before** and passed at **32.0 bytes/call after** over 100,000 calls. The expanded `CollisionCheckTest` (3 cases), 12 `GameEngineTest` cases and detekt passed; RED/GREEN logs/XML are retained under `setup/collision-*`, `landing-*` and `broad-*`.
+
+## Broader source audit
+
+The owner requested a broader optimization pass after the physical series, while retaining gameplay/visual/audio quality and avoiding another long phone session. The review traced the principal runtime owners rather than treating every allocation as a proven battery hotspot.
+
+| Area | Confirmed work / final disposition |
+| --- | --- |
+| Simulation and input | Primitive collision/drop offsets replace temporary geometry objects. Event-driven gravity, lock/clear timing, gestures, spawning, scoring and bag order are preserved. |
+| Field/HUD rendering | An active-piece-only update unnecessarily repainted settled artwork (RED draw count 1→2). Artwork dependencies and isolated display lists now preserve static content; semantics, next preview and changed cells still update. Grid, fruit pixels and static celebration artwork use the same isolation. |
+| Score/HUD allocations | Digit paths are cached by draw geometry; current masks remain live. Score text, next spawn cells, earned-fruit rows and the field gradient retain their values until their actual inputs change. |
+| Focus/lifecycle | Intro and celebration clocks advanced 112→624 ms during simulated focus loss (RED). They now use the same window-focus suspension contract as the menu, with phase-preserving resume. Existing lifecycle/gameplay/audio pause owners remain intact. |
+| Sound and vibration | Effect samples are already loaded once per visited palette, menu preparation runs off-main, playback is exclusive and timers sleep until a gap deadline. No polling/duplicate playback defect was confirmed in this review; quality and feedback settings remain unchanged. |
+| Persistence | Session JSON already caches the immutable board and uses ordered asynchronous atomic writes. Checkpoint frequency, result journaling and restoration remain unchanged; no save-loss tradeoff was introduced. |
+| Images/resources | Current artwork/materials and parsed scene data already have bounded owners; image import/restore uses IO. No global decoded-image retention or asset recompression was introduced. |
+| Network/updates | Existing due/reservation policy and lifecycle-owned requests remain the owners. No extra background polling was introduced; per-app radio energy is not established by the traces. |
+
+Before the final full gate, the focused emulator suite passed **22 tests in 87.426 seconds** for focus clocks, board invalidation, digit pixels, HUD layering, intro and victory behavior. The digit cache matched the original renderer **pixel-for-pixel in 20 cases**, including dynamic values, all digits, Long scores, two sizes and two colors. Both renderers use the same origin; the initial translated fixture produced two one-channel antialias differences even before any production score change, so the fixture was corrected without relaxing pixel equality.
+
+TDD exception: output-preserving drawing/data caches have no new product behavior. They use the unchanged renderer as a pixel oracle and existing layout/theme/font/state tests; frame/cache contracts were checked in current Compose documentation. The later HUD-only memoization retains the same formulas and is included in the required final full regression. Pure source review, framework cache semantics and JVM allocation measurements do not establish an Android battery-saving percentage or prove that every possible optimization has been exhausted.
 
 ## Short idle observations
 
@@ -112,3 +131,5 @@ At the owner's request, continuous app-UID and package-filtered system logcat mo
 Checked on 2026-11-05: [Android BatteryManager](https://developer.android.com/reference/android/os/BatteryManager), [Power Profiler](https://developer.android.com/studio/profile/power-profiler), [WindowInfo](https://developer.android.com/reference/kotlin/androidx/compose/ui/platform/WindowInfo), [Perfetto CLI](https://perfetto.dev/docs/reference/perfetto-cli) and [trace buffers/data loss](https://perfetto.dev/docs/concepts/buffers). Android/Compose contracts were researched through authenticated Context7; no dependency change was required.
 
 The [JDK 21 ThreadMXBean contract](https://docs.oracle.com/en/java/javase/21/docs/api/jdk.management/com/sun/management/ThreadMXBean.html) was checked directly after Context7 could not return snippets for that contract. The test rejects unavailable counters rather than accepting a negative sentinel as a zero-allocation result.
+
+Rendering contracts checked through Context7: [draw caches and layers](https://developer.android.com/develop/ui/compose/graphics/draw/modifiers) and [strong-skipping lambda memoization](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping).

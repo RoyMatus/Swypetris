@@ -13,6 +13,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -29,38 +30,45 @@ internal fun Board(state: GameState, clearElapsedMillis: Long = 0L, landingHint:
         !android.animation.ValueAnimator.areAnimatorsEnabled()) {
     val palette = LocalGamePalette.current
     val material = blockMaterial(palette)
-    val shards = remember(state.board, state.blockAppearances, state.clearingRows, state.completedClears) {
-        LineClearAnimation.shards(state)
+    // The falling piece has its own layer during play. Keep its updates out of settled artwork.
+    val artwork = rememberBoardArtwork(state, drawActive)
+    val shards = remember(artwork.board, artwork.blockAppearances, artwork.clearingRows, artwork.completedClears) {
+        LineClearAnimation.shards(artwork)
     }
-    Canvas(Modifier.fillMaxSize()
+    Canvas(Modifier.fillMaxSize().graphicsLayer()
         .semantics { contentDescription = "Игровое поле, очки ${state.score}, линии ${state.lines}." +
         " Следующая фигура ${state.next.name}" +
         " Запас: ${state.held?.name ?: "пусто"}, ${if (state.holdUsed) "обмен недоступен" else "обмен доступен"}." }
             .testTag("board")) {
-        val elapsed = if (state.clearingRows.isNotEmpty()) clearTime() else 0L
+        val elapsed = if (artwork.clearingRows.isNotEmpty()) clearTime() else 0L
         val cell = Size(size.width / BoardGeometry.WIDTH, geometry?.cellHeight ?: (size.height / GAME_GRID_ROWS))
         val origin = Offset(0f, (geometry?.gridTop ?: 0f) + SPAWN_DISPLAY_ROWS * cell.height)
         clipRect(top = geometry?.safeTop ?: 0f) {
 
-            drawSpawnPreview(state, palette, origin, cell)
+            drawSpawnPreview(artwork, palette, origin, cell)
 
-            drawSettledCells(state, palette, material, origin, cell, elapsed, reducedMotion)
-            if (state.clearingRows.isNotEmpty()) clipRect(top = origin.y) {
-                lineClearEffects(shards, state.clearingRows, palette, origin, cell, elapsed, reducedMotion, material)
+            drawSettledCells(artwork, palette, material, origin, cell, elapsed, reducedMotion)
+            if (artwork.clearingRows.isNotEmpty()) clipRect(top = origin.y) {
+                lineClearEffects(shards, artwork.clearingRows, palette, origin, cell, elapsed, reducedMotion, material)
             }
 
-            if (!state.gameOver && state.clearingRows.isEmpty()) {
+            if (!artwork.gameOver && artwork.clearingRows.isEmpty()) {
                 landingHint?.let { hint ->
                     hint.cells().filter { it.y in 0 until BoardGeometry.VISIBLE_ROWS }.forEach {
                         block(it, palette.piece(hint.type), palette.finish, palette.texture, origin, cell,
                             alpha = palette.ghostAlpha, outline = true)
                     }
                 }
-                if (drawActive) fallingPiece(state, palette, material, origin, cell)
+                if (drawActive) fallingPiece(artwork, palette, material, origin, cell)
             }
         }
     }
 }
+
+@Composable
+private fun rememberBoardArtwork(state: GameState, drawActive: Boolean): GameState =
+    remember(state.board, state.blockAppearances, state.clearingRows, state.completedClears,
+        state.next, state.gameOver, if (drawActive) state.active else null) { state }
 
 /** Dedicated falling-piece layer between fruits and the other HUD indicators. */
 @Composable

@@ -178,7 +178,7 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `BackgroundRenderingTest` | Compose: portrait sizes, font scale, light/dark backgrounds and unchanged geometry/piece pixels | Keep; saves renders for inspection. |
 | `DifficultyTest` | JVM: Easy/Medium/Hard curves, late-game bounds, selected difficulty across rounds | Keep; covers current three-mode progression. |
 | `GameEngineTest` | JVM: movement, collision, rotation, drops, line clears, game over, bag, gravity | Add stacked-board ghost case; the original ghost check used an empty board. |
-| `CollisionCheckTest` | JVM: original coordinate/collision equivalence across 37,800 positions and warmed per-thread allocation budget | Keep; detects geometry regressions and per-check object churn without a timing threshold. |
+| `CollisionCheckTest` | JVM: original projection/collision/landing/grounding equivalence across 37,800 positions and warmed collision/landing allocation budgets | Keep; detects geometry regressions and object churn without a timing threshold. |
 | `GameFeedbackTest` | JVM: command-to-feedback rules, global intensity, zero suppression and fixed-strength fallback | Keep; integration feedback test checks playback effects separately. |
 | `ThemeSoundGainTest` | JVM: per-event gain routing, Classic CLEAR outlier attenuation, finite positive attenuation bounds and fallback | Keep; numerical safety cannot establish perceived loudness or replace Pixel speaker/headphone audition. |
 | `GameLayoutTest` | JVM: fruit placement across sizes/shapes and random round-theme selection | Keep; Android UI tests separately check rendered bounds. |
@@ -202,6 +202,9 @@ The original #62 baseline on 2026-09-28 had 12 JVM test classes with 65 JUnit me
 | `EndlessScoreUiTest` | Compose: full Long record score at narrow portrait/large font | Oversized scores wrap between digit groups without clipping. |
 | `BrandNavigationTest` | Android UI: menu order, compact layout, contacts and intent failure | Keep; needs Compose and platform intents. |
 | `EnergyScenarioTest` | Android measurement: gameplay or idle menu, palette/music variants and optional seeded two-line clears | Keep opt-in; its real-time sleep is for measurement, never a normal correctness assertion. |
+| `AnimationFocusTest` | Compose clock: intro/celebration freeze while unfocused and resume from the same phase | Keep; complements lifecycle and menu-clock coverage. |
+| `BoardInvalidationTest` | Compose draw invalidation: active-piece-only changes skip settled artwork, semantics remain current, next/settled updates repaint | Keep; catches stale caches and redundant redraws. |
+| `DigitalScoreRenderingTest` | Compose pixels: cached digits match the original renderer at the same origin for 20 value/size/color cases | Keep; checks live value updates, all digit masks, Long scores and geometry-cache invalidation. |
 | `ForegroundUiTest` | Android lifecycle: locked portrait board bounds, notification shade, task reuse, insets | Keep; requires system UI and Activity state. |
 | `GameFeedbackIntegrationTest` | Android integration: sound/vibration settings and single-event behavior | Keep; complements pure feedback rules. |
 | `VibrationSettingsTest` | Compose UI: 0/50/100% slider input, persisted intensity, narrow/tablet portrait screens and large fonts | Update fixture/name; retain every input, persistence and reachability assertion. |

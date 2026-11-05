@@ -62,6 +62,15 @@ data class Piece(val type: Tetromino, val x: Int = (BoardGeometry.WIDTH - type.b
     }
 }
 
+private fun pieceFits(state: GameState, piece: Piece, drop: Int): Boolean {
+    piece.forEachCell { x, y ->
+        val row = BoardGeometry.row(y + drop)
+        if (x !in 0 until BoardGeometry.WIDTH || row !in state.board.indices ||
+            state.board[row][x] != null) return false
+    }
+    return true
+}
+
 /**
  * Неизменяемый снимок партии; [generation] меняется при появлении следующей фигуры.
  * Непустой [clearingRows] означает, что [active] уже зафиксирована и новые команды заблокированы.
@@ -162,23 +171,16 @@ class GameEngine(private val random: Random = Random.Default) {
             state.copy(victoryPending = true, gameOver = false) else state
 
     /** Checks that every cell of [piece] is inside the board and unoccupied. */
-    fun fits(state: GameState, piece: Piece): Boolean {
-        piece.forEachCell { x, y ->
-            val row = BoardGeometry.row(y)
-            if (x !in 0 until BoardGeometry.WIDTH || row !in state.board.indices ||
-                state.board[row][x] != null) return false
-        }
-        return true
-    }
+    fun fits(state: GameState, piece: Piece): Boolean = pieceFits(state, piece, 0)
 
     /** Finds the lowest reachable position without changing the board or awarding points. */
     fun ghost(state: GameState): Piece {
-        var piece = state.active
-        while (fits(state, piece.copy(y = piece.y + 1))) piece = piece.copy(y = piece.y + 1)
-        return piece
+        var drop = 0
+        while (pieceFits(state, state.active, drop + 1)) drop++
+        return if (drop == 0) state.active else state.active.copy(y = state.active.y + drop)
     }
 
-    fun grounded(state: GameState): Boolean = !fits(state, state.active.copy(y = state.active.y + 1))
+    fun grounded(state: GameState): Boolean = !pieceFits(state, state.active, 1)
 
     /** Airborne time never consumes the clock or replenishes its reset budget. */
     fun advanceLock(state: GameState, elapsed: Long, allowLock: Boolean = true): GameState {
