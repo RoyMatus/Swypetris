@@ -43,10 +43,22 @@ data class Piece(val type: Tetromino, val x: Int = (BoardGeometry.WIDTH - type.b
     val rotation: Int = 0) {
     val orientation: RotationState get() = RotationState.entries[rotation]
     /** Transforms the original shape into board coordinates using the piece position and rotation. */
-    fun cells(): List<Cell> = type.shape.map { original ->
-        var cell = original
-        if (type != Tetromino.O) repeat(rotation) { cell = Cell(type.box - 1 - cell.y, cell.x) }
-        Cell(cell.x + x, cell.y + y)
+    fun cells(): List<Cell> = buildList(type.shape.size) {
+        forEachCell { cellX, cellY -> add(Cell(cellX, cellY)) }
+    }
+
+    /** Shares coordinate projection with collision checks without temporary cell objects. */
+    internal inline fun forEachCell(action: (Int, Int) -> Unit) {
+        for (original in type.shape) {
+            var cellX = original.x
+            var cellY = original.y
+            if (type != Tetromino.O) repeat(rotation) {
+                val rotatedX = type.box - 1 - cellY
+                cellY = cellX
+                cellX = rotatedX
+            }
+            action(cellX + x, cellY + y)
+        }
     }
 }
 
@@ -150,9 +162,13 @@ class GameEngine(private val random: Random = Random.Default) {
             state.copy(victoryPending = true, gameOver = false) else state
 
     /** Checks that every cell of [piece] is inside the board and unoccupied. */
-    fun fits(state: GameState, piece: Piece): Boolean = piece.cells().all {
-        it.x in 0 until BoardGeometry.WIDTH && BoardGeometry.row(it.y) in state.board.indices &&
-            state.board[BoardGeometry.row(it.y)][it.x] == null
+    fun fits(state: GameState, piece: Piece): Boolean {
+        piece.forEachCell { x, y ->
+            val row = BoardGeometry.row(y)
+            if (x !in 0 until BoardGeometry.WIDTH || row !in state.board.indices ||
+                state.board[row][x] != null) return false
+        }
+        return true
     }
 
     /** Finds the lowest reachable position without changing the board or awarding points. */

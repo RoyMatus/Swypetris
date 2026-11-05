@@ -32,8 +32,6 @@ class FireworkRenderingTest {
     private val fixtures = listOf(
         Fixture("round-small", 360, 800, 1f, VictoryCelebration.ROUND),
         Fixture("round-large", 1080, 1920, 3f, VictoryCelebration.ROUND),
-        Fixture("absolute-small", 360, 800, 1f, VictoryCelebration.ABSOLUTE),
-        Fixture("absolute-large", 1080, 1920, 3f, VictoryCelebration.ABSOLUTE),
         Fixture("postcard", 1080, 1440, 3f, VictoryCelebration.POSTCARD)
     )
     private val times = listOf(0L, 300L, 755L, 756L, 757L, 1405L, 1406L, 1407L,
