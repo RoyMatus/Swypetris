@@ -64,10 +64,9 @@ class CollisionCheckTest {
         val checks = 100_000
         var accepted = 0
         repeat(checks) { if (engine.fits(state, pieces[it % pieces.size])) accepted++ }
-        val thread = Thread.currentThread().threadId()
-        val before = bean.getThreadAllocatedBytes(thread)
+        val before = bean.currentThreadAllocatedBytes
         repeat(checks) { if (engine.fits(state, pieces[it % pieces.size])) accepted++ }
-        val after = bean.getThreadAllocatedBytes(thread)
+        val after = bean.currentThreadAllocatedBytes
         assertTrue("Allocation counters must be available for this platform thread", before >= 0 && after >= before)
         val bytes = after - before
         assertEquals(checks * 2, accepted)
@@ -86,10 +85,9 @@ class CollisionCheckTest {
         } }
         val checks = 100_000
         repeat(checks) { lastLanding = engine.ghost(states[it % states.size]) }
-        val thread = Thread.currentThread().threadId()
-        val before = bean.getThreadAllocatedBytes(thread)
+        val before = bean.currentThreadAllocatedBytes
         repeat(checks) { lastLanding = engine.ghost(states[it % states.size]) }
-        val after = bean.getThreadAllocatedBytes(thread)
+        val after = bean.currentThreadAllocatedBytes
         assertTrue(before >= 0 && after >= before)
         val bytesPerCheck = (after - before).toDouble() / checks
         println("Landing search: $bytesPerCheck bytes/call")
